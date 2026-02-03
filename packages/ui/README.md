@@ -16,19 +16,24 @@ import { useCommand } from '@kombuse/ui/hooks'
 
 ```
 src/
-├── base/           - shadcn/ui primitives (button, dialog, etc.)
+├── base/           - shadcn/ui primitives (button, dialog, badge, popover, etc.)
 ├── components/     - Domain components
 │   ├── command-palette/  - Command palette UI
+│   ├── labels/           - Label management components
+│   ├── tickets/          - Ticket components
 │   ├── header.tsx
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks
 │   ├── use-command.ts         - Execute specific commands
 │   ├── use-commands.ts        - Get all available commands
-│   └── use-command-context.ts - Access command registry
+│   ├── use-command-context.ts - Access command registry
+│   ├── use-labels.ts          - Label CRUD hooks
+│   └── use-tickets.ts         - Ticket CRUD hooks
 ├── providers/      - Context providers
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
+    ├── api.ts                 - API client (tickets, comments, labels)
     └── utils.ts               - cn() class merging
 ```
 
@@ -45,7 +50,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@kombuse/ui/base'
 import { Input } from '@kombuse/ui/base'
 ```
 
-Available: `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Progress`, `RadioGroup`, `Select`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
+Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Select`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
 
 ### Hooks
 
@@ -72,6 +77,72 @@ import { CommandProvider, ThemeProvider } from '@kombuse/ui/providers'
 
 ```typescript
 import { CommandPalette, Header, ModeToggle } from '@kombuse/ui/components'
+import { TicketList, TicketDetail } from '@kombuse/ui/components'
+import { LabelBadge, LabelSelector, LabelForm } from '@kombuse/ui/components'
+```
+
+### Label Components
+
+```typescript
+import { LabelBadge, LabelSelector, LabelForm } from '@kombuse/ui/components'
+
+// Display a colored label badge
+<LabelBadge label={label} onRemove={() => handleRemove(label.id)} />
+
+// Multi-select dropdown for assigning labels (with optional CRUD)
+<LabelSelector
+  availableLabels={projectLabels}
+  selectedLabelIds={[1, 2]}
+  onLabelAdd={(labelId) => ...}
+  onLabelRemove={(labelId) => ...}
+  onLabelCreate={(data) => ...}    // Optional: enables "Create new label"
+  onLabelUpdate={(id, data) => ...} // Optional: enables edit button
+  onLabelDelete={(id) => ...}       // Optional: enables delete button
+/>
+
+// Inline form for creating/editing labels
+<LabelForm
+  label={existingLabel}  // Optional: for edit mode
+  onSubmit={(data) => ...}
+  onCancel={() => ...}
+/>
+```
+
+### Label Hooks
+
+```typescript
+import {
+  useProjectLabels,
+  useTicketLabels,
+  useAddLabelToTicket,
+  useRemoveLabelFromTicket,
+  useCreateLabel,
+  useUpdateLabel,
+  useDeleteLabel,
+} from '@kombuse/ui/hooks'
+
+// Fetch labels for a project
+const { data: labels } = useProjectLabels('project-id')
+
+// Fetch labels assigned to a ticket
+const { data: ticketLabels } = useTicketLabels(ticketId)
+
+// Assign/unassign labels to tickets
+const addLabel = useAddLabelToTicket(ticketId)
+addLabel.mutate({ labelId: 1 })
+
+const removeLabel = useRemoveLabelFromTicket(ticketId)
+removeLabel.mutate(labelId)
+
+// CRUD for labels themselves
+const createLabel = useCreateLabel('project-id')
+createLabel.mutate({ name: 'bug', color: '#d73a4a' })
+
+const updateLabel = useUpdateLabel('project-id')
+updateLabel.mutate({ id: 1, input: { name: 'Bug', color: '#ff0000' } })
+
+const deleteLabel = useDeleteLabel('project-id')
+deleteLabel.mutate(labelId)
 ```
 
 ### Utilities

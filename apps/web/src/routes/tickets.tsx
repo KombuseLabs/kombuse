@@ -11,6 +11,13 @@ import {
   useCreateComment,
   useUpdateComment,
   useDeleteComment,
+  useProjectLabels,
+  useTicketLabels,
+  useAddLabelToTicket,
+  useRemoveLabelFromTicket,
+  useCreateLabel,
+  useUpdateLabel,
+  useDeleteLabel,
 } from "@kombuse/ui/hooks";
 import { Plus, ArrowLeft, Pencil, Trash2, Check, X } from "lucide-react";
 import type { Ticket } from "@kombuse/types";
@@ -40,6 +47,14 @@ export function Tickets() {
   const createComment = useCreateComment(ticketId ? Number(ticketId) : 0);
   const updateComment = useUpdateComment(ticketId ? Number(ticketId) : 0);
   const deleteComment = useDeleteComment(ticketId ? Number(ticketId) : 0);
+
+  const { data: projectLabels } = useProjectLabels(projectId ?? "");
+  const { data: ticketLabels } = useTicketLabels(ticketId ? Number(ticketId) : 0);
+  const addLabel = useAddLabelToTicket(ticketId ? Number(ticketId) : 0);
+  const removeLabel = useRemoveLabelFromTicket(ticketId ? Number(ticketId) : 0);
+  const createLabel = useCreateLabel(projectId ?? "");
+  const updateLabel = useUpdateLabel(projectId ?? "");
+  const deleteLabelMutation = useDeleteLabel(projectId ?? "");
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editBody, setEditBody] = useState("");
@@ -151,9 +166,20 @@ export function Tickets() {
                 <div className="flex-1 overflow-y-auto p-6">
                   <TicketDetail
                     ticket={selectedTicket}
+                    labels={ticketLabels}
+                    projectLabels={projectLabels}
                     onClose={handleCloseDetail}
                     onDelete={handleDeleteTicket}
+                    onLabelAdd={(labelId) => addLabel.mutate({ labelId })}
+                    onLabelRemove={(labelId) => removeLabel.mutate(labelId)}
+                    onLabelCreate={(data) => createLabel.mutate(data)}
+                    onLabelUpdate={(id, data) => updateLabel.mutate({ id, input: data })}
+                    onLabelDelete={(id) => deleteLabelMutation.mutate(id)}
                     isDeleting={deleteTicket.isPending}
+                    isCreatingLabel={createLabel.isPending}
+                    isUpdatingLabel={updateLabel.isPending}
+                    isDeletingLabel={deleteLabelMutation.isPending}
+                    isEditable
                   />
 
                   {/* Comments List */}

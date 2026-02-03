@@ -7,6 +7,9 @@ import type {
   CreateCommentInput,
   UpdateCommentInput,
   CommentFilters,
+  Label,
+  CreateLabelInput,
+  UpdateLabelInput,
 } from '@kombuse/types'
 
 const API_BASE = 'http://localhost:3332/api'
@@ -130,6 +133,101 @@ export const commentsApi = {
 
   async delete(id: number): Promise<void> {
     const response = await fetch(`${API_BASE}/comments/${id}`, {
+      method: 'DELETE',
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+  },
+}
+
+export const labelsApi = {
+  async listByProject(projectId: string): Promise<Label[]> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/labels`)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  async getTicketLabels(ticketId: number): Promise<Label[]> {
+    const response = await fetch(`${API_BASE}/tickets/${ticketId}/labels`)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  async addToTicket(
+    ticketId: number,
+    labelId: number,
+    addedById?: string
+  ): Promise<void> {
+    const response = await fetch(
+      `${API_BASE}/tickets/${ticketId}/labels/${labelId}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ added_by_id: addedById }),
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+  },
+
+  async removeFromTicket(ticketId: number, labelId: number): Promise<void> {
+    const response = await fetch(
+      `${API_BASE}/tickets/${ticketId}/labels/${labelId}`,
+      {
+        method: 'DELETE',
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+  },
+
+  async create(
+    projectId: string,
+    input: Omit<CreateLabelInput, 'project_id'>
+  ): Promise<Label> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/labels`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  async update(id: number, input: UpdateLabelInput): Promise<Label> {
+    const response = await fetch(`${API_BASE}/labels/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  async delete(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE}/labels/${id}`, {
       method: 'DELETE',
     })
 

@@ -9,3 +9,12 @@ export {
   useDeleteTicket,
 } from './use-tickets'
 export { useComments, useCreateComment, useUpdateComment, useDeleteComment } from './use-comments'
+export {
+  useProjectLabels,
+  useTicketLabels,
+  useAddLabelToTicket,
+  useRemoveLabelFromTicket,
+  useCreateLabel,
+  useUpdateLabel,
+  useDeleteLabel,
+} from './use-labels'
