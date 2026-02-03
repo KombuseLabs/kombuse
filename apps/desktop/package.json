@@ -1,0 +1,29 @@
+{
+  "name": "desktop",
+  "version": "0.0.1",
+  "private": true,
+  "main": "dist/main.mjs",
+  "scripts": {
+    "dev": "bun run --filter server build && bun run build && ELECTRON_RUN_AS_NODE= electron .",
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=dist/main.mjs",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "start": "ELECTRON_RUN_AS_NODE= electron .",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kombuse/persistence": "*",
+    "better-sqlite3": "^11.9.1",
+    "server": "*"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "electron": "^35.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.26.0",
+    "typescript": "^5.9.0-beta"
+  }
+}

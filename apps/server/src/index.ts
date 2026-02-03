@@ -95,7 +95,7 @@ const isDirectExecution =
 if (isDirectExecution) {
   const db = initializeDatabase();
   seedDatabase(db);
-  const server = await createServer({ port: 3332, db });
+  const server = await createServer({ port: 3331, db });
   try {
     await server.listen();
   } catch (err) {
