@@ -1,7 +1,23 @@
 @import "tailwindcss";
 @source "../../../packages/ui/src";
 
+@font-face {
+  font-family: "Geist Sans";
+  src: url("./fonts/GeistVF.woff") format("woff");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./fonts/GeistMonoVF.woff") format("woff");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 @theme inline {
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -75,6 +91,7 @@
   }
 
   body {
+    font-family: var(--font-sans);
     background-color: var(--background);
     color: var(--foreground);
   }
