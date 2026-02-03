@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@kombuse/ui/theme-provider";
+import { CommandSetup } from "./command-setup";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -31,7 +32,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <CommandSetup>{children}</CommandSetup>
         </ThemeProvider>
       </body>
     </html>

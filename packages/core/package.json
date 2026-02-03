@@ -1,5 +1,5 @@
 {
-  "name": "@kombuse/types",
+  "name": "@kombuse/core",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -9,13 +9,16 @@
       "default": "./src/index.ts"
     },
     "./commands": {
-      "types": "./src/commands.ts",
-      "default": "./src/commands.ts"
+      "types": "./src/commands/index.ts",
+      "default": "./src/commands/index.ts"
     }
   },
   "scripts": {
     "lint": "eslint --max-warnings 0",
     "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kombuse/types": "*"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
