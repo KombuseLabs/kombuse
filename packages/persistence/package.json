@@ -1,5 +1,5 @@
 {
-  "name": "@kombuse/services",
+  "name": "@kombuse/persistence",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -14,14 +14,16 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@kombuse/persistence": "*",
-    "@kombuse/types": "*"
+    "@kombuse/types": "*",
+    "better-sqlite3": "^11.8.1"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
+    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.15.3",
     "eslint": "^9.39.1",
     "typescript": "5.9.2"
-  }
+  },
+  "trustedDependencies": ["better-sqlite3"]
 }

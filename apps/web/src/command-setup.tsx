@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "next-themes";
+import { useQueryClient } from "@tanstack/react-query";
 import { createCommandRegistry } from "@kombuse/core";
 import { CommandProvider } from "@kombuse/ui/providers";
 import { CommandPalette } from "@kombuse/ui/components";
+import { ticketsApi } from "@kombuse/ui/lib/api";
 import type { CommandContext } from "@kombuse/types";
 
 interface CommandSetupProps {
@@ -12,6 +14,7 @@ interface CommandSetupProps {
 export function CommandSetup({ children }: CommandSetupProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { setTheme, resolvedTheme } = useTheme();
+  const queryClient = useQueryClient();
 
   const registry = useMemo(() => createCommandRegistry(), []);
 
@@ -50,10 +53,24 @@ export function CommandSetup({ children }: CommandSetupProps) {
         category: "Theme",
         handler: () => setTheme("system"),
       }),
+      registry.register({
+        id: "tickets.create",
+        title: "Create New Ticket",
+        category: "Tickets",
+        keybinding: "mod+shift+t",
+        handler: async () => {
+          const date = new Date().toISOString().split("T")[0];
+          await ticketsApi.create({
+            title: `hello ${date}`,
+            project_id: "1",
+          });
+          queryClient.invalidateQueries({ queryKey: ["tickets"] });
+        },
+      }),
     ];
 
     return () => unregisterFns.forEach((fn) => fn());
-  }, [registry, setTheme, resolvedTheme]);
+  }, [registry, setTheme, resolvedTheme, queryClient]);
 
   const context: CommandContext = {
     view: "home",

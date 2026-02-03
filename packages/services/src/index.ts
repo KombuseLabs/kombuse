@@ -1,4 +1,4 @@
 // Business logic services for REST and MCP handlers
-// Add your service implementations here
 
-export {};
+export { TicketService, ticketService } from './ticket-service'
+export type { ITicketService } from './ticket-service'

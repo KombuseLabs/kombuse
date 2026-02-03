@@ -4,20 +4,27 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
-    "start": "bun dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
     "lint": "eslint --max-warnings 0",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "fastify": "^5.7.4"
+    "@fastify/cors": "^11.0.1",
+    "@kombuse/persistence": "*",
+    "@kombuse/services": "*",
+    "@kombuse/types": "*",
+    "fastify": "^5.7.4",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/node": "^22.15.3",
     "eslint": "^9.39.1",
+    "tsx": "^4.19.2",
     "typescript": "5.9.2"
-  }
+  },
+  "trustedDependencies": ["better-sqlite3"]
 }
