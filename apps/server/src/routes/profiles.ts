@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { profilesRepository } from '@kombuse/persistence'
+import { profileService } from '@kombuse/services'
 import {
   createProfileSchema,
   updateProfileSchema,
@@ -14,14 +14,14 @@ export async function profileRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return profilesRepository.list(parseResult.data)
+    return profileService.list(parseResult.data)
   })
 
   // Get single profile
   fastify.get<{
     Params: { id: string }
   }>('/profiles/:id', async (request, reply) => {
-    const profile = profilesRepository.get(request.params.id)
+    const profile = profileService.get(request.params.id)
     if (!profile) {
       return reply.status(404).send({ error: 'Profile not found' })
     }
@@ -35,7 +35,7 @@ export async function profileRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const profile = profilesRepository.create(parseResult.data)
+    const profile = profileService.create(parseResult.data)
     return reply.status(201).send(profile)
   })
 
@@ -48,21 +48,29 @@ export async function profileRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const profile = profilesRepository.update(request.params.id, parseResult.data)
-    if (!profile) {
-      return reply.status(404).send({ error: 'Profile not found' })
+    try {
+      const profile = profileService.update(request.params.id, parseResult.data)
+      return profile
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Profile not found' })
+      }
+      throw error
     }
-    return profile
   })
 
   // Delete profile (soft delete)
   fastify.delete<{
     Params: { id: string }
   }>('/profiles/:id', async (request, reply) => {
-    const deleted = profilesRepository.delete(request.params.id)
-    if (!deleted) {
-      return reply.status(404).send({ error: 'Profile not found' })
+    try {
+      profileService.delete(request.params.id)
+      return reply.status(204).send()
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Profile not found' })
+      }
+      throw error
     }
-    return reply.status(204).send()
   })
 }

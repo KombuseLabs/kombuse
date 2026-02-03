@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { projectsRepository } from '@kombuse/persistence'
+import { projectService } from '@kombuse/services'
 import {
   createProjectSchema,
   updateProjectSchema,
@@ -14,14 +14,14 @@ export async function projectRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return projectsRepository.list(parseResult.data)
+    return projectService.list(parseResult.data)
   })
 
   // Get single project
   fastify.get<{
     Params: { id: string }
   }>('/projects/:id', async (request, reply) => {
-    const project = projectsRepository.get(request.params.id)
+    const project = projectService.get(request.params.id)
     if (!project) {
       return reply.status(404).send({ error: 'Project not found' })
     }
@@ -35,7 +35,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const project = projectsRepository.create(parseResult.data)
+    const project = projectService.create(parseResult.data)
     return reply.status(201).send(project)
   })
 
@@ -48,21 +48,29 @@ export async function projectRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const project = projectsRepository.update(request.params.id, parseResult.data)
-    if (!project) {
-      return reply.status(404).send({ error: 'Project not found' })
+    try {
+      const project = projectService.update(request.params.id, parseResult.data)
+      return project
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Project not found' })
+      }
+      throw error
     }
-    return project
   })
 
   // Delete project
   fastify.delete<{
     Params: { id: string }
   }>('/projects/:id', async (request, reply) => {
-    const deleted = projectsRepository.delete(request.params.id)
-    if (!deleted) {
-      return reply.status(404).send({ error: 'Project not found' })
+    try {
+      projectService.delete(request.params.id)
+      return reply.status(204).send()
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Project not found' })
+      }
+      throw error
     }
-    return reply.status(204).send()
   })
 }

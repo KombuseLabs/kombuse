@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { eventsRepository, eventSubscriptionsRepository } from '@kombuse/persistence'
+import { eventService } from '@kombuse/services'
 import {
   createEventSchema,
   eventFiltersSchema,
@@ -15,7 +15,7 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return eventsRepository.list(parseResult.data)
+    return eventService.list(parseResult.data)
   })
 
   // Get events for a ticket
@@ -27,7 +27,7 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket ID' })
     }
 
-    return eventsRepository.getByTicket(ticketId)
+    return eventService.getByTicket(ticketId)
   })
 
   // Create event (internal/system use)
@@ -37,7 +37,7 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const event = eventsRepository.create(parseResult.data)
+    const event = eventService.create(parseResult.data)
     return reply.status(201).send(event)
   })
 
@@ -50,7 +50,7 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'subscriber_id query parameter is required' })
     }
 
-    return eventSubscriptionsRepository.list(subscriberId)
+    return eventService.listSubscriptions(subscriberId)
   })
 
   // Create event subscription
@@ -60,7 +60,7 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const subscription = eventSubscriptionsRepository.create(parseResult.data)
+    const subscription = eventService.createSubscription(parseResult.data)
     return reply.status(201).send(subscription)
   })
 
@@ -73,13 +73,15 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid subscription ID' })
     }
 
-    const subscription = eventSubscriptionsRepository.get(id)
-    if (!subscription) {
-      return reply.status(404).send({ error: 'Subscription not found' })
+    try {
+      const result = eventService.getUnprocessedEvents(id)
+      return result
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Subscription not found' })
+      }
+      throw error
     }
-
-    const events = eventSubscriptionsRepository.getUnprocessedEventsForSubscription(id)
-    return { subscription, events }
   })
 
   // Mark events as processed
@@ -96,15 +98,15 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const success = eventSubscriptionsRepository.updateLastProcessed(
-      id,
-      parseResult.data.last_event_id
-    )
-    if (!success) {
-      return reply.status(404).send({ error: 'Subscription not found' })
+    try {
+      eventService.acknowledgeEvents(id, parseResult.data.last_event_id)
+      return { success: true }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Subscription not found' })
+      }
+      throw error
     }
-
-    return { success: true }
   })
 
   // Delete subscription
@@ -116,10 +118,14 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid subscription ID' })
     }
 
-    const deleted = eventSubscriptionsRepository.delete(id)
-    if (!deleted) {
-      return reply.status(404).send({ error: 'Subscription not found' })
+    try {
+      eventService.deleteSubscription(id)
+      return reply.status(204).send()
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Subscription not found' })
+      }
+      throw error
     }
-    return reply.status(204).send()
   })
 }

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { commentsRepository, mentionsRepository } from '@kombuse/persistence'
+import { commentService } from '@kombuse/services'
 import {
   createCommentSchema,
   updateCommentSchema,
@@ -21,7 +21,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return commentsRepository.list({
+    return commentService.list({
       ticket_id: ticketId,
       ...parseResult.data,
     })
@@ -36,7 +36,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid comment ID' })
     }
 
-    const comment = commentsRepository.get(id)
+    const comment = commentService.get(id)
     if (!comment) {
       return reply.status(404).send({ error: 'Comment not found' })
     }
@@ -57,7 +57,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const comment = commentsRepository.create({
+    const comment = commentService.create({
       ticket_id: ticketId,
       ...parseResult.data,
     })
@@ -78,11 +78,15 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const comment = commentsRepository.update(id, parseResult.data)
-    if (!comment) {
-      return reply.status(404).send({ error: 'Comment not found' })
+    try {
+      const comment = commentService.update(id, parseResult.data)
+      return comment
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Comment not found' })
+      }
+      throw error
     }
-    return comment
   })
 
   // Delete comment
@@ -94,11 +98,15 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid comment ID' })
     }
 
-    const deleted = commentsRepository.delete(id)
-    if (!deleted) {
-      return reply.status(404).send({ error: 'Comment not found' })
+    try {
+      commentService.delete(id)
+      return reply.status(204).send()
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Comment not found' })
+      }
+      throw error
     }
-    return reply.status(204).send()
   })
 
   // Get mentions in a comment
@@ -110,6 +118,6 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid comment ID' })
     }
 
-    return mentionsRepository.getByComment(id)
+    return commentService.getMentions(id)
   })
 }

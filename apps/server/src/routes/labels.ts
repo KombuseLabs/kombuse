@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { labelsRepository } from '@kombuse/persistence'
+import { labelService } from '@kombuse/services'
 import {
   createLabelSchema,
   updateLabelSchema,
@@ -16,7 +16,7 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return labelsRepository.list({
+    return labelService.list({
       project_id: request.params.projectId,
       ...parseResult.data,
     })
@@ -31,7 +31,7 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid label ID' })
     }
 
-    const label = labelsRepository.get(id)
+    const label = labelService.get(id)
     if (!label) {
       return reply.status(404).send({ error: 'Label not found' })
     }
@@ -47,7 +47,7 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const label = labelsRepository.create({
+    const label = labelService.create({
       project_id: request.params.projectId,
       ...parseResult.data,
     })
@@ -68,11 +68,15 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const label = labelsRepository.update(id, parseResult.data)
-    if (!label) {
-      return reply.status(404).send({ error: 'Label not found' })
+    try {
+      const label = labelService.update(id, parseResult.data)
+      return label
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Label not found' })
+      }
+      throw error
     }
-    return label
   })
 
   // Delete label
@@ -84,11 +88,15 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid label ID' })
     }
 
-    const deleted = labelsRepository.delete(id)
-    if (!deleted) {
-      return reply.status(404).send({ error: 'Label not found' })
+    try {
+      labelService.delete(id)
+      return reply.status(204).send()
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Label not found' })
+      }
+      throw error
     }
-    return reply.status(204).send()
   })
 
   // Add label to ticket
@@ -103,7 +111,7 @@ export async function labelRoutes(fastify: FastifyInstance) {
     }
 
     const addedById = (request.body as { added_by_id?: string })?.added_by_id
-    labelsRepository.addToTicket(ticketId, labelId, addedById)
+    labelService.addToTicket(ticketId, labelId, addedById)
     return reply.status(201).send({ success: true })
   })
 
@@ -117,11 +125,15 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket or label ID' })
     }
 
-    const removed = labelsRepository.removeFromTicket(ticketId, labelId)
-    if (!removed) {
-      return reply.status(404).send({ error: 'Label not attached to ticket' })
+    try {
+      labelService.removeFromTicket(ticketId, labelId)
+      return reply.status(204).send()
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not attached')) {
+        return reply.status(404).send({ error: 'Label not attached to ticket' })
+      }
+      throw error
     }
-    return reply.status(204).send()
   })
 
   // Get labels for a ticket
@@ -133,6 +145,6 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket ID' })
     }
 
-    return labelsRepository.getTicketLabels(ticketId)
+    return labelService.getTicketLabels(ticketId)
   })
 }
