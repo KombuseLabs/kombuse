@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Button, Textarea } from "@kombuse/ui/base";
+import {
+  Button,
+  Textarea,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Input,
+  Label,
+} from "@kombuse/ui/base";
 import { TicketList, TicketDetail, ChatInput, Markdown } from "@kombuse/ui/components";
 import {
   useTickets,
@@ -10,7 +20,7 @@ import {
   useCommentOperations,
   useRealtimeUpdates,
 } from "@kombuse/ui/hooks";
-import { Plus, ArrowLeft, Pencil, Trash2, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import type { Ticket } from "@kombuse/types";
 
 export function Tickets() {
@@ -55,6 +65,8 @@ export function Tickets() {
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editBody, setEditBody] = useState("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newTicketTitle, setNewTicketTitle] = useState("");
 
   // Sync project ID to context
   useEffect(() => {
@@ -72,13 +84,20 @@ export function Tickets() {
   };
 
   const handleCreateTicket = () => {
-    if (!projectId) return;
-    const date = new Date().toISOString().split("T")[0];
-    createTicket.mutate({
-      title: `New ticket ${date}`,
-      project_id: projectId,
-      author_id: "user-1", // TODO: Get from auth context
-    });
+    if (!projectId || !newTicketTitle.trim()) return;
+    createTicket.mutate(
+      {
+        title: newTicketTitle.trim(),
+        project_id: projectId,
+        author_id: "user-1", // TODO: Get from auth context
+      },
+      {
+        onSuccess: () => {
+          setIsCreateDialogOpen(false);
+          setNewTicketTitle("");
+        },
+      }
+    );
   };
 
   const handleTicketClick = (ticket: Ticket) => {
@@ -101,23 +120,12 @@ export function Tickets() {
   }
 
   return (
-    <main className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-6 border-b">
-        <div className="flex items-center gap-4">
-          <Link
-            to="/projects"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-5" />
-          </Link>
-          <h1 className="text-2xl font-bold">Tickets</h1>
-          <span className="text-sm text-muted-foreground">
-            Project: {projectId}
-          </span>
-        </div>
-        <Button onClick={handleCreateTicket} disabled={createTicket.isPending}>
+        <h1 className="text-2xl font-bold">Tickets</h1>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="size-4" />
-          {createTicket.isPending ? "Creating..." : "Create Ticket"}
+          Create Ticket
         </Button>
       </div>
 
@@ -279,6 +287,50 @@ export function Tickets() {
           </div>
         )}
       </div>
-    </main>
+
+      {/* Create Ticket Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Ticket</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="ticket-title">Title</Label>
+              <Input
+                id="ticket-title"
+                placeholder="Enter ticket title..."
+                value={newTicketTitle}
+                onChange={(e) => setNewTicketTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleCreateTicket();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateDialogOpen(false);
+                setNewTicketTitle("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateTicket}
+              disabled={createTicket.isPending || !newTicketTitle.trim()}
+            >
+              {createTicket.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

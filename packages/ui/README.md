@@ -20,6 +20,7 @@ src/
 ├── components/     - Domain components
 │   ├── command-palette/  - Command palette UI
 │   ├── labels/           - Label management components
+│   ├── sidebar/          - Collapsible sidebar navigation
 │   ├── tickets/          - Ticket components
 │   ├── header.tsx
 │   └── mode-toggle.tsx
@@ -79,7 +80,39 @@ import { CommandProvider, ThemeProvider } from '@kombuse/ui/providers'
 import { CommandPalette, Header, ModeToggle } from '@kombuse/ui/components'
 import { TicketList, TicketDetail } from '@kombuse/ui/components'
 import { LabelBadge, LabelSelector, LabelForm } from '@kombuse/ui/components'
+import { Sidebar, SidebarItem } from '@kombuse/ui/components'
 ```
+
+### Sidebar Components
+
+```typescript
+import { Sidebar, SidebarItem } from '@kombuse/ui/components'
+import { Ticket, Bot } from 'lucide-react'
+
+// Collapsible sidebar with navigation items
+<Sidebar
+  isCollapsed={isCollapsed}
+  onCollapsedChange={setIsCollapsed}
+  header={<span>Project Name</span>}
+>
+  <SidebarItem
+    icon={<Ticket className="size-4" />}
+    label="Tickets"
+    to="/projects/123/tickets"
+    isCollapsed={isCollapsed}
+  />
+  <SidebarItem
+    icon={<Bot className="size-4" />}
+    label="Agents"
+    to="/projects/123/agents"
+    isCollapsed={isCollapsed}
+  />
+</Sidebar>
+```
+
+Props:
+- `Sidebar`: `isCollapsed`, `onCollapsedChange`, `header`, `children`, `className`
+- `SidebarItem`: `icon`, `label`, `to` (React Router path), `isCollapsed`
 
 ### Label Components
 

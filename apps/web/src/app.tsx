@@ -9,6 +9,8 @@ import { Chats } from "./routes/chats";
 import { Projects } from "./routes/projects";
 import { Tickets } from "./routes/tickets";
 import { Agents } from "./routes/agents";
+import { ProjectAgents } from "./routes/project-agents";
+import { ProjectLayout } from "./layouts/project-layout";
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
@@ -35,8 +37,16 @@ export function App() {
               <Route path="/" element={<Home />} />
               <Route path="/chats" element={<Chats />} />
               <Route path="/projects" element={<Projects />} />
-              <Route path="/projects/:projectId/tickets" element={<Tickets />} />
-              <Route path="/projects/:projectId/tickets/:ticketId" element={<Tickets />} />
+
+              {/* Project routes with sidebar */}
+              <Route path="/projects/:projectId" element={<ProjectLayout />}>
+                <Route path="tickets" element={<Tickets />} />
+                <Route path="tickets/:ticketId" element={<Tickets />} />
+                <Route path="agents" element={<ProjectAgents />} />
+                <Route path="agents/:agentId" element={<ProjectAgents />} />
+              </Route>
+
+              {/* Global agents (outside project context) */}
               <Route path="/agents" element={<Agents />} />
               <Route path="/agents/:agentId" element={<Agents />} />
             </Routes>
