@@ -7,22 +7,20 @@ import { useWebSocket } from './use-websocket'
 interface UseRealtimeUpdatesOptions {
   projectId?: string
   ticketId?: number
-  wsUrl?: string
 }
 
 interface UseRealtimeUpdatesReturn {
   isConnected: boolean
 }
 
-const DEFAULT_WS_URL = 'ws://localhost:3332/ws'
-
 /**
  * Hook that connects to WebSocket and automatically invalidates
  * relevant React Query caches when events are received.
  *
+ * Requires WebSocketProvider to be in the component tree.
+ *
  * @param options.projectId - Subscribe to all events for this project
  * @param options.ticketId - Subscribe to all events for this ticket
- * @param options.wsUrl - WebSocket server URL (defaults to localhost:3332)
  *
  * @example
  * // In a ticket list view
@@ -35,7 +33,6 @@ const DEFAULT_WS_URL = 'ws://localhost:3332/ws'
 export function useRealtimeUpdates({
   projectId,
   ticketId,
-  wsUrl = DEFAULT_WS_URL,
 }: UseRealtimeUpdatesOptions = {}): UseRealtimeUpdatesReturn {
   const queryClient = useQueryClient()
 
@@ -109,7 +106,6 @@ export function useRealtimeUpdates({
   }, [projectId, ticketId])
 
   const { isConnected } = useWebSocket({
-    url: wsUrl,
     topics,
     onEvent: handleEvent,
   })

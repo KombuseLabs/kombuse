@@ -1,12 +1,12 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
-import type { ClientMessage, ServerMessage, WebSocketEvent } from '@kombuse/types'
+import { useEffect, useRef, useCallback, useContext } from 'react'
+import type { ServerMessage, WebSocketEvent } from '@kombuse/types'
+import { WebSocketCtx } from '../providers/websocket-context'
 
 interface UseWebSocketOptions {
-  url: string
   topics: string[]
   onEvent?: (event: WebSocketEvent) => void
-  reconnectInterval?: number
-  maxReconnectAttempts?: number
+  /** Callback for all server messages (more flexible than onEvent) */
+  onMessage?: (message: ServerMessage) => void
 }
 
 interface UseWebSocketReturn {
@@ -16,117 +16,81 @@ interface UseWebSocketReturn {
 }
 
 /**
- * Low-level WebSocket hook with auto-reconnect and topic subscription.
+ * WebSocket hook that uses the shared context connection.
  *
- * @param options.url - WebSocket server URL
- * @param options.topics - Initial topics to subscribe to
+ * Requires WebSocketProvider to be in the component tree.
+ *
+ * @param options.topics - Topics to subscribe to
  * @param options.onEvent - Callback when events are received
- * @param options.reconnectInterval - Time between reconnection attempts (default: 3000ms)
- * @param options.maxReconnectAttempts - Max reconnection attempts (default: 10)
+ * @param options.onMessage - Callback for all server messages
  */
 export function useWebSocket({
-  url,
   topics,
   onEvent,
-  reconnectInterval = 3000,
-  maxReconnectAttempts = 10,
+  onMessage,
 }: UseWebSocketOptions): UseWebSocketReturn {
-  const wsRef = useRef<WebSocket | null>(null)
-  const reconnectAttempts = useRef(0)
-  const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const [isConnected, setIsConnected] = useState(false)
+  const ctx = useContext(WebSocketCtx)
 
-  // Store latest topics in a ref to avoid stale closures
-  const topicsRef = useRef(topics)
-  topicsRef.current = topics
+  if (!ctx) {
+    throw new Error('useWebSocket must be used within a WebSocketProvider')
+  }
 
-  // Store latest onEvent in a ref to avoid stale closures
+  const { isConnected, subscribe, unsubscribe, addMessageHandler, removeMessageHandler } = ctx
+
+  // Store latest topics in a ref to track changes
+  const topicsRef = useRef<string[]>([])
+
+  // Store latest callbacks in refs to avoid stale closures
   const onEventRef = useRef(onEvent)
   onEventRef.current = onEvent
+  const onMessageRef = useRef(onMessage)
+  onMessageRef.current = onMessage
 
-  const send = useCallback((message: ClientMessage) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message))
+  // Message handler for this hook instance
+  const handleMessage = useCallback((message: ServerMessage) => {
+    // Call generic message handler
+    if (onMessageRef.current) {
+      onMessageRef.current(message)
+    }
+    // Call event-specific handler for backwards compatibility
+    if (message.type === 'event' && onEventRef.current) {
+      onEventRef.current(message.event)
     }
   }, [])
 
-  const subscribe = useCallback(
-    (newTopics: string[]) => {
-      send({ type: 'subscribe', topics: newTopics })
-    },
-    [send]
-  )
-
-  const unsubscribe = useCallback(
-    (oldTopics: string[]) => {
-      send({ type: 'unsubscribe', topics: oldTopics })
-    },
-    [send]
-  )
-
+  // Register message handler
   useEffect(() => {
-    function connect() {
-      const ws = new WebSocket(url)
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        setIsConnected(true)
-        reconnectAttempts.current = 0
-
-        // Subscribe to initial topics
-        if (topicsRef.current.length > 0) {
-          ws.send(
-            JSON.stringify({
-              type: 'subscribe',
-              topics: topicsRef.current,
-            } satisfies ClientMessage)
-          )
-        }
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data) as ServerMessage
-          if (message.type === 'event' && onEventRef.current) {
-            onEventRef.current(message.event)
-          }
-        } catch {
-          // Ignore parse errors
-        }
-      }
-
-      ws.onclose = () => {
-        setIsConnected(false)
-        wsRef.current = null
-
-        // Attempt reconnection with exponential backoff jitter
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          reconnectAttempts.current++
-          const jitter = Math.random() * 1000
-          const delay = reconnectInterval + jitter
-          reconnectTimeout.current = setTimeout(connect, delay)
-        }
-      }
-
-      ws.onerror = () => {
-        ws.close()
-      }
-    }
-
-    connect()
-
+    addMessageHandler(handleMessage)
     return () => {
-      clearTimeout(reconnectTimeout.current)
-      wsRef.current?.close()
+      removeMessageHandler(handleMessage)
     }
-  }, [url, reconnectInterval, maxReconnectAttempts])
+  }, [addMessageHandler, removeMessageHandler, handleMessage])
 
-  // Handle topic changes while connected
+  // Handle topic subscriptions
   useEffect(() => {
-    if (isConnected && topics.length > 0) {
-      subscribe(topics)
+    const prevTopics = topicsRef.current
+    const newTopics = topics
+
+    // Find topics to add and remove
+    const toAdd = newTopics.filter((t) => !prevTopics.includes(t))
+    const toRemove = prevTopics.filter((t) => !newTopics.includes(t))
+
+    if (toAdd.length > 0) {
+      subscribe(toAdd)
     }
-  }, [topics.join(','), isConnected, subscribe])
+    if (toRemove.length > 0) {
+      unsubscribe(toRemove)
+    }
+
+    topicsRef.current = [...newTopics]
+
+    // Cleanup: unsubscribe from all topics when unmounting
+    return () => {
+      if (newTopics.length > 0) {
+        unsubscribe(newTopics)
+      }
+    }
+  }, [topics.join(','), subscribe, unsubscribe])
 
   return { isConnected, subscribe, unsubscribe }
 }
