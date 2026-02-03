@@ -1,0 +1,478 @@
+import type {
+  Agent,
+  AgentFilters,
+  CreateAgentInput,
+  UpdateAgentInput,
+  AgentTrigger,
+  CreateAgentTriggerInput,
+  UpdateAgentTriggerInput,
+  AgentInvocation,
+  AgentInvocationFilters,
+  CreateAgentInvocationInput,
+  UpdateAgentInvocationInput,
+  Permission,
+  AgentConfig,
+} from '@kombuse/types'
+import { getDatabase } from './database'
+
+/**
+ * Data access layer for agents
+ */
+export const agentsRepository = {
+  /**
+   * List all agents with optional filters
+   */
+  list(filters?: AgentFilters): Agent[] {
+    const db = getDatabase()
+    const conditions: string[] = []
+    const params: unknown[] = []
+
+    if (filters?.is_enabled !== undefined) {
+      conditions.push('is_enabled = ?')
+      params.push(filters.is_enabled ? 1 : 0)
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    const limit = filters?.limit || 100
+    const offset = filters?.offset || 0
+
+    const stmt = db.prepare(`
+      SELECT * FROM agents
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `)
+
+    const rows = stmt.all(...params, limit, offset) as RawAgent[]
+    return rows.map(mapAgent)
+  },
+
+  /**
+   * Get a single agent by ID
+   */
+  get(id: string): Agent | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM agents WHERE id = ?')
+      .get(id) as RawAgent | undefined
+    return row ? mapAgent(row) : null
+  },
+
+  /**
+   * Create a new agent
+   */
+  create(input: CreateAgentInput): Agent {
+    const db = getDatabase()
+
+    db.prepare(
+      `
+      INSERT INTO agents (
+        id, system_prompt, permissions, config, is_enabled
+      )
+      VALUES (?, ?, ?, ?, ?)
+    `
+    ).run(
+      input.id,
+      input.system_prompt,
+      JSON.stringify(input.permissions ?? []),
+      JSON.stringify(input.config ?? {}),
+      input.is_enabled !== false ? 1 : 0
+    )
+
+    return this.get(input.id) as Agent
+  },
+
+  /**
+   * Update an existing agent
+   */
+  update(id: string, input: UpdateAgentInput): Agent | null {
+    const db = getDatabase()
+
+    const fields: string[] = []
+    const params: unknown[] = []
+
+    if (input.system_prompt !== undefined) {
+      fields.push('system_prompt = ?')
+      params.push(input.system_prompt)
+    }
+    if (input.permissions !== undefined) {
+      fields.push('permissions = ?')
+      params.push(JSON.stringify(input.permissions))
+    }
+    if (input.config !== undefined) {
+      fields.push('config = ?')
+      params.push(JSON.stringify(input.config))
+    }
+    if (input.is_enabled !== undefined) {
+      fields.push('is_enabled = ?')
+      params.push(input.is_enabled ? 1 : 0)
+    }
+
+    if (fields.length === 0) return this.get(id)
+
+    fields.push("updated_at = datetime('now')")
+    params.push(id)
+
+    db.prepare(`UPDATE agents SET ${fields.join(', ')} WHERE id = ?`).run(
+      ...params
+    )
+
+    return this.get(id)
+  },
+
+  /**
+   * Delete an agent
+   */
+  delete(id: string): boolean {
+    const db = getDatabase()
+    const result = db.prepare('DELETE FROM agents WHERE id = ?').run(id)
+    return result.changes > 0
+  },
+}
+
+/**
+ * Data access layer for agent triggers
+ */
+export const agentTriggersRepository = {
+  /**
+   * List triggers for an agent
+   */
+  listByAgent(agentId: string): AgentTrigger[] {
+    const db = getDatabase()
+    const rows = db
+      .prepare(
+        'SELECT * FROM agent_triggers WHERE agent_id = ? ORDER BY priority DESC, created_at DESC'
+      )
+      .all(agentId) as RawAgentTrigger[]
+    return rows.map(mapAgentTrigger)
+  },
+
+  /**
+   * List enabled triggers for a given event type
+   */
+  listByEventType(eventType: string, projectId?: string): AgentTrigger[] {
+    const db = getDatabase()
+
+    // Match triggers that either have no project_id (global) or match the given project
+    const rows = db
+      .prepare(
+        `
+        SELECT * FROM agent_triggers
+        WHERE event_type = ?
+          AND is_enabled = 1
+          AND (project_id IS NULL OR project_id = ?)
+        ORDER BY priority DESC, created_at DESC
+      `
+      )
+      .all(eventType, projectId ?? null) as RawAgentTrigger[]
+
+    return rows.map(mapAgentTrigger)
+  },
+
+  /**
+   * Get a single trigger by ID
+   */
+  get(id: number): AgentTrigger | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM agent_triggers WHERE id = ?')
+      .get(id) as RawAgentTrigger | undefined
+    return row ? mapAgentTrigger(row) : null
+  },
+
+  /**
+   * Create a new trigger
+   */
+  create(input: CreateAgentTriggerInput): AgentTrigger {
+    const db = getDatabase()
+
+    const result = db
+      .prepare(
+        `
+      INSERT INTO agent_triggers (
+        agent_id, event_type, project_id, conditions, is_enabled, priority
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `
+      )
+      .run(
+        input.agent_id,
+        input.event_type,
+        input.project_id ?? null,
+        input.conditions ? JSON.stringify(input.conditions) : null,
+        input.is_enabled !== false ? 1 : 0,
+        input.priority ?? 0
+      )
+
+    return this.get(result.lastInsertRowid as number) as AgentTrigger
+  },
+
+  /**
+   * Update an existing trigger
+   */
+  update(id: number, input: UpdateAgentTriggerInput): AgentTrigger | null {
+    const db = getDatabase()
+
+    const fields: string[] = []
+    const params: unknown[] = []
+
+    if (input.event_type !== undefined) {
+      fields.push('event_type = ?')
+      params.push(input.event_type)
+    }
+    if (input.project_id !== undefined) {
+      fields.push('project_id = ?')
+      params.push(input.project_id)
+    }
+    if (input.conditions !== undefined) {
+      fields.push('conditions = ?')
+      params.push(input.conditions ? JSON.stringify(input.conditions) : null)
+    }
+    if (input.is_enabled !== undefined) {
+      fields.push('is_enabled = ?')
+      params.push(input.is_enabled ? 1 : 0)
+    }
+    if (input.priority !== undefined) {
+      fields.push('priority = ?')
+      params.push(input.priority)
+    }
+
+    if (fields.length === 0) return this.get(id)
+
+    fields.push("updated_at = datetime('now')")
+    params.push(id)
+
+    db.prepare(
+      `UPDATE agent_triggers SET ${fields.join(', ')} WHERE id = ?`
+    ).run(...params)
+
+    return this.get(id)
+  },
+
+  /**
+   * Delete a trigger
+   */
+  delete(id: number): boolean {
+    const db = getDatabase()
+    const result = db.prepare('DELETE FROM agent_triggers WHERE id = ?').run(id)
+    return result.changes > 0
+  },
+}
+
+/**
+ * Data access layer for agent invocations
+ */
+export const agentInvocationsRepository = {
+  /**
+   * List invocations with optional filters
+   */
+  list(filters?: AgentInvocationFilters): AgentInvocation[] {
+    const db = getDatabase()
+    const conditions: string[] = []
+    const params: unknown[] = []
+
+    if (filters?.agent_id) {
+      conditions.push('agent_id = ?')
+      params.push(filters.agent_id)
+    }
+    if (filters?.trigger_id) {
+      conditions.push('trigger_id = ?')
+      params.push(filters.trigger_id)
+    }
+    if (filters?.status) {
+      conditions.push('status = ?')
+      params.push(filters.status)
+    }
+    if (filters?.session_id) {
+      conditions.push('session_id = ?')
+      params.push(filters.session_id)
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    const limit = filters?.limit || 100
+    const offset = filters?.offset || 0
+
+    const stmt = db.prepare(`
+      SELECT * FROM agent_invocations
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `)
+
+    const rows = stmt.all(...params, limit, offset) as RawAgentInvocation[]
+    return rows.map(mapAgentInvocation)
+  },
+
+  /**
+   * Get a single invocation by ID
+   */
+  get(id: number): AgentInvocation | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM agent_invocations WHERE id = ?')
+      .get(id) as RawAgentInvocation | undefined
+    return row ? mapAgentInvocation(row) : null
+  },
+
+  /**
+   * Create a new invocation
+   */
+  create(input: CreateAgentInvocationInput): AgentInvocation {
+    const db = getDatabase()
+
+    const result = db
+      .prepare(
+        `
+      INSERT INTO agent_invocations (
+        agent_id, trigger_id, event_id, session_id, context
+      )
+      VALUES (?, ?, ?, ?, ?)
+    `
+      )
+      .run(
+        input.agent_id,
+        input.trigger_id,
+        input.event_id ?? null,
+        input.session_id ?? null,
+        JSON.stringify(input.context)
+      )
+
+    return this.get(result.lastInsertRowid as number) as AgentInvocation
+  },
+
+  /**
+   * Update an existing invocation
+   */
+  update(id: number, input: UpdateAgentInvocationInput): AgentInvocation | null {
+    const db = getDatabase()
+
+    const fields: string[] = []
+    const params: unknown[] = []
+
+    if (input.status !== undefined) {
+      fields.push('status = ?')
+      params.push(input.status)
+    }
+    if (input.session_id !== undefined) {
+      fields.push('session_id = ?')
+      params.push(input.session_id)
+    }
+    if (input.result !== undefined) {
+      fields.push('result = ?')
+      params.push(JSON.stringify(input.result))
+    }
+    if (input.started_at !== undefined) {
+      fields.push('started_at = ?')
+      params.push(input.started_at)
+    }
+    if (input.completed_at !== undefined) {
+      fields.push('completed_at = ?')
+      params.push(input.completed_at)
+    }
+
+    if (fields.length === 0) return this.get(id)
+
+    params.push(id)
+
+    db.prepare(
+      `UPDATE agent_invocations SET ${fields.join(', ')} WHERE id = ?`
+    ).run(...params)
+
+    return this.get(id)
+  },
+
+  /**
+   * Delete an invocation
+   */
+  delete(id: number): boolean {
+    const db = getDatabase()
+    const result = db
+      .prepare('DELETE FROM agent_invocations WHERE id = ?')
+      .run(id)
+    return result.changes > 0
+  },
+}
+
+// Raw types from database (JSON stored as TEXT, booleans as INTEGER)
+interface RawAgent {
+  id: string
+  system_prompt: string
+  permissions: string
+  config: string
+  is_enabled: number
+  created_at: string
+  updated_at: string
+}
+
+interface RawAgentTrigger {
+  id: number
+  agent_id: string
+  event_type: string
+  project_id: string | null
+  conditions: string | null
+  is_enabled: number
+  priority: number
+  created_at: string
+  updated_at: string
+}
+
+interface RawAgentInvocation {
+  id: number
+  agent_id: string
+  trigger_id: number
+  event_id: number | null
+  session_id: string | null
+  status: string
+  context: string
+  result: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+}
+
+// Map database rows to typed entities
+function mapAgent(row: RawAgent): Agent {
+  return {
+    id: row.id,
+    system_prompt: row.system_prompt,
+    permissions: JSON.parse(row.permissions) as Permission[],
+    config: JSON.parse(row.config) as AgentConfig,
+    is_enabled: row.is_enabled === 1,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }
+}
+
+function mapAgentTrigger(row: RawAgentTrigger): AgentTrigger {
+  return {
+    id: row.id,
+    agent_id: row.agent_id,
+    event_type: row.event_type,
+    project_id: row.project_id,
+    conditions: row.conditions ? JSON.parse(row.conditions) : null,
+    is_enabled: row.is_enabled === 1,
+    priority: row.priority,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }
+}
+
+function mapAgentInvocation(row: RawAgentInvocation): AgentInvocation {
+  return {
+    id: row.id,
+    agent_id: row.agent_id,
+    trigger_id: row.trigger_id,
+    event_id: row.event_id,
+    session_id: row.session_id,
+    status: row.status as AgentInvocation['status'],
+    context: JSON.parse(row.context),
+    result: row.result ? JSON.parse(row.result) : null,
+    started_at: row.started_at,
+    completed_at: row.completed_at,
+    created_at: row.created_at,
+  }
+}

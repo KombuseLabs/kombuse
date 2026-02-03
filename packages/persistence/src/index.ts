@@ -21,3 +21,9 @@ export { eventSubscriptionsRepository } from './event-subscriptions'
 export { labelsRepository } from './labels'
 export { mentionsRepository } from './mentions'
 export { commentsRepository } from './comments'
+export {
+  agentsRepository,
+  agentTriggersRepository,
+  agentInvocationsRepository,
+} from './agents'
+export { sessionsRepository } from './sessions'

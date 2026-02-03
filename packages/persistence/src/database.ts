@@ -355,6 +355,63 @@ const migrations = [
       WHERE claim_expires_at IS NOT NULL AND claim_expires_at LIKE '%T%';
     `,
   },
+  {
+    name: '016_create_agents_tables',
+    sql: `
+      -- Sessions table for storing agent conversation history
+      CREATE TABLE sessions (
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      -- Agents table (extends profiles)
+      CREATE TABLE agents (
+        id TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+        system_prompt TEXT NOT NULL,
+        permissions TEXT NOT NULL DEFAULT '[]',
+        config TEXT NOT NULL DEFAULT '{}',
+        is_enabled INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      -- Agent triggers table
+      CREATE TABLE agent_triggers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        event_type TEXT NOT NULL,
+        project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+        conditions TEXT,
+        is_enabled INTEGER NOT NULL DEFAULT 1,
+        priority INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX idx_agent_triggers_event ON agent_triggers(event_type, is_enabled);
+      CREATE INDEX idx_agent_triggers_agent ON agent_triggers(agent_id);
+
+      -- Agent invocations table
+      CREATE TABLE agent_invocations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        trigger_id INTEGER NOT NULL REFERENCES agent_triggers(id) ON DELETE CASCADE,
+        event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+        session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed')),
+        context TEXT NOT NULL,
+        result TEXT,
+        started_at TEXT,
+        completed_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX idx_agent_invocations_agent ON agent_invocations(agent_id, created_at DESC);
+      CREATE INDEX idx_agent_invocations_status ON agent_invocations(status);
+      CREATE INDEX idx_agent_invocations_session ON agent_invocations(session_id);
+    `,
+  },
 ]
 
 /**
