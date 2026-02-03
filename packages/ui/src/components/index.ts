@@ -1,4 +1,6 @@
+export * from './chat-input'
 export * from './command-palette'
 export * from './header'
+export * from './markdown'
 export * from './mode-toggle'
 export * from './tickets'
