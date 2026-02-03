@@ -4,6 +4,9 @@
   "private": true,
   "sideEffects": ["**/*.css"],
   "exports": {
+    "./header": "./src/components/header.tsx",
+    "./theme-provider": "./src/components/theme-provider.tsx",
+    "./mode-toggle": "./src/components/mode-toggle.tsx",
     "./button": "./src/base/button.tsx",
     "./card": "./src/base/card.tsx",
     "./checkbox": "./src/base/checkbox.tsx",
@@ -55,6 +58,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "lucide-react": "^0.474.0",
+    "next-themes": "^0.4.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sonner": "^2.0.3",
