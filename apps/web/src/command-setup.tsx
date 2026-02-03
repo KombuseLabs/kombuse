@@ -61,8 +61,9 @@ export function CommandSetup({ children }: CommandSetupProps) {
         handler: async () => {
           const date = new Date().toISOString().split("T")[0];
           await ticketsApi.create({
-            title: `hello ${date}`,
-            project_id: "1",
+            title: `New ticket ${date}`,
+            project_id: "1", // TODO: Get from current route context
+            author_id: "user-1", // TODO: Get from auth context
           });
           queryClient.invalidateQueries({ queryKey: ["tickets"] });
         },

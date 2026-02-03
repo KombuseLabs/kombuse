@@ -8,8 +8,8 @@ export function Home() {
         <Link to="/chats" className="text-lg underline hover:no-underline">
           Chats
         </Link>
-        <Link to="/tickets" className="text-lg underline hover:no-underline">
-          Tickets
+        <Link to="/projects" className="text-lg underline hover:no-underline">
+          Projects
         </Link>
       </nav>
     </main>
