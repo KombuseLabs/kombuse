@@ -8,6 +8,7 @@ import { Home } from "./routes/home";
 import { Chats } from "./routes/chats";
 import { Projects } from "./routes/projects";
 import { Tickets } from "./routes/tickets";
+import { Agents } from "./routes/agents";
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
@@ -36,6 +37,8 @@ export function App() {
               <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:projectId/tickets" element={<Tickets />} />
               <Route path="/projects/:projectId/tickets/:ticketId" element={<Tickets />} />
+              <Route path="/agents" element={<Agents />} />
+              <Route path="/agents/:agentId" element={<Agents />} />
             </Routes>
           </div>
         </CommandSetup>

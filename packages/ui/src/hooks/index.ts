@@ -31,3 +31,14 @@ export { useCommentOperations } from './use-comment-operations'
 export { useWebSocket } from './use-websocket'
 export { useRealtimeUpdates } from './use-realtime-updates'
 export { useUpdates } from './use-updates'
+export {
+  useAgents,
+  useAgent,
+  useAgentWithProfile,
+  useAgentProfiles,
+  useCreateAgent,
+  useUpdateAgent,
+  useUpdateProfile,
+  useToggleAgent,
+  useDeleteAgent,
+} from './use-agents'
