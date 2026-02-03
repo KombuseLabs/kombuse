@@ -18,6 +18,7 @@ import {
   labelRoutes,
   commentRoutes,
   eventRoutes,
+  agentRoutes,
   updateRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
@@ -62,6 +63,7 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(labelRoutes, { prefix: "/api" });
   fastify.register(commentRoutes, { prefix: "/api" });
   fastify.register(eventRoutes, { prefix: "/api" });
+  fastify.register(agentRoutes, { prefix: "/api" });
   fastify.register(updateRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {
