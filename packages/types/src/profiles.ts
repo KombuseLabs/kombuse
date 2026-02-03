@@ -55,3 +55,8 @@ export interface ProfileFilters {
   limit?: number
   offset?: number
 }
+
+/**
+ * Well-known profile IDs for system use
+ */
+export const ANONYMOUS_AGENT_ID = 'anonymous-agent'

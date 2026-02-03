@@ -74,7 +74,7 @@ export function registerTicketTools(server: McpServer): void {
           .int()
           .positive()
           .describe('The ID of the ticket to comment on'),
-        author_id: z.string().min(1).describe('The ID of the comment author'),
+        author_id: z.string().min(1).describe('The ID of the comment author. Use "anonymous-agent" if no profile exists.'),
         body: z.string().min(1).describe('The comment text (supports @mentions)'),
         parent_id: z
           .number()

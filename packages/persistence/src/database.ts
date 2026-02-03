@@ -375,6 +375,23 @@ export function seedDatabase(database: DatabaseType): void {
     `).run('user-1', 'user', 'Default User', 'user@example.com')
   }
 
+  // Seed anonymous agent profile for MCP tools
+  const existingAgent = database
+    .prepare('SELECT id FROM profiles WHERE id = ?')
+    .get('anonymous-agent')
+
+  if (!existingAgent) {
+    database.prepare(`
+      INSERT INTO profiles (id, type, name, description)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      'anonymous-agent',
+      'agent',
+      'Anonymous Agent',
+      'Default profile for AI agents using MCP tools'
+    )
+  }
+
   // Seed default projects
   const projects = [
     {

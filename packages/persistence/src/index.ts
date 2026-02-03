@@ -9,6 +9,9 @@ export {
 } from './database'
 export type { DatabaseType } from './database'
 
+// Well-known profile IDs
+export { ANONYMOUS_AGENT_ID } from '@kombuse/types'
+
 // Repositories
 export { ticketsRepository } from './tickets'
 export { profilesRepository } from './profiles'
