@@ -14,6 +14,7 @@ node_modules
 
 # Testing
 coverage
+test-results.json
 
 # Turbo
 .turbo
@@ -41,3 +42,4 @@ yarn-error.log*
 CLAUDE.md
 
 specs
+docs

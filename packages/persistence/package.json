@@ -7,11 +7,18 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./test-utils": {
+      "types": "./src/test-utils.ts",
+      "default": "./src/test-utils.ts"
     }
   },
   "scripts": {
     "lint": "eslint --max-warnings 0",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@kombuse/types": "*",

@@ -68,7 +68,7 @@ export function closeDatabase(): void {
   }
 }
 
-function runMigrations(db: DatabaseType): void {
+export function runMigrations(db: DatabaseType): void {
   // Create migrations table if not exists
   db.exec(`
     CREATE TABLE IF NOT EXISTS migrations (
