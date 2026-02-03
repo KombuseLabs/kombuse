@@ -38,8 +38,9 @@ export async function createServer({ port, db }: ServerOptions) {
   });
 
   // Enable CORS for web app
+  // Note: app:// protocol sends null origin (opaque origin)
   await fastify.register(cors, {
-    origin: ["http://localhost:3333"],
+    origin: ["http://localhost:3333", "null"],
     methods: ["GET", "POST", "PATCH", "DELETE"],
   });
 

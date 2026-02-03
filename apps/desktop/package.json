@@ -2,10 +2,15 @@
   "name": "desktop",
   "version": "0.0.1",
   "private": true,
-  "main": "dist/main.mjs",
+  "main": "dist/shell/main.mjs",
   "scripts": {
-    "dev": "bun run --filter server build && bun run build && ELECTRON_RUN_AS_NODE= electron .",
-    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=dist/main.mjs",
+    "dev": "bun run build:shell && KOMBUSE_MODE=dev ELECTRON_RUN_AS_NODE= electron .",
+    "preview": "bun run build:shell && bun run build:payload && KOMBUSE_MODE=preview ELECTRON_RUN_AS_NODE= electron .",
+    "build": "bun run build:shell",
+    "build:shell": "esbuild src/shell/main.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=dist/shell/main.mjs",
+    "build:web": "bun run --filter web build",
+    "build:payload": "bun run build:web && bun run build/build-payload.ts",
+    "install-payload": "bun run scripts/install-payload.ts",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
     "start": "ELECTRON_RUN_AS_NODE= electron .",
@@ -21,9 +26,11 @@
     "@electron/rebuild": "^3.7.1",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
+    "@types/mime-types": "^3.0.1",
     "electron": "^35.0.0",
     "esbuild": "^0.25.0",
     "eslint": "^9.26.0",
+    "mime-types": "^3.0.2",
     "typescript": "^5.9.0-beta"
   }
 }
