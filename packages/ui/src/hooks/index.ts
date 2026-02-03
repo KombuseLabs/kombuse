@@ -28,3 +28,5 @@ export {
 export { useTicketOperations } from './use-ticket-operations'
 export { useLabelOperations } from './use-label-operations'
 export { useCommentOperations } from './use-comment-operations'
+export { useWebSocket } from './use-websocket'
+export { useRealtimeUpdates } from './use-realtime-updates'

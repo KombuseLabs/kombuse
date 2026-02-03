@@ -4,7 +4,9 @@ import type {
   CreateLabelInput,
   UpdateLabelInput,
 } from '@kombuse/types'
+import { EVENT_TYPES } from '@kombuse/types'
 import { getDatabase } from './database'
+import { eventsRepository } from './events'
 
 /**
  * Data access layer for labels
@@ -130,22 +132,57 @@ export const labelsRepository = {
    */
   addToTicket(ticketId: number, labelId: number, addedById?: string): void {
     const db = getDatabase()
-    db.prepare(
-      `
+    const result = db
+      .prepare(
+        `
       INSERT OR IGNORE INTO ticket_labels (ticket_id, label_id, added_by_id)
       VALUES (?, ?, ?)
     `
-    ).run(ticketId, labelId, addedById ?? null)
+      )
+      .run(ticketId, labelId, addedById ?? null)
+
+    // Only emit event if a row was actually inserted
+    if (result.changes > 0) {
+      const ticket = db
+        .prepare('SELECT project_id FROM tickets WHERE id = ?')
+        .get(ticketId) as { project_id: string } | undefined
+
+      eventsRepository.create({
+        event_type: EVENT_TYPES.LABEL_ADDED,
+        project_id: ticket?.project_id,
+        ticket_id: ticketId,
+        actor_id: addedById,
+        actor_type: 'user',
+        payload: { label_id: labelId },
+      })
+    }
   },
 
   /**
    * Remove a label from a ticket
    */
-  removeFromTicket(ticketId: number, labelId: number): boolean {
+  removeFromTicket(ticketId: number, labelId: number, removedById?: string): boolean {
     const db = getDatabase()
     const result = db
       .prepare('DELETE FROM ticket_labels WHERE ticket_id = ? AND label_id = ?')
       .run(ticketId, labelId)
+
+    // Only emit event if a row was actually deleted
+    if (result.changes > 0) {
+      const ticket = db
+        .prepare('SELECT project_id FROM tickets WHERE id = ?')
+        .get(ticketId) as { project_id: string } | undefined
+
+      eventsRepository.create({
+        event_type: EVENT_TYPES.LABEL_REMOVED,
+        project_id: ticket?.project_id,
+        ticket_id: ticketId,
+        actor_id: removedById,
+        actor_type: 'user',
+        payload: { label_id: labelId },
+      })
+    }
+
     return result.changes > 0
   },
 

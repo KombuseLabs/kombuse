@@ -6,7 +6,9 @@ import type {
   ClaimTicketInput,
   ClaimResult,
 } from '@kombuse/types'
+import { EVENT_TYPES } from '@kombuse/types'
 import { getDatabase } from './database'
+import { eventsRepository } from './events'
 
 /**
  * Data access layer for tickets
@@ -143,7 +145,19 @@ export const ticketsRepository = {
     })
 
     const ticketId = createTicket(input)
-    return this.get(ticketId) as Ticket
+    const ticket = this.get(ticketId) as Ticket
+
+    // Emit ticket.created event
+    eventsRepository.create({
+      event_type: EVENT_TYPES.TICKET_CREATED,
+      project_id: ticket.project_id,
+      ticket_id: ticket.id,
+      actor_id: ticket.author_id,
+      actor_type: 'user',
+      payload: { title: ticket.title },
+    })
+
+    return ticket
   },
 
   /**
@@ -151,6 +165,10 @@ export const ticketsRepository = {
    */
   update(id: number, input: UpdateTicketInput): Ticket | null {
     const db = getDatabase()
+
+    // Get current ticket to detect status changes
+    const currentTicket = this.get(id)
+    if (!currentTicket) return null
 
     const fields: string[] = []
     const params: unknown[] = []
@@ -188,7 +206,7 @@ export const ticketsRepository = {
       params.push(input.external_url)
     }
 
-    if (fields.length === 0) return this.get(id)
+    if (fields.length === 0) return currentTicket
 
     fields.push("updated_at = datetime('now')")
     params.push(id)
@@ -197,7 +215,27 @@ export const ticketsRepository = {
       ...params
     )
 
-    return this.get(id)
+    const updatedTicket = this.get(id)
+
+    // Emit appropriate event based on status change
+    let eventType: string = EVENT_TYPES.TICKET_UPDATED
+    if (input.status && input.status !== currentTicket.status) {
+      if (input.status === 'closed') {
+        eventType = EVENT_TYPES.TICKET_CLOSED
+      } else if (currentTicket.status === 'closed') {
+        eventType = EVENT_TYPES.TICKET_REOPENED
+      }
+    }
+
+    eventsRepository.create({
+      event_type: eventType,
+      project_id: currentTicket.project_id,
+      ticket_id: id,
+      actor_type: 'user',
+      payload: { changes: Object.keys(input) },
+    })
+
+    return updatedTicket
   },
 
   /**
@@ -250,7 +288,19 @@ export const ticketsRepository = {
     )
 
     if (result.changes > 0) {
-      return { success: true, ticket: this.get(input.ticket_id) }
+      const claimedTicket = this.get(input.ticket_id)
+
+      // Emit ticket.claimed event
+      eventsRepository.create({
+        event_type: EVENT_TYPES.TICKET_CLAIMED,
+        project_id: claimedTicket?.project_id,
+        ticket_id: input.ticket_id,
+        actor_id: claimerId,
+        actor_type: 'user',
+        payload: { claimed_by_id: claimerId },
+      })
+
+      return { success: true, ticket: claimedTicket }
     }
 
     const ticket = this.get(input.ticket_id)
@@ -302,6 +352,8 @@ export const ticketsRepository = {
       }
     }
 
+    const previousClaimerId = ticket.claimed_by_id
+
     const stmt = db.prepare(`
       UPDATE tickets
       SET claimed_by_id = NULL,
@@ -313,7 +365,19 @@ export const ticketsRepository = {
 
     stmt.run(ticketId)
 
-    return { success: true, ticket: this.get(ticketId) }
+    const unclaimedTicket = this.get(ticketId)
+
+    // Emit ticket.unclaimed event
+    eventsRepository.create({
+      event_type: EVENT_TYPES.TICKET_UNCLAIMED,
+      project_id: ticket.project_id,
+      ticket_id: ticketId,
+      actor_id: requesterId,
+      actor_type: 'user',
+      payload: { previous_claimer_id: previousClaimerId },
+    })
+
+    return { success: true, ticket: unclaimedTicket }
   },
 
   /**

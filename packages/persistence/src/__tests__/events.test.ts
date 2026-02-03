@@ -38,6 +38,9 @@ describe('eventsRepository', () => {
       author_id: TEST_USER_ID,
     })
     testTicketId = ticket.id
+
+    // Clear events created by ticket creation so tests start clean
+    db.prepare('DELETE FROM events').run()
   })
 
   afterEach(() => {
@@ -247,16 +250,18 @@ describe('eventsRepository', () => {
       expect(events.every((e) => e.ticket_id === testTicketId)).toBe(true)
     })
 
-    it('should return empty array for ticket with no events', () => {
+    it('should return only ticket.created event for newly created ticket', () => {
       const newTicket = ticketsRepository.create({
-        title: 'No Events Ticket',
+        title: 'New Ticket',
         project_id: TEST_PROJECT_ID,
         author_id: TEST_USER_ID,
       })
 
       const events = eventsRepository.getByTicket(newTicket.id)
 
-      expect(events).toHaveLength(0)
+      // Ticket creation now emits a ticket.created event
+      expect(events).toHaveLength(1)
+      expect(events[0]?.event_type).toBe('ticket.created')
     })
   })
 

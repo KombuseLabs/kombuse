@@ -8,6 +8,7 @@ import {
   useCreateTicket,
   useAppContext,
   useCommentOperations,
+  useRealtimeUpdates,
 } from "@kombuse/ui/hooks";
 import { Plus, ArrowLeft, Pencil, Trash2, Check, X } from "lucide-react";
 import type { Ticket } from "@kombuse/types";
@@ -18,6 +19,12 @@ export function Tickets() {
     ticketId?: string;
   }>();
   const navigate = useNavigate();
+
+  // Real-time updates via WebSocket
+  useRealtimeUpdates({
+    projectId,
+    ticketId: ticketId ? Number(ticketId) : undefined,
+  });
 
   // Sync route params to app context
   const { setCurrentTicket, setCurrentProjectId, setView } = useAppContext();

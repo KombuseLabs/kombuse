@@ -1,11 +1,13 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import websocket from "@fastify/websocket";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   setDatabase,
   initializeDatabase,
   seedDatabase,
+  onEventCreated,
   type DatabaseType,
 } from "@kombuse/persistence";
 import { registerTicketTools } from "@kombuse/mcp";
@@ -17,6 +19,7 @@ import {
   commentRoutes,
   eventRoutes,
 } from "./routes";
+import { websocketRoutes, broadcastEvent } from "./websocket";
 
 export interface ServerOptions {
   port: number;
@@ -39,6 +42,13 @@ export async function createServer({ port, db }: ServerOptions) {
     origin: ["http://localhost:3333"],
     methods: ["GET", "POST", "PATCH", "DELETE"],
   });
+
+  // WebSocket support for real-time updates
+  await fastify.register(websocket);
+  fastify.register(websocketRoutes);
+
+  // Connect event system to WebSocket broadcaster
+  onEventCreated(broadcastEvent);
 
   // API routes
   fastify.register(ticketRoutes, { prefix: "/api" });

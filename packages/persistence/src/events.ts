@@ -2,6 +2,25 @@ import type { Event, EventFilters, CreateEventInput } from '@kombuse/types'
 import { getDatabase } from './database'
 
 /**
+ * Event listener type for WebSocket broadcasting
+ */
+type EventListener = (event: Event) => void
+const listeners: EventListener[] = []
+
+/**
+ * Register a callback to be notified when events are created.
+ * Used by the server to broadcast events via WebSocket.
+ * Returns an unsubscribe function.
+ */
+export function onEventCreated(listener: EventListener): () => void {
+  listeners.push(listener)
+  return () => {
+    const index = listeners.indexOf(listener)
+    if (index > -1) listeners.splice(index, 1)
+  }
+}
+
+/**
  * Data access layer for events (audit log)
  */
 export const eventsRepository = {
@@ -101,7 +120,18 @@ export const eventsRepository = {
         JSON.stringify(input.payload)
       )
 
-    return this.get(result.lastInsertRowid as number) as Event
+    const event = this.get(result.lastInsertRowid as number) as Event
+
+    // Notify listeners (for WebSocket broadcasting)
+    for (const listener of listeners) {
+      try {
+        listener(event)
+      } catch {
+        // Don't let listener errors break event creation
+      }
+    }
+
+    return event
   },
 
   /**
