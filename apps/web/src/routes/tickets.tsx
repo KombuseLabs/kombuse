@@ -3,11 +3,10 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Button,
   Textarea,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Input,
   Label,
 } from "@kombuse/ui/base";
@@ -20,7 +19,7 @@ import {
   useCommentOperations,
   useRealtimeUpdates,
 } from "@kombuse/ui/hooks";
-import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Save } from "lucide-react";
 import type { Ticket } from "@kombuse/types";
 
 export function Tickets() {
@@ -65,8 +64,11 @@ export function Tickets() {
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editBody, setEditBody] = useState("");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newTicketTitle, setNewTicketTitle] = useState("");
+  const [newTicketBody, setNewTicketBody] = useState("");
+
+  // Determine if we're in create mode
+  const isCreating = ticketId === "new";
 
   // Sync project ID to context
   useEffect(() => {
@@ -83,18 +85,26 @@ export function Tickets() {
     await createComment(body, "user-1"); // TODO: Get from auth context
   };
 
+  const handleStartCreate = () => {
+    setNewTicketTitle("");
+    setNewTicketBody("");
+    navigate(`/projects/${projectId}/tickets/new`);
+  };
+
   const handleCreateTicket = () => {
     if (!projectId || !newTicketTitle.trim()) return;
     createTicket.mutate(
       {
         title: newTicketTitle.trim(),
+        body: newTicketBody.trim() || undefined,
         project_id: projectId,
         author_id: "user-1", // TODO: Get from auth context
       },
       {
-        onSuccess: () => {
-          setIsCreateDialogOpen(false);
+        onSuccess: (newTicket) => {
           setNewTicketTitle("");
+          setNewTicketBody("");
+          navigate(`/projects/${projectId}/tickets/${newTicket.id}`);
         },
       }
     );
@@ -123,7 +133,7 @@ export function Tickets() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-6 border-b">
         <h1 className="text-2xl font-bold">Tickets</h1>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button onClick={handleStartCreate} disabled={isCreating}>
           <Plus className="size-4" />
           Create Ticket
         </Button>
@@ -156,181 +166,200 @@ export function Tickets() {
           )}
         </div>
 
-        {/* Ticket Detail */}
+        {/* Detail Panel - Create or View */}
         {ticketId && (
           <div className="w-1/2 flex flex-col">
-            {isLoadingTicket && (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading ticket...
-              </div>
-            )}
+            {isCreating ? (
+              // Create Form
+              <Card className="h-full flex flex-col">
+                <CardHeader className="pb-4 shrink-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="size-12 rounded-lg bg-muted flex items-center justify-center">
+                        <Plus className="size-6" />
+                      </div>
+                      <CardTitle className="text-xl">New Ticket</CardTitle>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={handleCloseDetail}>
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
 
-            {selectedTicket && (
+                <CardContent className="flex-1 overflow-y-auto space-y-6">
+                  {/* Title */}
+                  <div className="space-y-2">
+                    <Label htmlFor="new-ticket-title">Title *</Label>
+                    <Input
+                      id="new-ticket-title"
+                      value={newTicketTitle}
+                      onChange={(e) => setNewTicketTitle(e.target.value)}
+                      placeholder="Ticket title"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="new-ticket-body">Description</Label>
+                    <Textarea
+                      id="new-ticket-body"
+                      value={newTicketBody}
+                      onChange={(e) => setNewTicketBody(e.target.value)}
+                      placeholder="Describe the ticket..."
+                      className="min-h-32"
+                    />
+                  </div>
+
+                  {/* Create Button */}
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button variant="outline" onClick={handleCloseDetail}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreateTicket}
+                      disabled={createTicket.isPending || !newTicketTitle.trim()}
+                    >
+                      <Save className="size-4 mr-2" />
+                      {createTicket.isPending ? "Creating..." : "Create Ticket"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              // View existing ticket
               <>
-                {/* Scrollable area: ticket detail + comments */}
-                <div className="flex-1 overflow-y-auto p-6">
-                  <TicketDetail
-                    onClose={handleCloseDetail}
-                    isEditable
-                  />
+                {isLoadingTicket && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Loading ticket...
+                  </div>
+                )}
 
-                  {/* Comments List */}
-                  <div className="mt-6">
-                    <h3 className="text-sm font-medium mb-4">
-                      Comments {comments.length > 0 && `(${comments.length})`}
-                    </h3>
+                {selectedTicket && (
+                  <>
+                    {/* Scrollable area: ticket detail + comments */}
+                    <div className="flex-1 overflow-y-auto p-6">
+                      <TicketDetail
+                        onClose={handleCloseDetail}
+                        isEditable
+                      />
 
-                    {comments.length > 0 ? (
-                      <div className="space-y-3">
-                        {comments.map((comment) => (
-                          <div
-                            key={comment.id}
-                            className="p-3 rounded-lg bg-muted/50"
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">
-                                  {comment.author_id}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(comment.created_at).toLocaleString()}
-                                </span>
-                                {comment.is_edited && (
-                                  <span className="text-xs text-muted-foreground">
-                                    (edited)
-                                  </span>
+                      {/* Comments List */}
+                      <div className="mt-6">
+                        <h3 className="text-sm font-medium mb-4">
+                          Comments {comments.length > 0 && `(${comments.length})`}
+                        </h3>
+
+                        {comments.length > 0 ? (
+                          <div className="space-y-3">
+                            {comments.map((comment) => (
+                              <div
+                                key={comment.id}
+                                className="p-3 rounded-lg bg-muted/50"
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">
+                                      {comment.author_id}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {new Date(comment.created_at).toLocaleString()}
+                                    </span>
+                                    {comment.is_edited && (
+                                      <span className="text-xs text-muted-foreground">
+                                        (edited)
+                                      </span>
+                                    )}
+                                  </div>
+                                  {editingCommentId === comment.id ? (
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-6 text-muted-foreground hover:text-primary"
+                                        onClick={async () => {
+                                          await updateComment(comment.id, editBody);
+                                          setEditingCommentId(null);
+                                          setEditBody("");
+                                        }}
+                                        disabled={isUpdatingComment || !editBody.trim()}
+                                      >
+                                        <Check className="size-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-6 text-muted-foreground hover:text-destructive"
+                                        onClick={() => {
+                                          setEditingCommentId(null);
+                                          setEditBody("");
+                                        }}
+                                      >
+                                        <X className="size-3" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-6 text-muted-foreground hover:text-foreground"
+                                        onClick={() => {
+                                          setEditingCommentId(comment.id);
+                                          setEditBody(comment.body);
+                                        }}
+                                      >
+                                        <Pencil className="size-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-6 text-muted-foreground hover:text-destructive"
+                                        onClick={() => deleteComment(comment.id)}
+                                        disabled={isDeletingComment}
+                                      >
+                                        <Trash2 className="size-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                                {editingCommentId === comment.id ? (
+                                  <Textarea
+                                    value={editBody}
+                                    onChange={(e) => setEditBody(e.target.value)}
+                                    className="min-h-15 text-sm"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <div className="text-sm">
+                                    <Markdown>{comment.body}</Markdown>
+                                  </div>
                                 )}
                               </div>
-                              {editingCommentId === comment.id ? (
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-6 text-muted-foreground hover:text-primary"
-                                    onClick={async () => {
-                                      await updateComment(comment.id, editBody);
-                                      setEditingCommentId(null);
-                                      setEditBody("");
-                                    }}
-                                    disabled={isUpdatingComment || !editBody.trim()}
-                                  >
-                                    <Check className="size-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-6 text-muted-foreground hover:text-destructive"
-                                    onClick={() => {
-                                      setEditingCommentId(null);
-                                      setEditBody("");
-                                    }}
-                                  >
-                                    <X className="size-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-6 text-muted-foreground hover:text-foreground"
-                                    onClick={() => {
-                                      setEditingCommentId(comment.id);
-                                      setEditBody(comment.body);
-                                    }}
-                                  >
-                                    <Pencil className="size-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-6 text-muted-foreground hover:text-destructive"
-                                    onClick={() => deleteComment(comment.id)}
-                                    disabled={isDeletingComment}
-                                  >
-                                    <Trash2 className="size-3" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                            {editingCommentId === comment.id ? (
-                              <Textarea
-                                value={editBody}
-                                onChange={(e) => setEditBody(e.target.value)}
-                                className="min-h-15 text-sm"
-                                autoFocus
-                              />
-                            ) : (
-                              <div className="text-sm">
-                                <Markdown>{comment.body}</Markdown>
-                              </div>
-                            )}
+                            ))}
                           </div>
-                        ))}
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No comments yet</p>
+                        )}
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No comments yet</p>
-                    )}
-                  </div>
-                </div>
+                    </div>
 
-                {/* Fixed ChatInput at bottom */}
-                <div className="border-t p-4">
-                  <ChatInput
-                    onSubmit={handleAddComment}
-                    isLoading={isCreatingComment}
-                    placeholder="Add a comment..."
-                  />
-                </div>
+                    {/* Fixed ChatInput at bottom */}
+                    <div className="border-t p-4">
+                      <ChatInput
+                        onSubmit={handleAddComment}
+                        isLoading={isCreatingComment}
+                        placeholder="Add a comment..."
+                      />
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
         )}
       </div>
 
-      {/* Create Ticket Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Ticket</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="ticket-title">Title</Label>
-              <Input
-                id="ticket-title"
-                placeholder="Enter ticket title..."
-                value={newTicketTitle}
-                onChange={(e) => setNewTicketTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleCreateTicket();
-                  }
-                }}
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreateDialogOpen(false);
-                setNewTicketTitle("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateTicket}
-              disabled={createTicket.isPending || !newTicketTitle.trim()}
-            >
-              {createTicket.isPending ? "Creating..." : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
