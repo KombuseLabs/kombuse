@@ -14,6 +14,9 @@ import type {
   AgentFilters,
   CreateAgentInput,
   UpdateAgentInput,
+  AgentTrigger,
+  CreateAgentTriggerInput,
+  UpdateAgentTriggerInput,
   Profile,
   ProfileFilters,
   CreateProfileInput,
@@ -280,5 +283,45 @@ export const profilesApi = {
       body: JSON.stringify(input),
     })
     return handleResponse<Profile>(response)
+  },
+}
+
+export const triggersApi = {
+  async list(agentId: string): Promise<AgentTrigger[]> {
+    const response = await fetch(`${API_BASE}/agents/${agentId}/triggers`)
+    return handleResponse<AgentTrigger[]>(response)
+  },
+
+  async get(id: number): Promise<AgentTrigger> {
+    const response = await fetch(`${API_BASE}/triggers/${id}`)
+    return handleResponse<AgentTrigger>(response)
+  },
+
+  async create(
+    agentId: string,
+    input: Omit<CreateAgentTriggerInput, 'agent_id'>
+  ): Promise<AgentTrigger> {
+    const response = await fetch(`${API_BASE}/agents/${agentId}/triggers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<AgentTrigger>(response)
+  },
+
+  async update(id: number, input: UpdateAgentTriggerInput): Promise<AgentTrigger> {
+    const response = await fetch(`${API_BASE}/triggers/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<AgentTrigger>(response)
+  },
+
+  async delete(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE}/triggers/${id}`, {
+      method: 'DELETE',
+    })
+    await handleEmptyResponse(response)
   },
 }

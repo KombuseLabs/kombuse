@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { Agent, Profile, UpdateAgentInput, UpdateProfileInput } from '@kombuse/types'
+import type { Agent, AgentTrigger, Profile, UpdateAgentInput, UpdateProfileInput } from '@kombuse/types'
 import { X, Trash2, Save } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
@@ -11,28 +11,47 @@ import { Label } from '../../base/label'
 import { Textarea } from '../../base/textarea'
 import { PromptEditor } from '../prompt-editor'
 import { AvatarPicker, getAvatarIcon } from './avatar-picker'
+import { TriggerEditor, type TriggerFormData } from '../triggers'
 
 interface AgentDetailProps {
   agent: Agent
   profile: Profile
+  triggers?: AgentTrigger[]
   onClose?: () => void
   onSave?: (updates: {
     profile: UpdateProfileInput
     agent: UpdateAgentInput
   }) => Promise<void>
   onDelete?: () => void
+  onCreateTrigger?: (data: TriggerFormData) => Promise<void>
+  onUpdateTrigger?: (id: number, data: Partial<TriggerFormData>) => Promise<void>
+  onDeleteTrigger?: (id: number) => Promise<void>
+  onToggleTrigger?: (id: number, enabled: boolean) => Promise<void>
   isSaving?: boolean
   isDeleting?: boolean
+  isCreatingTrigger?: boolean
+  isUpdatingTrigger?: boolean
+  deletingTriggerId?: number
+  togglingTriggerId?: number
 }
 
 function AgentDetail({
   agent,
   profile,
+  triggers = [],
   onClose,
   onSave,
   onDelete,
+  onCreateTrigger,
+  onUpdateTrigger,
+  onDeleteTrigger,
+  onToggleTrigger,
   isSaving,
   isDeleting,
+  isCreatingTrigger,
+  isUpdatingTrigger,
+  deletingTriggerId,
+  togglingTriggerId,
 }: AgentDetailProps) {
   const [name, setName] = useState(profile.name)
   const [description, setDescription] = useState(profile.description || '')
@@ -145,6 +164,24 @@ function AgentDetail({
             placeholder="Enter the agent's system prompt..."
           />
         </div>
+
+        {/* Triggers */}
+        {onCreateTrigger && onUpdateTrigger && onDeleteTrigger && onToggleTrigger && (
+          <div className="pt-4 border-t">
+            <TriggerEditor
+              agentId={agent.id}
+              triggers={triggers}
+              onCreateTrigger={onCreateTrigger}
+              onUpdateTrigger={onUpdateTrigger}
+              onDeleteTrigger={onDeleteTrigger}
+              onToggleTrigger={onToggleTrigger}
+              isCreating={isCreatingTrigger}
+              isUpdating={isUpdatingTrigger}
+              deletingId={deletingTriggerId}
+              togglingId={togglingTriggerId}
+            />
+          </div>
+        )}
 
         {/* Save Button */}
         {onSave && hasChanges && (

@@ -25,7 +25,13 @@ import {
   useUpdateProfile,
   useToggleAgent,
   useDeleteAgent,
+  useTriggers,
+  useCreateTrigger,
+  useUpdateTrigger,
+  useDeleteTrigger,
+  useToggleTrigger,
 } from "@kombuse/ui/hooks";
+import type { TriggerFormData } from "@kombuse/ui/components";
 import { Plus, Bot, X, Save } from "lucide-react";
 import type { Agent, Profile } from "@kombuse/types";
 
@@ -46,6 +52,13 @@ export function Agents() {
   const updateProfile = useUpdateProfile();
   const toggleAgent = useToggleAgent();
   const deleteAgent = useDeleteAgent();
+
+  // Trigger hooks
+  const { data: triggers = [] } = useTriggers(isCreating ? "" : agentId ?? "");
+  const createTrigger = useCreateTrigger();
+  const updateTrigger = useUpdateTrigger();
+  const deleteTrigger = useDeleteTrigger();
+  const toggleTriggerMutation = useToggleTrigger();
 
   // Create form state
   const [newAgentName, setNewAgentName] = useState("");
@@ -123,6 +136,24 @@ export function Agents() {
     if (!agentId || isCreating) return;
     await deleteAgent.mutateAsync(agentId);
     navigate("/agents");
+  };
+
+  // Trigger handlers
+  const handleCreateTrigger = async (data: TriggerFormData) => {
+    if (!agentId || isCreating) return;
+    await createTrigger.mutateAsync({ agentId, input: data });
+  };
+
+  const handleUpdateTrigger = async (id: number, data: Partial<TriggerFormData>) => {
+    await updateTrigger.mutateAsync({ id, input: data });
+  };
+
+  const handleDeleteTrigger = async (id: number) => {
+    await deleteTrigger.mutateAsync(id);
+  };
+
+  const handleToggleTrigger = async (id: number, enabled: boolean) => {
+    await toggleTriggerMutation.mutateAsync({ id, is_enabled: enabled });
   };
 
   const showDetailPanel = agentId !== undefined;
@@ -281,11 +312,18 @@ export function Agents() {
                   <AgentDetail
                     agent={selectedAgentData.agent}
                     profile={selectedAgentData.profile}
+                    triggers={triggers}
                     onClose={handleCloseDetail}
                     onSave={handleSaveAgent}
                     onDelete={handleDeleteAgent}
+                    onCreateTrigger={handleCreateTrigger}
+                    onUpdateTrigger={handleUpdateTrigger}
+                    onDeleteTrigger={handleDeleteTrigger}
+                    onToggleTrigger={handleToggleTrigger}
                     isSaving={isSaving}
                     isDeleting={deleteAgent.isPending}
+                    isCreatingTrigger={createTrigger.isPending}
+                    isUpdatingTrigger={updateTrigger.isPending}
                   />
                 )}
               </>

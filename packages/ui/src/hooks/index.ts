@@ -42,3 +42,11 @@ export {
   useToggleAgent,
   useDeleteAgent,
 } from './use-agents'
+export {
+  useTriggers,
+  useTrigger,
+  useCreateTrigger,
+  useUpdateTrigger,
+  useDeleteTrigger,
+  useToggleTrigger,
+} from './use-triggers'
