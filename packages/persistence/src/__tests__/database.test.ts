@@ -15,23 +15,62 @@ import Database from 'better-sqlite3'
 import { runMigrations } from '../database'
 
 // Expected schema - update when adding migrations
-const EXPECTED_TABLES = ['migrations', 'tickets', 'ticket_activities']
+const EXPECTED_TABLES = [
+  'migrations',
+  'profiles',
+  'projects',
+  'labels',
+  'tickets',
+  'ticket_labels',
+  'comments',
+  'mentions',
+  'attachments',
+  'events',
+  'event_subscriptions',
+]
 const EXPECTED_TICKET_COLUMNS = [
   'id',
+  'project_id',
+  'author_id',
+  'assignee_id',
+  'claimed_by_id',
   'title',
   'body',
   'status',
   'priority',
-  'project_id',
-  'github_id',
-  'repo_name',
+  'claimed_at',
+  'claim_expires_at',
+  'external_source',
+  'external_id',
+  'external_url',
+  'synced_at',
   'created_at',
   'updated_at',
 ]
-const EXPECTED_INDEXES = ['idx_tickets_status', 'idx_tickets_project_id']
+const EXPECTED_INDEXES = [
+  'idx_tickets_project',
+  'idx_tickets_status',
+  'idx_tickets_author',
+  'idx_tickets_claimed',
+  'idx_tickets_assignee',
+  'idx_tickets_claimed_by',
+]
 const EXPECTED_MIGRATIONS = [
   '001_create_tickets',
   '002_create_ticket_activities',
+  '003_create_profiles',
+  '004_create_projects',
+  '005_create_labels',
+  '006_recreate_tickets',
+  '007_create_ticket_labels',
+  '008_create_comments',
+  '009_create_mentions',
+  '010_create_attachments',
+  '011_create_events',
+  '012_add_ticket_claim_tracking',
+  '013_create_event_subscriptions',
+  '014_add_ticket_claimed_by',
+  '015_normalize_claim_expires_at',
 ]
 
 describe('database', () => {
@@ -112,16 +151,38 @@ describe('database', () => {
       expect(migrations).toHaveLength(EXPECTED_MIGRATIONS.length)
     })
 
-    // Edge case: Verify foreign key constraints are set up correctly
-    it('should create ticket_activities with foreign key to tickets', () => {
+    // Verify foreign key constraints are set up correctly on tickets
+    it('should create tickets with foreign key to projects', () => {
       runMigrations(db)
 
       const foreignKeys = db
-        .prepare('PRAGMA foreign_key_list(ticket_activities)')
+        .prepare('PRAGMA foreign_key_list(tickets)')
         .all() as { table: string; from: string; to: string }[]
 
-      expect(foreignKeys).toHaveLength(1)
-      expect(foreignKeys[0]).toMatchObject({
+      // tickets has FKs to: projects (project_id), profiles (author_id, assignee_id, claimed_by_id)
+      expect(foreignKeys.length).toBeGreaterThanOrEqual(2)
+
+      const projectFK = foreignKeys.find((fk) => fk.from === 'project_id')
+      expect(projectFK).toMatchObject({
+        table: 'projects',
+        from: 'project_id',
+        to: 'id',
+      })
+    })
+
+    // Verify comments table has correct foreign keys
+    it('should create comments with foreign keys to tickets and profiles', () => {
+      runMigrations(db)
+
+      const foreignKeys = db
+        .prepare('PRAGMA foreign_key_list(comments)')
+        .all() as { table: string; from: string; to: string }[]
+
+      // comments has FKs to: tickets (ticket_id), profiles (author_id), comments (parent_id)
+      expect(foreignKeys.length).toBeGreaterThanOrEqual(2)
+
+      const ticketFK = foreignKeys.find((fk) => fk.from === 'ticket_id')
+      expect(ticketFK).toMatchObject({
         table: 'tickets',
         from: 'ticket_id',
         to: 'id',

@@ -6,34 +6,41 @@
  *
  * Tests cover:
  * - create: Insert new tickets with required/optional fields
- * - get: Retrieve single ticket by ID with activities
+ * - get: Retrieve single ticket by ID
  * - list: Query tickets with filters, search, pagination
  * - update: Modify existing tickets partially or fully
- * - delete: Remove tickets with cascade to activities
- * - addActivity: Append activity log entries to tickets
+ * - delete: Remove tickets
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { setupTestDb } from '../test-utils'
+import type { Database as DatabaseType } from 'better-sqlite3'
+import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
 import { ticketsRepository } from '../tickets'
 
-// Test data constants - modify these to change test inputs
-const TEST_TICKET = { title: 'Test ticket' }
+// Test data constants - using the seeded project and user
+const TEST_TICKET = {
+  title: 'Test ticket',
+  project_id: TEST_PROJECT_ID,
+  author_id: TEST_USER_ID,
+}
 const TEST_TICKET_FULL = {
   title: 'Full ticket',
   body: 'Detailed description',
   status: 'in_progress' as const,
-  priority: 3,
-  project_id: 'proj-123',
+  priority: 3 as const,
+  project_id: TEST_PROJECT_ID,
+  author_id: TEST_USER_ID,
 }
 const NON_EXISTENT_ID = 999999
 
 describe('ticketsRepository', () => {
   let cleanup: () => void
+  let db: DatabaseType
 
   beforeEach(() => {
     const setup = setupTestDb()
     cleanup = setup.cleanup
+    db = setup.db
   })
 
   afterEach(() => {
@@ -45,11 +52,13 @@ describe('ticketsRepository', () => {
    * Verify ticket insertion with various input combinations
    */
   describe('create', () => {
-    it('should create a ticket with only required fields (title)', () => {
+    it('should create a ticket with only required fields', () => {
       const ticket = ticketsRepository.create(TEST_TICKET)
 
       expect(ticket.id, 'Ticket should have auto-generated ID').toBeDefined()
       expect(ticket.title).toBe(TEST_TICKET.title)
+      expect(ticket.project_id).toBe(TEST_PROJECT_ID)
+      expect(ticket.author_id).toBe(TEST_USER_ID)
       expect(ticket.status, 'Default status should be open').toBe('open')
       expect(ticket.body, 'Body should be null when not provided').toBeNull()
     })
@@ -62,6 +71,7 @@ describe('ticketsRepository', () => {
       expect(ticket.status).toBe(TEST_TICKET_FULL.status)
       expect(ticket.priority).toBe(TEST_TICKET_FULL.priority)
       expect(ticket.project_id).toBe(TEST_TICKET_FULL.project_id)
+      expect(ticket.author_id).toBe(TEST_TICKET_FULL.author_id)
     })
 
     it('should auto-generate timestamps on creation', () => {
@@ -73,11 +83,33 @@ describe('ticketsRepository', () => {
       expect(() => new Date(ticket.created_at)).not.toThrow()
       expect(() => new Date(ticket.updated_at)).not.toThrow()
     })
+
+    it('should attach labels when creating a ticket', () => {
+      const labelResult = db
+        .prepare('INSERT INTO labels (project_id, name) VALUES (?, ?)')
+        .run(TEST_PROJECT_ID, 'bug')
+      const labelId = Number(labelResult.lastInsertRowid)
+
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        label_ids: [labelId],
+      })
+
+      const rows = db
+        .prepare(
+          'SELECT label_id, added_by_id FROM ticket_labels WHERE ticket_id = ?'
+        )
+        .all(ticket.id) as { label_id: number; added_by_id: string | null }[]
+
+      expect(rows).toHaveLength(1)
+      expect(rows[0]?.label_id).toBe(labelId)
+      expect(rows[0]?.added_by_id).toBe(TEST_USER_ID)
+    })
   })
 
   /*
    * GET TESTS
-   * Verify single ticket retrieval with related data
+   * Verify single ticket retrieval
    */
   describe('get', () => {
     it('should return null for non-existent ticket ID', () => {
@@ -86,24 +118,14 @@ describe('ticketsRepository', () => {
       expect(ticket, `ID ${NON_EXISTENT_ID} should not exist`).toBeNull()
     })
 
-    it('should return ticket with activities array populated', () => {
+    it('should return ticket by ID', () => {
       const created = ticketsRepository.create(TEST_TICKET)
-      ticketsRepository.addActivity(created.id, 'test_action', 'test details')
 
       const ticket = ticketsRepository.get(created.id)
 
       expect(ticket).not.toBeNull()
-      expect(ticket?.activities, 'Should include activities array').toHaveLength(1)
-      expect(ticket?.activities[0]?.action).toBe('test_action')
-      expect(ticket?.activities[0]?.details).toBe('test details')
-    })
-
-    it('should return empty activities array when ticket has no activities', () => {
-      const created = ticketsRepository.create(TEST_TICKET)
-
-      const ticket = ticketsRepository.get(created.id)
-
-      expect(ticket?.activities, 'Activities should be empty array, not undefined').toHaveLength(0)
+      expect(ticket?.id).toBe(created.id)
+      expect(ticket?.title).toBe(TEST_TICKET.title)
     })
   })
 
@@ -114,9 +136,9 @@ describe('ticketsRepository', () => {
   describe('list', () => {
     // Seed data for list tests
     beforeEach(() => {
-      ticketsRepository.create({ title: 'Open 1', status: 'open' })
-      ticketsRepository.create({ title: 'Open 2', status: 'open' })
-      ticketsRepository.create({ title: 'Closed', status: 'closed' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Open 1', status: 'open' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Open 2', status: 'open' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Closed', status: 'closed' })
     })
 
     it('should return all tickets when no filters provided', () => {
@@ -144,6 +166,7 @@ describe('ticketsRepository', () => {
 
     it('should search tickets by body content', () => {
       ticketsRepository.create({
+        ...TEST_TICKET,
         title: 'Bug report',
         body: 'Something is broken in production',
       })
@@ -176,8 +199,8 @@ describe('ticketsRepository', () => {
     })
 
     it('should filter tickets by priority', () => {
-      ticketsRepository.create({ title: 'High priority', priority: 4 })
-      ticketsRepository.create({ title: 'Low priority', priority: 1 })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'High priority', priority: 4 })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Low priority', priority: 1 })
 
       const highPriority = ticketsRepository.list({ priority: 4 })
 
@@ -186,13 +209,18 @@ describe('ticketsRepository', () => {
     })
 
     it('should filter tickets by project_id', () => {
-      ticketsRepository.create({ title: 'Project A', project_id: 'proj-a' })
-      ticketsRepository.create({ title: 'Project B', project_id: 'proj-b' })
+      // All test tickets belong to TEST_PROJECT_ID
+      const projectTickets = ticketsRepository.list({ project_id: TEST_PROJECT_ID })
 
-      const projectA = ticketsRepository.list({ project_id: 'proj-a' })
+      expect(projectTickets.length).toBeGreaterThan(0)
+      expect(projectTickets.every((t) => t.project_id === TEST_PROJECT_ID)).toBe(true)
+    })
 
-      expect(projectA).toHaveLength(1)
-      expect(projectA[0]?.project_id).toBe('proj-a')
+    it('should filter tickets by author_id', () => {
+      const authorTickets = ticketsRepository.list({ author_id: TEST_USER_ID })
+
+      expect(authorTickets.length).toBeGreaterThan(0)
+      expect(authorTickets.every((t) => t.author_id === TEST_USER_ID)).toBe(true)
     })
 
     it('should order tickets by created_at DESC (newest first)', () => {
@@ -217,7 +245,7 @@ describe('ticketsRepository', () => {
    */
   describe('update', () => {
     it('should update multiple ticket fields at once', () => {
-      const ticket = ticketsRepository.create({ title: 'Original', status: 'open' })
+      const ticket = ticketsRepository.create({ ...TEST_TICKET, status: 'open' })
 
       const updated = ticketsRepository.update(ticket.id, {
         title: 'Updated',
@@ -236,14 +264,14 @@ describe('ticketsRepository', () => {
 
     it('should support partial updates - only specified fields change', () => {
       const ticket = ticketsRepository.create({
-        title: 'Original',
+        ...TEST_TICKET,
         body: 'Original body',
         priority: 2,
       })
 
       const updated = ticketsRepository.update(ticket.id, { priority: 4 })
 
-      expect(updated?.title, 'Title should remain unchanged').toBe('Original')
+      expect(updated?.title, 'Title should remain unchanged').toBe(TEST_TICKET.title)
       expect(updated?.body, 'Body should remain unchanged').toBe('Original body')
       expect(updated?.priority, 'Only priority should change').toBe(4)
     })
@@ -257,7 +285,6 @@ describe('ticketsRepository', () => {
       expect(result?.title).toBe(ticket.title)
     })
 
-    // Edge case: verify updated_at changes on update
     it('should update the updated_at timestamp', () => {
       const ticket = ticketsRepository.create(TEST_TICKET)
 
@@ -270,7 +297,7 @@ describe('ticketsRepository', () => {
 
   /*
    * DELETE TESTS
-   * Verify removal and cascade behavior
+   * Verify removal behavior
    */
   describe('delete', () => {
     it('should delete existing ticket and return true', () => {
@@ -289,67 +316,6 @@ describe('ticketsRepository', () => {
       const deleted = ticketsRepository.delete(NON_EXISTENT_ID)
 
       expect(deleted, 'Delete should return false for non-existent ID').toBe(false)
-    })
-
-    // Edge case: verify CASCADE DELETE on activities
-    it('should cascade delete all related activities', () => {
-      const ticket = ticketsRepository.create(TEST_TICKET)
-      ticketsRepository.addActivity(ticket.id, 'action1', 'details1')
-      ticketsRepository.addActivity(ticket.id, 'action2', 'details2')
-
-      ticketsRepository.delete(ticket.id)
-
-      // Ticket is gone, activities should be cascaded
-      expect(ticketsRepository.get(ticket.id)).toBeNull()
-    })
-  })
-
-  /*
-   * ADD ACTIVITY TESTS
-   * Verify activity log entries
-   */
-  describe('addActivity', () => {
-    it('should add activity with action and details', () => {
-      const ticket = ticketsRepository.create(TEST_TICKET)
-
-      const activity = ticketsRepository.addActivity(
-        ticket.id,
-        'comment',
-        'This is a comment'
-      )
-
-      expect(activity.ticket_id).toBe(ticket.id)
-      expect(activity.action).toBe('comment')
-      expect(activity.details).toBe('This is a comment')
-    })
-
-    it('should add activity without details (details=null)', () => {
-      const ticket = ticketsRepository.create(TEST_TICKET)
-
-      const activity = ticketsRepository.addActivity(ticket.id, 'viewed')
-
-      expect(activity.action).toBe('viewed')
-      expect(activity.details, 'Details should be null when not provided').toBeNull()
-    })
-
-    it('should auto-generate created_at timestamp', () => {
-      const ticket = ticketsRepository.create(TEST_TICKET)
-
-      const activity = ticketsRepository.addActivity(ticket.id, 'action')
-
-      expect(activity.created_at).toBeDefined()
-      expect(() => new Date(activity.created_at)).not.toThrow()
-    })
-
-    it('should allow multiple activities on the same ticket', () => {
-      const ticket = ticketsRepository.create(TEST_TICKET)
-
-      ticketsRepository.addActivity(ticket.id, 'created')
-      ticketsRepository.addActivity(ticket.id, 'updated')
-      ticketsRepository.addActivity(ticket.id, 'commented')
-
-      const fullTicket = ticketsRepository.get(ticket.id)
-      expect(fullTicket?.activities, 'Should have all 3 activities').toHaveLength(3)
     })
   })
 })

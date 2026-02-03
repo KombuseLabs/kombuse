@@ -1,7 +1,10 @@
+import type { Label } from './labels'
+import type { Profile } from './profiles'
+
 /**
  * Ticket status enum matching database CHECK constraint
  */
-export type TicketStatus = 'open' | 'closed' | 'in_progress'
+export type TicketStatus = 'open' | 'closed' | 'in_progress' | 'blocked'
 
 /**
  * Priority levels 0-4 (0 = lowest, 4 = highest)
@@ -13,42 +16,51 @@ export type TicketPriority = 0 | 1 | 2 | 3 | 4
  */
 export interface Ticket {
   id: number
+  project_id: string
+  author_id: string
+  assignee_id: string | null
+  /** Current active claim holder (may differ from assignee_id) */
+  claimed_by_id: string | null
   title: string
   body: string | null
   status: TicketStatus
   priority: TicketPriority | null
-  project_id: string | null
-  github_id: number | null
-  repo_name: string | null
+  external_source: string | null
+  external_id: string | null
+  external_url: string | null
+  synced_at: string | null
+  /** Timestamp when the ticket was claimed by a claimer */
+  claimed_at: string | null
+  /** Optional expiration for the claim (for stale assignment cleanup) */
+  claim_expires_at: string | null
   created_at: string
   updated_at: string
 }
 
 /**
- * Activity log for ticket changes
+ * Ticket with related entities
  */
-export interface TicketActivity {
-  id: number
-  ticket_id: number
-  action: string
-  details: string | null
-  created_at: string
-}
-
-/**
- * Ticket with associated activities
- */
-export interface TicketWithActivities extends Ticket {
-  activities: TicketActivity[]
+export interface TicketWithRelations extends Ticket {
+  author: Profile
+  assignee: Profile | null
+  labels: Label[]
 }
 
 /**
  * Filters for listing tickets
  */
 export interface TicketFilters {
+  project_id?: string
   status?: TicketStatus
   priority?: TicketPriority
-  project_id?: string
+  author_id?: string
+  assignee_id?: string
+  claimed_by_id?: string
+  /** Filter for unclaimed tickets (claimed_by_id IS NULL) */
+  unclaimed?: boolean
+  /** Filter for tickets with expired claims */
+  expired_claims?: boolean
+  label_ids?: number[]
   search?: string
   limit?: number
   offset?: number
@@ -58,13 +70,17 @@ export interface TicketFilters {
  * Input for creating a ticket
  */
 export interface CreateTicketInput {
+  project_id: string
+  author_id: string
   title: string
   body?: string
   status?: TicketStatus
   priority?: TicketPriority
-  project_id?: string
-  github_id?: number
-  repo_name?: string
+  assignee_id?: string
+  label_ids?: number[]
+  external_source?: string
+  external_id?: string
+  external_url?: string
 }
 
 /**
@@ -75,7 +91,37 @@ export interface UpdateTicketInput {
   body?: string
   status?: TicketStatus
   priority?: TicketPriority
-  project_id?: string
-  github_id?: number
-  repo_name?: string
+  assignee_id?: string | null
+  external_source?: string
+  external_id?: string
+  external_url?: string
+}
+
+/**
+ * Input for adding/removing labels from a ticket
+ */
+export interface TicketLabelInput {
+  ticket_id: number
+  label_id: number
+  added_by_id?: string
+}
+
+/**
+ * Input for claiming a ticket
+ */
+export interface ClaimTicketInput {
+  ticket_id: number
+  claimer_id: string
+  /** Optional duration in minutes for the claim (defaults to no expiration) */
+  duration_minutes?: number
+}
+
+/**
+ * Result of a claim operation
+ */
+export interface ClaimResult {
+  success: boolean
+  ticket: Ticket | null
+  /** Reason if claim failed (e.g., already claimed by another) */
+  reason?: string
 }

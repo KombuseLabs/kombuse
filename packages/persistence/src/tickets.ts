@@ -1,10 +1,10 @@
 import type {
   Ticket,
-  TicketWithActivities,
-  TicketActivity,
   TicketFilters,
   CreateTicketInput,
   UpdateTicketInput,
+  ClaimTicketInput,
+  ClaimResult,
 } from '@kombuse/types'
 import { getDatabase } from './database'
 
@@ -20,6 +20,10 @@ export const ticketsRepository = {
     const conditions: string[] = []
     const params: unknown[] = []
 
+    if (filters?.project_id) {
+      conditions.push('project_id = ?')
+      params.push(filters.project_id)
+    }
     if (filters?.status) {
       conditions.push('status = ?')
       params.push(filters.status)
@@ -28,9 +32,25 @@ export const ticketsRepository = {
       conditions.push('priority = ?')
       params.push(filters.priority)
     }
-    if (filters?.project_id) {
-      conditions.push('project_id = ?')
-      params.push(filters.project_id)
+    if (filters?.author_id) {
+      conditions.push('author_id = ?')
+      params.push(filters.author_id)
+    }
+    if (filters?.assignee_id) {
+      conditions.push('assignee_id = ?')
+      params.push(filters.assignee_id)
+    }
+    if (filters?.claimed_by_id) {
+      conditions.push('claimed_by_id = ?')
+      params.push(filters.claimed_by_id)
+    }
+    if (filters?.unclaimed) {
+      conditions.push('claimed_by_id IS NULL')
+    }
+    if (filters?.expired_claims) {
+      conditions.push(
+        "claim_expires_at IS NOT NULL AND claim_expires_at < datetime('now') AND claimed_by_id IS NOT NULL"
+      )
     }
     if (filters?.search) {
       conditions.push('(title LIKE ? OR body LIKE ?)')
@@ -54,23 +74,14 @@ export const ticketsRepository = {
   },
 
   /**
-   * Get a single ticket by ID with activities
+   * Get a single ticket by ID
    */
-  get(id: number): TicketWithActivities | null {
+  get(id: number): Ticket | null {
     const db = getDatabase()
-
     const ticket = db
       .prepare('SELECT * FROM tickets WHERE id = ?')
       .get(id) as Ticket | undefined
-    if (!ticket) return null
-
-    const activities = db
-      .prepare(
-        'SELECT * FROM ticket_activities WHERE ticket_id = ? ORDER BY created_at DESC'
-      )
-      .all(id) as TicketActivity[]
-
-    return { ...ticket, activities }
+    return ticket ?? null
   },
 
   /**
@@ -78,23 +89,61 @@ export const ticketsRepository = {
    */
   create(input: CreateTicketInput): Ticket {
     const db = getDatabase()
-
-    const stmt = db.prepare(`
-      INSERT INTO tickets (title, body, status, priority, project_id, github_id, repo_name)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+    const insertTicket = db.prepare(`
+      INSERT INTO tickets (
+        project_id, author_id, assignee_id, title, body, status, priority,
+        external_source, external_id, external_url
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
-    const result = stmt.run(
-      input.title,
-      input.body ?? null,
-      input.status ?? 'open',
-      input.priority ?? null,
-      input.project_id ?? null,
-      input.github_id ?? null,
-      input.repo_name ?? null
-    )
+    const insertTicketLabels = db.prepare(`
+      INSERT INTO ticket_labels (ticket_id, label_id, added_by_id)
+      VALUES (?, ?, ?)
+    `)
 
-    return this.get(result.lastInsertRowid as number) as Ticket
+    const createTicket = db.transaction((payload: CreateTicketInput) => {
+      const labelIds = Array.from(
+        new Set((payload.label_ids ?? []).filter((id) => Number.isFinite(id)))
+      )
+
+      const result = insertTicket.run(
+        payload.project_id,
+        payload.author_id,
+        payload.assignee_id ?? null,
+        payload.title,
+        payload.body ?? null,
+        payload.status ?? 'open',
+        payload.priority ?? null,
+        payload.external_source ?? null,
+        payload.external_id ?? null,
+        payload.external_url ?? null
+      )
+
+      const ticketId = result.lastInsertRowid as number
+
+      if (labelIds.length > 0) {
+        const placeholders = labelIds.map(() => '?').join(', ')
+        const rows = db
+          .prepare(
+            `SELECT id FROM labels WHERE project_id = ? AND id IN (${placeholders})`
+          )
+          .all(payload.project_id, ...labelIds) as { id: number }[]
+
+        if (rows.length !== labelIds.length) {
+          throw new Error('One or more labels are invalid for this project')
+        }
+
+        for (const labelId of labelIds) {
+          insertTicketLabels.run(ticketId, labelId, payload.author_id)
+        }
+      }
+
+      return ticketId
+    })
+
+    const ticketId = createTicket(input)
+    return this.get(ticketId) as Ticket
   },
 
   /**
@@ -122,17 +171,21 @@ export const ticketsRepository = {
       fields.push('priority = ?')
       params.push(input.priority)
     }
-    if (input.project_id !== undefined) {
-      fields.push('project_id = ?')
-      params.push(input.project_id)
+    if (input.assignee_id !== undefined) {
+      fields.push('assignee_id = ?')
+      params.push(input.assignee_id)
     }
-    if (input.github_id !== undefined) {
-      fields.push('github_id = ?')
-      params.push(input.github_id)
+    if (input.external_source !== undefined) {
+      fields.push('external_source = ?')
+      params.push(input.external_source)
     }
-    if (input.repo_name !== undefined) {
-      fields.push('repo_name = ?')
-      params.push(input.repo_name)
+    if (input.external_id !== undefined) {
+      fields.push('external_id = ?')
+      params.push(input.external_id)
+    }
+    if (input.external_url !== undefined) {
+      fields.push('external_url = ?')
+      params.push(input.external_url)
     }
 
     if (fields.length === 0) return this.get(id)
@@ -157,26 +210,154 @@ export const ticketsRepository = {
   },
 
   /**
-   * Add an activity log entry
+   * Claim a ticket for a claimer.
+   * Fails if the ticket is already claimed by someone else (unless claim expired).
    */
-  addActivity(
-    ticketId: number,
-    action: string,
-    details?: string
-  ): TicketActivity {
+  claim(input: ClaimTicketInput): ClaimResult {
     const db = getDatabase()
+    const claimerId = input.claimer_id
+    const claimModifier = input.duration_minutes
+      ? `+${input.duration_minutes} minutes`
+      : null
 
-    const result = db
+    const stmt = db.prepare(`
+      UPDATE tickets
+      SET claimed_by_id = ?,
+          claimed_at = datetime('now'),
+          claim_expires_at = CASE
+            WHEN ? IS NULL THEN NULL
+            ELSE datetime('now', ?)
+          END,
+          assignee_id = COALESCE(assignee_id, ?),
+          updated_at = datetime('now')
+      WHERE id = ?
+        AND (assignee_id IS NULL OR assignee_id = ?)
+        AND (
+          claimed_by_id IS NULL OR
+          claimed_by_id = ? OR
+          (claim_expires_at IS NOT NULL AND claim_expires_at < datetime('now'))
+        )
+    `)
+
+    const result = stmt.run(
+      claimerId,
+      claimModifier,
+      claimModifier,
+      claimerId,
+      input.ticket_id,
+      claimerId,
+      claimerId
+    )
+
+    if (result.changes > 0) {
+      return { success: true, ticket: this.get(input.ticket_id) }
+    }
+
+    const ticket = this.get(input.ticket_id)
+    if (!ticket) {
+      return { success: false, ticket: null, reason: 'Ticket not found' }
+    }
+
+    if (ticket.assignee_id && ticket.assignee_id !== claimerId) {
+      return {
+        success: false,
+        ticket,
+        reason: `Ticket assigned to ${ticket.assignee_id}`,
+      }
+    }
+
+    if (ticket.claimed_by_id && ticket.claimed_by_id !== claimerId) {
+      return {
+        success: false,
+        ticket,
+        reason: `Ticket already claimed by ${ticket.claimed_by_id}`,
+      }
+    }
+
+    return { success: false, ticket, reason: 'Ticket could not be claimed' }
+  },
+
+  /**
+   * Release a claim on a ticket.
+   * Only the current claimer (or force) can unclaim.
+   */
+  unclaim(ticketId: number, requesterId?: string, force = false): ClaimResult {
+    const db = getDatabase()
+    const ticket = this.get(ticketId)
+
+    if (!ticket) {
+      return { success: false, ticket: null, reason: 'Ticket not found' }
+    }
+
+    if (!ticket.claimed_by_id) {
+      return { success: false, ticket, reason: 'Ticket is not claimed' }
+    }
+
+    // Only the current claimer can unclaim (unless forced)
+    if (!force && requesterId && ticket.claimed_by_id !== requesterId) {
+      return {
+        success: false,
+        ticket,
+        reason: 'Only the current claimer can unclaim this ticket',
+      }
+    }
+
+    const stmt = db.prepare(`
+      UPDATE tickets
+      SET claimed_by_id = NULL,
+          claimed_at = NULL,
+          claim_expires_at = NULL,
+          updated_at = datetime('now')
+      WHERE id = ?
+    `)
+
+    stmt.run(ticketId)
+
+    return { success: true, ticket: this.get(ticketId) }
+  },
+
+  /**
+   * Extend the claim expiration for a ticket
+   */
+  extendClaim(ticketId: number, additionalMinutes: number): ClaimResult {
+    const db = getDatabase()
+    const ticket = this.get(ticketId)
+
+    if (!ticket) {
+      return { success: false, ticket: null, reason: 'Ticket not found' }
+    }
+
+    if (!ticket.claimed_by_id) {
+      return { success: false, ticket, reason: 'Ticket is not claimed' }
+    }
+
+    const stmt = db.prepare(`
+      UPDATE tickets
+      SET claim_expires_at = datetime(COALESCE(claim_expires_at, datetime('now')), ?),
+          updated_at = datetime('now')
+      WHERE id = ?
+    `)
+
+    stmt.run(`+${additionalMinutes} minutes`, ticketId)
+
+    return { success: true, ticket: this.get(ticketId) }
+  },
+
+  /**
+   * Find tickets with expired claims (for cleanup/reassignment)
+   */
+  findExpiredClaims(): Ticket[] {
+    const db = getDatabase()
+    return db
       .prepare(
         `
-      INSERT INTO ticket_activities (ticket_id, action, details)
-      VALUES (?, ?, ?)
-    `
+        SELECT * FROM tickets
+        WHERE claim_expires_at IS NOT NULL
+          AND claim_expires_at < datetime('now')
+          AND claimed_by_id IS NOT NULL
+        ORDER BY claim_expires_at ASC
+      `
       )
-      .run(ticketId, action, details ?? null)
-
-    return db
-      .prepare('SELECT * FROM ticket_activities WHERE id = ?')
-      .get(result.lastInsertRowid) as TicketActivity
+      .all() as Ticket[]
   },
 }

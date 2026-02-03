@@ -2,8 +2,11 @@ import type { FastifyInstance } from 'fastify'
 import { ticketService } from '@kombuse/services'
 import {
   createTicketSchema,
+  claimTicketSchema,
+  extendClaimSchema,
   updateTicketSchema,
   ticketFiltersSchema,
+  unclaimTicketSchema,
 } from '../schemas/tickets'
 
 export async function ticketRoutes(fastify: FastifyInstance) {
@@ -65,6 +68,88 @@ export async function ticketRoutes(fastify: FastifyInstance) {
     } catch (error) {
       return reply.status(404).send({ error: (error as Error).message })
     }
+  })
+
+  // Claim ticket
+  fastify.post<{
+    Params: { id: string }
+  }>('/tickets/:id/claim', async (request, reply) => {
+    const id = parseInt(request.params.id, 10)
+    if (isNaN(id)) {
+      return reply.status(400).send({ error: 'Invalid ticket ID' })
+    }
+
+    const parseResult = claimTicketSchema.safeParse(request.body)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    const result = ticketService.claim({
+      ticket_id: id,
+      ...parseResult.data,
+    })
+
+    if (!result.success) {
+      const status = result.ticket ? 409 : 404
+      return reply.status(status).send({ error: result.reason, ticket: result.ticket })
+    }
+
+    return reply.send(result.ticket)
+  })
+
+  // Unclaim ticket
+  fastify.post<{
+    Params: { id: string }
+  }>('/tickets/:id/unclaim', async (request, reply) => {
+    const id = parseInt(request.params.id, 10)
+    if (isNaN(id)) {
+      return reply.status(400).send({ error: 'Invalid ticket ID' })
+    }
+
+    const parseResult = unclaimTicketSchema.safeParse(request.body ?? {})
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    const result = ticketService.unclaim(
+      id,
+      parseResult.data.requester_id,
+      parseResult.data.force ?? false
+    )
+
+    if (!result.success) {
+      const status = result.ticket ? 409 : 404
+      return reply.status(status).send({ error: result.reason, ticket: result.ticket })
+    }
+
+    return reply.send(result.ticket)
+  })
+
+  // Extend claim duration
+  fastify.post<{
+    Params: { id: string }
+  }>('/tickets/:id/claim/extend', async (request, reply) => {
+    const id = parseInt(request.params.id, 10)
+    if (isNaN(id)) {
+      return reply.status(400).send({ error: 'Invalid ticket ID' })
+    }
+
+    const parseResult = extendClaimSchema.safeParse(request.body)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    const result = ticketService.extendClaim(
+      id,
+      parseResult.data.additional_minutes
+    )
+
+    if (!result.success) {
+      const status = result.ticket ? 409 : 404
+      return reply.status(status).send({ error: result.reason, ticket: result.ticket })
+    }
+
+    return reply.send(result.ticket)
   })
 
   // Delete ticket

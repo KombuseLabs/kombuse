@@ -1,9 +1,10 @@
 import type {
   Ticket,
-  TicketWithActivities,
   TicketFilters,
   CreateTicketInput,
   UpdateTicketInput,
+  ClaimTicketInput,
+  ClaimResult,
 } from '@kombuse/types'
 import { ticketsRepository } from '@kombuse/persistence'
 
@@ -12,10 +13,13 @@ import { ticketsRepository } from '@kombuse/persistence'
  */
 export interface ITicketService {
   list(filters?: TicketFilters): Ticket[]
-  get(id: number): TicketWithActivities | null
+  get(id: number): Ticket | null
   create(input: CreateTicketInput): Ticket
   update(id: number, input: UpdateTicketInput): Ticket
   delete(id: number): void
+  claim(input: ClaimTicketInput): ClaimResult
+  unclaim(ticketId: number, requesterId?: string, force?: boolean): ClaimResult
+  extendClaim(ticketId: number, additionalMinutes: number): ClaimResult
 }
 
 /**
@@ -26,20 +30,13 @@ export class TicketService implements ITicketService {
     return ticketsRepository.list(filters)
   }
 
-  get(id: number): TicketWithActivities | null {
+  get(id: number): Ticket | null {
     return ticketsRepository.get(id)
   }
 
   create(input: CreateTicketInput): Ticket {
     const ticket = ticketsRepository.create(input)
-
-    // Log the creation activity
-    ticketsRepository.addActivity(
-      ticket.id,
-      'created',
-      `Ticket "${ticket.title}" created`
-    )
-
+    // Note: Event logging is handled separately via eventsRepository
     return ticket
   }
 
@@ -54,15 +51,7 @@ export class TicketService implements ITicketService {
       throw new Error(`Failed to update ticket ${id}`)
     }
 
-    // Log status changes
-    if (input.status && input.status !== existing.status) {
-      ticketsRepository.addActivity(
-        id,
-        'status_changed',
-        `Status changed from "${existing.status}" to "${input.status}"`
-      )
-    }
-
+    // Note: Event logging for status changes is handled via eventsRepository
     return updated
   }
 
@@ -71,6 +60,18 @@ export class TicketService implements ITicketService {
     if (!success) {
       throw new Error(`Ticket ${id} not found`)
     }
+  }
+
+  claim(input: ClaimTicketInput): ClaimResult {
+    return ticketsRepository.claim(input)
+  }
+
+  unclaim(ticketId: number, requesterId?: string, force?: boolean): ClaimResult {
+    return ticketsRepository.unclaim(ticketId, requesterId, force)
+  }
+
+  extendClaim(ticketId: number, additionalMinutes: number): ClaimResult {
+    return ticketsRepository.extendClaim(ticketId, additionalMinutes)
   }
 }
 
