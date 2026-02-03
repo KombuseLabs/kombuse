@@ -1,11 +1,14 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   setDatabase,
   initializeDatabase,
   seedDatabase,
   type DatabaseType,
 } from "@kombuse/persistence";
+import { registerTicketTools } from "@kombuse/mcp";
 import {
   ticketRoutes,
   profileRoutes,
@@ -51,6 +54,20 @@ export async function createServer({ port, db }: ServerOptions) {
 
   fastify.get("/health", async () => {
     return { status: "ok" };
+  });
+
+  // MCP endpoint - handles both POST (JSON-RPC) and GET (SSE streams)
+  fastify.all("/mcp", async (request, reply) => {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless mode
+    });
+
+    const mcpServer = new McpServer({ name: "kombuse", version: "0.1.0" });
+    registerTicketTools(mcpServer);
+    await mcpServer.server.connect(transport);
+
+    await transport.handleRequest(request.raw, reply.raw, request.body);
+    reply.hijack();
   });
 
   return {
