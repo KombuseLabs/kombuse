@@ -19,11 +19,8 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Build web app
-        run: bun run --filter web build
-
-      - name: Build payload
-        run: bun run --filter desktop build:payload
+      - name: Build all packages
+        run: bun run build
 
       - name: Package payload
         run: bun run --filter desktop package:payload
