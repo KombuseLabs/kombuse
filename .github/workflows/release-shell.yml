@@ -1,0 +1,59 @@
+name: Release Shell
+
+on:
+  push:
+    tags:
+      - "shell-v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+          - os: macos-13
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build web app
+        run: bun run --filter web build
+
+      - name: Build payload
+        run: bun run --filter desktop build:payload
+
+      - name: Build shell
+        run: bun run --filter desktop build:shell
+
+      - name: Rebuild native modules for Electron
+        run: npx @electron/rebuild -f -w better-sqlite3
+        working-directory: apps/desktop
+
+      - name: Build Electron app
+        run: npx electron-builder --mac --${{ matrix.arch }}
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shell-release-${{ matrix.arch }}
+          path: apps/desktop/release/*.dmg
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: apps/desktop/release/*.dmg
+          generate_release_notes: true

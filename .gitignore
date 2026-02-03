@@ -27,6 +27,7 @@ test-results.json
 out/
 build
 dist
+release
 
 
 # Debug
@@ -43,3 +44,4 @@ CLAUDE.md
 
 specs
 docs
+.mcp.json

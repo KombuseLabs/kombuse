@@ -14,6 +14,7 @@ import { is } from "../env";
 
 export interface PayloadManifest {
   version: string;
+  minShellVersion: string;
   buildTime: string;
   files: {
     server: string;
@@ -30,8 +31,16 @@ export interface PayloadInfo {
 
 /**
  * Get the path to the bundled payload (inside the app).
+ *
+ * - Packaged app: Resources/payload (via extraResources)
+ * - Development: ./dist/payload
  */
 export function getBundledPayloadPath(): string {
+  if (app.isPackaged) {
+    // In packaged app, payload is in Resources/payload via extraResources
+    return join(process.resourcesPath, "payload");
+  }
+  // Dev/preview mode: use local dist
   return join(app.getAppPath(), "dist/payload");
 }
 

@@ -1,0 +1,46 @@
+name: Release Payload
+
+on:
+  push:
+    tags:
+      - "payload-v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build web app
+        run: bun run --filter web build
+
+      - name: Build payload
+        run: bun run --filter desktop build:payload
+
+      - name: Package payload
+        run: bun run --filter desktop package:payload
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: payload-release
+          path: |
+            apps/desktop/release/*.tar.gz
+            apps/desktop/release/*.sha256
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            apps/desktop/release/*.tar.gz
+            apps/desktop/release/*.sha256
+          generate_release_notes: true

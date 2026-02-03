@@ -1,0 +1,36 @@
+appId: com.kombuse.app
+productName: Kombuse
+directories:
+  output: release
+  buildResources: build-resources
+
+# Shell code goes in ASAR
+files:
+  - dist/shell/**/*
+  - "!**/*.{ts,map,md}"
+
+# Native modules must be outside ASAR
+asar: true
+asarUnpack:
+  - node_modules/better-sqlite3/**
+
+# Payload bundled as separate resource (not in ASAR)
+extraResources:
+  - from: dist/payload
+    to: payload
+    filter:
+      - "**/*"
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  # Code signing disabled for now - add later:
+  # identity: "Developer ID Application: Your Name (TEAM_ID)"
+  # notarize: true
+
+# GitHub Releases via action, not electron-builder publish
+publish: null
