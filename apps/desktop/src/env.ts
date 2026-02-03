@@ -3,8 +3,8 @@
  *
  * Modes:
  * - dev: Hot reload development (web from Vite, embedded server)
- * - preview: Test built payload locally (embedded server, local payload)
- * - prod: Production with updater (embedded server, installed payloads)
+ * - preview: Test built package locally (embedded server, local package)
+ * - prod: Production with updater (embedded server, installed packages)
  */
 
 import { app } from "electron";
@@ -31,7 +31,7 @@ export function getMode(): AppMode {
     return "prod";
   }
 
-  // Unpackaged defaults to preview (load local payload)
+  // Unpackaged defaults to preview (load local package)
   return "preview";
 }
 
@@ -46,9 +46,9 @@ export const is = {
   /** Dev mode: web from Vite, embedded server */
   dev: () => getMode() === "dev",
 
-  /** Preview mode: test local payload, embedded server */
+  /** Preview mode: test local package, embedded server */
   preview: () => getMode() === "preview",
 
-  /** Prod mode: installed payloads, embedded server */
+  /** Prod mode: installed packages, embedded server */
   prod: () => getMode() === "prod",
 };

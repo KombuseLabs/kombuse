@@ -14,22 +14,22 @@ export function getKombuseDir(): string {
 }
 
 /**
- * Get the directory containing all installed payloads.
+ * Get the directory containing all installed packages.
  */
-export function getPayloadsDir(): string {
-  return join(getKombuseDir(), "payloads");
+export function getPackagesDir(): string {
+  return join(getKombuseDir(), "packages");
 }
 
 /**
- * Get the path to the "current" payload symlink.
+ * Get the path to the "current" package symlink.
  */
-export function getCurrentPayloadPath(): string {
-  return join(getPayloadsDir(), "current");
+export function getCurrentPackagePath(): string {
+  return join(getPackagesDir(), "current");
 }
 
 /**
- * Get the path to a specific payload version.
+ * Get the path to a specific package version.
  */
-export function getPayloadVersionPath(version: string): string {
-  return join(getPayloadsDir(), `v${version}`);
+export function getPackageVersionPath(version: string): string {
+  return join(getPackagesDir(), `v${version}`);
 }

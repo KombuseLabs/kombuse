@@ -1,27 +1,27 @@
 /**
  * Electron shell main process.
  *
- * The shell is stable and rarely updated. It loads the payload dynamically,
+ * The shell is stable and rarely updated. It loads the package dynamically,
  * which contains the server and web assets that can be hot-swapped.
  *
  * Modes:
  * - dev: Web from Vite (localhost:3333), embedded server
- * - preview: Embedded server, local payload
- * - prod: Embedded server, installed payload with updater
+ * - preview: Embedded server, local package
+ * - prod: Embedded server, installed package with updater
  */
 
 import { app, BrowserWindow } from "electron";
 import { initializeDatabase, seedDatabase } from "@kombuse/persistence";
 import { createServer as createServerDirect } from "server";
 import { registerAppProtocol } from "./protocol";
-import { getPayloadInfo, loadPayload } from "./payload-loader";
+import { getPackageInfo, loadPackage } from "./package-loader";
 import { is, getMode } from "../env";
 
 const SERVER_PORT = 3332;
 const DEV_WEB_URL = "http://localhost:3333";
 
 /**
- * Start embedded server in dev mode (direct import, no payload).
+ * Start embedded server in dev mode (direct import, no package).
  */
 async function startDevServer() {
   const db = initializeDatabase();
@@ -35,21 +35,21 @@ async function startDevServer() {
 }
 
 /**
- * Start embedded server from payload (preview/prod mode).
+ * Start embedded server from package (preview/prod mode).
  */
-async function startPayloadServer() {
+async function startPackageServer() {
   const db = initializeDatabase();
   seedDatabase(db);
 
-  const payload = getPayloadInfo();
-  console.log(`Loading payload v${payload.manifest.version} from ${payload.path}`);
+  const pkg = getPackageInfo();
+  console.log(`Loading package v${pkg.manifest.version} from ${pkg.path}`);
 
-  const { createServer } = await loadPayload(payload.serverBundle);
+  const { createServer } = await loadPackage(pkg.serverBundle);
   const server = await createServer({ port: SERVER_PORT, db });
   await server.listen();
 
   console.log(`Server running on port ${SERVER_PORT}`);
-  return { server, payload };
+  return { server, pkg };
 }
 
 let webUrl = DEV_WEB_URL;
@@ -77,9 +77,9 @@ app.whenReady().then(async () => {
       await startDevServer();
       webUrl = DEV_WEB_URL;
     } else {
-      // Preview/Prod: embedded server, payload-based web
-      const { payload } = await startPayloadServer();
-      registerAppProtocol(payload.webRoot);
+      // Preview/Prod: embedded server, package-based web
+      const { pkg } = await startPackageServer();
+      registerAppProtocol(pkg.webRoot);
       webUrl = "app://./";
     }
 

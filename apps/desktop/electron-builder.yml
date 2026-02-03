@@ -14,10 +14,10 @@ asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**
 
-# Payload bundled as separate resource (not in ASAR)
+# Package bundled as separate resource (not in ASAR)
 extraResources:
-  - from: dist/payload
-    to: payload
+  - from: dist/package
+    to: package
     filter:
       - "**/*"
 

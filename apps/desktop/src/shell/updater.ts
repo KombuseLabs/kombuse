@@ -1,7 +1,7 @@
 /**
- * Payload updater for managing installed payloads.
+ * Package updater for managing installed packages.
  *
- * Payloads are stored in ~/.kombuse/payloads/ with a symlink to the current version.
+ * Packages are stored in ~/.kombuse/packages/ with a symlink to the current version.
  */
 
 import {
@@ -15,50 +15,50 @@ import {
   readlinkSync,
 } from "node:fs";
 import { join } from "node:path";
-import type { PayloadManifest } from "./payload-loader";
-import { getPayloadManifest } from "./payload-loader";
+import type { PackageManifest } from "./package-loader";
+import { getPackageManifest } from "./package-loader";
 import {
   getKombuseDir,
-  getPayloadsDir,
-  getCurrentPayloadPath,
-  getPayloadVersionPath,
+  getPackagesDir,
+  getCurrentPackagePath,
+  getPackageVersionPath,
 } from "../paths";
 
 // Re-export for convenience
-export { getKombuseDir, getPayloadsDir };
+export { getKombuseDir, getPackagesDir };
 
 /**
  * Get the path to the "current" symlink.
  */
 export function getCurrentSymlinkPath(): string {
-  return getCurrentPayloadPath();
+  return getCurrentPackagePath();
 }
 
 /**
- * Ensure the payloads directory exists.
+ * Ensure the packages directory exists.
  */
-export function ensurePayloadsDir(): void {
-  const dir = getPayloadsDir();
+export function ensurePackagesDir(): void {
+  const dir = getPackagesDir();
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
 }
 
 /**
- * Install a payload from a source directory.
+ * Install a package from a source directory.
  *
- * @param sourcePath - Path to the payload directory to install
+ * @param sourcePath - Path to the package directory to install
  * @returns The installed version string
  */
-export function installPayload(sourcePath: string): string {
+export function installPackage(sourcePath: string): string {
   // Read manifest to get version
-  const manifest = getPayloadManifest(sourcePath);
+  const manifest = getPackageManifest(sourcePath);
   const version = manifest.version;
 
-  ensurePayloadsDir();
+  ensurePackagesDir();
 
   // Copy to versioned directory
-  const destPath = getPayloadVersionPath(version);
+  const destPath = getPackageVersionPath(version);
 
   if (existsSync(destPath)) {
     // Remove existing version
@@ -80,10 +80,10 @@ export function installPayload(sourcePath: string): string {
  */
 export function updateCurrentSymlink(version: string): void {
   const symlinkPath = getCurrentSymlinkPath();
-  const targetPath = getPayloadVersionPath(version);
+  const targetPath = getPackageVersionPath(version);
 
   if (!existsSync(targetPath)) {
-    throw new Error(`Payload version not found: v${version}`);
+    throw new Error(`Package version not found: v${version}`);
   }
 
   // Remove existing symlink if it exists
@@ -93,21 +93,21 @@ export function updateCurrentSymlink(version: string): void {
 
   // Create new symlink
   symlinkSync(targetPath, symlinkPath);
-  console.log(`Current payload set to v${version}`);
+  console.log(`Current package set to v${version}`);
 }
 
 /**
- * List all installed payload versions.
+ * List all installed package versions.
  */
-export function listPayloads(): Array<{
+export function listPackages(): Array<{
   version: string;
   path: string;
   isCurrent: boolean;
-  manifest: PayloadManifest;
+  manifest: PackageManifest;
 }> {
-  const payloadsDir = getPayloadsDir();
+  const packagesDir = getPackagesDir();
 
-  if (!existsSync(payloadsDir)) {
+  if (!existsSync(packagesDir)) {
     return [];
   }
 
@@ -127,22 +127,22 @@ export function listPayloads(): Array<{
   }
 
   // List version directories
-  const entries = readdirSync(payloadsDir, { withFileTypes: true });
-  const payloads: Array<{
+  const entries = readdirSync(packagesDir, { withFileTypes: true });
+  const packages: Array<{
     version: string;
     path: string;
     isCurrent: boolean;
-    manifest: PayloadManifest;
+    manifest: PackageManifest;
   }> = [];
 
   for (const entry of entries) {
     if (entry.isDirectory() && entry.name.startsWith("v")) {
       const version = entry.name.slice(1); // Remove 'v' prefix
-      const path = join(payloadsDir, entry.name);
+      const path = join(packagesDir, entry.name);
 
       try {
-        const manifest = getPayloadManifest(path);
-        payloads.push({
+        const manifest = getPackageManifest(path);
+        packages.push({
           version,
           path,
           isCurrent: version === currentVersion,
@@ -155,19 +155,19 @@ export function listPayloads(): Array<{
   }
 
   // Sort by version (descending)
-  payloads.sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
+  packages.sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
 
-  return payloads;
+  return packages;
 }
 
 /**
- * Rollback to a previous payload version.
+ * Rollback to a previous package version.
  */
-export function rollbackPayload(version: string): void {
-  const targetPath = getPayloadVersionPath(version);
+export function rollbackPackage(version: string): void {
+  const targetPath = getPackageVersionPath(version);
 
   if (!existsSync(targetPath)) {
-    throw new Error(`Payload version not found: v${version}`);
+    throw new Error(`Package version not found: v${version}`);
   }
 
   updateCurrentSymlink(version);
@@ -175,9 +175,9 @@ export function rollbackPayload(version: string): void {
 }
 
 /**
- * Check if any payload is installed.
+ * Check if any package is installed.
  */
-export function hasInstalledPayload(): boolean {
+export function hasInstalledPackage(): boolean {
   const symlinkPath = getCurrentSymlinkPath();
   return existsSync(symlinkPath);
 }

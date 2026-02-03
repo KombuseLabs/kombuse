@@ -1,9 +1,9 @@
 /**
- * Package the built payload into distributable archives.
+ * Package the built package into distributable archives.
  *
  * Creates:
- * - release/kombuse-payload-{version}.tar.gz
- * - release/kombuse-payload-{version}.tar.gz.sha256
+ * - release/kombuse-package-{version}.tar.gz
+ * - release/kombuse-package-{version}.tar.gz.sha256
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -14,10 +14,10 @@ import { createHash } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const PAYLOAD_DIR = join(ROOT, "dist/payload");
+const PACKAGE_DIR = join(ROOT, "dist/package");
 const RELEASE_DIR = join(ROOT, "release");
 
-interface PayloadManifest {
+interface PackageManifest {
   version: string;
   minShellVersion: string;
   buildTime: string;
@@ -27,23 +27,23 @@ interface PayloadManifest {
   };
 }
 
-function readManifest(): PayloadManifest {
-  const manifestPath = join(PAYLOAD_DIR, "manifest.json");
+function readManifest(): PackageManifest {
+  const manifestPath = join(PACKAGE_DIR, "manifest.json");
   if (!existsSync(manifestPath)) {
     throw new Error(
-      `Manifest not found at ${manifestPath}. Run 'bun run build:payload' first.`
+      `Manifest not found at ${manifestPath}. Run 'bun run build:package' first.`
     );
   }
   return JSON.parse(readFileSync(manifestPath, "utf-8"));
 }
 
 function createTarGz(version: string): string {
-  const archiveName = `kombuse-payload-${version}.tar.gz`;
+  const archiveName = `kombuse-package-${version}.tar.gz`;
   const archivePath = join(RELEASE_DIR, archiveName);
 
   // Use tar to create the archive
-  // -C changes to dist directory, then archives payload/
-  execSync(`tar -czvf "${archivePath}" -C "${join(ROOT, "dist")}" payload`, {
+  // -C changes to dist directory, then archives package/
+  execSync(`tar -czvf "${archivePath}" -C "${join(ROOT, "dist")}" package`, {
     stdio: "inherit",
   });
 
@@ -62,8 +62,8 @@ function createChecksum(filePath: string): void {
   console.log(`Checksum: ${hash}`);
 }
 
-function packagePayload() {
-  console.log("Packaging payload...\n");
+function bundlePackage() {
+  console.log("Bundling package for release...\n");
 
   // Read manifest for version
   const manifest = readManifest();
@@ -84,15 +84,15 @@ function packagePayload() {
   createChecksum(archivePath);
   console.log(`Created: ${archivePath}.sha256\n`);
 
-  console.log("Payload packaged successfully!");
+  console.log("Package bundled successfully!");
   console.log(`\nRelease artifacts:`);
-  console.log(`  - kombuse-payload-${manifest.version}.tar.gz`);
-  console.log(`  - kombuse-payload-${manifest.version}.tar.gz.sha256`);
+  console.log(`  - kombuse-package-${manifest.version}.tar.gz`);
+  console.log(`  - kombuse-package-${manifest.version}.tar.gz.sha256`);
 }
 
 try {
-  packagePayload();
+  bundlePackage();
 } catch (err) {
-  console.error("Packaging failed:", err);
+  console.error("Bundling failed:", err);
   process.exit(1);
 }

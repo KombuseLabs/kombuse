@@ -1,9 +1,9 @@
 /**
- * Build script for creating the payload bundle.
+ * Build script for creating the package bundle.
  *
  * This script:
- * 1. Bundles payload-entry.ts with esbuild
- * 2. Copies the web dist to the payload directory
+ * 1. Bundles package-entry.ts with esbuild
+ * 2. Copies the web dist to the package directory
  * 3. Generates a manifest.json with version and build info
  */
 
@@ -14,11 +14,11 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const DIST = join(ROOT, "dist/payload");
+const DIST = join(ROOT, "dist/package");
 const WEB_SRC = join(ROOT, "../web/dist");
 
-async function buildPayload() {
-  console.log("Building payload...");
+async function buildPackage() {
+  console.log("Building package...");
 
   // Clean previous build
   rmSync(DIST, { recursive: true, force: true });
@@ -28,7 +28,7 @@ async function buildPayload() {
   // 1. Bundle server entry point
   console.log("Bundling server...");
   await build({
-    entryPoints: [join(ROOT, "src/payload-entry.ts")],
+    entryPoints: [join(ROOT, "src/package-entry.ts")],
     bundle: true,
     platform: "node",
     format: "esm",
@@ -61,12 +61,12 @@ async function buildPayload() {
 
   writeFileSync(join(DIST, "manifest.json"), JSON.stringify(manifest, null, 2));
 
-  console.log("Payload built successfully!");
+  console.log("Package built successfully!");
   console.log(`  Version: ${manifest.version}`);
   console.log(`  Output: ${DIST}`);
 }
 
-buildPayload().catch((err) => {
+buildPackage().catch((err) => {
   console.error("Build failed:", err);
   process.exit(1);
 });
