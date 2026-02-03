@@ -3,9 +3,17 @@ import cors from "@fastify/cors";
 import {
   setDatabase,
   initializeDatabase,
+  seedDatabase,
   type DatabaseType,
 } from "@kombuse/persistence";
-import { ticketRoutes } from "./routes";
+import {
+  ticketRoutes,
+  profileRoutes,
+  projectRoutes,
+  labelRoutes,
+  commentRoutes,
+  eventRoutes,
+} from "./routes";
 
 export interface ServerOptions {
   port: number;
@@ -26,10 +34,16 @@ export async function createServer({ port, db }: ServerOptions) {
   // Enable CORS for web app
   await fastify.register(cors, {
     origin: ["http://localhost:3333"],
+    methods: ["GET", "POST", "PATCH", "DELETE"],
   });
 
   // API routes
   fastify.register(ticketRoutes, { prefix: "/api" });
+  fastify.register(profileRoutes, { prefix: "/api" });
+  fastify.register(projectRoutes, { prefix: "/api" });
+  fastify.register(labelRoutes, { prefix: "/api" });
+  fastify.register(commentRoutes, { prefix: "/api" });
+  fastify.register(eventRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {
     return { hello: "world" };
@@ -53,6 +67,7 @@ const isDirectExecution =
 
 if (isDirectExecution) {
   const db = initializeDatabase();
+  seedDatabase(db);
   const server = await createServer({ port: 3332, db });
   try {
     await server.listen();

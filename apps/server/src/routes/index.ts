@@ -1,1 +1,6 @@
 export { ticketRoutes } from './tickets'
+export { profileRoutes } from './profiles'
+export { projectRoutes } from './projects'
+export { labelRoutes } from './labels'
+export { commentRoutes } from './comments'
+export { eventRoutes } from './events'
