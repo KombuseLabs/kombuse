@@ -27,6 +27,10 @@ const EXPECTED_TABLES = [
   'attachments',
   'events',
   'event_subscriptions',
+  'sessions',
+  'agents',
+  'agent_triggers',
+  'agent_invocations',
 ]
 const EXPECTED_TICKET_COLUMNS = [
   'id',
@@ -71,6 +75,7 @@ const EXPECTED_MIGRATIONS = [
   '013_create_event_subscriptions',
   '014_add_ticket_claimed_by',
   '015_normalize_claim_expires_at',
+  '016_create_agents_tables',
 ]
 
 describe('database', () => {
