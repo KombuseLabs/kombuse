@@ -121,6 +121,12 @@ export async function loadPackage(serverBundlePath: string): Promise<{
     listen: () => Promise<void>;
     close: () => Promise<void>;
   }>;
+  setAutoUpdater: (updater: {
+    getStatus(): unknown;
+    checkForUpdates(): Promise<unknown>;
+    downloadAndInstall(): Promise<void>;
+    onStatusChange(listener: (status: unknown) => void): () => void;
+  }) => void;
 }> {
   // Dynamic import of the bundled server
   const module = await import(serverBundlePath);

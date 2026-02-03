@@ -110,6 +110,19 @@ class WebSocketHub {
   }
 
   /**
+   * Broadcast a message directly to all clients subscribed to a specific topic.
+   * Unlike `broadcast()`, this doesn't derive topics from event properties.
+   */
+  broadcastToTopic(topic: string, message: ServerMessage): void {
+    const subscribers = this.topicSubscribers.get(topic)
+    if (!subscribers) return
+
+    for (const ws of subscribers) {
+      this.send(ws, message)
+    }
+  }
+
+  /**
    * Derive topics from event properties
    */
   private getTopicsForEvent(event: WebSocketEvent): string[] {

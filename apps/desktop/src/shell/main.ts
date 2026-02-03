@@ -10,11 +10,21 @@
  * - prod: Embedded server, installed package with updater
  */
 
-import { app, BrowserWindow } from "electron";
+// Load .env before other imports
+import { config } from "dotenv";
+config();
+
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { app, BrowserWindow, ipcMain } from "electron";
+
+// ESM equivalent of __dirname
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import { initializeDatabase, seedDatabase } from "@kombuse/persistence";
-import { createServer as createServerDirect } from "server";
+import { createServer as createServerDirect, setAutoUpdater } from "server";
 import { registerAppProtocol } from "./protocol";
 import { getPackageInfo, loadPackage } from "./package-loader";
+import { autoUpdater } from "./auto-updater";
 import { is, getMode } from "../env";
 
 const SERVER_PORT = 3332;
@@ -26,6 +36,9 @@ const DEV_WEB_URL = "http://localhost:3333";
 async function startDevServer() {
   const db = initializeDatabase();
   seedDatabase(db);
+
+  // Wire up auto-updater to server (available in dev for testing)
+  setAutoUpdater(autoUpdater);
 
   const server = await createServerDirect({ port: SERVER_PORT, db });
   await server.listen();
@@ -44,7 +57,11 @@ async function startPackageServer() {
   const pkg = getPackageInfo();
   console.log(`Loading package v${pkg.manifest.version} from ${pkg.path}`);
 
-  const { createServer } = await loadPackage(pkg.serverBundle);
+  const { createServer, setAutoUpdater: setPackageAutoUpdater } = await loadPackage(pkg.serverBundle);
+
+  // Wire up auto-updater to server
+  setPackageAutoUpdater(autoUpdater);
+
   const server = await createServer({ port: SERVER_PORT, db });
   await server.listen();
 
@@ -61,11 +78,21 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: join(__dirname, "preload.cjs"),
     },
   });
 
   mainWindow.loadURL(webUrl);
 }
+
+// IPC handler for app restart (used by auto-updater UI)
+ipcMain.handle("app:restart", () => {
+  console.log("[Main] Restart requested, relaunching app...");
+  // In production (packaged app), relaunch works correctly.
+  // In development, the app will quit and needs manual restart.
+  app.relaunch();
+  app.quit();
+});
 
 app.whenReady().then(async () => {
   const mode = getMode();
@@ -90,6 +117,16 @@ app.whenReady().then(async () => {
         createWindow();
       }
     });
+
+    // Auto-check for updates after startup (prod mode only)
+    if (is.prod()) {
+      setTimeout(() => {
+        console.log("Checking for updates...");
+        autoUpdater.checkForUpdates().catch((err) => {
+          console.error("Update check failed:", err);
+        });
+      }, 5000);
+    }
   } catch (error) {
     console.error("Failed to start application:", error);
     app.quit();

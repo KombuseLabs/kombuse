@@ -18,8 +18,12 @@ import {
   labelRoutes,
   commentRoutes,
   eventRoutes,
+  updateRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
+
+// Re-export for desktop shell integration
+export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
 
 export interface ServerOptions {
   port: number;
@@ -58,6 +62,7 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(labelRoutes, { prefix: "/api" });
   fastify.register(commentRoutes, { prefix: "/api" });
   fastify.register(eventRoutes, { prefix: "/api" });
+  fastify.register(updateRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {
     return { hello: "world" };

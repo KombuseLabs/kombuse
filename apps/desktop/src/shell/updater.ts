@@ -87,8 +87,13 @@ export function updateCurrentSymlink(version: string): void {
   }
 
   // Remove existing symlink if it exists
-  if (existsSync(symlinkPath) || lstatSync(symlinkPath).isSymbolicLink()) {
-    unlinkSync(symlinkPath);
+  try {
+    const stat = lstatSync(symlinkPath);
+    if (stat.isSymbolicLink() || stat.isFile() || stat.isDirectory()) {
+      unlinkSync(symlinkPath);
+    }
+  } catch {
+    // Symlink doesn't exist, which is fine
   }
 
   // Create new symlink

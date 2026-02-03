@@ -1,13 +1,13 @@
 {
   "name": "desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "main": "dist/shell/main.mjs",
   "scripts": {
     "dev": "bun run build:shell && KOMBUSE_MODE=dev ELECTRON_RUN_AS_NODE= electron .",
-    "preview": "bun run build:shell && bun run build:payload && KOMBUSE_MODE=preview ELECTRON_RUN_AS_NODE= electron .",
+    "preview": "bun run build:shell && bun run build:package && KOMBUSE_MODE=preview ELECTRON_RUN_AS_NODE= electron .",
     "build": "bun run build:shell",
-    "build:shell": "esbuild src/shell/main.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=dist/shell/main.mjs",
+    "build:shell": "esbuild src/shell/main.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=dist/shell/main.mjs && esbuild src/shell/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/shell/preload.cjs",
     "build:web": "bun run --filter web build",
     "build:package": "bun run build:web && bun run build/build-package.ts",
     "install-package": "bun run scripts/install-package.ts",
@@ -23,8 +23,11 @@
   },
   "dependencies": {
     "@kombuse/persistence": "*",
+    "@kombuse/types": "*",
     "better-sqlite3": "^11.9.1",
-    "server": "*"
+    "dotenv": "^17.2.3",
+    "server": "*",
+    "tar": "^7.4.3"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.7.1",

@@ -1,4 +1,5 @@
 import type { ActorType } from './events'
+import type { UpdateStatus } from './updates'
 
 /**
  * WebSocket event payload sent to clients
@@ -32,6 +33,7 @@ export type ServerMessage =
   | { type: 'unsubscribed'; topics: string[] }
   | { type: 'pong' }
   | { type: 'error'; message: string }
+  | { type: 'update:status'; status: UpdateStatus }
 
 /**
  * Topic format examples:

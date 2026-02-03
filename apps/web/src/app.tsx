@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider } from "@kombuse/ui/providers";
-import { Header } from "@kombuse/ui/components";
+import { Header, UpdateNotification } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { CommandSetup } from "./command-setup";
 import { Home } from "./routes/home";
@@ -41,6 +41,7 @@ export function App() {
         </CommandSetup>
         </AppProvider>
         <Toaster />
+        <UpdateNotification />
       </ThemeProvider>
     </QueryClientProvider>
   );
