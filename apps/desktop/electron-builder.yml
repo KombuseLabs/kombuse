@@ -23,14 +23,14 @@ extraResources:
 
 mac:
   category: public.app-category.productivity
-  target:
-    - target: dmg
-      arch:
-        - x64
-        - arm64
+  target: dmg
+  artifactName: "${productName}-${version}-${arch}.${ext}"
   # Code signing disabled for now - add later:
   # identity: "Developer ID Application: Your Name (TEAM_ID)"
   # notarize: true
+
+# Create symlink for native modules in package directory
+afterPack: ./build/afterPack.cjs
 
 # GitHub Releases via action, not electron-builder publish
 publish: null

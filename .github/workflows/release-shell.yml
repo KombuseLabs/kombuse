@@ -39,7 +39,7 @@ jobs:
         run: bun run --filter desktop build:shell
 
       - name: Rebuild native modules for Electron
-        run: npx @electron/rebuild -f -w better-sqlite3
+        run: npx @electron/rebuild -f -w better-sqlite3 --arch ${{ matrix.arch }}
         working-directory: apps/desktop
 
       - name: Build Electron app

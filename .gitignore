@@ -25,7 +25,6 @@ test-results.json
 # Build Outputs
 .next/
 out/
-build
 dist
 release
 
