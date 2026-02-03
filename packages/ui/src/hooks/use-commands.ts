@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore, useMemo } from 'react'
 import type { Command } from '@kombuse/types'
-import { useCommandContext } from './command-provider'
+import { useCommandContext } from './use-command-context'
 
 // Stable empty array for SSR
 const EMPTY_COMMANDS: Command[] = []

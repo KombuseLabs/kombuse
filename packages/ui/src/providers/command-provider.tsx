@@ -1,20 +1,9 @@
 'use client'
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  type ReactNode,
-} from 'react'
+import { useEffect, type ReactNode } from 'react'
 import type { CommandRegistry, CommandContext } from '@kombuse/types'
 import { normalizeKeybinding, eventToKeybinding } from '@kombuse/core'
-
-interface CommandContextValue {
-  registry: CommandRegistry
-  context: CommandContext
-}
-
-const CommandCtx = createContext<CommandContextValue | null>(null)
+import { CommandCtx } from './command-context'
 
 interface CommandProviderProps {
   registry: CommandRegistry
@@ -65,16 +54,4 @@ export function CommandProvider({
       {children}
     </CommandCtx.Provider>
   )
-}
-
-/**
- * Hook to access the command registry and context.
- * Must be used within a CommandProvider.
- */
-export function useCommandContext() {
-  const ctx = useContext(CommandCtx)
-  if (!ctx) {
-    throw new Error('useCommandContext must be used within CommandProvider')
-  }
-  return ctx
 }

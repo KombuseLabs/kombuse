@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { useCommandContext } from './command-provider'
+import { useCommandContext } from './use-command-context'
 
 /**
  * Hook to work with a specific command by ID.

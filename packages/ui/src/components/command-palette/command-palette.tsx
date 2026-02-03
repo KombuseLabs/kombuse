@@ -10,7 +10,7 @@ import {
   CommandEmpty,
   CommandShortcut,
 } from '../../base/command'
-import { useCommands, useCommandContext } from '../commands'
+import { useCommands, useCommandContext } from '../../hooks'
 import { formatKeybinding } from '@kombuse/core'
 
 interface CommandPaletteProps {

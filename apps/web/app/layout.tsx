@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { ThemeProvider } from "@kombuse/ui/theme-provider";
+import { ThemeProvider } from "@kombuse/ui/providers";
 import { CommandSetup } from "./command-setup";
 import "./globals.css";
 

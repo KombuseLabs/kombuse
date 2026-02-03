@@ -3,7 +3,7 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { useCommand } from "./commands";
+import { useCommand } from "../hooks";
 
 function ModeToggle() {
   const { resolvedTheme } = useTheme();

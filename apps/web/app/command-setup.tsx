@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTheme } from 'next-themes'
 import { createCommandRegistry } from '@kombuse/core'
-import { CommandProvider } from '@kombuse/ui/commands'
-import { CommandPalette } from '@kombuse/ui/command-palette'
+import { CommandProvider } from '@kombuse/ui/providers'
+import { CommandPalette } from '@kombuse/ui/components'
 import type { CommandContext } from '@kombuse/types'
 
 interface CommandSetupProps {

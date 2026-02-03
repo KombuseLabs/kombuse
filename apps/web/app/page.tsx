@@ -1,4 +1,4 @@
-import { Header } from "@kombuse/ui/header";
+import { Header } from "@kombuse/ui/components";
 
 export default function Home() {
   return (
