@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createCommandRegistry } from "@kombuse/core";
 import { CommandProvider } from "@kombuse/ui/providers";
 import { CommandPalette } from "@kombuse/ui/components";
+import { useAppContext } from "@kombuse/ui/hooks";
 import { ticketsApi } from "@kombuse/ui/lib/api";
 import type { CommandContext } from "@kombuse/types";
 
@@ -15,6 +16,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { setTheme, resolvedTheme } = useTheme();
   const queryClient = useQueryClient();
+  const { currentTicket, currentSession, isGenerating, view } = useAppContext();
 
   const registry = useMemo(() => createCommandRegistry(), []);
 
@@ -73,9 +75,17 @@ export function CommandSetup({ children }: CommandSetupProps) {
     return () => unregisterFns.forEach((fn) => fn());
   }, [registry, setTheme, resolvedTheme, queryClient]);
 
-  const context: CommandContext = {
-    view: "home",
-  };
+  const context: CommandContext = useMemo(
+    () => ({
+      currentTicket: currentTicket
+        ? { id: currentTicket.id, status: currentTicket.status }
+        : null,
+      currentSession,
+      isGenerating,
+      view,
+    }),
+    [currentTicket, currentSession, isGenerating, view]
+  );
 
   return (
     <CommandProvider registry={registry} context={context}>

@@ -1,28 +1,15 @@
-import type { Ticket, Label } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
 import { X, Trash2 } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
+import { useTicketOperations, useLabelOperations } from '../../hooks'
 
 interface TicketDetailProps {
-  ticket: Ticket
-  labels?: Label[]
-  projectLabels?: Label[]
   className?: string
   onClose?: () => void
-  onDelete?: (ticket: Ticket) => void
-  onLabelAdd?: (labelId: number) => void
-  onLabelRemove?: (labelId: number) => void
-  onLabelCreate?: (data: { name: string; color: string }) => void
-  onLabelUpdate?: (id: number, data: { name: string; color: string }) => void
-  onLabelDelete?: (id: number) => void
-  isDeleting?: boolean
   isEditable?: boolean
-  isCreatingLabel?: boolean
-  isUpdatingLabel?: boolean
-  isDeletingLabel?: boolean
 }
 
 const statusColors: Record<string, string> = {
@@ -41,24 +28,34 @@ const priorityLabels: Record<number, string> = {
   4: 'Highest',
 }
 
-function TicketDetail({
-  ticket,
-  labels,
-  projectLabels,
-  className,
-  onClose,
-  onDelete,
-  onLabelAdd,
-  onLabelRemove,
-  onLabelCreate,
-  onLabelUpdate,
-  onLabelDelete,
-  isDeleting,
-  isEditable,
-  isCreatingLabel,
-  isUpdatingLabel,
-  isDeletingLabel,
-}: TicketDetailProps) {
+function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
+  const { currentTicket, deleteCurrentTicket, isDeleting } =
+    useTicketOperations()
+
+  const {
+    ticketLabels,
+    projectLabels,
+    addLabel,
+    removeLabel,
+    createLabel,
+    updateLabel,
+    deleteLabel,
+    isCreating: isCreatingLabel,
+    isUpdating: isUpdatingLabel,
+    isDeleting: isDeletingLabel,
+  } = useLabelOperations()
+
+  if (!currentTicket) {
+    return null
+  }
+
+  const ticket = currentTicket
+
+  const handleDelete = async () => {
+    await deleteCurrentTicket()
+    onClose?.()
+  }
+
   return (
     <Card className={className}>
       <CardHeader className="pb-4">
@@ -76,17 +73,15 @@ function TicketDetail({
               </span>
             </div>
             <CardTitle className="text-xl">{ticket.title}</CardTitle>
-            {labels && labels.length > 0 && (
+            {ticketLabels.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
-                {labels.map((label) => (
+                {ticketLabels.map((label) => (
                   <LabelBadge
                     key={label.id}
                     label={label}
                     size="sm"
                     onRemove={
-                      isEditable && onLabelRemove
-                        ? () => onLabelRemove(label.id)
-                        : undefined
+                      isEditable ? () => removeLabel(label.id) : undefined
                     }
                   />
                 ))}
@@ -94,11 +89,11 @@ function TicketDetail({
             )}
           </div>
           <div className="flex items-center gap-1">
-            {onDelete && (
+            {isEditable && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onDelete(ticket)}
+                onClick={handleDelete}
                 disabled={isDeleting}
                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >
@@ -164,17 +159,17 @@ function TicketDetail({
           </div>
         )}
 
-        {isEditable && projectLabels && onLabelAdd && onLabelRemove && (
+        {isEditable && projectLabels.length > 0 && (
           <div className="pt-4 border-t">
             <h4 className="text-sm font-medium mb-2">Labels</h4>
             <LabelSelector
               availableLabels={projectLabels}
-              selectedLabelIds={labels?.map((l) => l.id) ?? []}
-              onLabelAdd={onLabelAdd}
-              onLabelRemove={onLabelRemove}
-              onLabelCreate={onLabelCreate}
-              onLabelUpdate={onLabelUpdate}
-              onLabelDelete={onLabelDelete}
+              selectedLabelIds={ticketLabels.map((l) => l.id)}
+              onLabelAdd={(labelId) => addLabel(labelId)}
+              onLabelRemove={(labelId) => removeLabel(labelId)}
+              onLabelCreate={(data) => createLabel(data)}
+              onLabelUpdate={(id, data) => updateLabel(id, data)}
+              onLabelDelete={(id) => deleteLabel(id)}
               isCreating={isCreatingLabel}
               isUpdating={isUpdatingLabel}
               isDeleting={isDeletingLabel}

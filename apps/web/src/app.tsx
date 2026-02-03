@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
-import { ThemeProvider } from "@kombuse/ui/providers";
+import { AppProvider, ThemeProvider } from "@kombuse/ui/providers";
 import { Header } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { CommandSetup } from "./command-setup";
@@ -26,7 +26,8 @@ export function App() {
         enableSystem
         disableTransitionOnChange
       >
-        <CommandSetup>
+        <AppProvider>
+          <CommandSetup>
           <div className="min-h-screen">
             <Header />
             <Routes>
@@ -38,6 +39,7 @@ export function App() {
             </Routes>
           </div>
         </CommandSetup>
+        </AppProvider>
         <Toaster />
       </ThemeProvider>
     </QueryClientProvider>

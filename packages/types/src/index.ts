@@ -1,5 +1,6 @@
 // Shared types between services and UI
 
+export * from './app-context'
 export * from './commands'
 export * from './profiles'
 export * from './projects'

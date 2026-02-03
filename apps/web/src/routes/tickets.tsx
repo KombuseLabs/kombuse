@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button, Textarea } from "@kombuse/ui/base";
 import { TicketList, TicketDetail, ChatInput, Markdown } from "@kombuse/ui/components";
@@ -6,18 +6,8 @@ import {
   useTickets,
   useTicket,
   useCreateTicket,
-  useDeleteTicket,
-  useComments,
-  useCreateComment,
-  useUpdateComment,
-  useDeleteComment,
-  useProjectLabels,
-  useTicketLabels,
-  useAddLabelToTicket,
-  useRemoveLabelFromTicket,
-  useCreateLabel,
-  useUpdateLabel,
-  useDeleteLabel,
+  useAppContext,
+  useCommentOperations,
 } from "@kombuse/ui/hooks";
 import { Plus, ArrowLeft, Pencil, Trash2, Check, X } from "lucide-react";
 import type { Ticket } from "@kombuse/types";
@@ -28,6 +18,9 @@ export function Tickets() {
     ticketId?: string;
   }>();
   const navigate = useNavigate();
+
+  // Sync route params to app context
+  const { setCurrentTicket, setCurrentProjectId, setView } = useAppContext();
 
   const {
     data: tickets,
@@ -41,29 +34,34 @@ export function Tickets() {
   } = useTicket(ticketId ? Number(ticketId) : 0);
 
   const createTicket = useCreateTicket();
-  const deleteTicket = useDeleteTicket();
 
-  const { data: comments } = useComments(ticketId ? Number(ticketId) : 0);
-  const createComment = useCreateComment(ticketId ? Number(ticketId) : 0);
-  const updateComment = useUpdateComment(ticketId ? Number(ticketId) : 0);
-  const deleteComment = useDeleteComment(ticketId ? Number(ticketId) : 0);
-
-  const { data: projectLabels } = useProjectLabels(projectId ?? "");
-  const { data: ticketLabels } = useTicketLabels(ticketId ? Number(ticketId) : 0);
-  const addLabel = useAddLabelToTicket(ticketId ? Number(ticketId) : 0);
-  const removeLabel = useRemoveLabelFromTicket(ticketId ? Number(ticketId) : 0);
-  const createLabel = useCreateLabel(projectId ?? "");
-  const updateLabel = useUpdateLabel(projectId ?? "");
-  const deleteLabelMutation = useDeleteLabel(projectId ?? "");
+  // Comment operations from context-aware hook
+  const {
+    comments,
+    createComment,
+    updateComment,
+    deleteComment,
+    isCreating: isCreatingComment,
+    isUpdating: isUpdatingComment,
+    isDeleting: isDeletingComment,
+  } = useCommentOperations();
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editBody, setEditBody] = useState("");
 
+  // Sync project ID to context
+  useEffect(() => {
+    setCurrentProjectId(projectId ?? null);
+    setView("tickets");
+  }, [projectId, setCurrentProjectId, setView]);
+
+  // Sync selected ticket to context
+  useEffect(() => {
+    setCurrentTicket(selectedTicket ?? null);
+  }, [selectedTicket, setCurrentTicket]);
+
   const handleAddComment = async (body: string) => {
-    await createComment.mutateAsync({
-      author_id: "user-1", // TODO: Get from auth context
-      body,
-    });
+    await createComment(body, "user-1"); // TODO: Get from auth context
   };
 
   const handleCreateTicket = () => {
@@ -82,14 +80,6 @@ export function Tickets() {
 
   const handleCloseDetail = () => {
     navigate(`/projects/${projectId}/tickets`);
-  };
-
-  const handleDeleteTicket = (ticket: Ticket) => {
-    deleteTicket.mutate(ticket.id, {
-      onSuccess: () => {
-        navigate(`/projects/${projectId}/tickets`);
-      },
-    });
   };
 
   if (!projectId) {
@@ -165,30 +155,17 @@ export function Tickets() {
                 {/* Scrollable area: ticket detail + comments */}
                 <div className="flex-1 overflow-y-auto p-6">
                   <TicketDetail
-                    ticket={selectedTicket}
-                    labels={ticketLabels}
-                    projectLabels={projectLabels}
                     onClose={handleCloseDetail}
-                    onDelete={handleDeleteTicket}
-                    onLabelAdd={(labelId) => addLabel.mutate({ labelId })}
-                    onLabelRemove={(labelId) => removeLabel.mutate(labelId)}
-                    onLabelCreate={(data) => createLabel.mutate(data)}
-                    onLabelUpdate={(id, data) => updateLabel.mutate({ id, input: data })}
-                    onLabelDelete={(id) => deleteLabelMutation.mutate(id)}
-                    isDeleting={deleteTicket.isPending}
-                    isCreatingLabel={createLabel.isPending}
-                    isUpdatingLabel={updateLabel.isPending}
-                    isDeletingLabel={deleteLabelMutation.isPending}
                     isEditable
                   />
 
                   {/* Comments List */}
                   <div className="mt-6">
                     <h3 className="text-sm font-medium mb-4">
-                      Comments {comments && comments.length > 0 && `(${comments.length})`}
+                      Comments {comments.length > 0 && `(${comments.length})`}
                     </h3>
 
-                    {comments && comments.length > 0 ? (
+                    {comments.length > 0 ? (
                       <div className="space-y-3">
                         {comments.map((comment) => (
                           <div
@@ -216,14 +193,11 @@ export function Tickets() {
                                     size="icon"
                                     className="size-6 text-muted-foreground hover:text-primary"
                                     onClick={async () => {
-                                      await updateComment.mutateAsync({
-                                        id: comment.id,
-                                        input: { body: editBody },
-                                      });
+                                      await updateComment(comment.id, editBody);
                                       setEditingCommentId(null);
                                       setEditBody("");
                                     }}
-                                    disabled={updateComment.isPending || !editBody.trim()}
+                                    disabled={isUpdatingComment || !editBody.trim()}
                                   >
                                     <Check className="size-3" />
                                   </Button>
@@ -256,8 +230,8 @@ export function Tickets() {
                                     variant="ghost"
                                     size="icon"
                                     className="size-6 text-muted-foreground hover:text-destructive"
-                                    onClick={() => deleteComment.mutate(comment.id)}
-                                    disabled={deleteComment.isPending}
+                                    onClick={() => deleteComment(comment.id)}
+                                    disabled={isDeletingComment}
                                   >
                                     <Trash2 className="size-3" />
                                   </Button>
@@ -289,7 +263,7 @@ export function Tickets() {
                 <div className="border-t p-4">
                   <ChatInput
                     onSubmit={handleAddComment}
-                    isLoading={createComment.isPending}
+                    isLoading={isCreatingComment}
                     placeholder="Add a comment..."
                   />
                 </div>
