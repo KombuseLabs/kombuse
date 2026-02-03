@@ -26,8 +26,8 @@
     "./lib/utils": "./src/lib/utils.ts",
     "./globals.css": "./src/globals.css",
     "./tailwind.config": "./tailwind.config.ts",
-    "./commands": "./src/commands/index.ts",
-    "./command-palette": "./src/command-palette/index.ts"
+    "./commands": "./src/components/commands/index.ts",
+    "./command-palette": "./src/components/command-palette/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

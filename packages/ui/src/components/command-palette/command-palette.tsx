@@ -9,7 +9,7 @@ import {
   CommandGroup,
   CommandEmpty,
   CommandShortcut,
-} from '../base/command'
+} from '../../base/command'
 import { useCommands, useCommandContext } from '../commands'
 import { formatKeybinding } from '@kombuse/core'
 

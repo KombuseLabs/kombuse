@@ -3,9 +3,11 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useCommand } from "./commands";
 
 function ModeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const { execute } = useCommand("theme.toggle");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -14,7 +16,7 @@ function ModeToggle() {
 
   return (
     <button
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={() => execute()}
       className="p-2 hover:bg-accent rounded-md"
       aria-label="Toggle theme"
     >
