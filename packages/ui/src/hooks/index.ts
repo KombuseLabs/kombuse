@@ -50,3 +50,4 @@ export {
   useDeleteTrigger,
   useToggleTrigger,
 } from './use-triggers'
+export { useEvents } from './use-events'

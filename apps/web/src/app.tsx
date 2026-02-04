@@ -9,6 +9,7 @@ import { Chats } from "./routes/chats";
 import { Projects } from "./routes/projects";
 import { Tickets } from "./routes/tickets";
 import { Agents } from "./routes/agents";
+import { Events } from "./routes/events";
 import { ProjectAgents } from "./routes/project-agents";
 import { ProjectLayout } from "./layouts/project-layout";
 
@@ -45,6 +46,7 @@ export function App() {
                     <Route path="tickets/:ticketId" element={<Tickets />} />
                     <Route path="agents" element={<ProjectAgents />} />
                     <Route path="agents/:agentId" element={<ProjectAgents />} />
+                    <Route path="events" element={<Events />} />
                   </Route>
 
                   {/* Global agents (outside project context) */}

@@ -1,5 +1,6 @@
 export * from './agents'
 export * from './chat-input'
+export * from './events'
 export * from './sidebar'
 export * from './command-palette'
 export * from './header'

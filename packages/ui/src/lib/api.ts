@@ -21,6 +21,8 @@ import type {
   ProfileFilters,
   CreateProfileInput,
   UpdateProfileInput,
+  Event,
+  EventFilters,
 } from '@kombuse/types'
 
 const API_BASE = 'http://localhost:3331/api'
@@ -323,5 +325,23 @@ export const triggersApi = {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
+  },
+}
+
+export const eventsApi = {
+  async list(filters?: EventFilters): Promise<Event[]> {
+    const params = new URLSearchParams()
+    if (filters?.event_type) params.set('event_type', filters.event_type)
+    if (filters?.project_id) params.set('project_id', filters.project_id)
+    if (filters?.ticket_id) params.set('ticket_id', String(filters.ticket_id))
+    if (filters?.actor_id) params.set('actor_id', filters.actor_id)
+    if (filters?.actor_type) params.set('actor_type', filters.actor_type)
+    if (filters?.since) params.set('since', filters.since)
+    if (filters?.limit) params.set('limit', String(filters.limit))
+    if (filters?.offset) params.set('offset', String(filters.offset))
+
+    const url = `${API_BASE}/events${params.toString() ? `?${params}` : ''}`
+    const response = await fetch(url)
+    return handleResponse<Event[]>(response)
   },
 }
