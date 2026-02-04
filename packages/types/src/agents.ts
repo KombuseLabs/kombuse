@@ -181,10 +181,18 @@ export interface AgentInvocation {
   event_id: number | null
   session_id: string | null
   status: InvocationStatus
+  /** Number of execution attempts */
+  attempts: number
+  /** Max retry attempts allowed for this invocation */
+  max_attempts: number
+  /** Earliest time this invocation is eligible to run */
+  run_at: string
   /** JSON: invocation context (ticket_id, project_id, etc.) */
   context: Record<string, unknown>
   /** JSON: outcome/error info */
   result: Record<string, unknown> | null
+  /** Last error message (if failed) */
+  error: string | null
   started_at: string | null
   completed_at: string | null
   created_at: string
@@ -198,6 +206,8 @@ export interface CreateAgentInvocationInput {
   trigger_id: number
   event_id?: number
   session_id?: string
+  max_attempts?: number
+  run_at?: string
   context: Record<string, unknown>
 }
 
@@ -207,7 +217,11 @@ export interface CreateAgentInvocationInput {
 export interface UpdateAgentInvocationInput {
   status?: InvocationStatus
   session_id?: string
+  attempts?: number
+  max_attempts?: number
+  run_at?: string
   result?: Record<string, unknown>
+  error?: string | null
   started_at?: string
   completed_at?: string
 }

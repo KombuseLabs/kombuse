@@ -1,5 +1,12 @@
 import type { ActorType } from './events'
 import type { UpdateStatus } from './updates'
+import type { SerializedAgentEvent } from './agent'
+
+/**
+ * Agent events streamed over websocket.
+ * `complete` is represented by a dedicated `agent.complete` server message.
+ */
+export type AgentStreamEvent = Exclude<SerializedAgentEvent, { type: 'complete' }>
 
 /**
  * WebSocket event payload sent to clients
@@ -23,6 +30,7 @@ export type ClientMessage =
   | { type: 'subscribe'; topics: string[] }
   | { type: 'unsubscribe'; topics: string[] }
   | { type: 'ping' }
+  | { type: 'agent.invoke'; agentId: string; message: string; kombuseSessionId?: string }
 
 /**
  * Server-to-client message types
@@ -34,6 +42,13 @@ export type ServerMessage =
   | { type: 'pong' }
   | { type: 'error'; message: string }
   | { type: 'update:status'; status: UpdateStatus }
+  | { type: 'agent.started'; kombuseSessionId: string }
+  | { type: 'agent.event'; kombuseSessionId: string; event: AgentStreamEvent }
+  | {
+      type: 'agent.complete'
+      kombuseSessionId: string
+      backendSessionId?: string
+    }
 
 /**
  * Topic format examples:

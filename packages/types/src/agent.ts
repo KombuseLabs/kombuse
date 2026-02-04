@@ -1,0 +1,216 @@
+/**
+ * Shared backend contract for agent implementers.
+ * Keep this file backend-agnostic and runtime-independent.
+ */
+
+/**
+ * Configuration for starting an agent backend
+ */
+export interface StartOptions {
+  projectPath: string
+  systemPrompt?: string
+  permissions?: PermissionConfig
+  initialMessage?: string
+  /** Maximum number of agentic turns before stopping (default: 1) */
+  maxTurns?: number
+}
+
+/**
+ * Permission configuration for agent operations
+ */
+export interface PermissionConfig {
+  allowedTools?: string[]
+  deniedTools?: string[]
+  requireApproval?: boolean
+}
+
+/**
+ * Conversation context for tracking chat sessions
+ */
+export interface ConversationContext {
+  /** Our stable ID (generated upfront) */
+  kombuseSessionId: string
+  /** Backend-specific session ID (async, stored when available) */
+  backendSessionId?: string
+}
+
+/** Backend type identifiers */
+export const BACKEND_TYPES = {
+  CLAUDE_CODE: 'claude-code',
+  MOCK: 'mock',
+} as const
+
+export type BackendType = (typeof BACKEND_TYPES)[keyof typeof BACKEND_TYPES]
+
+/** Role of a text message emitted by an agent */
+export type AgentMessageRole = 'assistant' | 'user' | 'system'
+
+/** Common metadata for all agent events */
+export interface AgentEventBase {
+  type: string
+  backend: BackendType
+  timestamp: number
+}
+
+/** Human-readable message event */
+export interface AgentMessageEvent extends AgentEventBase {
+  type: 'message'
+  role: AgentMessageRole
+  content: string
+  raw?: unknown
+}
+
+/** Tool invocation request emitted by an agent */
+export interface AgentToolUseEvent extends AgentEventBase {
+  type: 'tool_use'
+  id: string
+  name: string
+  input: Record<string, unknown>
+  raw?: unknown
+}
+
+/** Tool execution result emitted by an agent */
+export interface AgentToolResultEvent extends AgentEventBase {
+  type: 'tool_result'
+  toolUseId: string
+  content: string | unknown[]
+  raw?: unknown
+}
+
+/** Permission request from an agent backend */
+export interface AgentPermissionRequestEvent extends AgentEventBase {
+  type: 'permission_request'
+  requestId: string
+  toolName: string
+  toolUseId: string
+  input: Record<string, unknown>
+  raw?: unknown
+}
+
+/** Opaque backend event forwarded for debugging/inspection */
+export interface AgentRawEvent extends AgentEventBase {
+  type: 'raw'
+  sourceType?: string
+  data: unknown
+}
+
+/** Error event from an agent backend */
+export interface AgentErrorEvent extends AgentEventBase {
+  type: 'error'
+  message: string
+  error?: Error
+  raw?: unknown
+}
+
+/** Completion event from an agent backend */
+export interface AgentCompleteEvent extends AgentEventBase {
+  type: 'complete'
+  reason: 'result' | 'process_exit' | 'mock_complete'
+  sessionId?: string
+  exitCode?: number | null
+  success?: boolean
+  raw?: unknown
+}
+
+/** Stable backend-agnostic event union */
+export type AgentEvent =
+  | AgentMessageEvent
+  | AgentToolUseEvent
+  | AgentToolResultEvent
+  | AgentPermissionRequestEvent
+  | AgentRawEvent
+  | AgentErrorEvent
+  | AgentCompleteEvent
+
+/**
+ * JSON-safe types used for websocket payload serialization
+ */
+export type JsonPrimitive = string | number | boolean | null
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
+export interface JsonObject {
+  [key: string]: JsonValue
+}
+
+export interface SerializedError {
+  name: string
+  message: string
+  stack?: string
+}
+
+export type SerializedAgentMessageEvent = Omit<AgentMessageEvent, 'raw'> & {
+  raw?: JsonValue
+}
+
+export type SerializedAgentToolUseEvent = Omit<AgentToolUseEvent, 'input' | 'raw'> & {
+  input: JsonObject
+  raw?: JsonValue
+}
+
+export type SerializedAgentToolResultEvent = Omit<AgentToolResultEvent, 'content' | 'raw'> & {
+  content: string | JsonValue[]
+  raw?: JsonValue
+}
+
+export type SerializedAgentPermissionRequestEvent = Omit<AgentPermissionRequestEvent, 'input' | 'raw'> & {
+  input: JsonObject
+  raw?: JsonValue
+}
+
+export type SerializedAgentRawEvent = Omit<AgentRawEvent, 'data'> & {
+  data: JsonValue
+}
+
+export type SerializedAgentErrorEvent = Omit<AgentErrorEvent, 'error' | 'raw'> & {
+  error?: SerializedError
+  raw?: JsonValue
+}
+
+export type SerializedAgentCompleteEvent = Omit<AgentCompleteEvent, 'raw'> & {
+  raw?: JsonValue
+}
+
+export type SerializedAgentEvent =
+  | SerializedAgentMessageEvent
+  | SerializedAgentToolUseEvent
+  | SerializedAgentToolResultEvent
+  | SerializedAgentPermissionRequestEvent
+  | SerializedAgentRawEvent
+  | SerializedAgentErrorEvent
+  | SerializedAgentCompleteEvent
+
+/**
+ * Agent backend interface - abstraction over Claude, Codex, or mock implementations
+ */
+export interface AgentBackend {
+  readonly name: BackendType
+
+  /**
+   * Start the agent with the given options
+   */
+  start(options: StartOptions): Promise<void>
+
+  /**
+   * Stop the agent
+   */
+  stop(): Promise<void>
+
+  /**
+   * Send a message to the agent
+   */
+  send(message: string): void
+
+  /**
+   * Subscribe to agent events. Returns an unsubscribe function.
+   */
+  subscribe(handler: (event: AgentEvent) => void): () => void
+
+  /**
+   * Check if the agent is currently running
+   */
+  isRunning(): boolean
+
+  /**
+   * Get the current session ID, if any
+   */
+  getSessionId(): string | undefined
+}
