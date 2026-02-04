@@ -18,6 +18,16 @@ export interface ClaudeCodeOptions {
 export type ClaudeInputEvent =
   | { type: 'user'; message: { role: 'user'; content: string } }
   | { type: 'tool_result'; tool_result: { id: string; output: string; is_error?: boolean } }
+  | {
+      type: 'control_response'
+      response: {
+        subtype: 'success'
+        request_id: string
+        response:
+          | { behavior: 'allow'; updatedInput: Record<string, unknown> }
+          | { behavior: 'deny'; message: string }
+      }
+    }
 
 /**
  * Agent backend that spawns Claude Code CLI as a subprocess.
@@ -114,6 +124,29 @@ export class ClaudeCodeBackend implements AgentBackend {
     this.sendRaw({
       type: 'user',
       message: { role: 'user', content },
+    })
+  }
+
+  /**
+   * Respond to a permission request
+   */
+  respondToPermission(
+    requestId: string,
+    behavior: 'allow' | 'deny',
+    options: { updatedInput?: Record<string, unknown>; message?: string } = {}
+  ): void {
+    const response =
+      behavior === 'allow'
+        ? { behavior: 'allow' as const, updatedInput: options.updatedInput ?? {} }
+        : { behavior: 'deny' as const, message: options.message ?? 'User rejected this action' }
+
+    this.sendRaw({
+      type: 'control_response',
+      response: {
+        subtype: 'success',
+        request_id: requestId,
+        response,
+      },
     })
   }
 

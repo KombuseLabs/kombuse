@@ -20,6 +20,12 @@ import type {
 } from '@kombuse/types'
 
 type AgentInvokeMessage = Extract<ClientMessage, { type: 'agent.invoke' }>
+type PermissionResponseMessage = Extract<ClientMessage, { type: 'permission.response' }>
+
+/**
+ * Registry of active session backends for permission response routing.
+ */
+const activeBackends = new Map<string, AgentBackend>()
 
 export type AgentExecutionEvent =
   | { type: 'started'; kombuseSessionId: string }
@@ -232,6 +238,9 @@ export function startAgentChatSession(
 
   const backend = dependencies.createBackend()
 
+  // Register backend for permission response routing
+  activeBackends.set(appSessionId, backend)
+
   dependencies
     .runChat(backend, userMessage, appSessionId, {
       projectPath: dependencies.resolveProjectPath(),
@@ -249,6 +258,9 @@ export function startAgentChatSession(
         })
       },
       onComplete: (context) => {
+        // Clean up backend registry
+        activeBackends.delete(appSessionId)
+
         // Mark session as completed
         dependencies.sessionPersistence.completeSession(
           persistentSessionId,
@@ -262,6 +274,9 @@ export function startAgentChatSession(
         })
       },
       onError: (error) => {
+        // Clean up backend registry
+        activeBackends.delete(appSessionId)
+
         // Persist error event
         const errorEvent: AgentEvent = {
           type: 'error',
@@ -291,6 +306,9 @@ export function startAgentChatSession(
       },
     })
     .catch((error) => {
+      // Clean up backend registry
+      activeBackends.delete(appSessionId)
+
       const messageText =
         error instanceof Error ? error.message : String(error)
 
@@ -306,4 +324,30 @@ export function startAgentChatSession(
         kombuseSessionId: appSessionId,
       })
     })
+}
+
+/**
+ * Respond to a permission request for an active chat session.
+ */
+export function respondToPermission(message: PermissionResponseMessage): boolean {
+  const { kombuseSessionId, requestId, behavior, updatedInput, message: denyMessage } = message
+
+  const backend = activeBackends.get(kombuseSessionId)
+  if (!backend) {
+    console.warn(`[Server] No active backend for session ${kombuseSessionId}`)
+    return false
+  }
+
+  // Check if backend supports respondToPermission
+  if (!('respondToPermission' in backend) || typeof backend.respondToPermission !== 'function') {
+    console.warn(`[Server] Backend does not support respondToPermission`)
+    return false
+  }
+
+  backend.respondToPermission(requestId, behavior, {
+    updatedInput,
+    message: denyMessage,
+  })
+
+  return true
 }

@@ -3,7 +3,7 @@ import type { RawData, WebSocket } from 'ws'
 import type { ClientMessage, ServerMessage } from '@kombuse/types'
 import { wsHub } from './hub'
 import { serializeAgentStreamEvent } from './serialize-agent-event'
-import { startAgentChatSession } from '../services/agent-execution-service'
+import { respondToPermission, startAgentChatSession } from '../services/agent-execution-service'
 
 /**
  * WebSocket route handler for real-time event subscriptions.
@@ -45,6 +45,15 @@ export async function websocketRoutes(fastify: FastifyInstance) {
 
           case 'agent.invoke':
             handleAgentInvoke(socket, message)
+            break
+
+          case 'permission.response':
+            if (!respondToPermission(message)) {
+              sendServerMessage(socket, {
+                type: 'error',
+                message: 'Failed to respond to permission request',
+              })
+            }
             break
         }
       } catch {

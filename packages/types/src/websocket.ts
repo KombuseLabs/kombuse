@@ -36,6 +36,14 @@ export type ClientMessage =
       message: string
       kombuseSessionId?: string
     }
+  | {
+      type: 'permission.response'
+      kombuseSessionId: string
+      requestId: string
+      behavior: 'allow' | 'deny'
+      updatedInput?: Record<string, unknown>
+      message?: string
+    }
 
 /**
  * Server-to-client message types
