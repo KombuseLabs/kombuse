@@ -51,7 +51,9 @@ export function resolveClaudePath(): string {
  *
  * @param options.thinkingEnabled - Set MAX_THINKING_TOKENS to enable extended thinking
  */
-export function createCleanEnv(options?: { thinkingEnabled?: boolean }): Record<string, string> {
+export function createCleanEnv(options?: {
+  thinkingEnabled?: boolean
+}): Record<string, string> {
   const homeDir = process.env.HOME || process.env.USERPROFILE || ''
   const cleanPath = process.env.PATH?.split(':')
     .filter((p) => !p.includes('node_modules/.bin'))

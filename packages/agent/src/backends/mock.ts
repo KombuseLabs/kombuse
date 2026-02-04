@@ -15,7 +15,7 @@ export class MockAgentClient implements AgentBackend {
   readonly name = BACKEND_TYPES.MOCK
 
   private running = false
-  private sessionId: string | undefined
+  private backendSessionId: string | undefined
   private subscribers = new Set<(event: AgentEvent) => void>()
   private abortController: AbortController | null = null
   private options: Required<MockClientOptions>
@@ -33,7 +33,8 @@ export class MockAgentClient implements AgentBackend {
     }
 
     this.running = true
-    this.sessionId = `mock-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    // Mock backend has no provider-native session ID.
+    this.backendSessionId = undefined
     this.abortController = new AbortController()
 
     // Start simulation loop in background
@@ -53,7 +54,6 @@ export class MockAgentClient implements AgentBackend {
       timestamp: Date.now(),
       reason: 'mock_complete',
       success: true,
-      sessionId: this.sessionId,
     })
   }
 
@@ -87,8 +87,8 @@ export class MockAgentClient implements AgentBackend {
     return this.running
   }
 
-  getSessionId(): string | undefined {
-    return this.sessionId
+  getBackendSessionId(): string | undefined {
+    return this.backendSessionId
   }
 
   private emit(event: AgentEvent): void {
@@ -142,7 +142,6 @@ export class MockAgentClient implements AgentBackend {
           timestamp: Date.now(),
           reason: 'mock_complete',
           success: true,
-          sessionId: this.sessionId,
         })
       }
     } catch (error) {

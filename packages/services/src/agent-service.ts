@@ -6,13 +6,13 @@ import type {
   UpdateAgentInput,
   CreateAgentTriggerInput,
   UpdateAgentTriggerInput,
-  CreateAgentInvocationInput,
-  UpdateAgentInvocationInput,
-  Permission,
   ResourcePermission,
   ToolPermission,
   Event,
-  AgentConfig,
+  PermissionContext,
+  PermissionCheckRequest,
+  PermissionCheckResult,
+  AgentRunner,
 } from '@kombuse/types'
 import {
   agentsRepository,
@@ -21,43 +21,6 @@ import {
   sessionsRepository,
   profilesRepository,
 } from '@kombuse/persistence'
-
-/**
- * Context for permission checking - describes what resource is being accessed
- */
-export interface PermissionContext {
-  /** The invocation that triggered this check */
-  invocation: AgentInvocation
-  /** The event that triggered the invocation */
-  event?: Event
-}
-
-/**
- * Request to check a permission
- */
-export interface PermissionCheckRequest {
-  /** Type of check: 'resource' or 'tool' */
-  type: 'resource' | 'tool'
-  /** For resource: the resource type (e.g., 'ticket', 'comment') */
-  resource?: string
-  /** For resource: the action being performed */
-  action?: 'read' | 'create' | 'update' | 'delete'
-  /** For resource: the specific resource ID being accessed */
-  resourceId?: string | number
-  /** For resource: the project the resource belongs to */
-  projectId?: string
-  /** For tool: the tool name being invoked */
-  tool?: string
-}
-
-/**
- * Result of a permission check
- */
-export interface PermissionCheckResult {
-  allowed: boolean
-  reason?: string
-  matchedPermission?: Permission
-}
 
 /**
  * Result of finding matching triggers
@@ -75,16 +38,6 @@ export interface AgentRunResult {
   invocation: AgentInvocation
   error?: string
 }
-
-/**
- * Callback for running an agent - implement this to integrate with LLM
- */
-export type AgentRunner = (params: {
-  agent: Agent
-  invocation: AgentInvocation
-  event: Event
-  checkPermission: (request: PermissionCheckRequest) => PermissionCheckResult
-}) => Promise<{ result: Record<string, unknown>; error?: string }>
 
 /**
  * Service interface for agent operations
@@ -271,14 +224,12 @@ export class AgentService implements IAgentService {
   findMatchingTriggers(event: Event): TriggerMatchResult[] {
     const results: TriggerMatchResult[] = []
 
-    // Get all enabled triggers for this event type
     const triggers = agentTriggersRepository.listByEventType(
       event.event_type,
       event.project_id ?? undefined
     )
 
     for (const trigger of triggers) {
-      // Check if conditions match
       const eventPayload =
         typeof event.payload === 'string'
           ? JSON.parse(event.payload)
@@ -288,7 +239,6 @@ export class AgentService implements IAgentService {
         continue
       }
 
-      // Get the agent
       const agent = agentsRepository.get(trigger.agent_id)
       if (!agent || !agent.is_enabled) {
         continue
@@ -435,10 +385,8 @@ export class AgentService implements IAgentService {
    * Create an invocation for a trigger/event pair
    */
   invokeAgent(trigger: AgentTrigger, event: Event): AgentInvocation {
-    // Create a session for this invocation
     const session = sessionsRepository.create()
 
-    // Build invocation context
     const context: Record<string, unknown> = {
       event_id: event.id,
       event_type: event.event_type,
@@ -447,16 +395,20 @@ export class AgentService implements IAgentService {
       comment_id: event.comment_id,
     }
 
-    // Create the invocation
-    const invocation = agentInvocationsRepository.create({
+    const agent = agentsRepository.get(trigger.agent_id)
+    const maxAttempts =
+      typeof agent?.config.max_retries === 'number'
+        ? Math.max(1, Math.floor(agent.config.max_retries) + 1)
+        : 3
+
+    return agentInvocationsRepository.create({
       agent_id: trigger.agent_id,
       trigger_id: trigger.id,
       event_id: event.id,
       session_id: session.id,
+      max_attempts: maxAttempts,
       context,
     })
-
-    return invocation
   }
 
   /**
@@ -476,7 +428,6 @@ export class AgentService implements IAgentService {
       throw new Error(`Agent ${invocation.agent_id} not found`)
     }
 
-    // Get the triggering event
     const event = invocation.event_id
       ? (await import('@kombuse/persistence')).eventsRepository.get(
           invocation.event_id
@@ -491,19 +442,32 @@ export class AgentService implements IAgentService {
       }
     }
 
-    // Mark as running
+    if (invocation.attempts >= invocation.max_attempts) {
+      const error = `Invocation exceeded max attempts (${invocation.max_attempts})`
+      const exhausted = agentInvocationsRepository.update(invocationId, {
+        status: 'failed',
+        error,
+        completed_at: new Date().toISOString(),
+      })
+      return {
+        success: false,
+        invocation: exhausted || invocation,
+        error,
+      }
+    }
+
     agentInvocationsRepository.update(invocationId, {
       status: 'running',
+      attempts: invocation.attempts + 1,
       started_at: new Date().toISOString(),
+      error: null,
     })
 
-    // Create permission checker bound to this context
     const context: PermissionContext = { invocation, event }
     const checkPermission = (request: PermissionCheckRequest) =>
       this.checkPermission(agent, request, context)
 
     try {
-      // Run the agent
       const { result, error } = await runner({
         agent,
         invocation,
@@ -517,10 +481,10 @@ export class AgentService implements IAgentService {
           {
             status: 'failed',
             result: { error },
+            error,
             completed_at: new Date().toISOString(),
           }
         )
-
         return {
           success: false,
           invocation: failedInvocation || invocation,
@@ -528,12 +492,12 @@ export class AgentService implements IAgentService {
         }
       }
 
-      // Mark as completed
       const completedInvocation = agentInvocationsRepository.update(
         invocationId,
         {
           status: 'completed',
           result,
+          error: null,
           completed_at: new Date().toISOString(),
         }
       )
@@ -549,6 +513,7 @@ export class AgentService implements IAgentService {
       const failedInvocation = agentInvocationsRepository.update(invocationId, {
         status: 'failed',
         result: { error: errorMessage },
+        error: errorMessage,
         completed_at: new Date().toISOString(),
       })
 
@@ -562,18 +527,10 @@ export class AgentService implements IAgentService {
 
   /**
    * Process an event - find matching triggers and create invocations
-   * Returns the created invocations
    */
   processEvent(event: Event): AgentInvocation[] {
     const matches = this.findMatchingTriggers(event)
-    const invocations: AgentInvocation[] = []
-
-    for (const { trigger } of matches) {
-      const invocation = this.invokeAgent(trigger, event)
-      invocations.push(invocation)
-    }
-
-    return invocations
+    return matches.map(({ trigger }) => this.invokeAgent(trigger, event))
   }
 }
 
