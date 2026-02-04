@@ -13,6 +13,10 @@ export interface RunnerOptions {
   onEvent?: (event: AgentEvent) => void
   /** App session ID for chat sessions (generated if not provided) */
   kombuseSessionId?: string
+  /** Resolve an event project ID to a backend working directory */
+  resolveProjectPath?: (projectId: string | null) => string | null | undefined
+  /** Fallback working directory when project resolution fails */
+  fallbackProjectPath?: string
 }
 
 export type BackendFactory = () => AgentBackend
@@ -39,6 +43,16 @@ export function createAgentRunner(
       typeof requestedSessionId === 'string' && requestedSessionId.trim().length > 0
         ? requestedSessionId
         : `invocation-${invocation.id}`
+    const fallbackProjectPath =
+      typeof options.fallbackProjectPath === 'string' &&
+      options.fallbackProjectPath.trim().length > 0
+        ? options.fallbackProjectPath
+        : process.cwd()
+    const projectPath = resolveProjectPath(
+      event.project_id ?? null,
+      options,
+      fallbackProjectPath
+    )
 
     // Subscribe to events and log them
     const unsubscribe = backend.subscribe((evt) => {
@@ -80,7 +94,7 @@ export function createAgentRunner(
       // Start the backend
       await backend.start({
         kombuseSessionId,
-        projectPath: event.project_id ?? '',
+        projectPath,
         initialMessage: buildInitialMessage(agent, event),
       })
 
@@ -119,6 +133,21 @@ export function createAgentRunner(
       }
     }
   }
+}
+
+function resolveProjectPath(
+  projectId: string | null,
+  options: RunnerOptions,
+  fallbackProjectPath: string
+): string {
+  const resolvedProjectPath = options.resolveProjectPath?.(projectId)
+  if (
+    typeof resolvedProjectPath === 'string' &&
+    resolvedProjectPath.trim().length > 0
+  ) {
+    return resolvedProjectPath
+  }
+  return fallbackProjectPath
 }
 
 function formatEventLog(timestamp: string, agentId: string, evt: AgentEvent): string {

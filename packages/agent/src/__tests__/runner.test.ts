@@ -255,6 +255,168 @@ describe('runAgentChat', () => {
 })
 
 describe('createAgentRunner', () => {
+  it('resolves backend projectPath from project resolver', async () => {
+    const subscribers = new Set<(event: AgentEvent) => void>()
+    let startOptions: StartOptions | undefined
+
+    const backend: AgentBackend = {
+      name: 'mock',
+      subscribe(handler) {
+        subscribers.add(handler)
+        return () => subscribers.delete(handler)
+      },
+      async start(options) {
+        startOptions = options
+        subscribers.forEach((handler) =>
+          handler({
+            type: 'complete',
+            backend: 'mock',
+            timestamp: Date.now(),
+            reason: 'result',
+            success: true,
+          })
+        )
+      },
+      async stop() {},
+      send() {},
+      isRunning() {
+        return false
+      },
+      getBackendSessionId() {
+        return undefined
+      },
+    }
+
+    const runner = createAgentRunner(() => backend, {
+      resolveProjectPath: () => '/tmp/resolved-project',
+      fallbackProjectPath: '/tmp/fallback-project',
+    })
+
+    await runner({
+      agent: {
+        id: 'agent-1',
+        system_prompt: '',
+        is_enabled: true,
+        permissions: [],
+        config: {},
+        created_at: '',
+        updated_at: '',
+      },
+      invocation: {
+        id: 1,
+        agent_id: 'agent-1',
+        trigger_id: 1,
+        event_id: 1,
+        session_id: 'session-1',
+        status: 'running',
+        attempts: 1,
+        max_attempts: 3,
+        run_at: '',
+        context: {},
+        result: null,
+        error: null,
+        started_at: null,
+        completed_at: null,
+        created_at: '',
+      },
+      event: {
+        id: 1,
+        event_type: 'ticket.created',
+        project_id: 'project-id',
+        ticket_id: null,
+        comment_id: null,
+        actor_id: null,
+        actor_type: 'system',
+        payload: '{}',
+        created_at: '',
+      },
+      checkPermission: () => ({ allowed: true }),
+    })
+
+    expect(startOptions?.projectPath).toBe('/tmp/resolved-project')
+  })
+
+  it('falls back to configured projectPath when project resolution fails', async () => {
+    const subscribers = new Set<(event: AgentEvent) => void>()
+    let startOptions: StartOptions | undefined
+
+    const backend: AgentBackend = {
+      name: 'mock',
+      subscribe(handler) {
+        subscribers.add(handler)
+        return () => subscribers.delete(handler)
+      },
+      async start(options) {
+        startOptions = options
+        subscribers.forEach((handler) =>
+          handler({
+            type: 'complete',
+            backend: 'mock',
+            timestamp: Date.now(),
+            reason: 'result',
+            success: true,
+          })
+        )
+      },
+      async stop() {},
+      send() {},
+      isRunning() {
+        return false
+      },
+      getBackendSessionId() {
+        return undefined
+      },
+    }
+
+    const runner = createAgentRunner(() => backend, {
+      resolveProjectPath: () => undefined,
+      fallbackProjectPath: '/tmp/fallback-project',
+    })
+
+    await runner({
+      agent: {
+        id: 'agent-1',
+        system_prompt: '',
+        is_enabled: true,
+        permissions: [],
+        config: {},
+        created_at: '',
+        updated_at: '',
+      },
+      invocation: {
+        id: 1,
+        agent_id: 'agent-1',
+        trigger_id: 1,
+        event_id: 1,
+        session_id: 'session-1',
+        status: 'running',
+        attempts: 1,
+        max_attempts: 3,
+        run_at: '',
+        context: {},
+        result: null,
+        error: null,
+        started_at: null,
+        completed_at: null,
+        created_at: '',
+      },
+      event: {
+        id: 1,
+        event_type: 'ticket.created',
+        project_id: 'project-id',
+        ticket_id: null,
+        comment_id: null,
+        actor_id: null,
+        actor_type: 'system',
+        payload: '{}',
+        created_at: '',
+      },
+      checkPermission: () => ({ allowed: true }),
+    })
+
+    expect(startOptions?.projectPath).toBe('/tmp/fallback-project')
+  })
+
   it('marks invocation as failed when completion reports success=false', async () => {
     const backend: AgentBackend = {
       name: 'mock',

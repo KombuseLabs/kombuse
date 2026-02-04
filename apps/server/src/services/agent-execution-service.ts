@@ -1,3 +1,5 @@
+import { statSync } from 'node:fs'
+import { resolve as resolvePath } from 'node:path'
 import {
   ClaudeCodeBackend,
   createAgentRunner,
@@ -5,6 +7,7 @@ import {
 } from '@kombuse/agent'
 import {
   agentService,
+  projectService,
   sessionPersistenceService,
   type ISessionPersistenceService,
 } from '@kombuse/services'
@@ -70,7 +73,11 @@ export function createServerAgentBackend(): AgentBackend {
 export function createServerAgentRunner(
   onLog?: (message: string) => void
 ): AgentRunner {
-  return createAgentRunner(createServerAgentBackend, { onLog })
+  return createAgentRunner(createServerAgentBackend, {
+    onLog,
+    resolveProjectPath: resolveInvocationProjectPath,
+    fallbackProjectPath: process.cwd(),
+  })
 }
 
 const defaultDependencies: AgentExecutionDependencies = {
@@ -83,6 +90,39 @@ const defaultDependencies: AgentExecutionDependencies = {
   generateSessionId: () => crypto.randomUUID(),
   resolveProjectPath: () => process.cwd(),
   sessionPersistence: sessionPersistenceService,
+}
+
+function resolveInvocationProjectPath(
+  projectId: string | null
+): string | undefined {
+  if (!projectId) {
+    return undefined
+  }
+
+  const project = projectService.get(projectId)
+  const localPath = project?.local_path?.trim()
+
+  if (!localPath) {
+    return undefined
+  }
+
+  const candidatePath = resolvePath(localPath)
+
+  try {
+    if (statSync(candidatePath).isDirectory()) {
+      return candidatePath
+    }
+
+    console.warn(
+      `[Server] Project ${projectId} local_path is not a directory: ${candidatePath}`
+    )
+  } catch {
+    console.warn(
+      `[Server] Project ${projectId} local_path does not exist: ${candidatePath}`
+    )
+  }
+
+  return undefined
 }
 
 /**
