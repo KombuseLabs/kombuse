@@ -1,11 +1,13 @@
 import { createContext } from 'react'
-import type { ServerMessage } from '@kombuse/types'
+import type { ClientMessage, ServerMessage } from '@kombuse/types'
 
 export type MessageHandler = (message: ServerMessage) => void
 
 export interface WebSocketContextValue {
   /** Whether the WebSocket is currently connected */
   isConnected: boolean
+  /** Send a message to the server */
+  send: (message: ClientMessage) => void
   /** Subscribe to specific topics */
   subscribe: (topics: string[]) => void
   /** Unsubscribe from topics */

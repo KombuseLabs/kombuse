@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useContext } from 'react'
-import type { ServerMessage, WebSocketEvent } from '@kombuse/types'
+import type { ClientMessage, ServerMessage, WebSocketEvent } from '@kombuse/types'
 import { WebSocketCtx } from '../providers/websocket-context'
 
 interface UseWebSocketOptions {
@@ -11,6 +11,7 @@ interface UseWebSocketOptions {
 
 interface UseWebSocketReturn {
   isConnected: boolean
+  send: (message: ClientMessage) => void
   subscribe: (topics: string[]) => void
   unsubscribe: (topics: string[]) => void
 }
@@ -35,7 +36,7 @@ export function useWebSocket({
     throw new Error('useWebSocket must be used within a WebSocketProvider')
   }
 
-  const { isConnected, subscribe, unsubscribe, addMessageHandler, removeMessageHandler } = ctx
+  const { isConnected, send, subscribe, unsubscribe, addMessageHandler, removeMessageHandler } = ctx
 
   // Store latest topics in a ref to track changes
   const topicsRef = useRef<string[]>([])
@@ -92,5 +93,5 @@ export function useWebSocket({
     }
   }, [topics.join(','), subscribe, unsubscribe])
 
-  return { isConnected, subscribe, unsubscribe }
+  return { isConnected, send, subscribe, unsubscribe }
 }

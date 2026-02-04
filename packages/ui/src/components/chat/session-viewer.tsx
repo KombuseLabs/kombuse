@@ -6,18 +6,21 @@ interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
+  toolUse?: { name: string; input: Record<string, unknown> }
 }
 
 interface SessionViewerProps {
   messages: Message[]
+  isLoading?: boolean
+  emptyMessage?: string
   className?: string
 }
 
-function SessionViewer({ messages, className }: SessionViewerProps) {
-  if (messages.length === 0) {
+function SessionViewer({ messages, isLoading = false, emptyMessage = 'No messages yet', className }: SessionViewerProps) {
+  if (messages.length === 0 && !isLoading) {
     return (
       <div className={cn('flex-1 flex items-center justify-center text-muted-foreground', className)}>
-        No messages yet
+        {emptyMessage}
       </div>
     )
   }
@@ -29,14 +32,17 @@ function SessionViewer({ messages, className }: SessionViewerProps) {
           key={message.id}
           className={cn(
             'p-3 rounded-lg text-sm overflow-x-auto',
-            message.role === 'user'
-              ? 'bg-primary/10 ml-8'
-              : 'bg-muted mr-8'
+            message.role === 'user' ? 'bg-primary/10' : 'bg-muted'
           )}
         >
           {JSON.stringify(message, null, 2)}
         </pre>
       ))}
+      {isLoading && (
+        <div className="bg-muted p-3 rounded-lg text-sm">
+          <span className="animate-pulse">Thinking...</span>
+        </div>
+      )}
     </div>
   )
 }

@@ -62,8 +62,8 @@ export function WebSocketProvider({
         try {
           const message = JSON.parse(event.data) as ServerMessage
           messageHandlers.current.forEach((handler) => handler(message))
-        } catch {
-          // Ignore parse errors
+        } catch (err) {
+          console.error('[ws-provider] parse error:', err)
         }
       }
 
@@ -145,12 +145,13 @@ export function WebSocketProvider({
   const value = useMemo(
     () => ({
       isConnected,
+      send,
       subscribe,
       unsubscribe,
       addMessageHandler,
       removeMessageHandler,
     }),
-    [isConnected, subscribe, unsubscribe, addMessageHandler, removeMessageHandler]
+    [isConnected, send, subscribe, unsubscribe, addMessageHandler, removeMessageHandler]
   )
 
   return <WebSocketCtx.Provider value={value}>{children}</WebSocketCtx.Provider>

@@ -51,3 +51,4 @@ export {
   useToggleTrigger,
 } from './use-triggers'
 export { useEvents } from './use-events'
+export { useChat } from './use-chat'
