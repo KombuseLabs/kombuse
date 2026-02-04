@@ -1,9 +1,20 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Chat, StatusIndicator, type StatusIndicatorStatus } from "@kombuse/ui/components";
-import { useCreateSession, useSessions, useAppContext } from "@kombuse/ui/hooks";
+import { useCreateSession, useSessions, useAppContext, useDeleteSession } from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@kombuse/ui/base";
+import { Trash2 } from "lucide-react";
 import type { Session } from "@kombuse/types";
 
 function formatDate(dateString: string) {
@@ -39,20 +50,23 @@ function SessionItem({
   session,
   isSelected,
   onClick,
+  onDelete,
   pendingSessionIds,
 }: {
   session: Session;
   isSelected: boolean;
   onClick: () => void;
+  onDelete: () => void;
   pendingSessionIds: Set<string>;
 }) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const indicatorStatus = getIndicatorStatus(session, pendingSessionIds)
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors relative",
+        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors relative group",
         isSelected
           ? "bg-primary text-primary-foreground"
           : "hover:bg-muted"
@@ -63,7 +77,45 @@ function SessionItem({
         size="sm"
         className="absolute top-2.5 left-1.5"
       />
-      <div className="font-medium truncate pl-3">
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogTrigger asChild>
+          <span
+            role="button"
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "absolute top-2 right-2 opacity-0 group-hover:opacity-100 rounded p-0.5 transition-opacity",
+              isSelected
+                ? "text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                : "text-destructive hover:bg-destructive/10"
+            )}
+          >
+            <Trash2 className="size-3.5" />
+          </span>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete session?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this chat session and all its messages.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onDelete()
+                setShowDeleteDialog(false)
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <div className="font-medium truncate pl-3 pr-6">
         {session.kombuse_session_id?.slice(0, 8) || session.id.slice(0, 8)}
       </div>
       <div className={cn(
@@ -87,6 +139,7 @@ export function Chats() {
 
   const { data: sessions, isLoading: sessionsLoading } = useSessions();
   const createSession = useCreateSession();
+  const deleteSession = useDeleteSession();
   const { pendingSessionIds } = useAppContext();
 
   const Container = isProjectContext ? "div" : "main";
@@ -149,6 +202,13 @@ export function Chats() {
                 session={session}
                 isSelected={selectedSessionId === session.id}
                 onClick={() => handleSelectSession(session.id)}
+                onDelete={() => {
+                  deleteSession.mutate(session.id)
+                  // Navigate away if deleting the currently selected session
+                  if (selectedSessionId === session.id) {
+                    navigate(chatsBasePath)
+                  }
+                }}
                 pendingSessionIds={pendingSessionIds}
               />
             ))

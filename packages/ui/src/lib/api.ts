@@ -388,4 +388,11 @@ export const sessionsApi = {
     const response = await fetch(url)
     return handleResponse<{ session_id: string; events: SessionEvent[]; total: number }>(response)
   },
+
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/sessions/${id}`, {
+      method: 'DELETE',
+    })
+    await handleEmptyResponse(response)
+  },
 }

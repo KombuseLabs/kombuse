@@ -93,4 +93,15 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       total: events.length,
     }
   })
+
+  // Delete a session
+  fastify.delete<{
+    Params: { id: string }
+  }>('/sessions/:id', async (request, reply) => {
+    const deleted = sessionsRepository.delete(request.params.id)
+    if (!deleted) {
+      return reply.status(404).send({ error: 'Session not found' })
+    }
+    return reply.status(204).send()
+  })
 }

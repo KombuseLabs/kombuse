@@ -57,4 +57,5 @@ export {
   useSession,
   useSessionEvents,
   useCreateSession,
+  useDeleteSession,
 } from './use-sessions'
