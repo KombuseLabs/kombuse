@@ -4,6 +4,22 @@ import type { ParsedClaudeMessage } from '../backends/claude-code'
 import { type AgentEvent } from '../types'
 
 describe('ClaudeCodeBackend', () => {
+  describe('buildArgs', () => {
+    it('includes --resume when resumeSessionId is provided', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: 'kombuse-session',
+        resumeSessionId: 'resume-session-id',
+        projectPath: '/tmp',
+      })
+
+      expect(args).toContain('--resume')
+      expect(args).toContain('resume-session-id')
+    })
+  })
+
   describe('handleMessage', () => {
     let backend: ClaudeCodeBackend
     let events: AgentEvent[]

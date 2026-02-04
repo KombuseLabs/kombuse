@@ -156,6 +156,13 @@ export class ClaudeCodeBackend implements AgentBackend {
       String(options.maxTurns ?? 50),
     ]
 
+    if (
+      typeof options.resumeSessionId === 'string' &&
+      options.resumeSessionId.trim().length > 0
+    ) {
+      args.push('--resume', options.resumeSessionId.trim())
+    }
+
     args.push(...this.options.extraArgs)
 
     return args

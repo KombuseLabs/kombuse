@@ -9,6 +9,8 @@
 export interface StartOptions {
   /** Stable app-level session ID (kombuse_session_id). */
   kombuseSessionId: string
+  /** Optional backend-native session ID to resume conversation context. */
+  resumeSessionId?: string
   projectPath: string
   systemPrompt?: string
   permissions?: PermissionConfig

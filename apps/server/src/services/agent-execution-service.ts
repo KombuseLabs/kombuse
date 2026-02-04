@@ -197,17 +197,36 @@ export function startAgentChatSession(
     appSessionId,
     'claude-code'
   )
+  const existingSession = dependencies.sessionPersistence.getSession(
+    persistentSessionId
+  )
+  const resumeSessionId =
+    typeof existingSession?.backend_session_id === 'string' &&
+    existingSession.backend_session_id.trim().length > 0
+      ? existingSession.backend_session_id.trim()
+      : undefined
 
   emit({
     type: 'started',
     kombuseSessionId: appSessionId,
   })
 
+  // Persist user message before running agent
+  const userMessageEvent: AgentEvent = {
+    type: 'message',
+    backend: 'claude-code',
+    timestamp: Date.now(),
+    role: 'user',
+    content: userMessage,
+  }
+  dependencies.sessionPersistence.persistEvent(persistentSessionId, userMessageEvent)
+
   const backend = dependencies.createBackend()
 
   dependencies
     .runChat(backend, userMessage, appSessionId, {
       projectPath: dependencies.resolveProjectPath(),
+      resumeSessionId,
       systemPrompt: agent.system_prompt,
       onEvent: (event) => {
         // Persist event to database

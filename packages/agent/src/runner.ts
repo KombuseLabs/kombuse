@@ -185,6 +185,8 @@ function buildInitialMessage(
 export interface ChatRunnerOptions {
   /** Project path for the agent to work in */
   projectPath: string
+  /** Backend-native session ID to resume */
+  resumeSessionId?: string
   /** System prompt override */
   systemPrompt?: string
   /** Callback for each agent event */
@@ -263,6 +265,7 @@ export async function runAgentChat(
   // Start the backend
   await backend.start({
     kombuseSessionId: appSessionId,
+    resumeSessionId: options.resumeSessionId,
     projectPath: options.projectPath,
     systemPrompt: options.systemPrompt,
     initialMessage: message,

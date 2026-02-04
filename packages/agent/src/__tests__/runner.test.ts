@@ -252,6 +252,46 @@ describe('runAgentChat', () => {
     await new Promise(resolve => setTimeout(resolve, 50))
     expect(completeCalled).toBe(true)
   })
+
+  it('should pass resumeSessionId to backend start options', async () => {
+    const subscribers = new Set<(event: AgentEvent) => void>()
+    let capturedStartOptions: StartOptions | undefined
+
+    const backend: AgentBackend = {
+      name: 'mock',
+      subscribe(handler) {
+        subscribers.add(handler)
+        return () => subscribers.delete(handler)
+      },
+      async start(options) {
+        capturedStartOptions = options
+        subscribers.forEach((handler) =>
+          handler({
+            type: 'complete',
+            backend: 'mock',
+            timestamp: Date.now(),
+            reason: 'mock_complete',
+            success: true,
+          })
+        )
+      },
+      async stop() {},
+      send() {},
+      isRunning() { return false },
+      getBackendSessionId() { return 'backend-123' },
+    }
+
+    await runAgentChat(backend, 'test message', 'kombuse-session-7', {
+      projectPath: '/test',
+      resumeSessionId: 'resume-abc-123',
+      onEvent: () => {},
+      onComplete: () => {},
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    expect(capturedStartOptions?.resumeSessionId).toBe('resume-abc-123')
+  })
 })
 
 describe('createAgentRunner', () => {
