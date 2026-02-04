@@ -109,15 +109,22 @@ describe('profileSettingsRepository', () => {
     })
 
     it('should cascade delete settings when profile is deleted', () => {
+      // Create an isolated profile with no other dependencies
+      const isolatedProfileId = 'cascade-test-profile'
+      db.prepare(`
+        INSERT INTO profiles (id, type, name)
+        VALUES (?, 'user', 'Cascade Test User')
+      `).run(isolatedProfileId)
+
       profileSettingsRepository.upsert({
-        profile_id: TEST_USER_ID,
+        profile_id: isolatedProfileId,
         setting_key: 'theme',
         setting_value: 'light',
       })
 
-      db.prepare('DELETE FROM profiles WHERE id = ?').run(TEST_USER_ID)
+      db.prepare('DELETE FROM profiles WHERE id = ?').run(isolatedProfileId)
 
-      expect(profileSettingsRepository.getByProfile(TEST_USER_ID)).toHaveLength(0)
+      expect(profileSettingsRepository.getByProfile(isolatedProfileId)).toHaveLength(0)
     })
   })
 })
