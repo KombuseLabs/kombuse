@@ -1,3 +1,5 @@
 export { SessionViewer, type SessionViewerProps } from './session-viewer'
 export { SessionHeader, type SessionHeaderProps } from './session-header'
 export { Chat, type ChatProps } from './chat'
+export { MessageRenderer, type MessageRendererProps } from './renderers'
+export { PermissionBar, type PermissionBarProps } from './permission-bar'

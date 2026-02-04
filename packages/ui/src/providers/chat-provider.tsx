@@ -1,7 +1,15 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
-import type { ServerMessage, SerializedAgentEvent, SerializedAgentMessageEvent, SerializedAgentErrorEvent } from '@kombuse/types'
+import { useQueryClient } from '@tanstack/react-query'
+import type {
+  ServerMessage,
+  SerializedAgentEvent,
+  SerializedAgentMessageEvent,
+  SerializedAgentErrorEvent,
+  SerializedAgentPermissionRequestEvent,
+  Session,
+} from '@kombuse/types'
 import { useWebSocket } from '../hooks/use-websocket'
 import { useSessionEvents } from '../hooks/use-sessions'
 import { ChatCtx } from './chat-context'
@@ -29,9 +37,12 @@ export function ChatProvider({
   sessionId,
   onEnsureSession,
 }: ChatProviderProps) {
+  const queryClient = useQueryClient()
   const [events, setEvents] = useState<SerializedAgentEvent[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [kombuseSessionId, setKombuseSessionId] = useState<string | null>(null)
+  const [pendingPermission, setPendingPermission] =
+    useState<SerializedAgentPermissionRequestEvent | null>(null)
 
   // Historical mode: fetch session events
   const { data: sessionEventsData } = useSessionEvents(sessionId ?? null)
@@ -56,6 +67,34 @@ export function ChatProvider({
     }
   }, [agentId, sessionId])
 
+  const refreshSessions = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+  }, [queryClient])
+
+  const updateSessionStatus = useCallback(
+    (sessionId: string, status: Session['status']) => {
+      queryClient.setQueriesData({ queryKey: ['sessions'] }, (data) => {
+        if (!Array.isArray(data)) {
+          return data
+        }
+        let updated = false
+        const next = data.map((entry) => {
+          if (!entry || typeof entry !== 'object') {
+            return entry
+          }
+          const session = entry as Session
+          if (session.id === sessionId || session.kombuse_session_id === sessionId) {
+            updated = true
+            return { ...session, status }
+          }
+          return session
+        })
+        return updated ? next : data
+      })
+    },
+    [queryClient]
+  )
+
   const handleMessage = useCallback((message: ServerMessage) => {
     switch (message.type) {
       case 'agent.started': {
@@ -64,6 +103,8 @@ export function ChatProvider({
         }
         setKombuseSessionId(message.kombuseSessionId)
         setIsLoading(true)
+        updateSessionStatus(message.kombuseSessionId, 'running')
+        refreshSessions()
         break
       }
 
@@ -78,6 +119,10 @@ export function ChatProvider({
         const event = message.event
         // Pass events through directly - they already have all required fields
         setEvents((prev) => [...prev, event])
+        // Track permission requests for UI response
+        if (event.type === 'permission_request') {
+          setPendingPermission(event)
+        }
         break
       }
 
@@ -94,10 +139,14 @@ export function ChatProvider({
           break
         }
         setIsLoading(false)
+        setPendingPermission(null)
+        updateSessionStatus(message.kombuseSessionId, 'completed')
+        refreshSessions()
         break
 
       case 'error':
         setIsLoading(false)
+        refreshSessions()
         // Create an error event for server-level errors
         const errorEvent: SerializedAgentErrorEvent = {
           type: 'error',
@@ -108,7 +157,7 @@ export function ChatProvider({
         setEvents((prev) => [...prev, errorEvent])
         break
     }
-  }, [kombuseSessionId, sessionId])
+  }, [kombuseSessionId, sessionId, refreshSessions, updateSessionStatus])
 
   const { isConnected, send: wsSend } = useWebSocket({
     topics: [],
@@ -193,9 +242,29 @@ export function ChatProvider({
     ]
   )
 
+  const respondToPermission = useCallback(
+    (requestId: string, behavior: 'allow' | 'deny', message?: string) => {
+      const targetSessionId = sessionId ?? kombuseSessionId
+      if (!targetSessionId || !pendingPermission) return
+
+      wsSend({
+        type: 'permission.response',
+        kombuseSessionId: targetSessionId,
+        requestId,
+        behavior,
+        updatedInput: behavior === 'allow' ? pendingPermission.input : undefined,
+        message: behavior === 'deny' ? (message ?? 'User rejected this action') : undefined,
+      })
+
+      setPendingPermission(null)
+    },
+    [sessionId, kombuseSessionId, pendingPermission, wsSend]
+  )
+
   const reset = useCallback(() => {
     setEvents([])
     setKombuseSessionId(null)
+    setPendingPermission(null)
     setIsLoading(false)
   }, [])
 
@@ -205,10 +274,12 @@ export function ChatProvider({
       isLoading,
       isConnected,
       kombuseSessionId,
+      pendingPermission,
       send,
+      respondToPermission,
       reset,
     }),
-    [events, isLoading, isConnected, kombuseSessionId, send, reset]
+    [events, isLoading, isConnected, kombuseSessionId, pendingPermission, send, respondToPermission, reset]
   )
 
   return <ChatCtx.Provider value={value}>{children}</ChatCtx.Provider>

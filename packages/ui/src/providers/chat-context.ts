@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { SerializedAgentEvent } from '@kombuse/types'
+import type { SerializedAgentEvent, SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 
 export interface ChatContextValue {
   /** Current events in the conversation */
@@ -10,8 +10,16 @@ export interface ChatContextValue {
   isConnected: boolean
   /** Current app session ID (set after first message) */
   kombuseSessionId: string | null
+  /** Pending permission request awaiting user response */
+  pendingPermission: SerializedAgentPermissionRequestEvent | null
   /** Send a message to the agent */
   send: (message: string) => void | Promise<void>
+  /** Respond to a permission request */
+  respondToPermission: (
+    requestId: string,
+    behavior: 'allow' | 'deny',
+    message?: string
+  ) => void
   /** Clear events and reset conversation */
   reset: () => void
 }

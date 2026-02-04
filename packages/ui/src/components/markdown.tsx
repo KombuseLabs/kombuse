@@ -11,7 +11,7 @@ export function Markdown({ children, className }: MarkdownProps) {
   return (
     <div
       className={cn(
-        'prose max-w-none',
+        'prose prose-sm max-w-none font-sans',
         'text-foreground prose-headings:text-foreground',
         'prose-headings:font-semibold',
         'prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground',

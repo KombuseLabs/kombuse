@@ -5,6 +5,7 @@ import type { SerializedAgentEvent } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { ChatCtx } from '../../providers/chat-context'
 import { ChatInput } from '../chat-input'
+import { PermissionBar } from './permission-bar'
 import { SessionHeader } from './session-header'
 import { SessionViewer } from './session-viewer'
 
@@ -34,6 +35,8 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
   const onSubmit = propOnSubmit ?? ctx?.send
   const isLoading = propIsLoading ?? ctx?.isLoading ?? false
   const isConnected = propIsConnected ?? ctx?.isConnected ?? true
+  const pendingPermission = ctx?.pendingPermission ?? null
+  const respondToPermission = ctx?.respondToPermission
 
   const lastEventTime = events.at(-1)?.timestamp
 
@@ -50,6 +53,14 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
         lastEventTime={lastEventTime}
       />
       <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} className="flex-1" />
+      {pendingPermission && respondToPermission && (
+        <PermissionBar
+          permission={pendingPermission}
+          onRespond={(behavior, message) =>
+            respondToPermission(pendingPermission.requestId, behavior, message)
+          }
+        />
+      )}
       <div className="border-t p-4">
         <ChatInput onSubmit={onSubmit} isLoading={isLoading} />
       </div>
