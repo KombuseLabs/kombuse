@@ -23,6 +23,9 @@ import type {
   UpdateProfileInput,
   Event,
   EventFilters,
+  Session,
+  SessionFilters,
+  SessionEvent,
 } from '@kombuse/types'
 
 const API_BASE = 'http://localhost:3331/api'
@@ -343,5 +346,37 @@ export const eventsApi = {
     const url = `${API_BASE}/events${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<Event[]>(response)
+  },
+}
+
+export const sessionsApi = {
+  async list(filters?: SessionFilters): Promise<Session[]> {
+    const params = new URLSearchParams()
+    if (filters?.status) params.set('status', filters.status)
+    if (filters?.limit) params.set('limit', String(filters.limit))
+    if (filters?.offset) params.set('offset', String(filters.offset))
+
+    const url = `${API_BASE}/sessions${params.toString() ? `?${params}` : ''}`
+    const response = await fetch(url)
+    return handleResponse<Session[]>(response)
+  },
+
+  async get(id: string): Promise<Session> {
+    const response = await fetch(`${API_BASE}/sessions/${id}`)
+    return handleResponse<Session>(response)
+  },
+
+  async getEvents(
+    sessionId: string,
+    filters?: { since_seq?: number; event_type?: string; limit?: number }
+  ): Promise<{ session_id: string; events: SessionEvent[]; total: number }> {
+    const params = new URLSearchParams()
+    if (filters?.since_seq !== undefined) params.set('since_seq', String(filters.since_seq))
+    if (filters?.event_type) params.set('event_type', filters.event_type)
+    if (filters?.limit) params.set('limit', String(filters.limit))
+
+    const url = `${API_BASE}/sessions/${sessionId}/events${params.toString() ? `?${params}` : ''}`
+    const response = await fetch(url)
+    return handleResponse<{ session_id: string; events: SessionEvent[]; total: number }>(response)
   },
 }

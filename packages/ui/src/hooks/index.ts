@@ -52,3 +52,4 @@ export {
 } from './use-triggers'
 export { useEvents } from './use-events'
 export { useChat } from './use-chat'
+export { useSessions, useSession, useSessionEvents } from './use-sessions'
