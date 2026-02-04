@@ -7,6 +7,8 @@
  * Configuration for starting an agent backend
  */
 export interface StartOptions {
+  /** Stable app-level session ID (kombuse_session_id). */
+  kombuseSessionId: string
   projectPath: string
   systemPrompt?: string
   permissions?: PermissionConfig
@@ -210,7 +212,7 @@ export interface AgentBackend {
   isRunning(): boolean
 
   /**
-   * Get the current session ID, if any
+   * Get backend-native session ID, if available.
    */
-  getSessionId(): string | undefined
+  getBackendSessionId(): string | undefined
 }

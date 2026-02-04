@@ -16,11 +16,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@kombuse/services": "*",
     "@kombuse/types": "*"
   },
   "devDependencies": {
     "@kombuse/persistence": "*",
+    "@kombuse/services": "*",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/better-sqlite3": "^7.6.12",
