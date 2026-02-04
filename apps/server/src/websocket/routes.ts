@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify'
-import type { RawData } from 'ws'
+import type { RawData, WebSocket } from 'ws'
 import type { ClientMessage, ServerMessage } from '@kombuse/types'
 import { wsHub } from './hub'
+import { serializeAgentStreamEvent } from './serialize-agent-event'
+import { startAgentChatSession } from '../services/agent-execution-service'
 
 /**
  * WebSocket route handler for real-time event subscriptions.
@@ -23,35 +25,33 @@ export async function websocketRoutes(fastify: FastifyInstance) {
         switch (message.type) {
           case 'subscribe':
             wsHub.subscribe(socket, message.topics)
-            socket.send(
-              JSON.stringify({
-                type: 'subscribed',
-                topics: message.topics,
-              } satisfies ServerMessage)
-            )
+            sendServerMessage(socket, {
+              type: 'subscribed',
+              topics: message.topics,
+            })
             break
 
           case 'unsubscribe':
             wsHub.unsubscribe(socket, message.topics)
-            socket.send(
-              JSON.stringify({
-                type: 'unsubscribed',
-                topics: message.topics,
-              } satisfies ServerMessage)
-            )
+            sendServerMessage(socket, {
+              type: 'unsubscribed',
+              topics: message.topics,
+            })
             break
 
           case 'ping':
-            socket.send(JSON.stringify({ type: 'pong' } satisfies ServerMessage))
+            sendServerMessage(socket, { type: 'pong' })
+            break
+
+          case 'agent.invoke':
+            handleAgentInvoke(socket, message)
             break
         }
       } catch {
-        socket.send(
-          JSON.stringify({
-            type: 'error',
-            message: 'Invalid message format',
-          } satisfies ServerMessage)
-        )
+        sendServerMessage(socket, {
+          type: 'error',
+          message: 'Invalid message format',
+        })
       }
     })
 
@@ -62,5 +62,60 @@ export async function websocketRoutes(fastify: FastifyInstance) {
     socket.on('error', () => {
       wsHub.removeClient(socket)
     })
+  })
+}
+
+function sendServerMessage(socket: WebSocket, message: ServerMessage): void {
+  if (socket.readyState !== socket.OPEN) {
+    return
+  }
+  try {
+    socket.send(JSON.stringify(message))
+  } catch (error) {
+    console.error('[ws.send] failed:', error)
+  }
+}
+
+/**
+ * Handle agent.invoke message - start a chat session with an agent
+ */
+function handleAgentInvoke(
+  socket: WebSocket,
+  message: Extract<ClientMessage, { type: 'agent.invoke' }>
+) {
+  startAgentChatSession(message, (event) => {
+    switch (event.type) {
+      case 'started':
+        sendServerMessage(socket, {
+          type: 'agent.started',
+          kombuseSessionId: event.kombuseSessionId,
+        })
+        break
+      case 'event': {
+        const wsEvent = serializeAgentStreamEvent(event.event)
+        if (!wsEvent) {
+          return
+        }
+        sendServerMessage(socket, {
+          type: 'agent.event',
+          kombuseSessionId: event.kombuseSessionId,
+          event: wsEvent,
+        })
+        break
+      }
+      case 'complete':
+        sendServerMessage(socket, {
+          type: 'agent.complete',
+          kombuseSessionId: event.kombuseSessionId,
+          backendSessionId: event.backendSessionId,
+        })
+        break
+      case 'error':
+        sendServerMessage(socket, {
+          type: 'error',
+          message: event.message,
+        })
+        break
+    }
   })
 }

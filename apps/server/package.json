@@ -21,6 +21,7 @@
   "dependencies": {
     "@fastify/cors": "^11.0.1",
     "@fastify/websocket": "^11.2.0",
+    "@kombuse/agent": "*",
     "@kombuse/mcp": "*",
     "@kombuse/persistence": "*",
     "@kombuse/services": "*",

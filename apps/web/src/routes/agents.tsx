@@ -36,9 +36,11 @@ import { Plus, Bot, X, Save } from "lucide-react";
 import type { Agent, Profile } from "@kombuse/types";
 
 export function Agents() {
-  const { agentId } = useParams<{ agentId?: string }>();
+  const { projectId, agentId } = useParams<{ projectId?: string; agentId?: string }>();
   const navigate = useNavigate();
   const isCreating = agentId === "new";
+  const isProjectContext = Boolean(projectId);
+  const basePath = isProjectContext ? `/projects/${projectId}/agents` : "/agents";
 
   const { data: agents, isLoading, error } = useAgents();
   const { data: profiles } = useAgentProfiles();
@@ -74,16 +76,16 @@ export function Agents() {
   profiles?.forEach((p) => profileMap.set(p.id, p));
 
   const handleAgentClick = (agent: Agent) => {
-    navigate(`/agents/${agent.id}`);
+    navigate(`${basePath}/${agent.id}`);
   };
 
   const handleCloseDetail = () => {
-    navigate("/agents");
+    navigate(basePath);
   };
 
   const handleStartCreate = () => {
     resetCreateForm();
-    navigate("/agents/new");
+    navigate(`${basePath}/new`);
   };
 
   const handleCreateAgent = () => {
@@ -103,7 +105,7 @@ export function Agents() {
       {
         onSuccess: ({ agent }) => {
           resetCreateForm();
-          navigate(`/agents/${agent.id}`);
+          navigate(`${basePath}/${agent.id}`);
         },
       }
     );
@@ -135,7 +137,7 @@ export function Agents() {
   const handleDeleteAgent = async () => {
     if (!agentId || isCreating) return;
     await deleteAgent.mutateAsync(agentId);
-    navigate("/agents");
+    navigate(basePath);
   };
 
   // Trigger handlers
@@ -158,11 +160,13 @@ export function Agents() {
 
   const showDetailPanel = agentId !== undefined;
 
+  const Container = isProjectContext ? "div" : "main";
+
   return (
-    <main className="flex flex-col h-[calc(100vh-4rem)]">
+    <Container className={`flex flex-col ${isProjectContext ? "h-full" : "h-[calc(100vh-4rem)]"}`}>
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center gap-4">
-          <Bot className="size-6" />
+          {!isProjectContext && <Bot className="size-6" />}
           <h1 className="text-2xl font-bold">Agents</h1>
         </div>
         <Button onClick={handleStartCreate} disabled={isCreating}>
@@ -331,6 +335,6 @@ export function Agents() {
           </div>
         )}
       </div>
-    </main>
+    </Container>
   );
 }
