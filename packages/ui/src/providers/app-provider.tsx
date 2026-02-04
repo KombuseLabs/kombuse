@@ -1,8 +1,15 @@
 'use client'
 
 import { useState, useMemo, useCallback, type ReactNode } from 'react'
-import type { Ticket, AppView, AppSession, AppContextValue } from '@kombuse/types'
+import type {
+  Ticket,
+  AppView,
+  AppSession,
+  AppContextValue,
+  ServerMessage,
+} from '@kombuse/types'
 import { AppCtx } from './app-context'
+import { useWebSocket } from '../hooks/use-websocket'
 
 interface AppProviderProps {
   children: ReactNode
@@ -28,6 +35,9 @@ export function AppProvider({
   const [currentSession, setCurrentSessionState] = useState<AppSession | null>(
     null
   )
+  const [pendingSessionIds, setPendingSessionIds] = useState<Set<string>>(
+    () => new Set()
+  )
 
   // Wrap setters in useCallback for stable references
   const setCurrentTicket = useCallback((ticket: Ticket | null) => {
@@ -50,6 +60,46 @@ export function AppProvider({
     setCurrentSessionState(session)
   }, [])
 
+  const addPendingSession = useCallback((kombuseSessionId: string) => {
+    setPendingSessionIds((prev) => {
+      if (prev.has(kombuseSessionId)) return prev
+      const next = new Set(prev)
+      next.add(kombuseSessionId)
+      return next
+    })
+  }, [])
+
+  const removePendingSession = useCallback((kombuseSessionId: string) => {
+    setPendingSessionIds((prev) => {
+      if (!prev.has(kombuseSessionId)) return prev
+      const next = new Set(prev)
+      next.delete(kombuseSessionId)
+      return next
+    })
+  }, [])
+
+  // Global WebSocket handler to track pending permissions for all sessions
+  const handleMessage = useCallback(
+    (message: ServerMessage) => {
+      switch (message.type) {
+        case 'agent.event': {
+          const event = message.event
+          if (event.type === 'permission_request') {
+            addPendingSession(message.kombuseSessionId)
+          }
+          break
+        }
+        case 'agent.complete': {
+          removePendingSession(message.kombuseSessionId)
+          break
+        }
+      }
+    },
+    [addPendingSession, removePendingSession]
+  )
+
+  useWebSocket({ topics: [], onMessage: handleMessage })
+
   const value = useMemo<AppContextValue>(
     () => ({
       // State
@@ -58,12 +108,15 @@ export function AppProvider({
       view,
       isGenerating,
       currentSession,
+      pendingSessionIds,
       // Actions
       setCurrentTicket,
       setCurrentProjectId,
       setView,
       setIsGenerating,
       setCurrentSession,
+      addPendingSession,
+      removePendingSession,
     }),
     [
       currentTicket,
@@ -71,11 +124,14 @@ export function AppProvider({
       view,
       isGenerating,
       currentSession,
+      pendingSessionIds,
       setCurrentTicket,
       setCurrentProjectId,
       setView,
       setIsGenerating,
       setCurrentSession,
+      addPendingSession,
+      removePendingSession,
     ]
   )
 

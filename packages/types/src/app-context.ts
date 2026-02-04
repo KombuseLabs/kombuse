@@ -26,6 +26,8 @@ export interface AppState {
   isGenerating: boolean
   /** Current chat/agent session */
   currentSession: AppSession | null
+  /** Set of kombuseSessionIds that have pending permissions */
+  pendingSessionIds: Set<string>
 }
 
 /**
@@ -37,6 +39,8 @@ export interface AppActions {
   setView: (view: AppView) => void
   setIsGenerating: (isGenerating: boolean) => void
   setCurrentSession: (session: AppSession | null) => void
+  addPendingSession: (kombuseSessionId: string) => void
+  removePendingSession: (kombuseSessionId: string) => void
 }
 
 /**

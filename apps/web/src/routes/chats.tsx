@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Chat } from "@kombuse/ui/components";
-import { useCreateSession, useSessions } from "@kombuse/ui/hooks";
+import { Chat, StatusIndicator, type StatusIndicatorStatus } from "@kombuse/ui/components";
+import { useCreateSession, useSessions, useAppContext } from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
 import type { Session } from "@kombuse/types";
@@ -16,34 +16,61 @@ function formatDate(dateString: string) {
   });
 }
 
+function getIndicatorStatus(
+  session: Session,
+  pendingSessionIds: Set<string>
+): StatusIndicatorStatus {
+  if (
+    session.kombuse_session_id &&
+    pendingSessionIds.has(session.kombuse_session_id)
+  ) {
+    return 'pending'
+  }
+  if (session.status === 'running') {
+    return 'running'
+  }
+  if (session.status === 'failed') {
+    return 'error'
+  }
+  return 'idle'
+}
+
 function SessionItem({
   session,
   isSelected,
   onClick,
+  pendingSessionIds,
 }: {
   session: Session;
   isSelected: boolean;
   onClick: () => void;
+  pendingSessionIds: Set<string>;
 }) {
+  const indicatorStatus = getIndicatorStatus(session, pendingSessionIds)
+
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
+        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors relative",
         isSelected
           ? "bg-primary text-primary-foreground"
           : "hover:bg-muted"
       )}
     >
-      <div className="font-medium truncate">
+      <StatusIndicator
+        status={indicatorStatus}
+        size="sm"
+        className="absolute top-2.5 left-1.5"
+      />
+      <div className="font-medium truncate pl-3">
         {session.kombuse_session_id?.slice(0, 8) || session.id.slice(0, 8)}
       </div>
       <div className={cn(
-        "text-xs",
+        "text-xs pl-3",
         isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
       )}>
         {formatDate(session.started_at)}
-        <span className="ml-2 capitalize">{session.status}</span>
       </div>
     </button>
   );
@@ -60,6 +87,7 @@ export function Chats() {
 
   const { data: sessions, isLoading: sessionsLoading } = useSessions();
   const createSession = useCreateSession();
+  const { pendingSessionIds } = useAppContext();
 
   const Container = isProjectContext ? "div" : "main";
   const chatsBasePath = useMemo(() => {
@@ -121,6 +149,7 @@ export function Chats() {
                 session={session}
                 isSelected={selectedSessionId === session.id}
                 onClick={() => handleSelectSession(session.id)}
+                pendingSessionIds={pendingSessionIds}
               />
             ))
           ) : (
