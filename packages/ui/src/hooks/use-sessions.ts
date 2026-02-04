@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { SessionFilters } from '@kombuse/types'
 import { sessionsApi } from '../lib/api'
 
@@ -22,5 +22,15 @@ export function useSessionEvents(sessionId: string | null) {
     queryKey: ['sessions', sessionId, 'events'],
     queryFn: () => sessionsApi.getEvents(sessionId!),
     enabled: !!sessionId,
+  })
+}
+
+export function useCreateSession() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: sessionsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    },
   })
 }

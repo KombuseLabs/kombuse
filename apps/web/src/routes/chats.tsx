@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Chat } from "@kombuse/ui/components";
-import { useAgents, useSessions } from "@kombuse/ui/hooks";
+import { useCreateSession, useSessions } from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
 import type { Session } from "@kombuse/types";
@@ -50,30 +50,40 @@ function SessionItem({
 }
 
 export function Chats() {
-  const { projectId } = useParams<{ projectId?: string }>();
+  const navigate = useNavigate();
+  const { projectId, sessionId } = useParams<{
+    projectId?: string;
+    sessionId?: string;
+  }>();
   const isProjectContext = Boolean(projectId);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const selectedSessionId = sessionId ?? null;
 
-  const { data: agents } = useAgents({ is_enabled: true });
   const { data: sessions, isLoading: sessionsLoading } = useSessions();
+  const createSession = useCreateSession();
 
   const Container = isProjectContext ? "div" : "main";
+  const chatsBasePath = useMemo(() => {
+    return projectId ? `/projects/${projectId}/chats` : "/chats";
+  }, [projectId]);
 
   const handleNewChat = () => {
-    setSelectedSessionId(null);
+    navigate(chatsBasePath);
   };
 
   const handleSelectSession = (sessionId: string) => {
-    setSelectedSessionId(sessionId);
+    navigate(`${chatsBasePath}/${sessionId}`);
+  };
+
+  const ensureSessionForDraft = async () => {
+    const session = await createSession.mutateAsync({
+      backend_type: "claude-code",
+    });
+    navigate(`${chatsBasePath}/${session.id}`);
+    return session.id;
   };
 
   // Determine the key for ChatProvider to force remount when switching
-  const chatKey = selectedSessionId
-    ? `session-${selectedSessionId}`
-    : selectedAgentId
-      ? `agent-${selectedAgentId}`
-      : null;
+  const chatKey = selectedSessionId ? `session-${selectedSessionId}` : "draft";
 
   return (
     <Container className={cn(
@@ -97,24 +107,6 @@ export function Chats() {
             New Chat
           </button>
         </div>
-
-        {/* Agent selector for new chats */}
-        {!selectedSessionId && (
-          <div className="px-3 mb-4">
-            <select
-              className="w-full rounded border bg-background px-2 py-1.5 text-sm"
-              value={selectedAgentId ?? ""}
-              onChange={(e) => setSelectedAgentId(e.target.value || null)}
-            >
-              <option value="">Select agent...</option>
-              {agents?.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.id}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Sessions list */}
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
@@ -149,35 +141,25 @@ export function Chats() {
           isProjectContext && "p-4 border-b"
         )}>
           <h1 className="text-2xl font-bold">
-            {selectedSessionId ? "Session History" : isProjectContext ? "Chats" : "Chat"}
+            {isProjectContext ? "Chats" : "Chat"}
           </h1>
-          {selectedSessionId && (
-            <span className="text-sm text-muted-foreground">
-              (Read-only)
-            </span>
-          )}
         </div>
 
         <div className="flex-1 min-h-0">
-          {chatKey ? (
-            <ChatProvider
-              key={chatKey}
-              agentId={selectedSessionId ? undefined : selectedAgentId ?? undefined}
-              sessionId={selectedSessionId}
-            >
-              <Chat
-                emptyMessage={selectedSessionId ? "Loading session..." : "Start a conversation..."}
-                className="h-full"
-              />
-            </ChatProvider>
-          ) : (
+          <ChatProvider
+            key={chatKey}
+            sessionId={selectedSessionId}
+            onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
+          >
             <Chat
-              events={[]}
-              onSubmit={() => {}}
-              emptyMessage="Select an agent or session to begin"
+              emptyMessage={
+                selectedSessionId
+                  ? "Loading session..."
+                  : "Start a conversation..."
+              }
               className="h-full"
             />
-          )}
+          </ChatProvider>
         </div>
       </div>
     </Container>

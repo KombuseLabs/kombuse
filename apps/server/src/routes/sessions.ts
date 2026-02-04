@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { sessionPersistenceService } from '@kombuse/services'
 import { sessionsRepository, sessionEventsRepository } from '@kombuse/persistence'
 import {
+  createSessionSchema,
   sessionFiltersSchema,
   sessionEventFiltersSchema,
 } from '../schemas/sessions'
@@ -15,6 +16,26 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     }
 
     return sessionsRepository.list(parseResult.data)
+  })
+
+  // Create a new session. By default use the session ID as kombuse_session_id
+  // so frontend routing can use it directly as the stable app session key.
+  fastify.post('/sessions', async (request, reply) => {
+    const parseResult = createSessionSchema.safeParse(request.body ?? {})
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    const sessionId = crypto.randomUUID()
+    const createdSession = sessionsRepository.create({
+      id: sessionId,
+      kombuse_session_id: sessionId,
+      backend_type: parseResult.data.backend_type ?? 'claude-code',
+    })
+
+    const session = sessionsRepository.update(sessionId, { status: 'completed' })
+
+    return reply.status(201).send(session ?? createdSession)
   })
 
   // Get session by ID

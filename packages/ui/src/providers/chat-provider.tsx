@@ -10,18 +10,25 @@ interface ChatProviderProps {
   children: ReactNode
   /** The agent ID to send messages to (for live mode) */
   agentId?: string
-  /** The session ID to load historical events from (for read-only mode) */
+  /** The session ID to load/continue a conversation */
   sessionId?: string | null
+  /** Create/resolve a session ID when sending from a draft chat */
+  onEnsureSession?: () => Promise<string>
 }
 
 /**
  * Provides chat state and actions to the component tree.
  *
  * Two modes of operation:
- * - Live mode (agentId): Handles WebSocket message parsing and state management for new conversations
- * - Historical mode (sessionId): Loads and displays events from a saved session (read-only)
+ * - Live mode (agentId): Start a new conversation.
+ * - Session mode (sessionId + agentId): Load history and continue the same conversation.
  */
-export function ChatProvider({ children, agentId, sessionId }: ChatProviderProps) {
+export function ChatProvider({
+  children,
+  agentId,
+  sessionId,
+  onEnsureSession,
+}: ChatProviderProps) {
   const [events, setEvents] = useState<SerializedAgentEvent[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [kombuseSessionId, setKombuseSessionId] = useState<string | null>(null)
@@ -50,18 +57,22 @@ export function ChatProvider({ children, agentId, sessionId }: ChatProviderProps
   }, [agentId, sessionId])
 
   const handleMessage = useCallback((message: ServerMessage) => {
-    // Ignore WebSocket messages in historical mode
-    if (sessionId) return
-
     switch (message.type) {
-      case 'agent.started':
+      case 'agent.started': {
+        if (sessionId && message.kombuseSessionId !== sessionId) {
+          break
+        }
         setKombuseSessionId(message.kombuseSessionId)
         setIsLoading(true)
         break
+      }
 
       case 'agent.event': {
-        // Ignore events from other sessions to avoid cross-talk in shared sockets.
-        if (kombuseSessionId && message.kombuseSessionId !== kombuseSessionId) {
+        const expectedSessionId = sessionId ?? kombuseSessionId
+        if (!expectedSessionId) {
+          break
+        }
+        if (message.kombuseSessionId !== expectedSessionId) {
           break
         }
         const event = message.event
@@ -71,7 +82,15 @@ export function ChatProvider({ children, agentId, sessionId }: ChatProviderProps
       }
 
       case 'agent.complete':
-        if (kombuseSessionId && message.kombuseSessionId !== kombuseSessionId) {
+        if (!sessionId && !kombuseSessionId) {
+          break
+        }
+        if (
+          (sessionId && message.kombuseSessionId !== sessionId) ||
+          (!sessionId &&
+            kombuseSessionId &&
+            message.kombuseSessionId !== kombuseSessionId)
+        ) {
           break
         }
         setIsLoading(false)
@@ -97,11 +116,8 @@ export function ChatProvider({ children, agentId, sessionId }: ChatProviderProps
   })
 
   const send = useCallback(
-    (message: string) => {
-      // Disable sending in historical mode
-      if (sessionId) return
+    async (message: string) => {
       if (isLoading) return
-      if (!agentId) return
       if (!isConnected) {
         const errorEvent: SerializedAgentErrorEvent = {
           type: 'error',
@@ -113,6 +129,41 @@ export function ChatProvider({ children, agentId, sessionId }: ChatProviderProps
         return
       }
 
+      setIsLoading(true)
+      let targetSessionId = sessionId ?? kombuseSessionId ?? undefined
+
+      if (!targetSessionId) {
+        if (!onEnsureSession) {
+          setIsLoading(false)
+          const errorEvent: SerializedAgentErrorEvent = {
+            type: 'error',
+            message: 'Unable to create a chat session',
+            backend: 'mock',
+            timestamp: Date.now(),
+          }
+          setEvents((prev) => [...prev, errorEvent])
+          return
+        }
+
+        try {
+          targetSessionId = await onEnsureSession()
+          setKombuseSessionId(targetSessionId)
+        } catch (error) {
+          setIsLoading(false)
+          const errorEvent: SerializedAgentErrorEvent = {
+            type: 'error',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Failed to create a chat session',
+            backend: 'mock',
+            timestamp: Date.now(),
+          }
+          setEvents((prev) => [...prev, errorEvent])
+          return
+        }
+      }
+
       // Add user message as a proper event
       const userEvent: SerializedAgentMessageEvent = {
         type: 'message',
@@ -122,17 +173,24 @@ export function ChatProvider({ children, agentId, sessionId }: ChatProviderProps
         timestamp: Date.now(),
       }
       setEvents((prev) => [...prev, userEvent])
-      setIsLoading(true)
 
       // Send to agent
       wsSend({
         type: 'agent.invoke',
         agentId,
         message,
-        kombuseSessionId: kombuseSessionId ?? undefined,
+        kombuseSessionId: targetSessionId,
       })
     },
-    [agentId, sessionId, kombuseSessionId, isConnected, isLoading, wsSend]
+    [
+      agentId,
+      sessionId,
+      kombuseSessionId,
+      isConnected,
+      isLoading,
+      wsSend,
+      onEnsureSession,
+    ]
   )
 
   const reset = useCallback(() => {
@@ -141,19 +199,16 @@ export function ChatProvider({ children, agentId, sessionId }: ChatProviderProps
     setIsLoading(false)
   }, [])
 
-  // In historical mode, we're never loading (data is already loaded) and sending is disabled
-  const isHistoricalMode = Boolean(sessionId)
-
   const value = useMemo(
     () => ({
       events,
-      isLoading: isHistoricalMode ? false : isLoading,
-      isConnected: isHistoricalMode ? true : isConnected,
+      isLoading,
+      isConnected,
       kombuseSessionId,
       send,
       reset,
     }),
-    [events, isLoading, isConnected, kombuseSessionId, send, reset, isHistoricalMode]
+    [events, isLoading, isConnected, kombuseSessionId, send, reset]
   )
 
   return <ChatCtx.Provider value={value}>{children}</ChatCtx.Provider>

@@ -37,6 +37,7 @@ export function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/chats" element={<Chats />} />
+                  <Route path="/chats/:sessionId" element={<Chats />} />
                   <Route path="/projects" element={<Projects />} />
 
                   {/* Project routes with sidebar */}
@@ -44,6 +45,7 @@ export function App() {
                     <Route path="tickets" element={<Tickets />} />
                     <Route path="tickets/:ticketId" element={<Tickets />} />
                     <Route path="chats" element={<Chats />} />
+                    <Route path="chats/:sessionId" element={<Chats />} />
                     <Route path="agents" element={<Agents />} />
                     <Route path="agents/:agentId" element={<Agents />} />
                     <Route path="events" element={<Events />} />

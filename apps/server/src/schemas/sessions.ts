@@ -6,6 +6,10 @@ export const sessionFiltersSchema = z.object({
   offset: z.coerce.number().int().nonnegative().default(0),
 })
 
+export const createSessionSchema = z.object({
+  backend_type: z.string().min(1).optional(),
+})
+
 export const sessionEventFiltersSchema = z.object({
   since_seq: z.coerce.number().int().nonnegative().optional(),
   event_type: z.string().optional(),
@@ -13,4 +17,5 @@ export const sessionEventFiltersSchema = z.object({
 })
 
 export type SessionFiltersQuery = z.infer<typeof sessionFiltersSchema>
+export type CreateSessionBody = z.infer<typeof createSessionSchema>
 export type SessionEventFiltersQuery = z.infer<typeof sessionEventFiltersSchema>

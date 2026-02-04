@@ -11,7 +11,7 @@ export interface ChatContextValue {
   /** Current app session ID (set after first message) */
   kombuseSessionId: string | null
   /** Send a message to the agent */
-  send: (message: string) => void
+  send: (message: string) => void | Promise<void>
   /** Clear events and reset conversation */
   reset: () => void
 }

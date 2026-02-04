@@ -366,6 +366,15 @@ export const sessionsApi = {
     return handleResponse<Session>(response)
   },
 
+  async create(input?: { backend_type?: string }): Promise<Session> {
+    const response = await fetch(`${API_BASE}/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input ?? {}),
+    })
+    return handleResponse<Session>(response)
+  },
+
   async getEvents(
     sessionId: string,
     filters?: { since_seq?: number; event_type?: string; limit?: number }

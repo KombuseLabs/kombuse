@@ -170,19 +170,26 @@ export function startAgentChatSession(
 ): void {
   const { agentId, message: userMessage, kombuseSessionId } = message
 
-  const agent = dependencies.getAgent(agentId)
-  if (!agent) {
+  const normalizedAgentId =
+    typeof agentId === 'string' && agentId.trim().length > 0
+      ? agentId.trim()
+      : undefined
+  const agent = normalizedAgentId
+    ? dependencies.getAgent(normalizedAgentId)
+    : undefined
+
+  if (normalizedAgentId && !agent) {
     emit({
       type: 'error',
-      message: `Agent ${agentId} not found`,
+      message: `Agent ${normalizedAgentId} not found`,
     })
     return
   }
 
-  if (!agent.is_enabled) {
+  if (agent && !agent.is_enabled) {
     emit({
       type: 'error',
-      message: `Agent ${agentId} is disabled`,
+      message: `Agent ${agent.id} is disabled`,
     })
     return
   }
@@ -206,6 +213,8 @@ export function startAgentChatSession(
       ? existingSession.backend_session_id.trim()
       : undefined
 
+  dependencies.sessionPersistence.markSessionRunning(persistentSessionId)
+
   emit({
     type: 'started',
     kombuseSessionId: appSessionId,
@@ -227,7 +236,7 @@ export function startAgentChatSession(
     .runChat(backend, userMessage, appSessionId, {
       projectPath: dependencies.resolveProjectPath(),
       resumeSessionId,
-      systemPrompt: agent.system_prompt,
+      systemPrompt: agent?.system_prompt,
       onEvent: (event) => {
         // Persist event to database
         dependencies.sessionPersistence.persistEvent(persistentSessionId, event)

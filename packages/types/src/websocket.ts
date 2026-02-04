@@ -30,7 +30,12 @@ export type ClientMessage =
   | { type: 'subscribe'; topics: string[] }
   | { type: 'unsubscribe'; topics: string[] }
   | { type: 'ping' }
-  | { type: 'agent.invoke'; agentId: string; message: string; kombuseSessionId?: string }
+  | {
+      type: 'agent.invoke'
+      agentId?: string
+      message: string
+      kombuseSessionId?: string
+    }
 
 /**
  * Server-to-client message types

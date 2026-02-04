@@ -14,6 +14,7 @@ export interface SessionPersistenceOptions {
  */
 export interface ISessionPersistenceService {
   ensureSession(kombuseSessionId: string, backendType?: string): string
+  markSessionRunning(sessionId: string): void
   persistEvent(sessionId: string, event: AgentEvent): void
   completeSession(sessionId: string, backendSessionId?: string): void
   failSession(sessionId: string): void
@@ -80,6 +81,15 @@ export class SessionPersistenceService implements ISessionPersistenceService {
 
     // Update session's last_event_seq
     sessionsRepository.update(sessionId, { last_event_seq: seq })
+  }
+
+  /**
+   * Mark session as actively running.
+   */
+  markSessionRunning(sessionId: string): void {
+    sessionsRepository.update(sessionId, {
+      status: 'running',
+    })
   }
 
   /**
