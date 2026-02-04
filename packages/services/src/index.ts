@@ -21,10 +21,21 @@ export type { IProjectService } from './project-service'
 export { AgentService, agentService } from './agent-service'
 export type {
   IAgentService,
+  TriggerMatchResult,
+  AgentRunResult,
+} from './agent-service'
+export type {
   PermissionContext,
   PermissionCheckRequest,
   PermissionCheckResult,
-  TriggerMatchResult,
-  AgentRunResult,
   AgentRunner,
-} from './agent-service'
+} from '@kombuse/types'
+
+export {
+  SessionPersistenceService,
+  sessionPersistenceService,
+} from './session-persistence-service'
+export type {
+  ISessionPersistenceService,
+  SessionPersistenceOptions,
+} from './session-persistence-service'

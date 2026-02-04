@@ -28,3 +28,4 @@ export {
   agentInvocationsRepository,
 } from './agents'
 export { sessionsRepository } from './sessions'
+export { sessionEventsRepository } from './session-events'

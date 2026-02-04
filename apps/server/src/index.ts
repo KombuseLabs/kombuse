@@ -19,9 +19,11 @@ import {
   commentRoutes,
   eventRoutes,
   agentRoutes,
+  sessionRoutes,
   updateRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
+import { processEventAndRunAgents } from "./services/agent-execution-service";
 
 // Re-export for desktop shell integration
 export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
@@ -39,7 +41,7 @@ export async function createServer({ port, db }: ServerOptions) {
   setDatabase(db);
 
   const fastify = Fastify({
-    logger: true,
+    logger: false,
   });
 
   // Enable CORS for web app
@@ -56,6 +58,11 @@ export async function createServer({ port, db }: ServerOptions) {
   // Connect event system to WebSocket broadcaster
   onEventCreated(broadcastEvent);
 
+  // Connect event system to agent trigger processing
+  onEventCreated(async (event) => {
+    await processEventAndRunAgents(event);
+  });
+
   // API routes
   fastify.register(ticketRoutes, { prefix: "/api" });
   fastify.register(profileRoutes, { prefix: "/api" });
@@ -64,6 +71,7 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(commentRoutes, { prefix: "/api" });
   fastify.register(eventRoutes, { prefix: "/api" });
   fastify.register(agentRoutes, { prefix: "/api" });
+  fastify.register(sessionRoutes, { prefix: "/api" });
   fastify.register(updateRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {

@@ -1,4 +1,9 @@
-import type { Session, CreateSessionInput, SessionFilters } from '@kombuse/types'
+import type {
+  Session,
+  CreateSessionInput,
+  SessionFilters,
+  UpdateSessionInput,
+} from '@kombuse/types'
 import { getDatabase } from './database'
 
 /**
@@ -77,5 +82,58 @@ export const sessionsRepository = {
     const db = getDatabase()
     const result = db.prepare('DELETE FROM sessions WHERE id = ?').run(id)
     return result.changes > 0
+  },
+
+  /**
+   * Update session metadata
+   */
+  update(id: string, input: UpdateSessionInput): Session | null {
+    const db = getDatabase()
+
+    const fields: string[] = []
+    const params: unknown[] = []
+
+    if (input.backend_session_id !== undefined) {
+      fields.push('backend_session_id = ?')
+      params.push(input.backend_session_id)
+    }
+    if (input.status !== undefined) {
+      fields.push('status = ?')
+      params.push(input.status)
+    }
+    if (input.completed_at !== undefined) {
+      fields.push('completed_at = ?')
+      params.push(input.completed_at)
+    }
+    if (input.failed_at !== undefined) {
+      fields.push('failed_at = ?')
+      params.push(input.failed_at)
+    }
+    if (input.last_event_seq !== undefined) {
+      fields.push('last_event_seq = ?')
+      params.push(input.last_event_seq)
+    }
+
+    if (fields.length === 0) return this.get(id)
+
+    fields.push("updated_at = datetime('now')")
+    params.push(id)
+
+    db.prepare(`UPDATE sessions SET ${fields.join(', ')} WHERE id = ?`).run(
+      ...params
+    )
+
+    return this.get(id)
+  },
+
+  /**
+   * Get session by kombuse session ID
+   */
+  getByKombuseSessionId(kombuseSessionId: string): Session | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM sessions WHERE kombuse_session_id = ?')
+      .get(kombuseSessionId) as Session | undefined
+    return row ?? null
   },
 }
