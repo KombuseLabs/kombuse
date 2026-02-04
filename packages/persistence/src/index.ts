@@ -15,6 +15,7 @@ export { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 // Repositories
 export { ticketsRepository } from './tickets'
 export { profilesRepository } from './profiles'
+export { profileSettingsRepository } from './profile-settings'
 export { projectsRepository } from './projects'
 export { eventsRepository, onEventCreated } from './events'
 export { eventSubscriptionsRepository } from './event-subscriptions'

@@ -18,6 +18,7 @@ import { runMigrations } from '../database'
 const EXPECTED_TABLES = [
   'migrations',
   'profiles',
+  'profile_settings',
   'projects',
   'labels',
   'tickets',
@@ -28,6 +29,7 @@ const EXPECTED_TABLES = [
   'events',
   'event_subscriptions',
   'sessions',
+  'session_events',
   'agents',
   'agent_triggers',
   'agent_invocations',
@@ -60,22 +62,7 @@ const EXPECTED_INDEXES = [
   'idx_tickets_claimed_by',
 ]
 const EXPECTED_MIGRATIONS = [
-  '001_create_tickets',
-  '002_create_ticket_activities',
-  '003_create_profiles',
-  '004_create_projects',
-  '005_create_labels',
-  '006_recreate_tickets',
-  '007_create_ticket_labels',
-  '008_create_comments',
-  '009_create_mentions',
-  '010_create_attachments',
-  '011_create_events',
-  '012_add_ticket_claim_tracking',
-  '013_create_event_subscriptions',
-  '014_add_ticket_claimed_by',
-  '015_normalize_claim_expires_at',
-  '016_create_agents_tables',
+  '001_initial_schema',
 ]
 
 describe('database', () => {

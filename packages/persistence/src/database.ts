@@ -38,6 +38,8 @@ export function initializeDatabase(dbPath?: string): DatabaseType {
 
   // Enable WAL mode for better concurrent performance
   database.pragma('journal_mode = WAL')
+  // Enforce foreign-key constraints consistently in every connection.
+  database.pragma('foreign_keys = ON')
 
   // Run migrations
   runMigrations(database)
@@ -69,6 +71,9 @@ export function closeDatabase(): void {
 }
 
 export function runMigrations(db: DatabaseType): void {
+  // Ensure FK checks are active for migrations and test DBs.
+  db.pragma('foreign_keys = ON')
+
   // Create migrations table if not exists
   db.exec(`
     CREATE TABLE IF NOT EXISTS migrations (
@@ -93,43 +98,9 @@ export function runMigrations(db: DatabaseType): void {
 
 const migrations = [
   {
-    name: '001_create_tickets',
+    name: '001_initial_schema',
     sql: `
-      CREATE TABLE tickets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        body TEXT,
-        status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'in_progress')),
-        priority INTEGER CHECK (priority BETWEEN 0 AND 4),
-        project_id TEXT,
-        github_id INTEGER,
-        repo_name TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-
-      CREATE INDEX idx_tickets_status ON tickets(status);
-      CREATE INDEX idx_tickets_project_id ON tickets(project_id);
-    `,
-  },
-  {
-    name: '002_create_ticket_activities',
-    sql: `
-      CREATE TABLE ticket_activities (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
-        action TEXT NOT NULL,
-        details TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-
-      CREATE INDEX idx_ticket_activities_ticket_id ON ticket_activities(ticket_id);
-    `,
-  },
-  {
-    name: '003_create_profiles',
-    sql: `
-      CREATE TABLE profiles (
+      CREATE TABLE IF NOT EXISTS profiles (
         id TEXT PRIMARY KEY,
         type TEXT NOT NULL CHECK (type IN ('user', 'agent')),
         name TEXT NOT NULL,
@@ -143,15 +114,23 @@ const migrations = [
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX idx_profiles_type ON profiles(type);
-      CREATE UNIQUE INDEX idx_profiles_external ON profiles(external_source, external_id)
+      CREATE INDEX IF NOT EXISTS idx_profiles_type ON profiles(type);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_external ON profiles(external_source, external_id)
         WHERE external_source IS NOT NULL;
-    `,
-  },
-  {
-    name: '004_create_projects',
-    sql: `
-      CREATE TABLE projects (
+
+      CREATE TABLE IF NOT EXISTS profile_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        setting_key TEXT NOT NULL,
+        setting_value TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(profile_id, setting_key)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_profile_settings_profile ON profile_settings(profile_id);
+
+      CREATE TABLE IF NOT EXISTS projects (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -164,41 +143,32 @@ const migrations = [
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX idx_projects_owner ON projects(owner_id);
-    `,
-  },
-  {
-    name: '005_create_labels',
-    sql: `
-      CREATE TABLE labels (
+      CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
+
+      CREATE TABLE IF NOT EXISTS labels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         color TEXT NOT NULL DEFAULT '#808080',
         description TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        UNIQUE(project_id, name)
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX idx_labels_project ON labels(project_id);
-    `,
-  },
-  {
-    name: '006_recreate_tickets',
-    sql: `
-      DROP TABLE IF EXISTS ticket_activities;
-      DROP TABLE IF EXISTS tickets;
+      CREATE INDEX IF NOT EXISTS idx_labels_project ON labels(project_id);
 
-      CREATE TABLE tickets (
+      CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         author_id TEXT NOT NULL REFERENCES profiles(id),
         assignee_id TEXT REFERENCES profiles(id),
+        claimed_by_id TEXT REFERENCES profiles(id),
         title TEXT NOT NULL,
         body TEXT,
         status TEXT NOT NULL DEFAULT 'open'
           CHECK (status IN ('open', 'closed', 'in_progress', 'blocked')),
         priority INTEGER CHECK (priority BETWEEN 0 AND 4),
+        claimed_at TEXT,
+        claim_expires_at TEXT,
         external_source TEXT,
         external_id TEXT,
         external_url TEXT,
@@ -207,17 +177,16 @@ const migrations = [
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX idx_tickets_project ON tickets(project_id);
-      CREATE INDEX idx_tickets_status ON tickets(status);
-      CREATE INDEX idx_tickets_author ON tickets(author_id);
-      CREATE UNIQUE INDEX idx_tickets_external ON tickets(external_source, external_id)
+      CREATE INDEX IF NOT EXISTS idx_tickets_project ON tickets(project_id);
+      CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+      CREATE INDEX IF NOT EXISTS idx_tickets_author ON tickets(author_id);
+      CREATE INDEX IF NOT EXISTS idx_tickets_project_status_updated ON tickets(project_id, status, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_tickets_project_assignee_status ON tickets(project_id, assignee_id, status) WHERE assignee_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_tickets_project_claim_expiry ON tickets(project_id, claim_expires_at) WHERE claim_expires_at IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_external ON tickets(external_source, external_id)
         WHERE external_source IS NOT NULL;
-    `,
-  },
-  {
-    name: '007_create_ticket_labels',
-    sql: `
-      CREATE TABLE ticket_labels (
+
+      CREATE TABLE IF NOT EXISTS ticket_labels (
         ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
         label_id INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
         added_by_id TEXT REFERENCES profiles(id),
@@ -225,13 +194,9 @@ const migrations = [
         PRIMARY KEY (ticket_id, label_id)
       );
 
-      CREATE INDEX idx_ticket_labels_label ON ticket_labels(label_id);
-    `,
-  },
-  {
-    name: '008_create_comments',
-    sql: `
-      CREATE TABLE comments (
+      CREATE INDEX IF NOT EXISTS idx_ticket_labels_label ON ticket_labels(label_id);
+
+      CREATE TABLE IF NOT EXISTS comments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
         author_id TEXT NOT NULL REFERENCES profiles(id),
@@ -245,30 +210,29 @@ const migrations = [
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX idx_comments_ticket ON comments(ticket_id, created_at);
-      CREATE INDEX idx_comments_author ON comments(author_id);
-      CREATE INDEX idx_comments_parent ON comments(parent_id) WHERE parent_id IS NOT NULL;
-    `,
-  },
-  {
-    name: '009_create_mentions',
-    sql: `
-      CREATE TABLE mentions (
+      CREATE INDEX IF NOT EXISTS idx_comments_ticket ON comments(ticket_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_comments_author ON comments(author_id);
+      CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id) WHERE parent_id IS NOT NULL;
+
+      CREATE TABLE IF NOT EXISTS mentions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
-        mentioned_id TEXT NOT NULL REFERENCES profiles(id),
+        mention_type TEXT NOT NULL CHECK (mention_type IN ('profile', 'ticket')),
+        mentioned_profile_id TEXT REFERENCES profiles(id),
+        mentioned_ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
         mention_text TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        CHECK (
+          (mention_type = 'profile' AND mentioned_profile_id IS NOT NULL AND mentioned_ticket_id IS NULL) OR
+          (mention_type = 'ticket' AND mentioned_profile_id IS NULL AND mentioned_ticket_id IS NOT NULL)
+        )
       );
 
-      CREATE INDEX idx_mentions_comment ON mentions(comment_id);
-      CREATE INDEX idx_mentions_mentioned ON mentions(mentioned_id);
-    `,
-  },
-  {
-    name: '010_create_attachments',
-    sql: `
-      CREATE TABLE attachments (
+      CREATE INDEX IF NOT EXISTS idx_mentions_comment ON mentions(comment_id);
+      CREATE INDEX IF NOT EXISTS idx_mentions_profile ON mentions(mentioned_profile_id) WHERE mentioned_profile_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_mentions_ticket ON mentions(mentioned_ticket_id) WHERE mentioned_ticket_id IS NOT NULL;
+
+      CREATE TABLE IF NOT EXISTS attachments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
         ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
@@ -284,14 +248,10 @@ const migrations = [
         )
       );
 
-      CREATE INDEX idx_attachments_comment ON attachments(comment_id);
-      CREATE INDEX idx_attachments_ticket ON attachments(ticket_id);
-    `,
-  },
-  {
-    name: '011_create_events',
-    sql: `
-      CREATE TABLE events (
+      CREATE INDEX IF NOT EXISTS idx_attachments_comment ON attachments(comment_id);
+      CREATE INDEX IF NOT EXISTS idx_attachments_ticket ON attachments(ticket_id);
+
+      CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         event_type TEXT NOT NULL,
         project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
@@ -299,29 +259,18 @@ const migrations = [
         comment_id INTEGER REFERENCES comments(id) ON DELETE SET NULL,
         actor_id TEXT REFERENCES profiles(id),
         actor_type TEXT NOT NULL CHECK (actor_type IN ('user', 'agent', 'system')),
-        payload TEXT NOT NULL,
+        payload TEXT NOT NULL CHECK (json_valid(payload)),
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX idx_events_ticket ON events(ticket_id, created_at DESC);
-      CREATE INDEX idx_events_project ON events(project_id, created_at DESC);
-      CREATE INDEX idx_events_type ON events(event_type, created_at DESC);
-    `,
-  },
-  {
-    name: '012_add_ticket_claim_tracking',
-    sql: `
-      ALTER TABLE tickets ADD COLUMN claimed_at TEXT;
-      ALTER TABLE tickets ADD COLUMN claim_expires_at TEXT;
+      CREATE INDEX IF NOT EXISTS idx_events_ticket ON events(ticket_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_events_project ON events(project_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type, created_at DESC);
 
-      CREATE INDEX idx_tickets_claimed ON tickets(claimed_at) WHERE claimed_at IS NOT NULL;
-      CREATE INDEX idx_tickets_assignee ON tickets(assignee_id) WHERE assignee_id IS NOT NULL;
-    `,
-  },
-  {
-    name: '013_create_event_subscriptions',
-    sql: `
-      CREATE TABLE event_subscriptions (
+      CREATE INDEX IF NOT EXISTS idx_tickets_claimed ON tickets(claimed_at) WHERE claimed_at IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_tickets_assignee ON tickets(assignee_id) WHERE assignee_id IS NOT NULL;
+
+      CREATE TABLE IF NOT EXISTS event_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         subscriber_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
         event_type TEXT NOT NULL,
@@ -331,85 +280,92 @@ const migrations = [
         UNIQUE(subscriber_id, event_type, project_id)
       );
 
-      CREATE INDEX idx_event_subs_subscriber ON event_subscriptions(subscriber_id);
-      CREATE INDEX idx_event_subs_type ON event_subscriptions(event_type);
-    `,
-  },
-  {
-    name: '014_add_ticket_claimed_by',
-    sql: `
-      ALTER TABLE tickets ADD COLUMN claimed_by_id TEXT REFERENCES profiles(id);
+      CREATE INDEX IF NOT EXISTS idx_event_subs_subscriber ON event_subscriptions(subscriber_id);
+      CREATE INDEX IF NOT EXISTS idx_event_subs_type ON event_subscriptions(event_type);
+      CREATE INDEX IF NOT EXISTS idx_tickets_claimed_by ON tickets(claimed_by_id) WHERE claimed_by_id IS NOT NULL;
 
-      CREATE INDEX idx_tickets_claimed_by ON tickets(claimed_by_id) WHERE claimed_by_id IS NOT NULL;
-    `,
-  },
-  {
-    name: '015_normalize_claim_expires_at',
-    sql: `
-      UPDATE tickets
-      SET claim_expires_at = substr(
-        replace(replace(claim_expires_at, 'T', ' '), 'Z', ''),
-        1,
-        19
-      )
-      WHERE claim_expires_at IS NOT NULL AND claim_expires_at LIKE '%T%';
-    `,
-  },
-  {
-    name: '016_create_agents_tables',
-    sql: `
       -- Sessions table for storing agent conversation history
-      CREATE TABLE sessions (
+      CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
+        kombuse_session_id TEXT UNIQUE,
+        backend_type TEXT,
+        backend_session_id TEXT,
+        status TEXT NOT NULL DEFAULT 'running'
+          CHECK (status IN ('running', 'completed', 'failed', 'aborted')),
+        started_at TEXT NOT NULL DEFAULT (datetime('now')),
+        completed_at TEXT,
+        failed_at TEXT,
+        last_event_seq INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
+      CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_sessions_backend_ref ON sessions(backend_type, backend_session_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_kombuse ON sessions(kombuse_session_id);
+
+      CREATE TABLE IF NOT EXISTS session_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        seq INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        payload TEXT NOT NULL CHECK (json_valid(payload)),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(session_id, seq)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_session_events_session ON session_events(session_id, seq);
+
       -- Agents table (extends profiles)
-      CREATE TABLE agents (
+      CREATE TABLE IF NOT EXISTS agents (
         id TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
         system_prompt TEXT NOT NULL,
-        permissions TEXT NOT NULL DEFAULT '[]',
-        config TEXT NOT NULL DEFAULT '{}',
+        permissions TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(permissions)),
+        config TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(config)),
         is_enabled INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
       -- Agent triggers table
-      CREATE TABLE agent_triggers (
+      CREATE TABLE IF NOT EXISTS agent_triggers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
         event_type TEXT NOT NULL,
         project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
-        conditions TEXT,
+        conditions TEXT CHECK (conditions IS NULL OR json_valid(conditions)),
         is_enabled INTEGER NOT NULL DEFAULT 1,
         priority INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX idx_agent_triggers_event ON agent_triggers(event_type, is_enabled);
-      CREATE INDEX idx_agent_triggers_agent ON agent_triggers(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_agent_triggers_event ON agent_triggers(event_type, is_enabled);
+      CREATE INDEX IF NOT EXISTS idx_agent_triggers_agent ON agent_triggers(agent_id);
 
       -- Agent invocations table
-      CREATE TABLE agent_invocations (
+      CREATE TABLE IF NOT EXISTS agent_invocations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
         trigger_id INTEGER NOT NULL REFERENCES agent_triggers(id) ON DELETE CASCADE,
         event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
         session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
         status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed')),
-        context TEXT NOT NULL,
-        result TEXT,
+        attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+        max_attempts INTEGER NOT NULL DEFAULT 3 CHECK (max_attempts >= 1),
+        run_at TEXT NOT NULL DEFAULT (datetime('now')),
+        context TEXT NOT NULL CHECK (json_valid(context)),
+        result TEXT CHECK (result IS NULL OR json_valid(result)),
+        error TEXT,
         started_at TEXT,
         completed_at TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX idx_agent_invocations_agent ON agent_invocations(agent_id, created_at DESC);
-      CREATE INDEX idx_agent_invocations_status ON agent_invocations(status);
-      CREATE INDEX idx_agent_invocations_session ON agent_invocations(session_id);
+      CREATE INDEX IF NOT EXISTS idx_agent_invocations_agent ON agent_invocations(agent_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_agent_invocations_status ON agent_invocations(status);
+      CREATE INDEX IF NOT EXISTS idx_agent_invocations_run_at ON agent_invocations(status, run_at);
+      CREATE INDEX IF NOT EXISTS idx_agent_invocations_session ON agent_invocations(session_id);
     `,
   },
 ]

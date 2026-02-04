@@ -32,14 +32,32 @@ function mapComment(row: RawComment): Comment {
   }
 }
 
+interface ParsedMentions {
+  profileNames: string[]
+  ticketIds: number[]
+}
+
 /**
- * Extract @mentions from comment body
- * Returns unique mention texts (without the @ prefix)
+ * Extract profile and ticket mentions from comment body.
+ * Supports `@profile-name` and `#123` ticket references.
  */
-function parseMentions(body: string): string[] {
-  const mentionRegex = /@([a-zA-Z0-9_-]+)/g
-  const matches = body.matchAll(mentionRegex)
-  return [...new Set([...matches].map((m) => m[1]!))]
+function parseMentions(body: string): ParsedMentions {
+  const profileMentionRegex = /@([a-zA-Z0-9_-]+)/g
+  const ticketMentionRegex = /#(\d+)\b/g
+
+  const profileNames = [
+    ...new Set([...body.matchAll(profileMentionRegex)].map((match) => match[1]!)),
+  ]
+
+  const ticketIds = [
+    ...new Set(
+      [...body.matchAll(ticketMentionRegex)]
+        .map((match) => Number.parseInt(match[1]!, 10))
+        .filter((ticketId) => Number.isInteger(ticketId) && ticketId > 0)
+    ),
+  ]
+
+  return { profileNames, ticketIds }
 }
 
 /**
@@ -111,7 +129,7 @@ export const commentsRepository = {
   },
 
   /**
-   * Create a new comment with automatic @mention parsing
+   * Create a new comment with automatic profile/ticket mention parsing.
    */
   create(input: CreateCommentInput): Comment {
     const db = getDatabase()
@@ -141,16 +159,17 @@ export const commentsRepository = {
       )
       const commentId = result.lastInsertRowid as number
 
-      // 2. Parse @mentions from body
-      const mentionNames = parseMentions(payload.body)
+      // 2. Parse profile/ticket mentions from body
+      const mentions = parseMentions(payload.body)
 
-      // 3. For each mention, lookup profile and create mention record
-      for (const name of mentionNames) {
+      // 3. Resolve profile mentions
+      for (const name of mentions.profileNames) {
         const profile = profilesRepository.getByName(name)
         if (profile) {
           mentionsRepository.create({
             comment_id: commentId,
-            mentioned_id: profile.id,
+            mention_type: 'profile',
+            mentioned_profile_id: profile.id,
             mention_text: `@${name}`,
           })
 
@@ -163,14 +182,47 @@ export const commentsRepository = {
             actor_id: payload.author_id,
             actor_type: 'user',
             payload: {
-              mentioned_id: profile.id,
+              mention_type: 'profile',
+              mentioned_profile_id: profile.id,
               mention_text: `@${name}`,
             },
           })
         }
       }
 
-      // 4. Create comment.added event
+      // 4. Resolve ticket mentions
+      for (const mentionedTicketId of mentions.ticketIds) {
+        const mentionedTicket = db
+          .prepare('SELECT id FROM tickets WHERE id = ?')
+          .get(mentionedTicketId) as { id: number } | undefined
+
+        if (!mentionedTicket) {
+          continue
+        }
+
+        mentionsRepository.create({
+          comment_id: commentId,
+          mention_type: 'ticket',
+          mentioned_ticket_id: mentionedTicketId,
+          mention_text: `#${mentionedTicketId}`,
+        })
+
+        eventsRepository.create({
+          event_type: 'mention.created',
+          project_id: ticket?.project_id,
+          ticket_id: payload.ticket_id,
+          comment_id: commentId,
+          actor_id: payload.author_id,
+          actor_type: 'user',
+          payload: {
+            mention_type: 'ticket',
+            mentioned_ticket_id: mentionedTicketId,
+            mention_text: `#${mentionedTicketId}`,
+          },
+        })
+      }
+
+      // 5. Create comment.added event
       eventsRepository.create({
         event_type: 'comment.added',
         project_id: ticket?.project_id,
@@ -228,7 +280,7 @@ export const commentsRepository = {
         mentionsRepository.deleteByComment(id)
 
         // Parse new mentions
-        const mentionNames = parseMentions(input.body)
+        const mentions = parseMentions(input.body)
 
         // Get ticket info for event logging
         const comment = db
@@ -241,15 +293,34 @@ export const commentsRepository = {
           : undefined
 
         // Create new mention records
-        for (const name of mentionNames) {
+        for (const name of mentions.profileNames) {
           const profile = profilesRepository.getByName(name)
           if (profile) {
             mentionsRepository.create({
               comment_id: id,
-              mentioned_id: profile.id,
+              mention_type: 'profile',
+              mentioned_profile_id: profile.id,
               mention_text: `@${name}`,
             })
           }
+        }
+
+        // Create new ticket mention records
+        for (const mentionedTicketId of mentions.ticketIds) {
+          const mentionedTicket = db
+            .prepare('SELECT id FROM tickets WHERE id = ?')
+            .get(mentionedTicketId) as { id: number } | undefined
+
+          if (!mentionedTicket) {
+            continue
+          }
+
+          mentionsRepository.create({
+            comment_id: id,
+            mention_type: 'ticket',
+            mentioned_ticket_id: mentionedTicketId,
+            mention_text: `#${mentionedTicketId}`,
+          })
         }
 
         // Create comment.edited event

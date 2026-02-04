@@ -6,7 +6,7 @@ import type {
 import { getDatabase } from './database'
 
 /**
- * Data access layer for mentions (@mentions in comments)
+ * Data access layer for profile/ticket mentions in comments
  */
 export const mentionsRepository = {
   /**
@@ -21,9 +21,17 @@ export const mentionsRepository = {
       conditions.push('comment_id = ?')
       params.push(filters.comment_id)
     }
-    if (filters?.mentioned_id) {
-      conditions.push('mentioned_id = ?')
-      params.push(filters.mentioned_id)
+    if (filters?.mention_type) {
+      conditions.push('mention_type = ?')
+      params.push(filters.mention_type)
+    }
+    if (filters?.mentioned_profile_id) {
+      conditions.push('mentioned_profile_id = ?')
+      params.push(filters.mentioned_profile_id)
+    }
+    if (filters?.mentioned_ticket_id !== undefined) {
+      conditions.push('mentioned_ticket_id = ?')
+      params.push(filters.mentioned_ticket_id)
     }
 
     const whereClause =
@@ -66,9 +74,21 @@ export const mentionsRepository = {
     const db = getDatabase()
     return db
       .prepare(
-        'SELECT * FROM mentions WHERE mentioned_id = ? ORDER BY created_at DESC'
+        "SELECT * FROM mentions WHERE mention_type = 'profile' AND mentioned_profile_id = ? ORDER BY created_at DESC"
       )
       .all(profileId) as Mention[]
+  },
+
+  /**
+   * Get all mentions of a ticket
+   */
+  getByTicket(ticketId: number): Mention[] {
+    const db = getDatabase()
+    return db
+      .prepare(
+        "SELECT * FROM mentions WHERE mention_type = 'ticket' AND mentioned_ticket_id = ? ORDER BY created_at DESC"
+      )
+      .all(ticketId) as Mention[]
   },
 
   /**
@@ -77,14 +97,23 @@ export const mentionsRepository = {
   create(input: CreateMentionInput): Mention {
     const db = getDatabase()
 
+    const isProfileMention = input.mention_type === 'profile'
     const result = db
       .prepare(
         `
-      INSERT INTO mentions (comment_id, mentioned_id, mention_text)
-      VALUES (?, ?, ?)
+      INSERT INTO mentions (
+        comment_id, mention_type, mentioned_profile_id, mentioned_ticket_id, mention_text
+      )
+      VALUES (?, ?, ?, ?, ?)
     `
       )
-      .run(input.comment_id, input.mentioned_id, input.mention_text)
+      .run(
+        input.comment_id,
+        input.mention_type,
+        isProfileMention ? input.mentioned_profile_id : null,
+        isProfileMention ? null : input.mentioned_ticket_id,
+        input.mention_text
+      )
 
     return this.get(result.lastInsertRowid as number) as Mention
   },
@@ -97,17 +126,22 @@ export const mentionsRepository = {
 
     const db = getDatabase()
     const insertMention = db.prepare(`
-      INSERT INTO mentions (comment_id, mentioned_id, mention_text)
-      VALUES (?, ?, ?)
+      INSERT INTO mentions (
+        comment_id, mention_type, mentioned_profile_id, mentioned_ticket_id, mention_text
+      )
+      VALUES (?, ?, ?, ?, ?)
     `)
 
     const insertedIds: number[] = []
 
     const batchInsert = db.transaction((items: CreateMentionInput[]) => {
       for (const item of items) {
+        const isProfileMention = item.mention_type === 'profile'
         const result = insertMention.run(
           item.comment_id,
-          item.mentioned_id,
+          item.mention_type,
+          isProfileMention ? item.mentioned_profile_id : null,
+          isProfileMention ? null : item.mentioned_ticket_id,
           item.mention_text
         )
         insertedIds.push(result.lastInsertRowid as number)

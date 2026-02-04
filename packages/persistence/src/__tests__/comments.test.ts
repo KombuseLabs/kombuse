@@ -130,7 +130,8 @@ describe('commentsRepository', () => {
       const mentions = mentionsRepository.getByComment(comment.id)
 
       expect(mentions).toHaveLength(1)
-      expect(mentions[0]?.mentioned_id).toBe('mentionable-user')
+      expect(mentions[0]?.mention_type).toBe('profile')
+      expect(mentions[0]?.mentioned_profile_id).toBe('mentionable-user')
       expect(mentions[0]?.mention_text).toBe('@mentionable')
     })
 
@@ -152,7 +153,10 @@ describe('commentsRepository', () => {
       const mentions = mentionsRepository.getByComment(comment.id)
 
       expect(mentions).toHaveLength(2)
-      expect(mentions.map((m) => m.mentioned_id).sort()).toEqual(['user-alice', 'user-bob'])
+      expect(mentions.map((m) => m.mentioned_profile_id).sort()).toEqual([
+        'user-alice',
+        'user-bob',
+      ])
     })
 
     it('should not create duplicate mentions for same profile', () => {
@@ -169,6 +173,37 @@ describe('commentsRepository', () => {
       const mentions = mentionsRepository.getByComment(comment.id)
 
       expect(mentions, 'Should deduplicate mentions').toHaveLength(1)
+    })
+
+    it('should parse #ticket mentions and create mention records', () => {
+      const targetTicket = ticketsRepository.create({
+        title: 'Mention target',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: `Related to #${targetTicket.id}`,
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+
+      expect(mentions).toHaveLength(1)
+      expect(mentions[0]?.mention_type).toBe('ticket')
+      expect(mentions[0]?.mentioned_ticket_id).toBe(targetTicket.id)
+    })
+
+    it('should ignore #ticket mentions when the target ticket does not exist', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Related to #999999',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions).toHaveLength(0)
     })
 
     it('should ignore @mentions that do not match a profile', () => {
@@ -194,13 +229,13 @@ describe('commentsRepository', () => {
       const comment = commentsRepository.create({
         ticket_id: testTicketId,
         author_id: TEST_USER_ID,
-        body: '@helper can you assist?',
+        body: `@helper can you assist with #${testTicketId}?`,
       })
 
       const events = eventsRepository.list({ event_type: 'mention.created' })
 
-      expect(events).toHaveLength(1)
-      expect(events[0]?.comment_id).toBe(comment.id)
+      expect(events).toHaveLength(2)
+      expect(events.every((event) => event.comment_id === comment.id)).toBe(true)
     })
 
     it('should create comment.added event', () => {
@@ -433,7 +468,7 @@ describe('commentsRepository', () => {
 
       const mentions = mentionsRepository.getByComment(comment.id)
       expect(mentions).toHaveLength(1)
-      expect(mentions[0]?.mentioned_id).toBe('user-bob')
+      expect(mentions[0]?.mentioned_profile_id).toBe('user-bob')
     })
   })
 

@@ -42,7 +42,19 @@ export const sessionsRepository = {
     const db = getDatabase()
     const id = input?.id || crypto.randomUUID()
 
-    db.prepare('INSERT INTO sessions (id) VALUES (?)').run(id)
+    db
+      .prepare(
+        `
+        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id)
+        VALUES (?, ?, ?, ?)
+      `
+      )
+      .run(
+        id,
+        input?.kombuse_session_id ?? null,
+        input?.backend_type ?? null,
+        input?.backend_session_id ?? null
+      )
 
     return this.get(id) as Session
   },

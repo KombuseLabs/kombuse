@@ -67,7 +67,7 @@ export function registerTicketTools(server: McpServer): void {
     'add_comment',
     {
       description:
-        'Add a comment to a ticket. The comment body supports @mentions which will be automatically parsed. Returns the created comment.',
+        'Add a comment to a ticket. The comment body supports @profile and #ticket mentions which are automatically parsed. Returns the created comment.',
       inputSchema: {
         ticket_id: z
           .number()
@@ -75,7 +75,10 @@ export function registerTicketTools(server: McpServer): void {
           .positive()
           .describe('The ID of the ticket to comment on'),
         author_id: z.string().min(1).describe('The ID of the comment author. Use "anonymous-agent" if no profile exists.'),
-        body: z.string().min(1).describe('The comment text (supports @mentions)'),
+        body: z
+          .string()
+          .min(1)
+          .describe('The comment text (supports @profile and #ticket mentions)'),
         parent_id: z
           .number()
           .int()

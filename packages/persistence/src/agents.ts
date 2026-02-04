@@ -328,9 +328,9 @@ export const agentInvocationsRepository = {
       .prepare(
         `
       INSERT INTO agent_invocations (
-        agent_id, trigger_id, event_id, session_id, context
+        agent_id, trigger_id, event_id, session_id, max_attempts, run_at, context
       )
-      VALUES (?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?)
     `
       )
       .run(
@@ -338,6 +338,8 @@ export const agentInvocationsRepository = {
         input.trigger_id,
         input.event_id ?? null,
         input.session_id ?? null,
+        input.max_attempts ?? 3,
+        input.run_at ?? null,
         JSON.stringify(input.context)
       )
 
@@ -361,9 +363,25 @@ export const agentInvocationsRepository = {
       fields.push('session_id = ?')
       params.push(input.session_id)
     }
+    if (input.attempts !== undefined) {
+      fields.push('attempts = ?')
+      params.push(input.attempts)
+    }
+    if (input.max_attempts !== undefined) {
+      fields.push('max_attempts = ?')
+      params.push(input.max_attempts)
+    }
+    if (input.run_at !== undefined) {
+      fields.push('run_at = ?')
+      params.push(input.run_at)
+    }
     if (input.result !== undefined) {
       fields.push('result = ?')
       params.push(JSON.stringify(input.result))
+    }
+    if (input.error !== undefined) {
+      fields.push('error = ?')
+      params.push(input.error)
     }
     if (input.started_at !== undefined) {
       fields.push('started_at = ?')
@@ -427,8 +445,12 @@ interface RawAgentInvocation {
   event_id: number | null
   session_id: string | null
   status: string
+  attempts: number
+  max_attempts: number
+  run_at: string
   context: string
   result: string | null
+  error: string | null
   started_at: string | null
   completed_at: string | null
   created_at: string
@@ -469,8 +491,12 @@ function mapAgentInvocation(row: RawAgentInvocation): AgentInvocation {
     event_id: row.event_id,
     session_id: row.session_id,
     status: row.status as AgentInvocation['status'],
+    attempts: row.attempts,
+    max_attempts: row.max_attempts,
+    run_at: row.run_at,
     context: JSON.parse(row.context),
     result: row.result ? JSON.parse(row.result) : null,
+    error: row.error,
     started_at: row.started_at,
     completed_at: row.completed_at,
     created_at: row.created_at,

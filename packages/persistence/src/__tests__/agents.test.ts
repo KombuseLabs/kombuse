@@ -458,8 +458,12 @@ describe('agentInvocationsRepository', () => {
       expect(invocation.agent_id).toBe(agentId)
       expect(invocation.trigger_id).toBe(triggerId)
       expect(invocation.status).toBe('pending')
+      expect(invocation.attempts).toBe(0)
+      expect(invocation.max_attempts).toBe(3)
+      expect(invocation.run_at).toBeDefined()
       expect(invocation.context).toEqual({ ticket_id: 123 })
       expect(invocation.result).toBeNull()
+      expect(invocation.error).toBeNull()
       expect(invocation.session_id).toBeNull()
     })
 
@@ -538,6 +542,25 @@ describe('agentInvocationsRepository', () => {
 
       expect(updated?.status).toBe('running')
       expect(updated?.started_at).toBeDefined()
+    })
+
+    it('should update retry scheduling fields', () => {
+      const invocation = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: {},
+      })
+
+      const nextRunAt = new Date(Date.now() + 60_000).toISOString()
+      const updated = agentInvocationsRepository.update(invocation.id, {
+        attempts: 1,
+        run_at: nextRunAt,
+        error: 'temporary failure',
+      })
+
+      expect(updated?.attempts).toBe(1)
+      expect(updated?.run_at).toBe(nextRunAt)
+      expect(updated?.error).toBe('temporary failure')
     })
 
     it('should update invocation result on completion', () => {
