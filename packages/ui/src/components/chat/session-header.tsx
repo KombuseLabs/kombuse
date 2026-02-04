@@ -1,15 +1,17 @@
 'use client'
 
+import { formatDistanceToNow } from 'date-fns'
 import { cn } from '../../lib/utils'
 
 interface SessionHeaderProps {
   isConnected?: boolean
   isLoading?: boolean
-  messageCount: number
+  eventCount: number
+  lastEventTime?: number
   className?: string
 }
 
-function SessionHeader({ isConnected = true, isLoading = false, messageCount, className }: SessionHeaderProps) {
+function SessionHeader({ isConnected = true, isLoading = false, eventCount, lastEventTime, className }: SessionHeaderProps) {
   return (
     <div className={cn('flex items-center gap-3 px-4 py-2 border-b text-sm text-muted-foreground', className)}>
       <div className="flex items-center gap-1.5">
@@ -40,7 +42,14 @@ function SessionHeader({ isConnected = true, isLoading = false, messageCount, cl
 
       <div className="w-px h-4 bg-border" />
 
-      <span>{messageCount} {messageCount === 1 ? 'message' : 'messages'}</span>
+      <span>{eventCount} {eventCount === 1 ? 'event' : 'events'}</span>
+
+      {lastEventTime && (
+        <>
+          <div className="w-px h-4 bg-border" />
+          <span>{formatDistanceToNow(lastEventTime, { addSuffix: true })}</span>
+        </>
+      )}
     </div>
   )
 }

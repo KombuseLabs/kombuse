@@ -1,18 +1,18 @@
 import { createContext } from 'react'
-import type { Message } from '../components/chat/session-viewer'
+import type { SerializedAgentEvent } from '@kombuse/types'
 
 export interface ChatContextValue {
-  /** Current messages in the conversation */
-  messages: Message[]
+  /** Current events in the conversation */
+  events: SerializedAgentEvent[]
   /** Whether the agent is currently processing */
   isLoading: boolean
   /** Whether the WebSocket is connected */
   isConnected: boolean
-  /** Current conversation ID (set after first message) */
-  conversationId: string | null
+  /** Current app session ID (set after first message) */
+  kombuseSessionId: string | null
   /** Send a message to the agent */
   send: (message: string) => void
-  /** Clear messages and reset conversation */
+  /** Clear events and reset conversation */
   reset: () => void
 }
 
