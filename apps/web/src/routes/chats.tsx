@@ -29,12 +29,9 @@ function formatDate(dateString: string) {
 
 function getIndicatorStatus(
   session: Session,
-  pendingSessionIds: Set<string>
+  hasPendingPermission: boolean
 ): StatusIndicatorStatus {
-  if (
-    session.kombuse_session_id &&
-    pendingSessionIds.has(session.kombuse_session_id)
-  ) {
+  if (hasPendingPermission) {
     return 'pending'
   }
   if (session.status === 'running') {
@@ -51,16 +48,16 @@ function SessionItem({
   isSelected,
   onClick,
   onDelete,
-  pendingSessionIds,
+  hasPendingPermission,
 }: {
   session: Session;
   isSelected: boolean;
   onClick: () => void;
   onDelete: () => void;
-  pendingSessionIds: Set<string>;
+  hasPendingPermission: boolean;
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const indicatorStatus = getIndicatorStatus(session, pendingSessionIds)
+  const indicatorStatus = getIndicatorStatus(session, hasPendingPermission)
 
   return (
     <button
@@ -140,7 +137,13 @@ export function Chats() {
   const { data: sessions, isLoading: sessionsLoading } = useSessions();
   const createSession = useCreateSession();
   const deleteSession = useDeleteSession();
-  const { pendingSessionIds } = useAppContext();
+  const { pendingPermissions } = useAppContext();
+
+  // Helper to check if a session has pending permissions
+  const sessionHasPendingPermission = (kombuseSessionId: string | null) => {
+    if (!kombuseSessionId) return false
+    return [...pendingPermissions.values()].some(p => p.sessionId === kombuseSessionId)
+  }
 
   const Container = isProjectContext ? "div" : "main";
   const chatsBasePath = useMemo(() => {
@@ -209,7 +212,7 @@ export function Chats() {
                     navigate(chatsBasePath)
                   }
                 }}
-                pendingSessionIds={pendingSessionIds}
+                hasPendingPermission={sessionHasPendingPermission(session.kombuse_session_id)}
               />
             ))
           ) : (

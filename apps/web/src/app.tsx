@@ -1,7 +1,7 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UpdateNotification } from "@kombuse/ui/components";
+import { Header, UpdateNotification, NotificationBell } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { CommandSetup } from "./command-setup";
 import { Home } from "./routes/home";
@@ -21,6 +21,8 @@ const queryClient = new QueryClient({
 });
 
 export function App() {
+  const navigate = useNavigate();
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
@@ -33,7 +35,9 @@ export function App() {
           <AppProvider>
             <CommandSetup>
               <div className="min-h-screen">
-                <Header />
+                <Header>
+                  <NotificationBell onNavigate={navigate} />
+                </Header>
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/chats" element={<Chats />} />
