@@ -17,6 +17,9 @@ import {
 } from '../../base/select'
 import { ConditionEditor } from './condition-editor'
 import { EVENT_TYPE_OPTIONS, EVENT_TYPE_CATEGORIES } from './event-type-constants'
+import { LabelPicker } from '../labels/label-picker'
+import { useProjectLabels, useCreateLabel } from '../../hooks/use-labels'
+import { useAppContext } from '../../hooks/use-app-context'
 
 export interface TriggerFormData {
   event_type: string
@@ -39,13 +42,31 @@ function TriggerForm({ trigger, onSubmit, onCancel, isLoading }: TriggerFormProp
   )
   const [priority, setPriority] = useState(trigger?.priority ?? 0)
   const [isEnabled, setIsEnabled] = useState(trigger?.is_enabled ?? true)
+  const [selectedLabelId, setSelectedLabelId] = useState<number | null>(
+    (trigger?.conditions?.label_id as number) ?? null
+  )
+
+  // Get project context for label operations
+  const { currentProjectId } = useAppContext()
+  const { data: projectLabels, isLoading: isLoadingLabels } = useProjectLabels(
+    currentProjectId ?? ''
+  )
+  const createLabelMutation = useCreateLabel(currentProjectId ?? '')
+
+  // Check if this is a label-based event type
+  const isLabelEvent = eventType === 'label.added' || eventType === 'label.removed'
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (eventType.trim()) {
+      // For label events, include the selected label_id in conditions
+      const finalConditions = isLabelEvent && selectedLabelId
+        ? { ...conditions, label_id: selectedLabelId }
+        : conditions
+
       onSubmit({
         event_type: eventType,
-        conditions: conditions ?? undefined,
+        conditions: finalConditions ?? undefined,
         priority,
         is_enabled: isEnabled,
       })
@@ -84,7 +105,19 @@ function TriggerForm({ trigger, onSubmit, onCancel, isLoading }: TriggerFormProp
         <p className="text-xs text-muted-foreground">
           Filter when this trigger fires based on event data
         </p>
-        <ConditionEditor conditions={conditions} onChange={setConditions} disabled={isLoading} />
+        {isLabelEvent && currentProjectId ? (
+          <LabelPicker
+            availableLabels={projectLabels ?? []}
+            selectedLabelId={selectedLabelId}
+            onSelect={setSelectedLabelId}
+            onLabelCreate={(data) => createLabelMutation.mutateAsync(data)}
+            isLoading={isLoadingLabels}
+            isCreating={createLabelMutation.isPending}
+            placeholder="Select a label to trigger on..."
+          />
+        ) : (
+          <ConditionEditor conditions={conditions} onChange={setConditions} disabled={isLoading} />
+        )}
       </div>
 
       <div className="space-y-2">

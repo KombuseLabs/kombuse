@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Button,
@@ -30,6 +30,7 @@ import {
   useUpdateTrigger,
   useDeleteTrigger,
   useToggleTrigger,
+  useAppContext,
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
 import { Plus, Bot, X, Save } from "lucide-react";
@@ -41,6 +42,12 @@ export function Agents() {
   const isCreating = agentId === "new";
   const isProjectContext = Boolean(projectId);
   const basePath = isProjectContext ? `/projects/${projectId}/agents` : "/agents";
+
+  // Sync project ID to AppContext for label operations
+  const { setCurrentProjectId } = useAppContext();
+  useEffect(() => {
+    setCurrentProjectId(projectId ?? null);
+  }, [projectId, setCurrentProjectId]);
 
   const { data: agents, isLoading, error } = useAgents();
   const { data: profiles } = useAgentProfiles();

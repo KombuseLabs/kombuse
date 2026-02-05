@@ -79,7 +79,7 @@ import { CommandProvider, ThemeProvider } from '@kombuse/ui/providers'
 ```typescript
 import { CommandPalette, Header, ModeToggle } from '@kombuse/ui/components'
 import { TicketList, TicketDetail } from '@kombuse/ui/components'
-import { LabelBadge, LabelSelector, LabelForm } from '@kombuse/ui/components'
+import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/components'
 import { Sidebar, SidebarItem } from '@kombuse/ui/components'
 ```
 
@@ -117,10 +117,19 @@ Props:
 ### Label Components
 
 ```typescript
-import { LabelBadge, LabelSelector, LabelForm } from '@kombuse/ui/components'
+import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/components'
 
 // Display a colored label badge
 <LabelBadge label={label} onRemove={() => handleRemove(label.id)} />
+
+// Single-select dropdown for picking one label (used in trigger conditions)
+<LabelPicker
+  availableLabels={projectLabels}
+  selectedLabelId={selectedId}
+  onSelect={(labelId) => setSelectedId(labelId)}
+  onLabelCreate={(data) => createLabel(data)}  // Optional: enables inline creation
+  placeholder="Select a label..."
+/>
 
 // Multi-select dropdown for assigning labels (with optional CRUD)
 <LabelSelector

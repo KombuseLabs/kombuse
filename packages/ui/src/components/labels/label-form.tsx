@@ -22,7 +22,7 @@ const DEFAULT_COLOR = '#d73a4a'
 
 interface LabelFormProps {
   label?: Label
-  onSubmit: (data: { name: string; color: string }) => void
+  onSubmit: (data: { name: string; color: string }) => void | Promise<void>
   onCancel: () => void
   isLoading?: boolean
 }
@@ -33,6 +33,7 @@ function LabelForm({ label, onSubmit, onCancel, isLoading }: LabelFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     if (name.trim()) {
       onSubmit({ name: name.trim(), color })
     }
