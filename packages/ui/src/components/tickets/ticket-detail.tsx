@@ -159,7 +159,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
           </div>
         )}
 
-        {isEditable && projectLabels.length > 0 && (
+        {isEditable && (
           <div className="pt-4 border-t">
             <h4 className="text-sm font-medium mb-2">Labels</h4>
             <LabelSelector
