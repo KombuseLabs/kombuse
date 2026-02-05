@@ -180,6 +180,8 @@ export interface AgentInvocation {
   trigger_id: number
   event_id: number | null
   session_id: string | null
+  /** App-level session ID (links to chat session for viewing/resuming) */
+  kombuse_session_id: string | null
   status: InvocationStatus
   /** Number of execution attempts */
   attempts: number
@@ -217,6 +219,7 @@ export interface CreateAgentInvocationInput {
 export interface UpdateAgentInvocationInput {
   status?: InvocationStatus
   session_id?: string
+  kombuse_session_id?: string
   attempts?: number
   max_attempts?: number
   run_at?: string

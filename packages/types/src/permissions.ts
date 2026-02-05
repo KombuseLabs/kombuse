@@ -1,8 +1,4 @@
-import type {
-  Agent,
-  AgentInvocation,
-  Permission,
-} from './agents'
+import type { AgentInvocation, Permission } from './agents'
 import type { Event } from './events'
 
 /**
@@ -41,13 +37,3 @@ export interface PermissionCheckResult {
   reason?: string
   matchedPermission?: Permission
 }
-
-/**
- * Callback shape used by the service layer to run an agent invocation.
- */
-export type AgentRunner = (params: {
-  agent: Agent
-  invocation: AgentInvocation
-  event: Event
-  checkPermission: (request: PermissionCheckRequest) => PermissionCheckResult
-}) => Promise<{ result: Record<string, unknown>; error?: string }>

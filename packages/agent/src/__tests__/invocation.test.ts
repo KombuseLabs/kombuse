@@ -21,7 +21,6 @@ import {
   ticketsRepository,
 } from '@kombuse/persistence'
 import { agentService } from '@kombuse/services'
-import { createAgentRunner, MockAgentClient } from '..'
 
 // Helper to create unique agent profiles
 let agentCounter = 0
@@ -94,30 +93,11 @@ describe('Mock Agent Invocations', () => {
       const invocation = invocations[0]!
       expect(invocation.agent_id).toBe(agentId)
       expect(invocation.status).toBe('pending')
-
-      // 4. Run the invocation with mock runner
-      const logs: string[] = []
-      const runner = createAgentRunner(
-        () => new MockAgentClient({ messageDelayMs: 100, messageCount: 2 }),
-        {
-          onLog: (msg) => {
-            console.log(msg) // Output to console for visibility
-            logs.push(msg)
-          },
-        }
-      )
-
-      const result = await agentService.runAgent(invocation.id, runner)
-
-      // 5. Verify results
-      expect(result.success, 'Invocation should succeed').toBe(true)
-      expect(result.invocation.status).toBe('completed')
-      expect(logs.length, 'Should have logged messages').toBeGreaterThan(0)
-
-      // Verify the result contains expected data
-      const invocationResult = result.invocation.result as Record<string, unknown>
-      expect(invocationResult.event_type).toBe('ticket.created')
-      expect(invocationResult.ticket_id).toBe(ticket.id)
+      expect(invocation.event_id).toBe(event.id)
+      expect(invocation.context).toMatchObject({
+        event_type: 'ticket.created',
+        ticket_id: ticket.id,
+      })
     })
 
     it('should not invoke agent when trigger is disabled', async () => {
@@ -281,17 +261,9 @@ describe('Mock Agent Invocations', () => {
       expect(invocations[0]!.agent_id).toBe(agent1Id)
       expect(invocations[1]!.agent_id).toBe(agent2Id)
 
-      // Run both invocations
-      const runner = createAgentRunner(
-        () => new MockAgentClient({ messageDelayMs: 50, messageCount: 1 })
-      )
-
-      const results = await Promise.all(
-        invocations.map((inv) => agentService.runAgent(inv.id, runner))
-      )
-
-      expect(results[0]!.success).toBe(true)
-      expect(results[1]!.success).toBe(true)
+      // Both invocations should be pending, ready for execution via chat infrastructure
+      expect(invocations[0]!.status).toBe('pending')
+      expect(invocations[1]!.status).toBe('pending')
     })
   })
 })

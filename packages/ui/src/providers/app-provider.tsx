@@ -102,6 +102,7 @@ export function AppProvider({
             sessionId: message.sessionId,
             requestId: message.requestId,
             toolName: message.toolName,
+            input: message.input,
           })
           break
         }

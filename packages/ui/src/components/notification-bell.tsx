@@ -30,6 +30,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       kombuseSessionId: permission.sessionId,
       requestId: permission.requestId,
       behavior: 'allow',
+      updatedInput: permission.input,
     })
     // Optimistically remove from UI
     removePendingPermission(permission.requestId)

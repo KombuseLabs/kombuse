@@ -368,6 +368,14 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_agent_invocations_session ON agent_invocations(session_id);
     `,
   },
+  {
+    name: '002_invocation_kombuse_session_id',
+    sql: `
+      ALTER TABLE agent_invocations ADD COLUMN kombuse_session_id TEXT;
+      CREATE INDEX IF NOT EXISTS idx_agent_invocations_kombuse_session
+        ON agent_invocations(kombuse_session_id);
+    `,
+  },
 ]
 
 /**

@@ -19,16 +19,11 @@ export { ProjectService, projectService } from './project-service'
 export type { IProjectService } from './project-service'
 
 export { AgentService, agentService } from './agent-service'
-export type {
-  IAgentService,
-  TriggerMatchResult,
-  AgentRunResult,
-} from './agent-service'
+export type { IAgentService, TriggerMatchResult } from './agent-service'
 export type {
   PermissionContext,
   PermissionCheckRequest,
   PermissionCheckResult,
-  AgentRunner,
 } from '@kombuse/types'
 
 export {

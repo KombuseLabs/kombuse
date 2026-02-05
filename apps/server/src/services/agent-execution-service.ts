@@ -1,22 +1,17 @@
-import { statSync } from 'node:fs'
-import { resolve as resolvePath } from 'node:path'
-import {
-  ClaudeCodeBackend,
-  createAgentRunner,
-  runAgentChat,
-} from '@kombuse/agent'
+import { ClaudeCodeBackend } from '@kombuse/agent'
 import {
   agentService,
-  projectService,
   sessionPersistenceService,
   type ISessionPersistenceService,
 } from '@kombuse/services'
+import { agentInvocationsRepository } from '@kombuse/persistence'
 import { wsHub } from '../websocket/hub'
+import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
   AgentBackend,
   AgentEvent,
-  AgentRunner,
   ClientMessage,
+  ConversationContext,
   Event,
 } from '@kombuse/types'
 
@@ -24,9 +19,133 @@ type AgentInvokeMessage = Extract<ClientMessage, { type: 'agent.invoke' }>
 type PermissionResponseMessage = Extract<ClientMessage, { type: 'permission.response' }>
 
 /**
+ * Options for running an agent chat session
+ */
+interface ChatRunnerOptions {
+  /** Project path for the agent to work in */
+  projectPath: string
+  /** Backend-native session ID to resume */
+  resumeSessionId?: string
+  /** System prompt override */
+  systemPrompt?: string
+  /** Callback for each agent event */
+  onEvent: (event: AgentEvent) => void
+  /** Callback when complete, receives backend session context if available */
+  onComplete?: (context: ConversationContext) => void
+  /** Callback on error */
+  onError?: (error: Error) => void
+}
+
+/**
+ * Run a chat message through an agent backend.
+ * Returns immediately after starting - events come via callbacks.
+ */
+async function runAgentChat(
+  backend: AgentBackend,
+  message: string,
+  kombuseSessionId: string,
+  options: ChatRunnerOptions
+): Promise<ConversationContext> {
+  if (!kombuseSessionId.trim()) {
+    throw new Error('kombuseSessionId must be a non-empty string')
+  }
+
+  const appSessionId = kombuseSessionId
+  let didComplete = false
+
+  const finalize = () => {
+    unsubscribe()
+    if (backend.isRunning()) {
+      void backend.stop().catch((stopError) => {
+        options.onError?.(
+          stopError instanceof Error ? stopError : new Error(String(stopError))
+        )
+      })
+    }
+  }
+
+  // Subscribe to events
+  const unsubscribe = backend.subscribe((evt) => {
+    if (didComplete) {
+      return
+    }
+
+    if (evt.type === 'complete') {
+      didComplete = true
+      const backendSessionId = backend.getBackendSessionId()
+      const context: ConversationContext = {
+        kombuseSessionId: appSessionId,
+        backendSessionId,
+      }
+      options.onComplete?.(context)
+      finalize()
+    } else if (evt.type === 'error') {
+      options.onEvent(evt)
+
+      // Some backends may terminate with an error but without emitting complete.
+      if (!backend.isRunning()) {
+        didComplete = true
+        options.onComplete?.({
+          kombuseSessionId: appSessionId,
+          backendSessionId: backend.getBackendSessionId(),
+        })
+        finalize()
+      }
+    } else {
+      options.onEvent(evt)
+    }
+  })
+
+  // Start the backend
+  await backend.start({
+    kombuseSessionId: appSessionId,
+    resumeSessionId: options.resumeSessionId,
+    projectPath: options.projectPath,
+    systemPrompt: options.systemPrompt,
+    initialMessage: message,
+  })
+
+  return {
+    kombuseSessionId: appSessionId,
+    backendSessionId: backend.getBackendSessionId(),
+  }
+}
+
+/**
  * Registry of active session backends for permission response routing.
  */
 const activeBackends = new Map<string, AgentBackend>()
+
+/**
+ * Register a backend for permission response routing.
+ */
+function registerBackend(sessionId: string, backend: AgentBackend): void {
+  activeBackends.set(sessionId, backend)
+}
+
+/**
+ * Unregister a backend.
+ */
+function unregisterBackend(sessionId: string): void {
+  activeBackends.delete(sessionId)
+}
+
+/**
+ * Broadcast a permission request to all clients.
+ */
+function broadcastPermissionPending(
+  sessionId: string,
+  event: Extract<AgentEvent, { type: 'permission_request' }>
+): void {
+  console.log('[server] permission_request:', event.requestId, event.toolName)
+  wsHub.broadcastToTopic('*', {
+    type: 'agent.permission_pending',
+    sessionId,
+    requestId: event.requestId,
+    toolName: event.toolName,
+    input: event.input,
+  })
+}
 
 export type AgentExecutionEvent =
   | { type: 'started'; kombuseSessionId: string }
@@ -38,30 +157,17 @@ export type AgentExecutionEvent =
     }
   | { type: 'error'; message: string }
 
-interface ProcessEventOptions {
-  onRunnerLog?: (message: string) => void
-}
-
 /**
- * This service intentionally exposes two entry points:
- * - `processEventAndRunAgents`: system/event-triggered execution that uses
- *   invocation records from `agentService.processEvent(...)`.
- * - `startAgentChatSession`: user-initiated websocket chat execution that
- *   streams directly to the client and is not persisted as an invocation.
+ * Dependencies for agent execution (injectable for testing).
  *
- * They remain distinct at the boundary, but share runtime/backend orchestration
- * here to avoid behavior drift.
+ * Both `processEventAndRunAgents` (trigger-initiated) and `startAgentChatSession`
+ * (user-initiated) now use the same chat infrastructure, ensuring consistent
+ * persistence, streaming, and permission handling.
  */
 interface AgentExecutionDependencies {
   getAgent: (agentId: string) => ReturnType<typeof agentService.getAgent>
   processEvent: (event: Event) => ReturnType<typeof agentService.processEvent>
-  runInvocation: (
-    invocationId: number,
-    runner: AgentRunner
-  ) => ReturnType<typeof agentService.runAgent>
   createBackend: () => AgentBackend
-  createRunner: (onLog?: (message: string) => void) => AgentRunner
-  runChat: typeof runAgentChat
   generateSessionId: () => string
   resolveProjectPath: () => string
   sessionPersistence: ISessionPersistenceService
@@ -74,70 +180,36 @@ export function createServerAgentBackend(): AgentBackend {
   return new ClaudeCodeBackend()
 }
 
-/**
- * Server-standard runner for event-triggered invocations.
- */
-export function createServerAgentRunner(
-  onLog?: (message: string) => void
-): AgentRunner {
-  return createAgentRunner(createServerAgentBackend, {
-    onLog,
-    resolveProjectPath: resolveInvocationProjectPath,
-    fallbackProjectPath: process.cwd(),
-  })
-}
-
 const defaultDependencies: AgentExecutionDependencies = {
   getAgent: (agentId) => agentService.getAgent(agentId),
   processEvent: (event) => agentService.processEvent(event),
-  runInvocation: (invocationId, runner) => agentService.runAgent(invocationId, runner),
   createBackend: createServerAgentBackend,
-  createRunner: createServerAgentRunner,
-  runChat: runAgentChat,
   generateSessionId: () => crypto.randomUUID(),
   resolveProjectPath: () => process.cwd(),
   sessionPersistence: sessionPersistenceService,
 }
 
-function resolveInvocationProjectPath(
-  projectId: string | null
-): string | undefined {
-  if (!projectId) {
-    return undefined
-  }
-
-  const project = projectService.get(projectId)
-  const localPath = project?.local_path?.trim()
-
-  if (!localPath) {
-    return undefined
-  }
-
-  const candidatePath = resolvePath(localPath)
-
-  try {
-    if (statSync(candidatePath).isDirectory()) {
-      return candidatePath
-    }
-
-    console.warn(
-      `[Server] Project ${projectId} local_path is not a directory: ${candidatePath}`
-    )
-  } catch {
-    console.warn(
-      `[Server] Project ${projectId} local_path does not exist: ${candidatePath}`
-    )
-  }
-
-  return undefined
+/**
+ * Build an initial message for a triggered agent from the event context.
+ */
+function buildTriggerMessage(event: Event): string {
+  const lines = [
+    `Event: ${event.event_type}`,
+    `Ticket: #${event.ticket_id ?? 'N/A'}`,
+    `Project: ${event.project_id ?? 'N/A'}`,
+    '',
+    'Payload:',
+    JSON.stringify(event.payload, null, 2),
+  ]
+  return lines.join('\n')
 }
 
 /**
- * Process a domain event by creating and running matching invocations.
+ * Process a domain event by creating invocations and running them via chat infrastructure.
+ * This ensures triggered agents have the same persistence, streaming, and permission handling as chat agents.
  */
 export async function processEventAndRunAgents(
   event: Event,
-  options: ProcessEventOptions = {},
   dependencies: AgentExecutionDependencies = defaultDependencies
 ): Promise<void> {
   console.log(
@@ -150,20 +222,70 @@ export async function processEventAndRunAgents(
   }
 
   console.log(
-    `[Server] Created ${invocations.length} invocation(s), running agents...`
+    `[Server] Created ${invocations.length} invocation(s), running agents via chat infrastructure...`
   )
 
-  const runner = dependencies.createRunner(options.onRunnerLog ?? console.log)
-
   for (const invocation of invocations) {
-    try {
-      await dependencies.runInvocation(invocation.id, runner)
-    } catch (error) {
-      console.error(
-        `[Server] Failed to run invocation #${invocation.id}:`,
-        error
-      )
+    const agent = dependencies.getAgent(invocation.agent_id)
+    if (!agent) {
+      console.warn(`[Server] Agent ${invocation.agent_id} not found for invocation #${invocation.id}`)
+      continue
     }
+
+    // Generate session ID from invocation for easy lookup
+    const kombuseSessionId = `invocation-${invocation.id}`
+
+    // Update invocation with session ID
+    agentInvocationsRepository.update(invocation.id, {
+      kombuse_session_id: kombuseSessionId,
+      status: 'running',
+      started_at: new Date().toISOString(),
+    })
+
+    // Build initial message from event
+    const initialMessage = buildTriggerMessage(event)
+
+    // Use the same chat infrastructure as user-initiated sessions
+    // Emit to broadcast topic so triggered sessions can be monitored
+    startAgentChatSession(
+      {
+        type: 'agent.invoke',
+        agentId: agent.id,
+        message: initialMessage,
+        kombuseSessionId,
+      },
+      (evt) => {
+        // Broadcast to all clients (triggered sessions don't have a specific client)
+        if (evt.type === 'event') {
+          const serialized = serializeAgentStreamEvent(evt.event)
+          if (serialized) {
+            wsHub.broadcastToTopic('*', {
+              type: 'agent.event',
+              kombuseSessionId: evt.kombuseSessionId,
+              event: serialized,
+            })
+          }
+        } else if (evt.type === 'complete') {
+          // Update invocation status
+          agentInvocationsRepository.update(invocation.id, {
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+          })
+          wsHub.broadcastToTopic('*', {
+            type: 'agent.complete',
+            kombuseSessionId: evt.kombuseSessionId,
+            backendSessionId: evt.backendSessionId,
+          })
+        } else if (evt.type === 'error') {
+          agentInvocationsRepository.update(invocation.id, {
+            status: 'failed',
+            error: evt.message,
+            completed_at: new Date().toISOString(),
+          })
+        }
+      },
+      dependencies
+    )
   }
 }
 
@@ -240,86 +362,78 @@ export function startAgentChatSession(
   const backend = dependencies.createBackend()
 
   // Register backend for permission response routing
-  activeBackends.set(appSessionId, backend)
+  registerBackend(appSessionId, backend)
 
-  dependencies
-    .runChat(backend, userMessage, appSessionId, {
-      projectPath: dependencies.resolveProjectPath(),
-      resumeSessionId,
-      systemPrompt: agent?.system_prompt,
-      onEvent: (event) => {
-        // Persist event to database
-        dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
+  runAgentChat(backend, userMessage, appSessionId, {
+    projectPath: dependencies.resolveProjectPath(),
+    resumeSessionId,
+    systemPrompt: agent?.system_prompt,
+    onEvent: (event: AgentEvent) => {
+      // Persist event to database
+      dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
 
-        // Emit to WebSocket
-        emit({
-          type: 'event',
-          kombuseSessionId: appSessionId,
-          event,
-        })
+      // Emit to WebSocket
+      emit({
+        type: 'event',
+        kombuseSessionId: appSessionId,
+        event,
+      })
 
-        // Broadcast permission requests globally for the permission banner
-        if (event.type === 'permission_request') {
-          console.log('[server] permission_request:', event.requestId, event.toolName)
-          wsHub.broadcastToTopic('*', {
-            type: 'agent.permission_pending',
-            sessionId: appSessionId,
-            requestId: event.requestId,
-            toolName: event.toolName,
-          })
-        }
-      },
-      onComplete: (context) => {
-        // Clean up backend registry
-        activeBackends.delete(appSessionId)
-
-        // Mark session as completed
-        dependencies.sessionPersistence.completeSession(
-          persistentSessionId,
-          context.backendSessionId
-        )
-
-        emit({
-          type: 'complete',
-          kombuseSessionId: appSessionId,
-          backendSessionId: context.backendSessionId,
-        })
-      },
-      onError: (error) => {
-        // Clean up backend registry
-        activeBackends.delete(appSessionId)
-
-        // Persist error event
-        const errorEvent: AgentEvent = {
-          type: 'error',
-          backend: backend.name,
-          timestamp: Date.now(),
-          message: error.message,
-          error,
-        }
-        dependencies.sessionPersistence.persistEvent(
-          persistentSessionId,
-          errorEvent
-        )
-
-        // Mark session as failed
-        dependencies.sessionPersistence.failSession(persistentSessionId)
-
-        emit({
-          type: 'event',
-          kombuseSessionId: appSessionId,
-          event: errorEvent,
-        })
-
-        emit({
-          type: 'complete',
-          kombuseSessionId: appSessionId,
-        })
-      },
-    })
-    .catch((error) => {
+      // Broadcast permission requests globally for the notification bell
+      if (event.type === 'permission_request') {
+        broadcastPermissionPending(appSessionId, event)
+      }
+    },
+    onComplete: (context: ConversationContext) => {
       // Clean up backend registry
-      activeBackends.delete(appSessionId)
+      unregisterBackend(appSessionId)
+
+      // Mark session as completed
+      dependencies.sessionPersistence.completeSession(
+        persistentSessionId,
+        context.backendSessionId
+      )
+
+      emit({
+        type: 'complete',
+        kombuseSessionId: appSessionId,
+        backendSessionId: context.backendSessionId,
+      })
+    },
+    onError: (error: Error) => {
+      // Clean up backend registry
+      unregisterBackend(appSessionId)
+
+      // Persist error event
+      const errorEvent: AgentEvent = {
+        type: 'error',
+        backend: backend.name,
+        timestamp: Date.now(),
+        message: error.message,
+        error,
+      }
+      dependencies.sessionPersistence.persistEvent(
+        persistentSessionId,
+        errorEvent
+      )
+
+      // Mark session as failed
+      dependencies.sessionPersistence.failSession(persistentSessionId)
+
+      emit({
+        type: 'event',
+        kombuseSessionId: appSessionId,
+        event: errorEvent,
+      })
+
+      emit({
+        type: 'complete',
+        kombuseSessionId: appSessionId,
+      })
+    },
+  }).catch((error: unknown) => {
+      // Clean up backend registry
+      unregisterBackend(appSessionId)
 
       const messageText =
         error instanceof Error ? error.message : String(error)
@@ -359,6 +473,13 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
   backend.respondToPermission(requestId, behavior, {
     updatedInput,
     message: denyMessage,
+  })
+
+  // Broadcast resolution so all clients can update their UI
+  wsHub.broadcastToTopic('*', {
+    type: 'agent.permission_resolved',
+    sessionId: kombuseSessionId,
+    requestId,
   })
 
   return true

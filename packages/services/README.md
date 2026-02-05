@@ -78,24 +78,8 @@ const trigger = agentService.createTrigger({
 // Process an event - finds matching triggers and creates invocations
 const invocations = agentService.processEvent(event)
 
-// Run an agent with a custom runner
-const result = await agentService.runAgent(invocation.id, async ({ agent, event, checkPermission }) => {
-  // Check permission before accessing resources
-  const canRead = checkPermission({
-    type: 'resource',
-    resource: 'ticket',
-    action: 'read',
-    resourceId: event.ticket_id,
-  })
-
-  if (!canRead.allowed) {
-    return { result: {}, error: canRead.reason }
-  }
-
-  // Your LLM integration here...
-
-  return { result: { comment_id: 456 } }
-})
+// Invocations are executed by the agent-execution-service using startAgentChatSession
+// This ensures consistent persistence, streaming, and permission handling
 ```
 
 ## Agent Permissions
@@ -138,17 +122,13 @@ Hook into the event system to automatically trigger agents:
 ```typescript
 import { onEventCreated } from '@kombuse/persistence'
 import { agentService } from '@kombuse/services'
+import { processEventAndRunAgents } from '@kombuse/server/services/agent-execution-service'
 
 // Subscribe to all events
 onEventCreated((event) => {
-  // Find matching triggers and create invocations
-  const invocations = agentService.processEvent(event)
-
-  // Run each agent (async, fire-and-forget or queued)
-  for (const invocation of invocations) {
-    agentService.runAgent(invocation.id, myAgentRunner)
-      .catch(console.error)
-  }
+  // Process event: finds matching triggers, creates invocations, and runs agents
+  // via the unified chat infrastructure (with persistence, streaming, permissions)
+  processEventAndRunAgents(event).catch(console.error)
 })
 ```
 
@@ -176,7 +156,5 @@ export type {
   PermissionCheckRequest,
   PermissionCheckResult,
   TriggerMatchResult,
-  AgentRunResult,
-  AgentRunner,
 } from '@kombuse/services'
 ```

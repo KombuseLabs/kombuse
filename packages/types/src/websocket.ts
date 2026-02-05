@@ -67,6 +67,7 @@ export type ServerMessage =
       sessionId: string
       requestId: string
       toolName: string
+      input: Record<string, unknown>
     }
   | {
       type: 'agent.permission_resolved'

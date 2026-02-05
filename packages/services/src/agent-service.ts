@@ -12,13 +12,11 @@ import type {
   PermissionContext,
   PermissionCheckRequest,
   PermissionCheckResult,
-  AgentRunner,
 } from '@kombuse/types'
 import {
   agentsRepository,
   agentTriggersRepository,
   agentInvocationsRepository,
-  sessionsRepository,
   profilesRepository,
 } from '@kombuse/persistence'
 
@@ -28,15 +26,6 @@ import {
 export interface TriggerMatchResult {
   trigger: AgentTrigger
   agent: Agent
-}
-
-/**
- * Result of running an agent
- */
-export interface AgentRunResult {
-  success: boolean
-  invocation: AgentInvocation
-  error?: string
 }
 
 /**
@@ -69,7 +58,6 @@ export interface IAgentService {
     context: PermissionContext
   ): PermissionCheckResult
   invokeAgent(trigger: AgentTrigger, event: Event): AgentInvocation
-  runAgent(invocationId: number, runner: AgentRunner): Promise<AgentRunResult>
 }
 
 /**
@@ -382,11 +370,10 @@ export class AgentService implements IAgentService {
   }
 
   /**
-   * Create an invocation for a trigger/event pair
+   * Create an invocation for a trigger/event pair.
+   * The session is created later by the chat infrastructure when execution starts.
    */
   invokeAgent(trigger: AgentTrigger, event: Event): AgentInvocation {
-    const session = sessionsRepository.create()
-
     const context: Record<string, unknown> = {
       event_id: event.id,
       event_type: event.event_type,
@@ -405,124 +392,9 @@ export class AgentService implements IAgentService {
       agent_id: trigger.agent_id,
       trigger_id: trigger.id,
       event_id: event.id,
-      session_id: session.id,
       max_attempts: maxAttempts,
       context,
     })
-  }
-
-  /**
-   * Run an agent invocation using the provided runner
-   */
-  async runAgent(
-    invocationId: number,
-    runner: AgentRunner
-  ): Promise<AgentRunResult> {
-    const invocation = agentInvocationsRepository.get(invocationId)
-    if (!invocation) {
-      throw new Error(`Invocation ${invocationId} not found`)
-    }
-
-    const agent = agentsRepository.get(invocation.agent_id)
-    if (!agent) {
-      throw new Error(`Agent ${invocation.agent_id} not found`)
-    }
-
-    const event = invocation.event_id
-      ? (await import('@kombuse/persistence')).eventsRepository.get(
-          invocation.event_id
-        )
-      : null
-
-    if (!event) {
-      return {
-        success: false,
-        invocation,
-        error: 'Triggering event not found',
-      }
-    }
-
-    if (invocation.attempts >= invocation.max_attempts) {
-      const error = `Invocation exceeded max attempts (${invocation.max_attempts})`
-      const exhausted = agentInvocationsRepository.update(invocationId, {
-        status: 'failed',
-        error,
-        completed_at: new Date().toISOString(),
-      })
-      return {
-        success: false,
-        invocation: exhausted || invocation,
-        error,
-      }
-    }
-
-    agentInvocationsRepository.update(invocationId, {
-      status: 'running',
-      attempts: invocation.attempts + 1,
-      started_at: new Date().toISOString(),
-      error: null,
-    })
-
-    const context: PermissionContext = { invocation, event }
-    const checkPermission = (request: PermissionCheckRequest) =>
-      this.checkPermission(agent, request, context)
-
-    try {
-      const { result, error } = await runner({
-        agent,
-        invocation,
-        event,
-        checkPermission,
-      })
-
-      if (error) {
-        const failedInvocation = agentInvocationsRepository.update(
-          invocationId,
-          {
-            status: 'failed',
-            result: { error },
-            error,
-            completed_at: new Date().toISOString(),
-          }
-        )
-        return {
-          success: false,
-          invocation: failedInvocation || invocation,
-          error,
-        }
-      }
-
-      const completedInvocation = agentInvocationsRepository.update(
-        invocationId,
-        {
-          status: 'completed',
-          result,
-          error: null,
-          completed_at: new Date().toISOString(),
-        }
-      )
-
-      return {
-        success: true,
-        invocation: completedInvocation || invocation,
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Unknown error occurred'
-
-      const failedInvocation = agentInvocationsRepository.update(invocationId, {
-        status: 'failed',
-        result: { error: errorMessage },
-        error: errorMessage,
-        completed_at: new Date().toISOString(),
-      })
-
-      return {
-        success: false,
-        invocation: failedInvocation || invocation,
-        error: errorMessage,
-      }
-    }
   }
 
   /**

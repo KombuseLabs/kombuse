@@ -19,6 +19,7 @@ export interface PendingPermission {
   sessionId: string
   requestId: string
   toolName: string
+  input: Record<string, unknown>
 }
 
 /**

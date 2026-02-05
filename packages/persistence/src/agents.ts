@@ -363,6 +363,10 @@ export const agentInvocationsRepository = {
       fields.push('session_id = ?')
       params.push(input.session_id)
     }
+    if (input.kombuse_session_id !== undefined) {
+      fields.push('kombuse_session_id = ?')
+      params.push(input.kombuse_session_id)
+    }
     if (input.attempts !== undefined) {
       fields.push('attempts = ?')
       params.push(input.attempts)
@@ -444,6 +448,7 @@ interface RawAgentInvocation {
   trigger_id: number
   event_id: number | null
   session_id: string | null
+  kombuse_session_id: string | null
   status: string
   attempts: number
   max_attempts: number
@@ -490,6 +495,7 @@ function mapAgentInvocation(row: RawAgentInvocation): AgentInvocation {
     trigger_id: row.trigger_id,
     event_id: row.event_id,
     session_id: row.session_id,
+    kombuse_session_id: row.kombuse_session_id,
     status: row.status as AgentInvocation['status'],
     attempts: row.attempts,
     max_attempts: row.max_attempts,
