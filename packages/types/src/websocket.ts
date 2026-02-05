@@ -62,6 +62,17 @@ export type ServerMessage =
       kombuseSessionId: string
       backendSessionId?: string
     }
+  | {
+      type: 'agent.permission_pending'
+      sessionId: string
+      requestId: string
+      toolName: string
+    }
+  | {
+      type: 'agent.permission_resolved'
+      sessionId: string
+      requestId: string
+    }
 
 /**
  * Topic format examples:

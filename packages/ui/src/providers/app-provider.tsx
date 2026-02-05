@@ -7,6 +7,7 @@ import type {
   AppSession,
   AppContextValue,
   ServerMessage,
+  PendingPermission,
 } from '@kombuse/types'
 import { AppCtx } from './app-context'
 import { useWebSocket } from '../hooks/use-websocket'
@@ -35,9 +36,9 @@ export function AppProvider({
   const [currentSession, setCurrentSessionState] = useState<AppSession | null>(
     null
   )
-  const [pendingSessionIds, setPendingSessionIds] = useState<Set<string>>(
-    () => new Set()
-  )
+  const [pendingPermissions, setPendingPermissions] = useState<
+    Map<string, PendingPermission>
+  >(() => new Map())
 
   // Wrap setters in useCallback for stable references
   const setCurrentTicket = useCallback((ticket: Ticket | null) => {
@@ -60,20 +61,32 @@ export function AppProvider({
     setCurrentSessionState(session)
   }, [])
 
-  const addPendingSession = useCallback((kombuseSessionId: string) => {
-    setPendingSessionIds((prev) => {
-      if (prev.has(kombuseSessionId)) return prev
-      const next = new Set(prev)
-      next.add(kombuseSessionId)
+  const addPendingPermission = useCallback((permission: PendingPermission) => {
+    setPendingPermissions((prev) => {
+      if (prev.has(permission.requestId)) return prev
+      const next = new Map(prev)
+      next.set(permission.requestId, permission)
       return next
     })
   }, [])
 
-  const removePendingSession = useCallback((kombuseSessionId: string) => {
-    setPendingSessionIds((prev) => {
-      if (!prev.has(kombuseSessionId)) return prev
-      const next = new Set(prev)
-      next.delete(kombuseSessionId)
+  const removePendingPermission = useCallback((requestId: string) => {
+    setPendingPermissions((prev) => {
+      if (!prev.has(requestId)) return prev
+      const next = new Map(prev)
+      next.delete(requestId)
+      return next
+    })
+  }, [])
+
+  const clearPendingPermissionsForSession = useCallback((sessionId: string) => {
+    setPendingPermissions((prev) => {
+      const toRemove = [...prev.values()].filter((p) => p.sessionId === sessionId)
+      if (toRemove.length === 0) return prev
+      const next = new Map(prev)
+      for (const p of toRemove) {
+        next.delete(p.requestId)
+      }
       return next
     })
   }, [])
@@ -81,26 +94,29 @@ export function AppProvider({
   // Global WebSocket handler to track pending permissions for all sessions
   const handleMessage = useCallback(
     (message: ServerMessage) => {
-      // Phase 1: Log permission_pending messages to verify data flow
-      if ((message as any).type === 'agent.permission_pending') {
-        console.log('[client] received permission_pending:', message)
-      }
-
       switch (message.type) {
-        case 'agent.event': {
-          const event = message.event
-          if (event.type === 'permission_request') {
-            addPendingSession(message.kombuseSessionId)
-          }
+        case 'agent.permission_pending': {
+          // Phase 1: Log permission_pending messages to verify data flow
+          console.log('[client] received permission_pending:', message)
+          addPendingPermission({
+            sessionId: message.sessionId,
+            requestId: message.requestId,
+            toolName: message.toolName,
+          })
+          break
+        }
+        case 'agent.permission_resolved': {
+          removePendingPermission(message.requestId)
           break
         }
         case 'agent.complete': {
-          removePendingSession(message.kombuseSessionId)
+          // Clear all pending permissions for this session
+          clearPendingPermissionsForSession(message.kombuseSessionId)
           break
         }
       }
     },
-    [addPendingSession, removePendingSession]
+    [addPendingPermission, removePendingPermission, clearPendingPermissionsForSession]
   )
 
   useWebSocket({ topics: ['*'], onMessage: handleMessage })
@@ -113,15 +129,16 @@ export function AppProvider({
       view,
       isGenerating,
       currentSession,
-      pendingSessionIds,
+      pendingPermissions,
       // Actions
       setCurrentTicket,
       setCurrentProjectId,
       setView,
       setIsGenerating,
       setCurrentSession,
-      addPendingSession,
-      removePendingSession,
+      addPendingPermission,
+      removePendingPermission,
+      clearPendingPermissionsForSession,
     }),
     [
       currentTicket,
@@ -129,14 +146,15 @@ export function AppProvider({
       view,
       isGenerating,
       currentSession,
-      pendingSessionIds,
+      pendingPermissions,
       setCurrentTicket,
       setCurrentProjectId,
       setView,
       setIsGenerating,
       setCurrentSession,
-      addPendingSession,
-      removePendingSession,
+      addPendingPermission,
+      removePendingPermission,
+      clearPendingPermissionsForSession,
     ]
   )
 

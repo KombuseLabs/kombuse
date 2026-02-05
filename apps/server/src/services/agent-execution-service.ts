@@ -266,7 +266,7 @@ export function startAgentChatSession(
             sessionId: appSessionId,
             requestId: event.requestId,
             toolName: event.toolName,
-          } as any) // Phase 1: cast to any, will add proper types in Phase 2
+          })
         }
       },
       onComplete: (context) => {

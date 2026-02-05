@@ -13,6 +13,15 @@ export interface AppSession {
 }
 
 /**
+ * A pending permission request from an agent
+ */
+export interface PendingPermission {
+  sessionId: string
+  requestId: string
+  toolName: string
+}
+
+/**
  * Application state managed by AppProvider
  */
 export interface AppState {
@@ -26,8 +35,8 @@ export interface AppState {
   isGenerating: boolean
   /** Current chat/agent session */
   currentSession: AppSession | null
-  /** Set of kombuseSessionIds that have pending permissions */
-  pendingSessionIds: Set<string>
+  /** Map of requestId -> pending permission details */
+  pendingPermissions: Map<string, PendingPermission>
 }
 
 /**
@@ -39,8 +48,9 @@ export interface AppActions {
   setView: (view: AppView) => void
   setIsGenerating: (isGenerating: boolean) => void
   setCurrentSession: (session: AppSession | null) => void
-  addPendingSession: (kombuseSessionId: string) => void
-  removePendingSession: (kombuseSessionId: string) => void
+  addPendingPermission: (permission: PendingPermission) => void
+  removePendingPermission: (requestId: string) => void
+  clearPendingPermissionsForSession: (sessionId: string) => void
 }
 
 /**
