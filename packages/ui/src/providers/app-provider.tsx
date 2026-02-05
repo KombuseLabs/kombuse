@@ -81,6 +81,11 @@ export function AppProvider({
   // Global WebSocket handler to track pending permissions for all sessions
   const handleMessage = useCallback(
     (message: ServerMessage) => {
+      // Phase 1: Log permission_pending messages to verify data flow
+      if ((message as any).type === 'agent.permission_pending') {
+        console.log('[client] received permission_pending:', message)
+      }
+
       switch (message.type) {
         case 'agent.event': {
           const event = message.event
@@ -98,7 +103,7 @@ export function AppProvider({
     [addPendingSession, removePendingSession]
   )
 
-  useWebSocket({ topics: [], onMessage: handleMessage })
+  useWebSocket({ topics: ['*'], onMessage: handleMessage })
 
   const value = useMemo<AppContextValue>(
     () => ({

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useContext } from 'react'
+import { useEffect, useRef, useCallback, useContext, useId } from 'react'
 import type { ClientMessage, ServerMessage, WebSocketEvent } from '@kombuse/types'
 import { WebSocketCtx } from '../providers/websocket-context'
 
@@ -12,8 +12,6 @@ interface UseWebSocketOptions {
 interface UseWebSocketReturn {
   isConnected: boolean
   send: (message: ClientMessage) => void
-  subscribe: (topics: string[]) => void
-  unsubscribe: (topics: string[]) => void
 }
 
 /**
@@ -36,10 +34,10 @@ export function useWebSocket({
     throw new Error('useWebSocket must be used within a WebSocketProvider')
   }
 
-  const { isConnected, send, subscribe, unsubscribe, addMessageHandler, removeMessageHandler } = ctx
+  const { isConnected, send, registerTopics, unregisterTopics, addMessageHandler, removeMessageHandler } = ctx
 
-  // Store latest topics in a ref to track changes
-  const topicsRef = useRef<string[]>([])
+  // Stable hook ID for registration
+  const hookId = useId()
 
   // Store latest callbacks in refs to avoid stale closures
   const onEventRef = useRef(onEvent)
@@ -67,31 +65,20 @@ export function useWebSocket({
     }
   }, [addMessageHandler, removeMessageHandler, handleMessage])
 
-  // Handle topic subscriptions
+  // Memoize topics key for stable dependency
+  const topicsKey = JSON.stringify(topics)
+
+  // Register topics - immune to Strict Mode because:
+  // 1. Registration is idempotent (same hookId overwrites)
+  // 2. Unregister on cleanup doesn't immediately unsubscribe (debounced)
+  // 3. On connect, we subscribe to all registered topics
   useEffect(() => {
-    const prevTopics = topicsRef.current
-    const newTopics = topics
-
-    // Find topics to add and remove
-    const toAdd = newTopics.filter((t) => !prevTopics.includes(t))
-    const toRemove = prevTopics.filter((t) => !newTopics.includes(t))
-
-    if (toAdd.length > 0) {
-      subscribe(toAdd)
-    }
-    if (toRemove.length > 0) {
-      unsubscribe(toRemove)
-    }
-
-    topicsRef.current = [...newTopics]
-
-    // Cleanup: unsubscribe from all topics when unmounting
+    registerTopics(hookId, topics)
     return () => {
-      if (newTopics.length > 0) {
-        unsubscribe(newTopics)
-      }
+      unregisterTopics(hookId)
     }
-  }, [topics.join(','), subscribe, unsubscribe])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hookId, topicsKey, registerTopics, unregisterTopics])
 
-  return { isConnected, send, subscribe, unsubscribe }
+  return { isConnected, send }
 }

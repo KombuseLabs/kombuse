@@ -11,6 +11,7 @@ import {
   sessionPersistenceService,
   type ISessionPersistenceService,
 } from '@kombuse/services'
+import { wsHub } from '../websocket/hub'
 import type {
   AgentBackend,
   AgentEvent,
@@ -256,6 +257,17 @@ export function startAgentChatSession(
           kombuseSessionId: appSessionId,
           event,
         })
+
+        // Broadcast permission requests globally for the permission banner
+        if (event.type === 'permission_request') {
+          console.log('[server] permission_request:', event.requestId, event.toolName)
+          wsHub.broadcastToTopic('*', {
+            type: 'agent.permission_pending',
+            sessionId: appSessionId,
+            requestId: event.requestId,
+            toolName: event.toolName,
+          } as any) // Phase 1: cast to any, will add proper types in Phase 2
+        }
       },
       onComplete: (context) => {
         // Clean up backend registry

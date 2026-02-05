@@ -8,10 +8,10 @@ export interface WebSocketContextValue {
   isConnected: boolean
   /** Send a message to the server */
   send: (message: ClientMessage) => void
-  /** Subscribe to specific topics */
-  subscribe: (topics: string[]) => void
-  /** Unsubscribe from topics */
-  unsubscribe: (topics: string[]) => void
+  /** Register topics for a hook instance (preferred API, immune to Strict Mode) */
+  registerTopics: (hookId: string, topics: string[]) => void
+  /** Unregister topics when hook unmounts */
+  unregisterTopics: (hookId: string) => void
   /** Add a message handler */
   addMessageHandler: (handler: MessageHandler) => void
   /** Remove a message handler */
