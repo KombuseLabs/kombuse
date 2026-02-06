@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
+import { createSessionId } from '@kombuse/types'
 import { setupTestDb } from '../test-utils'
 import { sessionEventsRepository } from '../session-events'
 import { sessionsRepository } from '../sessions'
@@ -16,7 +17,7 @@ describe('sessionEventsRepository', () => {
 
     // Create a test session
     const session = sessionsRepository.create({
-      kombuse_session_id: 'test-kombuse-session',
+      kombuse_session_id: createSessionId('chat'),
       backend_type: 'mock',
     })
     testSessionId = session.id
@@ -148,7 +149,7 @@ describe('sessionEventsRepository', () => {
     it('should only return events for the specified session', () => {
       // Create another session
       const otherSession = sessionsRepository.create({
-        kombuse_session_id: 'other-session',
+        kombuse_session_id: createSessionId('chat'),
         backend_type: 'mock',
       })
 
@@ -297,7 +298,7 @@ describe('sessionEventsRepository', () => {
 
     it('should not affect other sessions', () => {
       const otherSession = sessionsRepository.create({
-        kombuse_session_id: 'other-session',
+        kombuse_session_id: createSessionId('chat'),
         backend_type: 'mock',
       })
 
@@ -355,7 +356,7 @@ describe('sessionsRepository enhancements', () => {
   describe('update', () => {
     it('should update status', () => {
       const session = sessionsRepository.create({
-        kombuse_session_id: 'test-session',
+        kombuse_session_id: createSessionId('chat'),
         backend_type: 'mock',
       })
 
@@ -368,7 +369,7 @@ describe('sessionsRepository enhancements', () => {
 
     it('should update backend_session_id', () => {
       const session = sessionsRepository.create({
-        kombuse_session_id: 'test-session',
+        kombuse_session_id: createSessionId('chat'),
         backend_type: 'claude-code',
       })
 
@@ -381,7 +382,7 @@ describe('sessionsRepository enhancements', () => {
 
     it('should update last_event_seq', () => {
       const session = sessionsRepository.create({
-        kombuse_session_id: 'test-session',
+        kombuse_session_id: createSessionId('chat'),
       })
 
       const updated = sessionsRepository.update(session.id, {
@@ -393,7 +394,7 @@ describe('sessionsRepository enhancements', () => {
 
     it('should update multiple fields at once', () => {
       const session = sessionsRepository.create({
-        kombuse_session_id: 'test-session',
+        kombuse_session_id: createSessionId('chat'),
       })
 
       const updated = sessionsRepository.update(session.id, {
@@ -409,7 +410,7 @@ describe('sessionsRepository enhancements', () => {
 
     it('should return unchanged session when no fields provided', () => {
       const session = sessionsRepository.create({
-        kombuse_session_id: 'test-session',
+        kombuse_session_id: createSessionId('chat'),
       })
 
       const updated = sessionsRepository.update(session.id, {})
@@ -428,19 +429,20 @@ describe('sessionsRepository enhancements', () => {
 
   describe('getByKombuseSessionId', () => {
     it('should find session by kombuse session ID', () => {
+      const kombuseId = createSessionId('chat')
       sessionsRepository.create({
-        kombuse_session_id: 'unique-kombuse-id',
+        kombuse_session_id: kombuseId,
         backend_type: 'mock',
       })
 
-      const session = sessionsRepository.getByKombuseSessionId('unique-kombuse-id')
+      const session = sessionsRepository.getByKombuseSessionId(kombuseId)
 
       expect(session).not.toBeNull()
-      expect(session?.kombuse_session_id).toBe('unique-kombuse-id')
+      expect(session?.kombuse_session_id).toBe(kombuseId)
     })
 
     it('should return null for non-existent kombuse session ID', () => {
-      const session = sessionsRepository.getByKombuseSessionId('non-existent')
+      const session = sessionsRepository.getByKombuseSessionId(createSessionId('chat'))
       expect(session).toBeNull()
     })
   })

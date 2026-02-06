@@ -1,9 +1,11 @@
+import type { KombuseSessionId } from './session-id'
+
 /**
  * Session entity - stores agent conversation history
  */
 export interface Session {
   id: string
-  kombuse_session_id: string | null
+  kombuse_session_id: KombuseSessionId | null
   backend_type: string | null
   backend_session_id: string | null
   status: 'running' | 'completed' | 'failed' | 'aborted'
@@ -20,7 +22,7 @@ export interface Session {
  */
 export interface CreateSessionInput {
   id?: string
-  kombuse_session_id?: string
+  kombuse_session_id?: KombuseSessionId
   backend_type?: string
   backend_session_id?: string
 }

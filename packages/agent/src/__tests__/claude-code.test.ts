@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { createSessionId } from '@kombuse/types'
 import { ClaudeCodeBackend } from '../backends/claude-code'
 import type { ParsedClaudeMessage } from '../backends/claude-code'
 import { type AgentEvent } from '../types'
@@ -10,7 +11,7 @@ describe('ClaudeCodeBackend', () => {
 
       // @ts-expect-error accessing private method for testing
       const args = backend.buildArgs({
-        kombuseSessionId: 'kombuse-session',
+        kombuseSessionId: createSessionId('chat'),
         resumeSessionId: 'resume-session-id',
         projectPath: '/tmp',
       })

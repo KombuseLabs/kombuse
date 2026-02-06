@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { createSessionId } from '@kombuse/types'
 import { sessionPersistenceService } from '@kombuse/services'
 import { sessionsRepository, sessionEventsRepository } from '@kombuse/persistence'
 import {
@@ -26,14 +27,14 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const sessionId = crypto.randomUUID()
+    const kombuseId = createSessionId('chat')
     const createdSession = sessionsRepository.create({
-      id: sessionId,
-      kombuse_session_id: sessionId,
+      id: crypto.randomUUID(),
+      kombuse_session_id: kombuseId,
       backend_type: parseResult.data.backend_type ?? 'claude-code',
     })
 
-    const session = sessionsRepository.update(sessionId, { status: 'completed' })
+    const session = sessionsRepository.update(createdSession.id, { status: 'completed' })
 
     return reply.status(201).send(session ?? createdSession)
   })

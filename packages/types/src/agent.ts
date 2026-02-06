@@ -3,12 +3,14 @@
  * Keep this file backend-agnostic and runtime-independent.
  */
 
+import type { KombuseSessionId } from './session-id'
+
 /**
  * Configuration for starting an agent backend
  */
 export interface StartOptions {
   /** Stable app-level session ID (kombuse_session_id). */
-  kombuseSessionId: string
+  kombuseSessionId: KombuseSessionId
   /** Optional backend-native session ID to resume conversation context. */
   resumeSessionId?: string
   projectPath: string
@@ -33,7 +35,7 @@ export interface PermissionConfig {
  */
 export interface ConversationContext {
   /** Our stable ID (generated upfront) */
-  kombuseSessionId: string
+  kombuseSessionId: KombuseSessionId
   /** Backend-specific session ID (async, stored when available) */
   backendSessionId?: string
 }

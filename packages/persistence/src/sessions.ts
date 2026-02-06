@@ -127,7 +127,8 @@ export const sessionsRepository = {
   },
 
   /**
-   * Get session by kombuse session ID
+   * Get session by kombuse session ID.
+   * Accepts any string to support legacy IDs and API lookups.
    */
   getByKombuseSessionId(kombuseSessionId: string): Session | null {
     const db = getDatabase()

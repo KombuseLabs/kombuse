@@ -27,7 +27,7 @@ import {
   type ISessionPersistenceService,
 } from '@kombuse/services'
 import { agentInvocationsRepository, eventsRepository } from '@kombuse/persistence'
-import { EVENT_TYPES } from '@kombuse/types'
+import { EVENT_TYPES, createSessionId } from '@kombuse/types'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
@@ -36,6 +36,7 @@ import type {
   ClientMessage,
   ConversationContext,
   Event,
+  KombuseSessionId,
 } from '@kombuse/types'
 
 type AgentInvokeMessage = Extract<ClientMessage, { type: 'agent.invoke' }>
@@ -66,13 +67,9 @@ interface ChatRunnerOptions {
 async function runAgentChat(
   backend: AgentBackend,
   message: string,
-  kombuseSessionId: string,
+  kombuseSessionId: KombuseSessionId,
   options: ChatRunnerOptions
 ): Promise<ConversationContext> {
-  if (!kombuseSessionId.trim()) {
-    throw new Error('kombuseSessionId must be a non-empty string')
-  }
-
   const appSessionId = kombuseSessionId
   let didComplete = false
 
@@ -394,7 +391,7 @@ interface AgentExecutionDependencies {
   getAgent: (agentId: string) => ReturnType<typeof agentService.getAgent>
   processEvent: (event: Event) => ReturnType<typeof agentService.processEvent>
   createBackend: () => AgentBackend
-  generateSessionId: () => string
+  generateSessionId: () => KombuseSessionId
   resolveProjectPath: () => string
   sessionPersistence: ISessionPersistenceService
 }
@@ -410,7 +407,7 @@ const defaultDependencies: AgentExecutionDependencies = {
   getAgent: (agentId) => agentService.getAgent(agentId),
   processEvent: (event) => agentService.processEvent(event),
   createBackend: createServerAgentBackend,
-  generateSessionId: () => crypto.randomUUID(),
+  generateSessionId: () => createSessionId('chat'),
   resolveProjectPath: () => process.cwd(),
   sessionPersistence: sessionPersistenceService,
 }
@@ -558,8 +555,8 @@ export async function processEventAndRunAgents(
       continue
     }
 
-    // Generate session ID from invocation for easy lookup
-    const kombuseSessionId = `invocation-${invocation.id}`
+    // Generate session ID for triggered invocation
+    const kombuseSessionId = createSessionId('trigger')
 
     // Update invocation with session ID
     agentInvocationsRepository.update(invocation.id, {
@@ -686,10 +683,14 @@ export function startAgentChatSession(
     return
   }
 
-  const appSessionId =
-    typeof kombuseSessionId === 'string' && kombuseSessionId.trim().length > 0
-      ? kombuseSessionId
-      : dependencies.generateSessionId()
+  // Use client-provided session ID or generate a new one
+  // Cast client ID to KombuseSessionId - client may provide legacy format for backward compat
+  let appSessionId: KombuseSessionId
+  if (typeof kombuseSessionId === 'string' && kombuseSessionId.trim().length > 0) {
+    appSessionId = kombuseSessionId as KombuseSessionId
+  } else {
+    appSessionId = dependencies.generateSessionId()
+  }
 
   // Create/get persistent session record
   const persistentSessionId = dependencies.sessionPersistence.ensureSession(
