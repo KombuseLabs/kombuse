@@ -4,7 +4,7 @@ import type {
   TicketFilters,
   CreateTicketInput,
   UpdateTicketInput,
-  Comment,
+  CommentWithAuthor,
   CreateCommentInput,
   UpdateCommentInput,
   CommentFilters,
@@ -107,35 +107,35 @@ export const ticketsApi = {
 }
 
 export const commentsApi = {
-  async list(ticketId: number, filters?: CommentFilters): Promise<Comment[]> {
+  async list(ticketId: number, filters?: CommentFilters): Promise<CommentWithAuthor[]> {
     const params = new URLSearchParams()
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
     const url = `${API_BASE}/tickets/${ticketId}/comments${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
-    return handleResponse<Comment[]>(response)
+    return handleResponse<CommentWithAuthor[]>(response)
   },
 
   async create(
     ticketId: number,
     input: Omit<CreateCommentInput, 'ticket_id'>
-  ): Promise<Comment> {
+  ): Promise<CommentWithAuthor> {
     const response = await fetch(`${API_BASE}/tickets/${ticketId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     })
-    return handleResponse<Comment>(response)
+    return handleResponse<CommentWithAuthor>(response)
   },
 
-  async update(id: number, input: UpdateCommentInput): Promise<Comment> {
+  async update(id: number, input: UpdateCommentInput): Promise<CommentWithAuthor> {
     const response = await fetch(`${API_BASE}/comments/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     })
-    return handleResponse<Comment>(response)
+    return handleResponse<CommentWithAuthor>(response)
   },
 
   async delete(id: number): Promise<void> {

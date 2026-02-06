@@ -1,5 +1,5 @@
 import type {
-  Comment,
+  CommentWithAuthor,
   CommentFilters,
   CreateCommentInput,
   UpdateCommentInput,
@@ -11,11 +11,11 @@ import { commentsRepository, mentionsRepository } from '@kombuse/persistence'
  * Service interface for comment operations
  */
 export interface ICommentService {
-  list(filters?: CommentFilters): Comment[]
-  get(id: number): Comment | null
-  getByTicket(ticketId: number): Comment[]
-  create(input: CreateCommentInput): Comment
-  update(id: number, input: UpdateCommentInput): Comment
+  list(filters?: CommentFilters): CommentWithAuthor[]
+  get(id: number): CommentWithAuthor | null
+  getByTicket(ticketId: number): CommentWithAuthor[]
+  create(input: CreateCommentInput): CommentWithAuthor
+  update(id: number, input: UpdateCommentInput): CommentWithAuthor
   delete(id: number): void
   getReplyCount(id: number): number
   getMentions(commentId: number): Mention[]
@@ -25,23 +25,23 @@ export interface ICommentService {
  * Comment service implementation with business logic
  */
 export class CommentService implements ICommentService {
-  list(filters?: CommentFilters): Comment[] {
+  list(filters?: CommentFilters): CommentWithAuthor[] {
     return commentsRepository.list(filters)
   }
 
-  get(id: number): Comment | null {
+  get(id: number): CommentWithAuthor | null {
     return commentsRepository.get(id)
   }
 
-  getByTicket(ticketId: number): Comment[] {
+  getByTicket(ticketId: number): CommentWithAuthor[] {
     return commentsRepository.getByTicket(ticketId)
   }
 
-  create(input: CreateCommentInput): Comment {
+  create(input: CreateCommentInput): CommentWithAuthor {
     return commentsRepository.create(input)
   }
 
-  update(id: number, input: UpdateCommentInput): Comment {
+  update(id: number, input: UpdateCommentInput): CommentWithAuthor {
     const existing = commentsRepository.get(id)
     if (!existing) {
       throw new Error(`Comment ${id} not found`)

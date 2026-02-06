@@ -1,4 +1,4 @@
-import type { TimelineItem, Comment, Event } from '@kombuse/types'
+import type { TimelineItem, CommentWithAuthor, Event } from '@kombuse/types'
 import { CommentItem } from '../comments/comment-item'
 import { TimelineEventItem } from './timeline-event-item'
 import { cn } from '../../lib/utils'
@@ -8,11 +8,11 @@ interface ActivityTimelineProps {
   editingCommentId?: number | null
   editBody?: string
   onEditBodyChange?: (body: string) => void
-  onStartEditComment?: (comment: Comment) => void
+  onStartEditComment?: (comment: CommentWithAuthor) => void
   onSaveEditComment?: () => void
   onCancelEditComment?: () => void
   onDeleteComment?: (id: number) => void
-  onReplyComment?: (comment: Comment) => void
+  onReplyComment?: (comment: CommentWithAuthor) => void
   isUpdatingComment?: boolean
   isDeletingComment?: boolean
   className?: string
@@ -42,7 +42,7 @@ function ActivityTimeline({
     <div className={cn('space-y-3', className)}>
       {items.map((item) => {
         if (item.type === 'comment') {
-          const comment = item.data as Comment
+          const comment = item.data as CommentWithAuthor
           return (
             <CommentItem
               key={`comment-${comment.id}`}

@@ -30,7 +30,7 @@ import {
 } from "@kombuse/ui/hooks";
 import { LabelBadge } from "@kombuse/ui/components";
 import { Plus, X, Save } from "lucide-react";
-import type { Ticket, TicketStatus, Comment } from "@kombuse/types";
+import type { Ticket, TicketStatus, CommentWithAuthor } from "@kombuse/types";
 
 export function Tickets() {
   const { projectId, ticketId } = useParams<{
@@ -110,7 +110,7 @@ export function Tickets() {
     setReplyTarget(null);
   }, [selectedTicket, setCurrentTicket]);
 
-  const handleReplyToComment = useCallback((comment: Comment) => {
+  const handleReplyToComment = useCallback((comment: CommentWithAuthor) => {
     setReplyTarget({
       commentId: comment.id,
       authorId: comment.author_id,
@@ -127,7 +127,7 @@ export function Tickets() {
       // Find the original comment to get its kombuse_session_id
       const targetComment = timeline?.items
         .filter((item): item is typeof item & { type: 'comment' } => item.type === 'comment')
-        .map((item) => item.data as Comment)
+        .map((item) => item.data as CommentWithAuthor)
         .find((c) => c.id === replyTarget.commentId);
 
       if (targetComment?.kombuse_session_id) {

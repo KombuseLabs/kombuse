@@ -289,6 +289,10 @@ export const agentInvocationsRepository = {
       conditions.push('session_id = ?')
       params.push(filters.session_id)
     }
+    if (filters?.kombuse_session_id) {
+      conditions.push('kombuse_session_id = ?')
+      params.push(filters.kombuse_session_id)
+    }
 
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''

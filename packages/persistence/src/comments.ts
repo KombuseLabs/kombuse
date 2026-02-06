@@ -1,5 +1,6 @@
 import type {
   Comment,
+  CommentWithAuthor,
   CommentFilters,
   CreateCommentInput,
   UpdateCommentInput,
@@ -30,6 +31,51 @@ function mapComment(row: RawComment): Comment {
   return {
     ...row,
     is_edited: row.is_edited === 1,
+  }
+}
+
+// Raw comment with joined profile columns
+interface RawCommentWithAuthor extends RawComment {
+  author_type: string
+  author_name: string
+  author_email: string | null
+  author_description: string | null
+  author_avatar_url: string | null
+  author_external_source: string | null
+  author_external_id: string | null
+  author_is_active: number
+  author_created_at: string
+  author_updated_at: string
+}
+
+const COMMENT_WITH_AUTHOR_SELECT = `
+  SELECT c.*,
+    p.type AS author_type, p.name AS author_name, p.email AS author_email,
+    p.description AS author_description, p.avatar_url AS author_avatar_url,
+    p.external_source AS author_external_source, p.external_id AS author_external_id,
+    p.is_active AS author_is_active, p.created_at AS author_created_at,
+    p.updated_at AS author_updated_at
+  FROM comments c
+  JOIN profiles p ON p.id = c.author_id
+`
+
+// Map database row with joined profile to CommentWithAuthor type
+function mapCommentWithAuthor(row: RawCommentWithAuthor): CommentWithAuthor {
+  return {
+    ...mapComment(row),
+    author: {
+      id: row.author_id,
+      type: row.author_type as 'user' | 'agent',
+      name: row.author_name,
+      email: row.author_email,
+      description: row.author_description,
+      avatar_url: row.author_avatar_url,
+      external_source: row.author_external_source,
+      external_id: row.author_external_id,
+      is_active: row.author_is_active === 1,
+      created_at: row.author_created_at,
+      updated_at: row.author_updated_at,
+    },
   }
 }
 
@@ -68,24 +114,24 @@ export const commentsRepository = {
   /**
    * List all comments with optional filters
    */
-  list(filters?: CommentFilters): Comment[] {
+  list(filters?: CommentFilters): CommentWithAuthor[] {
     const db = getDatabase()
     const conditions: string[] = []
     const params: unknown[] = []
 
     if (filters?.ticket_id) {
-      conditions.push('ticket_id = ?')
+      conditions.push('c.ticket_id = ?')
       params.push(filters.ticket_id)
     }
     if (filters?.author_id) {
-      conditions.push('author_id = ?')
+      conditions.push('c.author_id = ?')
       params.push(filters.author_id)
     }
     if (filters?.parent_id !== undefined) {
       if (filters.parent_id === null) {
-        conditions.push('parent_id IS NULL')
+        conditions.push('c.parent_id IS NULL')
       } else {
-        conditions.push('parent_id = ?')
+        conditions.push('c.parent_id = ?')
         params.push(filters.parent_id)
       }
     }
@@ -97,42 +143,42 @@ export const commentsRepository = {
     const offset = filters?.offset || 0
 
     const stmt = db.prepare(`
-      SELECT * FROM comments
+      ${COMMENT_WITH_AUTHOR_SELECT}
       ${whereClause}
-      ORDER BY created_at ASC
+      ORDER BY c.created_at ASC
       LIMIT ? OFFSET ?
     `)
 
-    const rows = stmt.all(...params, limit, offset) as RawComment[]
-    return rows.map(mapComment)
+    const rows = stmt.all(...params, limit, offset) as RawCommentWithAuthor[]
+    return rows.map(mapCommentWithAuthor)
   },
 
   /**
    * Get a single comment by ID
    */
-  get(id: number): Comment | null {
+  get(id: number): CommentWithAuthor | null {
     const db = getDatabase()
     const row = db
-      .prepare('SELECT * FROM comments WHERE id = ?')
-      .get(id) as RawComment | undefined
-    return row ? mapComment(row) : null
+      .prepare(`${COMMENT_WITH_AUTHOR_SELECT} WHERE c.id = ?`)
+      .get(id) as RawCommentWithAuthor | undefined
+    return row ? mapCommentWithAuthor(row) : null
   },
 
   /**
    * Get all comments for a ticket (chronological order)
    */
-  getByTicket(ticketId: number): Comment[] {
+  getByTicket(ticketId: number): CommentWithAuthor[] {
     const db = getDatabase()
     const rows = db
-      .prepare('SELECT * FROM comments WHERE ticket_id = ? ORDER BY created_at ASC')
-      .all(ticketId) as RawComment[]
-    return rows.map(mapComment)
+      .prepare(`${COMMENT_WITH_AUTHOR_SELECT} WHERE c.ticket_id = ? ORDER BY c.created_at ASC`)
+      .all(ticketId) as RawCommentWithAuthor[]
+    return rows.map(mapCommentWithAuthor)
   },
 
   /**
    * Create a new comment with automatic profile/ticket mention parsing.
    */
-  create(input: CreateCommentInput): Comment {
+  create(input: CreateCommentInput): CommentWithAuthor {
     const db = getDatabase()
 
     const insertComment = db.prepare(`
@@ -242,13 +288,13 @@ export const commentsRepository = {
     })
 
     const commentId = createComment(input)
-    return this.get(commentId) as Comment
+    return this.get(commentId) as CommentWithAuthor
   },
 
   /**
    * Update an existing comment
    */
-  update(id: number, input: UpdateCommentInput): Comment | null {
+  update(id: number, input: UpdateCommentInput): CommentWithAuthor | null {
     const db = getDatabase()
 
     const existingRow = db
@@ -266,7 +312,7 @@ export const commentsRepository = {
       fields.push('is_edited = 1')
     }
 
-    if (fields.length === 0) return mapComment(existingRow)
+    if (fields.length === 0) return this.get(id)
 
     fields.push("updated_at = datetime('now')")
     params.push(id)

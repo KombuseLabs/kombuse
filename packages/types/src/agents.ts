@@ -237,6 +237,7 @@ export interface AgentInvocationFilters {
   trigger_id?: number
   status?: InvocationStatus
   session_id?: string
+  kombuse_session_id?: string
   limit?: number
   offset?: number
 }

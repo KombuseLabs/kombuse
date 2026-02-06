@@ -1,4 +1,4 @@
-import type { Comment } from '@kombuse/types'
+import type { CommentWithAuthor } from '@kombuse/types'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { Markdown } from '../markdown'
@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils'
 import { Pencil, Trash2, Check, X, Reply } from 'lucide-react'
 
 interface CommentItemProps {
-  comment: Comment
+  comment: CommentWithAuthor
   isEditing?: boolean
   editBody?: string
   onEditBodyChange?: (body: string) => void
@@ -38,7 +38,7 @@ function CommentItem({
     <div className={cn('p-3 rounded-lg bg-muted/50', className)}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{comment.author_id}</span>
+          <span className="text-sm font-medium">{comment.author.name}</span>
           <span className="text-xs text-muted-foreground">
             {new Date(comment.created_at).toLocaleString()}
           </span>

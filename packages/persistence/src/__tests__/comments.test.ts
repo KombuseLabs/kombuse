@@ -65,6 +65,10 @@ describe('commentsRepository', () => {
       expect(comment.body).toBe('This is a test comment')
       expect(comment.is_edited).toBe(false)
       expect(comment.parent_id).toBeNull()
+      expect(comment.author).toBeDefined()
+      expect(comment.author.id).toBe(TEST_USER_ID)
+      expect(comment.author.name).toBe('Test User')
+      expect(comment.author.type).toBe('user')
     })
 
     it('should create a reply to another comment', () => {
@@ -82,6 +86,9 @@ describe('commentsRepository', () => {
       })
 
       expect(reply.parent_id).toBe(parent.id)
+      expect(reply.author.id).toBe(TEST_AGENT_ID)
+      expect(reply.author.name).toBe('Test Agent')
+      expect(reply.author.type).toBe('agent')
     })
 
     it('should auto-generate timestamps on creation', () => {
@@ -314,6 +321,7 @@ describe('commentsRepository', () => {
       expect(comment).not.toBeNull()
       expect(comment?.id).toBe(created.id)
       expect(comment?.body).toBe('Test comment')
+      expect(comment?.author.name).toBe('Test User')
     })
   })
 
@@ -339,7 +347,9 @@ describe('commentsRepository', () => {
 
       expect(comments).toHaveLength(3)
       expect(comments[0]?.body).toBe('First comment')
+      expect(comments[0]?.author.name).toBe('Test User')
       expect(comments[1]?.body).toBe('Second comment')
+      expect(comments[1]?.author.name).toBe('Test Agent')
       expect(comments[2]?.body).toBe('Third comment')
     })
 

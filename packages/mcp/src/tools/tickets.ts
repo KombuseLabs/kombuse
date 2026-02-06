@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { ticketsRepository, commentsRepository } from '@kombuse/persistence'
-import type { Ticket, Comment } from '@kombuse/types'
+import { ticketsRepository, commentsRepository, agentInvocationsRepository } from '@kombuse/persistence'
+import type { Ticket, CommentWithAuthor } from '@kombuse/types'
+import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import { z } from 'zod'
 
 /**
@@ -8,7 +9,7 @@ import { z } from 'zod'
  */
 interface TicketWithComments {
   ticket: Ticket
-  comments: Comment[]
+  comments: CommentWithAuthor[]
 }
 
 /**
@@ -74,7 +75,6 @@ export function registerTicketTools(server: McpServer): void {
           .int()
           .positive()
           .describe('The ID of the ticket to comment on'),
-        author_id: z.string().min(1).describe('The ID of the comment author. Use "anonymous-agent" if no profile exists.'),
         body: z
           .string()
           .min(1)
@@ -91,7 +91,7 @@ export function registerTicketTools(server: McpServer): void {
           .describe('Optional session ID linking this comment to the agent session that created it'),
       },
     },
-    async ({ ticket_id, author_id, body, parent_id, kombuse_session_id }) => {
+    async ({ ticket_id, body, parent_id, kombuse_session_id }) => {
       // Verify ticket exists first
       const ticket = ticketsRepository.get(ticket_id)
       if (!ticket) {
@@ -106,9 +106,18 @@ export function registerTicketTools(server: McpServer): void {
         }
       }
 
+      // Resolve author from session — single source of truth
+      let authorId = ANONYMOUS_AGENT_ID
+      if (kombuse_session_id) {
+        const invocations = agentInvocationsRepository.list({ kombuse_session_id })
+        if (invocations.length > 0) {
+          authorId = invocations[0]!.agent_id
+        }
+      }
+
       const comment = commentsRepository.create({
         ticket_id,
-        author_id,
+        author_id: authorId,
         body,
         parent_id,
         kombuse_session_id,
