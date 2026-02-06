@@ -89,6 +89,26 @@
     border-color: var(--border);
     border-style: solid;
     border-width: 0;
+    scrollbar-width: thin;
+  }
+
+  /* Webkit thin scrollbars (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
   }
 
   body {
