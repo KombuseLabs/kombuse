@@ -114,9 +114,14 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                       variant="ghost"
                       className="ml-auto text-xs"
                       onClick={() => {
-                        const path = currentProjectId
-                          ? `/projects/${currentProjectId}/chats/${permission.sessionId}`
-                          : `/chats/${permission.sessionId}`
+                        let path: string
+                        if (permission.ticketId && currentProjectId) {
+                          path = `/projects/${currentProjectId}/tickets/${permission.ticketId}`
+                        } else if (currentProjectId) {
+                          path = `/projects/${currentProjectId}/chats/${permission.sessionId}`
+                        } else {
+                          path = `/chats/${permission.sessionId}`
+                        }
                         onNavigate(path)
                       }}
                     >
