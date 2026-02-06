@@ -104,29 +104,39 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   }
 
   return (
-    <Card className={className}>
-      <CardHeader className="pb-4">
+    <Card className={cn('py-4 gap-3', className)}>
+      <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             {mode === 'view' ? (
               <>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-1">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   <span
                     className={cn(
-                      'px-2 py-1 text-xs rounded-full font-medium',
+                      'px-2 py-0.5 text-xs rounded-full font-medium',
                       statusColors[ticket.status]
                     )}
                   >
                     {ticket.status.replace('_', ' ')}
                   </span>
+                  {ticket.priority !== null && (
+                    <>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-xs text-muted-foreground">{priorityLabels[ticket.priority]}</span>
+                    </>
+                  )}
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(ticket.created_at).toLocaleDateString()}
+                  </span>
                 </div>
-                <CardTitle className="text-xl">{ticket.title}</CardTitle>
+                <CardTitle className="text-lg">{ticket.title}</CardTitle>
               </>
             ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-1">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   <Select value={editStatus} onValueChange={(v) => setEditStatus(v as TicketStatus)}>
@@ -195,53 +205,20 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          {ticket.priority !== null && (
-            <div>
-              <span className="text-muted-foreground">Priority:</span>{' '}
-              <span className="font-medium">{priorityLabels[ticket.priority]}</span>
-            </div>
-          )}
-          <div>
-            <span className="text-muted-foreground">Created:</span>{' '}
-            <span className="font-medium">
-              {new Date(ticket.created_at).toLocaleDateString()}
-            </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Updated:</span>{' '}
-            <span className="font-medium">
-              {new Date(ticket.updated_at).toLocaleDateString()}
-            </span>
-          </div>
-          {ticket.assignee_id && (
-            <div>
-              <span className="text-muted-foreground">Assignee:</span>{' '}
-              <span className="font-medium">{ticket.assignee_id}</span>
-            </div>
-          )}
-        </div>
-
+      <CardContent className="space-y-3">
         {mode === 'view' ? (
           ticket.body && (
-            <div className="pt-4 border-t">
-              <h4 className="text-sm font-medium mb-2">Description</h4>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {ticket.body}
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {ticket.body}
+            </p>
           )
         ) : (
-          <div className="pt-4 border-t">
-            <h4 className="text-sm font-medium mb-2">Description</h4>
-            <Textarea
-              value={editBody}
-              onChange={(e) => setEditBody(e.target.value)}
-              placeholder="Add a description..."
-              className="min-h-[100px]"
-            />
-          </div>
+          <Textarea
+            value={editBody}
+            onChange={(e) => setEditBody(e.target.value)}
+            placeholder="Add a description..."
+            className="min-h-[100px]"
+          />
         )}
 
         {ticket.external_url && (

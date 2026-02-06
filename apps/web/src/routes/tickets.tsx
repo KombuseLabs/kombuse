@@ -313,7 +313,7 @@ export function Tickets() {
                 {selectedTicket && (
                   <>
                     {/* Scrollable area: ticket detail + comments */}
-                    <div className="flex-1 overflow-y-auto p-6">
+                    <div className="flex-1 overflow-y-auto p-4">
                       <TicketDetail
                         onClose={handleCloseDetail}
                         isEditable
