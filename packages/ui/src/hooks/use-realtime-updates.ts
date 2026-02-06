@@ -52,21 +52,27 @@ export function useRealtimeUpdates({
             queryKey: ['tickets'],
             exact: false,
           })
-          // Invalidate specific ticket query if we have the ID
+          // Invalidate specific ticket query and its timeline
           if (event.ticket_id) {
             queryClient.invalidateQueries({
               queryKey: ['tickets', event.ticket_id],
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['ticket-timeline', event.ticket_id],
             })
           }
           break
 
         case EVENT_TYPES.COMMENT_ADDED:
         case EVENT_TYPES.COMMENT_EDITED:
-          // Invalidate comments for the ticket
+          // Invalidate comments and timeline for the ticket
           if (event.ticket_id) {
             queryClient.invalidateQueries({
               queryKey: ['comments', event.ticket_id],
               exact: false,
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['ticket-timeline', event.ticket_id],
             })
           }
           break
@@ -78,9 +84,12 @@ export function useRealtimeUpdates({
             queryClient.invalidateQueries({
               queryKey: ['ticketLabels', event.ticket_id],
             })
-            // Also refresh the ticket itself since labels might be shown inline
+            // Also refresh the ticket itself and timeline since labels might be shown inline
             queryClient.invalidateQueries({
               queryKey: ['tickets', event.ticket_id],
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['ticket-timeline', event.ticket_id],
             })
           }
           break

@@ -17,6 +17,7 @@ export function useCreateComment(ticketId: number) {
       commentsApi.create(ticketId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', ticketId] })
     },
   })
 }
@@ -28,6 +29,7 @@ export function useUpdateComment(ticketId: number) {
       commentsApi.update(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', ticketId] })
     },
   })
 }
@@ -38,6 +40,7 @@ export function useDeleteComment(ticketId: number) {
     mutationFn: (id: number) => commentsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', ticketId] })
     },
   })
 }
