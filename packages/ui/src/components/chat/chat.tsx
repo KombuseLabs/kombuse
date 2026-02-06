@@ -1,12 +1,12 @@
 'use client'
 
-import { useContext } from 'react'
+import { useContext, useState } from 'react'
 import type { SerializedAgentEvent } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { ChatCtx } from '../../providers/chat-context'
 import { ChatInput } from '../chat-input'
 import { PermissionBar } from './permission-bar'
-import { SessionHeader } from './session-header'
+import { SessionHeader, type ViewMode } from './session-header'
 import { SessionViewer } from './session-viewer'
 
 interface ChatProps {
@@ -35,6 +35,7 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
   const onSubmit = propOnSubmit ?? ctx?.send
   const isLoading = propIsLoading ?? ctx?.isLoading ?? false
   const isConnected = propIsConnected ?? ctx?.isConnected ?? true
+  const [viewMode, setViewMode] = useState<ViewMode>('normal')
   const pendingPermission = ctx?.pendingPermission ?? null
   const respondToPermission = ctx?.respondToPermission
 
@@ -51,8 +52,10 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
         isLoading={isLoading}
         eventCount={events.length}
         lastEventTime={lastEventTime}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
-      <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} className="flex-1" />
+      <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} viewMode={viewMode} className="flex-1" />
       {pendingPermission && respondToPermission && (
         <PermissionBar
           permission={pendingPermission}

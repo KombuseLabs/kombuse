@@ -4,15 +4,17 @@ import { useMemo } from 'react'
 import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { MessageRenderer, PermissionRequestRenderer, RawRenderer, ToolResultRenderer, ToolUseRenderer } from './renderers'
+import type { ViewMode } from './session-header'
 
 interface SessionViewerProps {
   events: SerializedAgentEvent[]
   isLoading?: boolean
   emptyMessage?: string
+  viewMode?: ViewMode
   className?: string
 }
 
-function SessionViewer({ events, isLoading = false, emptyMessage = 'No events yet', className }: SessionViewerProps) {
+function SessionViewer({ events, isLoading = false, emptyMessage = 'No events yet', viewMode = 'normal', className }: SessionViewerProps) {
   // Build maps for tool_use events and track which ones have results
   const { toolUseMap, toolUseIdsWithResults } = useMemo(() => {
     const useMap = new Map<string, SerializedAgentToolUseEvent>()
@@ -29,7 +31,12 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
     return { toolUseMap: useMap, toolUseIdsWithResults: idsWithResults }
   }, [events])
 
-  if (events.length === 0 && !isLoading) {
+  const visibleEvents = useMemo(
+    () => viewMode === 'clean' ? events.filter((e) => e.type === 'message') : events,
+    [events, viewMode]
+  )
+
+  if (visibleEvents.length === 0 && !isLoading) {
     return (
       <div className={cn('flex-1 flex items-center justify-center text-muted-foreground', className)}>
         {emptyMessage}
@@ -39,7 +46,7 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
 
   return (
     <div className={cn('flex-1 overflow-y-auto p-4 space-y-4', className)}>
-      {events.map((event) => {
+      {visibleEvents.map((event) => {
         if (event.type === 'message') {
           return <MessageRenderer key={`${event.type}-${event.timestamp}`} event={event} />
         }

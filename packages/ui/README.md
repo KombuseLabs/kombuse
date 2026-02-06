@@ -28,13 +28,14 @@ src/
 │   ├── use-command.ts         - Execute specific commands
 │   ├── use-commands.ts        - Get all available commands
 │   ├── use-command-context.ts - Access command registry
+│   ├── use-attachments.ts      - Attachment CRUD hooks
 │   ├── use-labels.ts          - Label CRUD hooks
 │   └── use-tickets.ts         - Ticket CRUD hooks
 ├── providers/      - Context providers
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
-    ├── api.ts                 - API client (tickets, comments, labels)
+    ├── api.ts                 - API client (tickets, comments, labels, attachments)
     └── utils.ts               - cn() class merging
 ```
 
@@ -170,6 +171,27 @@ Props:
   - Delete button
   - Label management
 
+### Chat Components
+
+```typescript
+import { Chat, SessionHeader, SessionViewer } from '@kombuse/ui/components'
+import type { ViewMode } from '@kombuse/ui/components'
+```
+
+`SessionHeader` props:
+- `isConnected`, `isLoading`: Status indicators
+- `eventCount`: Number of displayed events
+- `lastEventTime`: Timestamp of last event
+- `viewMode`: `'clean' | 'normal'` — controls display mode toggle state
+- `onViewModeChange`: Callback when toggle is switched
+
+`SessionViewer` props:
+- `events`: `SerializedAgentEvent[]` to render
+- `isLoading`, `emptyMessage`: Loading/empty states
+- `viewMode`: `'clean' | 'normal'` (default `'normal'`) — in `'clean'` mode, only `message` events are shown; tool uses, permission requests, and raw events are hidden
+
+`Chat` manages `viewMode` state internally and passes it to both `SessionHeader` and `SessionViewer`.
+
 ### Timeline Components
 
 ```typescript
@@ -214,6 +236,7 @@ const { data: timeline } = useTicketTimeline(ticketId)
 
 Props for `ActivityTimeline`:
 - `items`: Array of `TimelineItem` (from `/tickets/:id/timeline` API)
+- `attachmentsByCommentId`: Optional `Record<number, Attachment[]>` mapping comment IDs to their attachments
 - `editingCommentId`: ID of comment being edited (or null)
 - `editBody`: Current edit text value
 - `onEditBodyChange`: Callback when edit text changes
@@ -224,12 +247,43 @@ Props for `ActivityTimeline`:
 - `onReplyComment`: Callback when reply button clicked on a comment
 - `isUpdatingComment`, `isDeletingComment`: Loading states
 
+Props for `CommentItem`:
+- `comment`: `CommentWithAuthor` object
+- `attachments`: Optional `Attachment[]` to display as inline image thumbnails below the comment body
+
 Props for `ChatInput`:
-- `onSubmit`: Callback when message is submitted
+- `onSubmit`: Callback `(message: string, files?: File[]) => void` — receives message text and optional staged files
 - `placeholder`: Input placeholder text
 - `isLoading`, `disabled`: Loading/disabled states
 - `replyTarget`: Optional `ReplyTarget` object (`{ commentId, authorId, isAgentSession }`) — shows reply indicator when set
 - `onCancelReply`: Callback to dismiss reply mode
+- Supports file attachments via paperclip button and drag-and-drop (images only, max 10 MB)
+
+### Attachment Hooks
+
+```typescript
+import {
+  useCommentAttachments,
+  useCommentsAttachments,
+  useUploadAttachment,
+  useDeleteAttachment,
+} from '@kombuse/ui/hooks'
+
+// Fetch attachments for a single comment
+const { data: attachments } = useCommentAttachments(commentId)
+
+// Batch-fetch attachments for multiple comments (parallel queries)
+const attachmentsByCommentId = useCommentsAttachments([1, 2, 3])
+// Returns Record<number, Attachment[]>
+
+// Upload a file to a comment
+const upload = useUploadAttachment()
+upload.mutateAsync({ commentId: 1, file: myFile, uploadedById: 'user-1' })
+
+// Delete an attachment
+const remove = useDeleteAttachment()
+remove.mutate({ id: attachmentId, commentId: 1 })
+```
 
 ### Label Hooks
 
