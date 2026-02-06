@@ -1,6 +1,22 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 import { ClaudeCodeBackend } from '@kombuse/agent'
+
+/**
+ * Default tools that are auto-approved for all agents.
+ * These are safe operations that don't require human review.
+ */
+const DEFAULT_ALLOWED_TOOLS: string[] = [
+  'mcp__kombuse__get_ticket',
+  'mcp__kombuse__add_comment',
+  'Grep',
+  'Read',
+]
+
+/**
+ * Bash commands that are auto-approved (read-only operations).
+ */
+const AUTO_APPROVED_BASH_COMMANDS: string[] = ['find', 'grep', 'ls']
 import {
   agentService,
   projectService,
@@ -142,14 +158,217 @@ function broadcastPermissionPending(
   sessionId: string,
   event: Extract<AgentEvent, { type: 'permission_request' }>
 ): void {
-  console.log('[server] permission_request:', event.requestId, event.toolName)
+  const description = generatePermissionDescription(event.toolName, event.input)
+  console.log('[server] permission_request:', event.requestId, event.toolName, '-', description)
   wsHub.broadcastToTopic('*', {
     type: 'agent.permission_pending',
     sessionId,
     requestId: event.requestId,
     toolName: event.toolName,
     input: event.input,
+    description,
   })
+}
+
+/**
+ * Check if a tool should be auto-approved based on default permissions.
+ */
+function shouldAutoApprove(toolName: string, input?: Record<string, unknown>): boolean {
+  if (DEFAULT_ALLOWED_TOOLS.includes(toolName)) {
+    return true
+  }
+
+  // Special handling for Bash - only approve specific commands
+  if (toolName === 'Bash' && input?.command) {
+    const command = String(input.command).trim()
+    return AUTO_APPROVED_BASH_COMMANDS.some(cmd =>
+      command === cmd || command.startsWith(`${cmd} `)
+    )
+  }
+
+  return false
+}
+
+/**
+ * Known tool descriptions for generating human-readable permission context.
+ */
+const TOOL_DESCRIPTIONS: Record<string, string> = {
+  // MCP Kombuse tools
+  'mcp__kombuse__get_ticket': 'Read ticket details',
+  'mcp__kombuse__add_comment': 'Add a comment to a ticket',
+  'mcp__kombuse__update_comment': 'Update a comment',
+  // Common Claude Code tools
+  'Bash': 'Run a shell command',
+  'Read': 'Read a file',
+  'Write': 'Write to a file',
+  'Edit': 'Edit a file',
+  'Glob': 'Search for files',
+  'Grep': 'Search file contents',
+  'WebFetch': 'Fetch content from a URL',
+  'WebSearch': 'Search the web',
+  'Task': 'Launch a subagent',
+  'TodoWrite': 'Update task list',
+}
+
+/**
+ * Parse a Bash command and generate a human-readable description.
+ */
+function describeBashCommand(command: string): string {
+  const trimmed = command.trim()
+  const parts = trimmed.split(/\s+/)
+  const cmd = parts[0] ?? ''
+
+  if (!cmd) return 'Run command'
+
+  // Extract the last path component for display
+  const getShortPath = (path: string): string => {
+    const segments = path.split('/').filter(Boolean)
+    const last = segments[segments.length - 1]
+    return last ?? path
+  }
+
+  // Find paths or file arguments in the command
+  const findTarget = (): string | null => {
+    for (let i = parts.length - 1; i >= 1; i--) {
+      const part = parts[i]
+      if (!part || part.startsWith('-')) continue
+      if (part.includes('/') || !part.startsWith('-')) {
+        return getShortPath(part)
+      }
+    }
+    return null
+  }
+
+  const target = findTarget()
+  const sub = parts[1] ?? ''
+  const arg2 = parts[2] ?? ''
+
+  // Git subcommand handling
+  if (cmd === 'git') {
+    const gitDesc: Record<string, string> = {
+      'status': 'Check git status',
+      'diff': 'Show git diff',
+      'log': 'Show git log',
+      'branch': 'List branches',
+      'checkout': arg2 ? `Checkout ${arg2}` : 'Checkout',
+      'switch': arg2 ? `Switch to ${arg2}` : 'Switch branch',
+      'add': 'Stage changes',
+      'commit': 'Create commit',
+      'push': 'Push to remote',
+      'pull': 'Pull from remote',
+      'fetch': 'Fetch from remote',
+      'merge': arg2 ? `Merge ${arg2}` : 'Merge',
+      'rebase': 'Rebase',
+      'stash': 'Stash changes',
+      'clone': 'Clone repository',
+      'reset': 'Reset changes',
+    }
+    return gitDesc[sub] ?? `git ${sub}`
+  }
+
+  // Package manager handling
+  if (cmd === 'npm' || cmd === 'bun' || cmd === 'yarn' || cmd === 'pnpm') {
+    if (!sub || sub === 'install' || sub === 'i') return 'Install dependencies'
+    if (sub === 'run') return arg2 ? `Run: ${arg2}` : 'Run script'
+    if (sub === 'test') return 'Run tests'
+    if (sub === 'build') return 'Build project'
+    if (sub === 'dev') return 'Start dev server'
+    if (sub === 'add') return 'Add package'
+    if (sub === 'remove') return 'Remove package'
+    return `${cmd} ${sub}`
+  }
+
+  // Common commands
+  const descriptions: Record<string, string> = {
+    'ls': target ? `List files in ${target}` : 'List files',
+    'cd': target ? `Change to ${target}` : 'Change directory',
+    'cat': target ? `Read ${target}` : 'Read file',
+    'head': target ? `Read start of ${target}` : 'Read file',
+    'tail': target ? `Read end of ${target}` : 'Read file',
+    'mkdir': target ? `Create ${target}/` : 'Create directory',
+    'rm': target ? `Delete ${target}` : 'Delete files',
+    'cp': 'Copy files',
+    'mv': 'Move/rename files',
+    'touch': target ? `Create ${target}` : 'Create file',
+    'chmod': 'Change permissions',
+    'find': target ? `Find files in ${target}` : 'Find files',
+    'grep': 'Search in files',
+    'node': target ? `Run ${target}` : 'Run Node.js',
+    'python': target ? `Run ${target}` : 'Run Python',
+    'python3': target ? `Run ${target}` : 'Run Python',
+    'curl': 'Fetch URL',
+    'wget': 'Download file',
+    'make': target ? `make ${target}` : 'Run make',
+    'docker': sub ? `docker ${sub}` : 'Docker command',
+  }
+
+  const desc = descriptions[cmd]
+  if (desc) {
+    return desc
+  }
+
+  // Fallback: command name + target
+  if (target && target !== cmd) {
+    return `${cmd} ${target}`
+  }
+  return cmd
+}
+
+/**
+ * Generate a human-readable description for a permission request.
+ */
+function generatePermissionDescription(
+  toolName: string,
+  input: Record<string, unknown>
+): string {
+  // Special handling for Bash
+  if (toolName === 'Bash' && typeof input.command === 'string') {
+    return describeBashCommand(input.command)
+  }
+
+  const baseDescription = TOOL_DESCRIPTIONS[toolName]
+  const contextParts: string[] = []
+
+  // Handle ticket references
+  if (typeof input.ticket_id === 'number') {
+    contextParts.push(`ticket #${input.ticket_id}`)
+  }
+
+  // Handle file paths
+  if (typeof input.file_path === 'string') {
+    const path = input.file_path as string
+    const shortPath = path.split('/').slice(-2).join('/')
+    contextParts.push(shortPath)
+  }
+
+  // Handle patterns (Glob/Grep)
+  if (typeof input.pattern === 'string') {
+    contextParts.push(`"${input.pattern}"`)
+  }
+
+  // Handle URLs
+  if (typeof input.url === 'string') {
+    try {
+      const url = new URL(input.url as string)
+      contextParts.push(url.hostname)
+    } catch {
+      contextParts.push(input.url as string)
+    }
+  }
+
+  // Compose final description
+  if (baseDescription) {
+    if (contextParts.length > 0) {
+      return `${baseDescription}: ${contextParts.join(', ')}`
+    }
+    return baseDescription
+  }
+
+  // Fallback for unknown tools
+  if (contextParts.length > 0) {
+    return `${toolName}: ${contextParts.join(', ')}`
+  }
+  return toolName
 }
 
 export type AgentExecutionEvent =
@@ -459,8 +678,70 @@ export function startAgentChatSession(
     resumeSessionId,
     systemPrompt: agent?.system_prompt,
     onEvent: (event: AgentEvent) => {
+
+      console.log(`[Server] Agent event for session ${appSessionId}:`, event.type)
+      if (event.type === 'raw') {
+        if (event.data.type === 'system') {
+          console.log(`[Server] Raw system event:`, event.data.content)
+        }
+      }
+      else if (event.type === 'message') {
+        console.log(
+          `[Server] Message content:`,
+          event.role,
+          event.content.length > 100
+            ? event.content.slice(0, 100) + '...'
+            : event.content
+        )
+      }else if (event.type === 'error') {
+        console.error(
+          `[Server] Agent error:`,
+          event.message,
+          event.error ? event.error.stack || event.error : ''
+        )
+      }
+      else if (event.type === 'permission_request') {
+        console.log(
+          `[Server] Permission request for tool: ${event.toolName}, input: ${JSON.stringify(event.input)}`
+        )
+      }
+      else if (event.type === 'tool_use') {
+        console.log(
+          `[Server] Tool used: ${event.raw?.name}}`
+        )
+      }
+      else {
+        console.log(`[Server] Event data:`, event)
+      }
+
       // Persist event to database
       dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
+
+      // Handle permission requests - check auto-approve BEFORE emitting
+      if (event.type === 'permission_request') {
+        if (
+          shouldAutoApprove(event.toolName, event.input) &&
+          'respondToPermission' in backend &&
+          typeof backend.respondToPermission === 'function'
+        ) {
+          console.log('[server] auto-approving:', event.requestId, event.toolName)
+          backend.respondToPermission(event.requestId, 'allow', { updatedInput: event.input })
+          wsHub.broadcastToTopic('*', {
+            type: 'agent.permission_resolved',
+            sessionId: appSessionId,
+            requestId: event.requestId,
+          })
+          // Emit with autoApproved flag so UI can skip showing prompt
+          emit({
+            type: 'event',
+            kombuseSessionId: appSessionId,
+            event: { ...event, autoApproved: true },
+          })
+          return
+        }
+        // Not auto-approved - broadcast pending
+        broadcastPermissionPending(appSessionId, event)
+      }
 
       // Emit to WebSocket
       emit({
@@ -468,11 +749,6 @@ export function startAgentChatSession(
         kombuseSessionId: appSessionId,
         event,
       })
-
-      // Broadcast permission requests globally for the notification bell
-      if (event.type === 'permission_request') {
-        broadcastPermissionPending(appSessionId, event)
-      }
     },
     onComplete: (context: ConversationContext) => {
       // Clean up backend registry
