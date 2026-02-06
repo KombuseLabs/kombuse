@@ -70,6 +70,17 @@ export function Tickets() {
       .map((l) => l.id);
   }, [searchParams, projectLabels]);
 
+  // Unfiltered query for counting tickets by status
+  const { data: allTickets } = useTickets({ project_id: projectId });
+
+  const { openCount, closedCount } = useMemo(() => {
+    if (!allTickets) return { openCount: 0, closedCount: 0 };
+    return {
+      openCount: allTickets.filter((t) => t.status === "open").length,
+      closedCount: allTickets.filter((t) => t.status === "closed").length,
+    };
+  }, [allTickets]);
+
   const {
     data: tickets,
     isLoading,
@@ -272,6 +283,11 @@ export function Tickets() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold">Tickets</h1>
+            {allTickets && (
+              <span className="text-sm text-muted-foreground">
+                {openCount} Open &middot; {closedCount} Closed
+              </span>
+            )}
             <Select
               value={statusFilter}
               onValueChange={(value) => updateSearchParams({ status: value === "open" ? null : value })}
