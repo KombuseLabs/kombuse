@@ -134,7 +134,60 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 3: update_comment
+  // Tool 3: create_ticket
+  server.registerTool(
+    'create_ticket',
+    {
+      description:
+        'Create a new ticket. Returns the created ticket.',
+      inputSchema: {
+        project_id: z
+          .string()
+          .min(1)
+          .describe('The project ID to create the ticket in'),
+        title: z
+          .string()
+          .min(1)
+          .describe('The title of the ticket'),
+        body: z
+          .string()
+          .optional()
+          .describe('Optional body/description for the ticket'),
+        kombuse_session_id: z
+          .string()
+          .optional()
+          .describe('Optional session ID linking this ticket to the agent session that created it'),
+      },
+    },
+    async ({ project_id, title, body, kombuse_session_id }) => {
+      // Resolve author from session — single source of truth
+      let authorId = ANONYMOUS_AGENT_ID
+      if (kombuse_session_id) {
+        const invocations = agentInvocationsRepository.list({ kombuse_session_id })
+        if (invocations.length > 0) {
+          authorId = invocations[0]!.agent_id
+        }
+      }
+
+      const ticket = ticketsRepository.create({
+        project_id,
+        author_id: authorId,
+        title,
+        body,
+      })
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(ticket, null, 2),
+          },
+        ],
+      }
+    }
+  )
+
+  // Tool 4: update_comment
   server.registerTool(
     'update_comment',
     {
