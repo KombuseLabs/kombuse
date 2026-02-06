@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   Button,
   Textarea,
@@ -50,11 +50,25 @@ export function Tickets() {
   // Sync route params to app context
   const { setCurrentTicket, setCurrentProjectId, setView } = useAppContext();
 
-  // Filter state - must be declared before useTickets
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("open");
-  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
+  // Filter state synced to URL search params
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const validStatuses = new Set<string>(["all", "open", "closed", "in_progress", "blocked"]);
+  const rawStatus = searchParams.get("status");
+  const statusFilter: TicketStatus | "all" = rawStatus && validStatuses.has(rawStatus)
+    ? (rawStatus as TicketStatus | "all")
+    : "open";
 
   const { data: projectLabels } = useProjectLabels(projectId ?? "");
+
+  const selectedLabelIds: number[] = useMemo(() => {
+    const raw = searchParams.get("labels");
+    if (!raw || !projectLabels) return [];
+    const names = raw.split(",").map((s) => s.trim().toLowerCase());
+    return projectLabels
+      .filter((l) => names.includes(l.name.toLowerCase()))
+      .map((l) => l.id);
+  }, [searchParams, projectLabels]);
 
   const {
     data: tickets,
@@ -187,7 +201,7 @@ export function Tickets() {
   const handleStartCreate = () => {
     setNewTicketTitle("");
     setNewTicketBody("");
-    navigate(`/projects/${projectId}/tickets/new`);
+    navigate({ pathname: `/projects/${projectId}/tickets/new`, search: searchParams.toString() });
   };
 
   const handleCreateTicket = () => {
@@ -203,26 +217,42 @@ export function Tickets() {
         onSuccess: (newTicket) => {
           setNewTicketTitle("");
           setNewTicketBody("");
-          navigate(`/projects/${projectId}/tickets/${newTicket.id}`);
+          navigate({ pathname: `/projects/${projectId}/tickets/${newTicket.id}`, search: searchParams.toString() });
         },
       }
     );
   };
 
   const handleTicketClick = (ticket: Ticket) => {
-    navigate(`/projects/${projectId}/tickets/${ticket.id}`);
+    navigate({ pathname: `/projects/${projectId}/tickets/${ticket.id}`, search: searchParams.toString() });
   };
 
   const handleCloseDetail = () => {
-    navigate(`/projects/${projectId}/tickets`);
+    navigate({ pathname: `/projects/${projectId}/tickets`, search: searchParams.toString() });
   };
 
+  const updateSearchParams = useCallback((updates: Record<string, string | null>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+      }
+      return next;
+    });
+  }, [setSearchParams]);
+
   const toggleLabelFilter = (labelId: number) => {
-    setSelectedLabelIds((prev) =>
-      prev.includes(labelId)
-        ? prev.filter((id) => id !== labelId)
-        : [...prev, labelId]
-    );
+    const nextIds = selectedLabelIds.includes(labelId)
+      ? selectedLabelIds.filter((id) => id !== labelId)
+      : [...selectedLabelIds, labelId];
+    const nextNames = projectLabels
+      ?.filter((l) => nextIds.includes(l.id))
+      .map((l) => l.name);
+    updateSearchParams({ labels: nextNames?.length ? nextNames.join(",") : null });
   };
 
   if (!projectId) {
@@ -244,7 +274,7 @@ export function Tickets() {
             <h1 className="text-2xl font-bold">Tickets</h1>
             <Select
               value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as TicketStatus | "all")}
+              onValueChange={(value) => updateSearchParams({ status: value === "open" ? null : value })}
             >
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="Filter by status" />
@@ -283,7 +313,7 @@ export function Tickets() {
             {selectedLabelIds.length > 0 && (
               <button
                 type="button"
-                onClick={() => setSelectedLabelIds([])}
+                onClick={() => updateSearchParams({ labels: null })}
                 className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
               >
                 Clear
