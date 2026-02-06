@@ -5,6 +5,8 @@ import {
   agentService,
   projectService,
   sessionPersistenceService,
+  renderTemplate,
+  buildTemplateContext,
   type ISessionPersistenceService,
 } from '@kombuse/services'
 import { agentInvocationsRepository } from '@kombuse/persistence'
@@ -194,16 +196,33 @@ const defaultDependencies: AgentExecutionDependencies = {
 
 /**
  * Build an initial message for a triggered agent from the event context.
+ * Interpolates template variables in the agent's system prompt using Nunjucks.
+ *
+ * Template variables available:
+ * - {{ event_type }}, {{ ticket_id }}, {{ project_id }}, etc.
+ * - {{ payload.field }} for event payload fields
+ * - {{ ticket.title }}, {{ ticket.author.name }}, etc. for enriched context
+ * - {{ project.name }}, {{ actor.name }}, etc.
  */
-function buildTriggerMessage(event: Event): string {
-  const lines = [
+function buildTriggerMessage(event: Event, systemPrompt?: string): string {
+  const lines: string[] = []
+
+  if (systemPrompt) {
+    // Build enriched context and render template
+    const context = buildTemplateContext(event)
+    const renderedPrompt = renderTemplate(systemPrompt, context)
+    lines.push(renderedPrompt, '')
+  }
+
+  // Append raw event context for reference
+  lines.push(
     `Event: ${event.event_type}`,
     `Ticket: #${event.ticket_id ?? 'N/A'}`,
     `Project: ${event.project_id ?? 'N/A'}`,
     '',
     'Payload:',
     JSON.stringify(event.payload, null, 2),
-  ]
+  )
   return lines.join('\n')
 }
 
@@ -291,8 +310,8 @@ export async function processEventAndRunAgents(
       error: null,
     })
 
-    // Build initial message from event
-    const initialMessage = buildTriggerMessage(event)
+    // Build initial message from event with agent's prompt
+    const initialMessage = buildTriggerMessage(event, agent.system_prompt)
     const projectPathOverride =
       resolveProjectPathForProject(event.project_id ?? null) ??
       dependencies.resolveProjectPath()

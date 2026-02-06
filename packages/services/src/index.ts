@@ -34,3 +34,10 @@ export type {
   ISessionPersistenceService,
   SessionPersistenceOptions,
 } from './session-persistence-service'
+
+// Template rendering
+export {
+  renderTemplate,
+  hasTemplateVariables,
+  buildTemplateContext,
+} from './template'
