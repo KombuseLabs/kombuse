@@ -132,13 +132,77 @@ onEventCreated((event) => {
 })
 ```
 
+## Template Rendering
+
+Render Nunjucks templates with event context. Used by the agent execution service to interpolate variables in agent system prompts.
+
+```typescript
+import { renderTemplate, buildTemplateContext, hasTemplateVariables } from '@kombuse/services'
+
+// Build context from an event
+const context = buildTemplateContext(event)
+
+// Render a template
+const prompt = renderTemplate(
+  'Review ticket #{{ ticket.id }}: {{ ticket.title }} in {{ project.name }}',
+  context
+)
+
+// Check if a string contains template variables
+if (hasTemplateVariables(prompt)) {
+  // Contains {{ ... }} syntax
+}
+```
+
+### Available Template Variables
+
+| Variable | Description |
+|----------|-------------|
+| `{{ event_type }}` | Event type (e.g., `ticket.created`) |
+| `{{ ticket_id }}` | Ticket ID from the event |
+| `{{ project_id }}` | Project ID from the event |
+| `{{ comment_id }}` | Comment ID (if applicable) |
+| `{{ actor_id }}` | Actor ID who triggered the event |
+| `{{ payload.* }}` | Raw event payload fields |
+| `{{ ticket.title }}` | Full ticket object with title, body, status, etc. |
+| `{{ ticket.author.name }}` | Ticket author profile |
+| `{{ ticket.assignee.name }}` | Ticket assignee profile (if assigned) |
+| `{{ ticket.labels }}` | Array of labels on the ticket |
+| `{{ project.name }}` | Full project object |
+| `{{ comment.body }}` | Full comment object (if event has comment_id) |
+| `{{ comment.author.name }}` | Comment author profile |
+| `{{ actor.name }}` | Actor profile who triggered the event |
+
+### Example Agent Prompt
+
+```typescript
+const agent = agentService.createAgent({
+  id: 'ticket-reviewer',
+  system_prompt: `You are reviewing ticket #{{ ticket.id }}: "{{ ticket.title }}"
+
+Project: {{ project.name }}
+Author: {{ ticket.author.name }}
+Status: {{ ticket.status }}
+
+{% if ticket.labels | length > 0 %}
+Labels: {{ ticket.labels | map(attribute='name') | join(', ') }}
+{% endif %}
+
+Please analyze this ticket and provide feedback.`,
+})
+```
+
 ## Directory Structure
 
 ```
 src/
 ├── index.ts              - Exports all services
 ├── ticket-service.ts     - Ticket operations
-└── agent-service.ts      - Agent, trigger, invocation management
+├── agent-service.ts      - Agent, trigger, invocation management
+└── template/             - Template rendering
+    ├── index.ts          - Exports
+    ├── template-engine.ts - Nunjucks rendering
+    └── template-context.ts - Context builder from events
 ```
 
 ## Exports
@@ -147,6 +211,9 @@ src/
 // Services
 export { TicketService, ticketService } from '@kombuse/services'
 export { AgentService, agentService } from '@kombuse/services'
+
+// Template rendering
+export { renderTemplate, hasTemplateVariables, buildTemplateContext } from '@kombuse/services'
 
 // Types
 export type { ITicketService } from '@kombuse/services'

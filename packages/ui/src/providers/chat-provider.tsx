@@ -122,8 +122,8 @@ export function ChatProvider({
         const event = message.event
         // Pass events through directly - they already have all required fields
         setEvents((prev) => [...prev, event])
-        // Track permission requests for UI response
-        if (event.type === 'permission_request') {
+        // Track permission requests for UI response (skip auto-approved)
+        if (event.type === 'permission_request' && !event.autoApproved) {
           setPendingPermission(event)
         }
         break

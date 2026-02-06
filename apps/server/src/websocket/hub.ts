@@ -115,7 +115,6 @@ class WebSocketHub {
    */
   broadcastToTopic(topic: string, message: ServerMessage): void {
     const subscribers = this.topicSubscribers.get(topic)
-    console.log(`[ws-hub] broadcastToTopic('${topic}'): ${subscribers?.size ?? 0} subscribers`)
     if (!subscribers) return
 
     for (const ws of subscribers) {

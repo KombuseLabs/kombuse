@@ -103,6 +103,7 @@ export function AppProvider({
             requestId: message.requestId,
             toolName: message.toolName,
             input: message.input,
+            description: message.description,
           })
           break
         }

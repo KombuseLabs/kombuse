@@ -77,7 +77,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                 key={permission.requestId}
                 className="border-b border-amber-500/30 bg-amber-500/5 p-3 last:border-0"
               >
-                <div className="mb-2 flex items-center gap-2">
+                <div className="mb-1 flex items-center gap-2">
                   <Shield className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <span className="text-xs font-medium uppercase text-amber-600 dark:text-amber-400">
                     Permission
@@ -86,6 +86,11 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                     {permission.toolName}
                   </span>
                 </div>
+                {permission.description && (
+                  <p className="mb-2 pl-6 text-sm text-foreground">
+                    {permission.description}
+                  </p>
+                )}
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"

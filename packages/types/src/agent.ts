@@ -70,7 +70,7 @@ export interface AgentToolUseEvent extends AgentEventBase {
   id: string
   name: string
   input: Record<string, unknown>
-  raw?: unknown
+  raw?: unknown | any
 }
 
 /** Tool execution result emitted by an agent */
@@ -88,6 +88,10 @@ export interface AgentPermissionRequestEvent extends AgentEventBase {
   toolName: string
   toolUseId: string
   input: Record<string, unknown>
+  /** Human-readable description of what this permission request will do */
+  description?: string
+  /** True if this permission was auto-approved by the server */
+  autoApproved?: boolean
   raw?: unknown
 }
 
@@ -95,7 +99,7 @@ export interface AgentPermissionRequestEvent extends AgentEventBase {
 export interface AgentRawEvent extends AgentEventBase {
   type: 'raw'
   sourceType?: string
-  data: unknown
+  data: unknown | any
 }
 
 /** Error event from an agent backend */

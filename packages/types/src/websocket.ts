@@ -69,6 +69,8 @@ export type ServerMessage =
       requestId: string
       toolName: string
       input: Record<string, unknown>
+      /** Human-readable description of what this permission request will do */
+      description?: string
     }
   | {
       type: 'agent.permission_resolved'
