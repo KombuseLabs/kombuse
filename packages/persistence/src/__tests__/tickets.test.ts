@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
 import { ticketsRepository } from '../tickets'
+import { labelsRepository } from '../labels'
 
 // Test data constants - using the seeded project and user
 const TEST_TICKET = {
@@ -316,6 +317,81 @@ describe('ticketsRepository', () => {
       const deleted = ticketsRepository.delete(NON_EXISTENT_ID)
 
       expect(deleted, 'Delete should return false for non-existent ID').toBe(false)
+    })
+  })
+
+  /*
+   * LIST WITH LABELS TESTS
+   * Verify tickets are returned with their associated labels
+   */
+  describe('listWithLabels', () => {
+    it('should return tickets with their labels', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'bug',
+      })
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Ticket with labels',
+      })
+      labelsRepository.addToTicket(ticket.id, label.id)
+
+      const tickets = ticketsRepository.listWithLabels()
+
+      const foundTicket = tickets.find((t) => t.id === ticket.id)
+      expect(foundTicket).toBeDefined()
+      expect(foundTicket?.labels).toHaveLength(1)
+      expect(foundTicket?.labels[0]?.name).toBe('bug')
+    })
+
+    it('should return empty labels array for tickets without labels', () => {
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Ticket without labels',
+      })
+
+      const tickets = ticketsRepository.listWithLabels()
+
+      expect(tickets.every((t) => Array.isArray(t.labels))).toBe(true)
+    })
+
+    it('should apply filters when listing with labels', () => {
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Open', status: 'open' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Closed', status: 'closed' })
+
+      const openTickets = ticketsRepository.listWithLabels({ status: 'open' })
+
+      expect(openTickets.every((t) => t.status === 'open')).toBe(true)
+    })
+
+    it('should return empty array when no tickets match filters', () => {
+      const tickets = ticketsRepository.listWithLabels({ status: 'blocked' })
+
+      expect(tickets).toHaveLength(0)
+    })
+
+    it('should return multiple labels per ticket sorted by name', () => {
+      const labelC = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'c-label',
+      })
+      const labelA = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'a-label',
+      })
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Multi-label ticket',
+      })
+      labelsRepository.addToTicket(ticket.id, labelC.id)
+      labelsRepository.addToTicket(ticket.id, labelA.id)
+
+      const tickets = ticketsRepository.listWithLabels()
+
+      const foundTicket = tickets.find((t) => t.id === ticket.id)
+      expect(foundTicket?.labels).toHaveLength(2)
+      expect(foundTicket?.labels[0]?.name).toBe('a-label')
+      expect(foundTicket?.labels[1]?.name).toBe('c-label')
     })
   })
 })

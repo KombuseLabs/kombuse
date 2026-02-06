@@ -1,5 +1,6 @@
 import type {
   Ticket,
+  TicketWithLabels,
   TicketFilters,
   CreateTicketInput,
   UpdateTicketInput,
@@ -9,6 +10,7 @@ import type {
 import { EVENT_TYPES } from '@kombuse/types'
 import { getDatabase } from './database'
 import { eventsRepository } from './events'
+import { labelsRepository } from './labels'
 
 /**
  * Data access layer for tickets
@@ -73,6 +75,22 @@ export const ticketsRepository = {
     `)
 
     return stmt.all(...params, limit, offset) as Ticket[]
+  },
+
+  /**
+   * List all tickets with their labels
+   */
+  listWithLabels(filters?: TicketFilters): TicketWithLabels[] {
+    const tickets = this.list(filters)
+    if (tickets.length === 0) return []
+
+    const ticketIds = tickets.map((t) => t.id)
+    const labelsByTicket = labelsRepository.getLabelsForTickets(ticketIds)
+
+    return tickets.map((ticket) => ({
+      ...ticket,
+      labels: labelsByTicket.get(ticket.id) ?? [],
+    }))
   },
 
   /**

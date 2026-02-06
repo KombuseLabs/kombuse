@@ -205,6 +205,39 @@ export const labelsRepository = {
   },
 
   /**
+   * Get all labels for multiple tickets (batch operation)
+   * Returns a Map of ticketId -> Label[]
+   */
+  getLabelsForTickets(ticketIds: number[]): Map<number, Label[]> {
+    if (ticketIds.length === 0) return new Map()
+
+    const db = getDatabase()
+    const placeholders = ticketIds.map(() => '?').join(', ')
+
+    const rows = db
+      .prepare(
+        `
+        SELECT l.*, tl.ticket_id
+        FROM labels l
+        JOIN ticket_labels tl ON l.id = tl.label_id
+        WHERE tl.ticket_id IN (${placeholders})
+        ORDER BY l.name ASC
+      `
+      )
+      .all(...ticketIds) as (Label & { ticket_id: number })[]
+
+    const labelsByTicket = new Map<number, Label[]>()
+    for (const ticketId of ticketIds) {
+      labelsByTicket.set(ticketId, [])
+    }
+    for (const row of rows) {
+      const { ticket_id, ...label } = row
+      labelsByTicket.get(ticket_id)?.push(label as Label)
+    }
+    return labelsByTicket
+  },
+
+  /**
    * Get all tickets with a specific label
    */
   getTicketIds(labelId: number): number[] {

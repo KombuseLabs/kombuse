@@ -18,7 +18,7 @@ export async function ticketRoutes(fastify: FastifyInstance) {
     }
 
     const filters = parseResult.data
-    return ticketService.list(filters)
+    return ticketService.listWithLabels(filters)
   })
 
   // Get single ticket with activities

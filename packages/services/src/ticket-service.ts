@@ -1,5 +1,6 @@
 import type {
   Ticket,
+  TicketWithLabels,
   TicketFilters,
   CreateTicketInput,
   UpdateTicketInput,
@@ -13,6 +14,7 @@ import { ticketsRepository } from '@kombuse/persistence'
  */
 export interface ITicketService {
   list(filters?: TicketFilters): Ticket[]
+  listWithLabels(filters?: TicketFilters): TicketWithLabels[]
   get(id: number): Ticket | null
   create(input: CreateTicketInput): Ticket
   update(id: number, input: UpdateTicketInput): Ticket
@@ -28,6 +30,10 @@ export interface ITicketService {
 export class TicketService implements ITicketService {
   list(filters?: TicketFilters): Ticket[] {
     return ticketsRepository.list(filters)
+  }
+
+  listWithLabels(filters?: TicketFilters): TicketWithLabels[] {
+    return ticketsRepository.listWithLabels(filters)
   }
 
   get(id: number): Ticket | null {

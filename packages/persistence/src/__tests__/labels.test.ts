@@ -371,6 +371,88 @@ describe('labelsRepository', () => {
     })
   })
 
+  describe('getLabelsForTickets', () => {
+    it('should return empty map for empty ticket IDs array', () => {
+      const result = labelsRepository.getLabelsForTickets([])
+
+      expect(result.size).toBe(0)
+    })
+
+    it('should return labels for multiple tickets', () => {
+      const label1 = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'bug',
+      })
+      const label2 = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'urgent',
+      })
+      const ticket1 = ticketsRepository.create({
+        title: 'Ticket 1',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const ticket2 = ticketsRepository.create({
+        title: 'Ticket 2',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      labelsRepository.addToTicket(ticket1.id, label1.id)
+      labelsRepository.addToTicket(ticket1.id, label2.id)
+      labelsRepository.addToTicket(ticket2.id, label1.id)
+
+      const result = labelsRepository.getLabelsForTickets([ticket1.id, ticket2.id])
+
+      expect(result.size).toBe(2)
+      expect(result.get(ticket1.id)).toHaveLength(2)
+      expect(result.get(ticket2.id)).toHaveLength(1)
+    })
+
+    it('should return empty array for tickets without labels', () => {
+      const ticket = ticketsRepository.create({
+        title: 'No labels',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      const result = labelsRepository.getLabelsForTickets([ticket.id])
+
+      expect(result.get(ticket.id)).toHaveLength(0)
+    })
+
+    it('should return labels sorted by name', () => {
+      const labelC = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'c-label',
+      })
+      const labelA = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'a-label',
+      })
+      const labelB = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'b-label',
+      })
+      const ticket = ticketsRepository.create({
+        title: 'Ticket with labels',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      labelsRepository.addToTicket(ticket.id, labelC.id)
+      labelsRepository.addToTicket(ticket.id, labelA.id)
+      labelsRepository.addToTicket(ticket.id, labelB.id)
+
+      const result = labelsRepository.getLabelsForTickets([ticket.id])
+      const labels = result.get(ticket.id)!
+
+      expect(labels[0]?.name).toBe('a-label')
+      expect(labels[1]?.name).toBe('b-label')
+      expect(labels[2]?.name).toBe('c-label')
+    })
+  })
+
   describe('getTicketIds', () => {
     it('should return all ticket IDs with a specific label', () => {
       const label = labelsRepository.create({

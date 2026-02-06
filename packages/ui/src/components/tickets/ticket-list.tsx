@@ -1,11 +1,12 @@
-import type { Ticket } from '@kombuse/types'
+import type { TicketWithLabels } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
+import { LabelBadge } from '../labels/label-badge'
 
 interface TicketListProps {
-  tickets: Ticket[]
+  tickets: TicketWithLabels[]
   className?: string
-  onTicketClick?: (ticket: Ticket) => void
+  onTicketClick?: (ticket: TicketWithLabels) => void
 }
 
 const statusColors: Record<string, string> = {
@@ -67,6 +68,13 @@ function TicketList({ tickets, className, onTicketClick }: TicketListProps) {
               {ticket.project_id && <span>Project: {ticket.project_id}</span>}
               <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
             </div>
+            {ticket.labels && ticket.labels.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {ticket.labels.map((label) => (
+                  <LabelBadge key={label.id} label={label} size="sm" />
+                ))}
+              </div>
+            )}
             {ticket.body && (
               <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
                 {ticket.body}

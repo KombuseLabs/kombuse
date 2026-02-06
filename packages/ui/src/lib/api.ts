@@ -1,5 +1,6 @@
 import type {
   Ticket,
+  TicketWithLabels,
   TicketFilters,
   CreateTicketInput,
   UpdateTicketInput,
@@ -56,7 +57,7 @@ async function handleEmptyResponse(response: Response): Promise<void> {
 }
 
 export const ticketsApi = {
-  async list(filters?: TicketFilters): Promise<Ticket[]> {
+  async list(filters?: TicketFilters): Promise<TicketWithLabels[]> {
     const params = new URLSearchParams()
     if (filters?.status) params.set('status', filters.status)
     if (filters?.priority !== undefined)
@@ -68,7 +69,7 @@ export const ticketsApi = {
 
     const url = `${API_BASE}/tickets${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
-    return handleResponse<Ticket[]>(response)
+    return handleResponse<TicketWithLabels[]>(response)
   },
 
   async get(id: number): Promise<Ticket> {

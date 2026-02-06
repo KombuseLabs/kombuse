@@ -47,6 +47,13 @@ export interface TicketWithRelations extends Ticket {
 }
 
 /**
+ * Ticket with labels only (for list views)
+ */
+export interface TicketWithLabels extends Ticket {
+  labels: Label[]
+}
+
+/**
  * Filters for listing tickets
  */
 export interface TicketFilters {
