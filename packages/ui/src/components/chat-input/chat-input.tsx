@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, type FormEvent, type KeyboardEvent, type DragEvent } from 'react'
+import { useState, useCallback, useRef, useEffect, type FormEvent, type KeyboardEvent, type DragEvent, type ClipboardEvent } from 'react'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { cn } from '../../lib/utils'
@@ -124,6 +124,13 @@ function ChatInput({
     }
   }, [addFiles])
 
+  const handlePaste = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = e.clipboardData.files
+    if (files.length > 0) {
+      addFiles(files)
+    }
+  }, [addFiles])
+
   const handleFileInputChange = useCallback(() => {
     const input = fileInputRef.current
     if (input?.files && input.files.length > 0) {
@@ -194,6 +201,7 @@ function ChatInput({
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           placeholder={effectivePlaceholder}
           disabled={isDisabled}
           className="min-h-[80px] resize-none"
