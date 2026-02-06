@@ -11,6 +11,7 @@ const DEFAULT_ALLOWED_TOOLS: string[] = [
   'mcp__kombuse__add_comment',
   'Grep',
   'Read',
+  'Glob',
 ]
 
 /**
