@@ -8,6 +8,7 @@ export interface Session {
   kombuse_session_id: KombuseSessionId | null
   backend_type: string | null
   backend_session_id: string | null
+  ticket_id: number | null
   status: 'running' | 'completed' | 'failed' | 'aborted'
   started_at: string
   completed_at: string | null
@@ -25,12 +26,14 @@ export interface CreateSessionInput {
   kombuse_session_id?: KombuseSessionId
   backend_type?: string
   backend_session_id?: string
+  ticket_id?: number
 }
 
 /**
  * Filters for listing sessions
  */
 export interface SessionFilters {
+  ticket_id?: number
   status?: 'running' | 'completed' | 'failed' | 'aborted'
   limit?: number
   offset?: number

@@ -64,6 +64,7 @@ const EXPECTED_INDEXES = [
 const EXPECTED_MIGRATIONS = [
   '001_initial_schema',
   '002_invocation_kombuse_session_id',
+  '003_session_ticket_id',
 ]
 
 describe('database', () => {

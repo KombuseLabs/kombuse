@@ -2,6 +2,8 @@ import type { TicketWithLabels } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
 import { LabelBadge } from '../labels/label-badge'
+import { StatusIndicator } from '../status-indicator'
+import { useTicketAgentStatus } from '../../hooks'
 
 interface TicketListProps {
   tickets: TicketWithLabels[]
@@ -24,6 +26,66 @@ const priorityLabels: Record<number, string> = {
   4: 'Highest',
 }
 
+interface TicketItemProps {
+  ticket: TicketWithLabels
+  onTicketClick?: (ticket: TicketWithLabels) => void
+}
+
+function TicketItem({ ticket, onTicketClick }: TicketItemProps) {
+  const agentStatus = useTicketAgentStatus(ticket.id)
+
+  return (
+    <Card
+      className={cn(
+        'cursor-pointer hover:border-primary/50 transition-colors',
+        onTicketClick && 'hover:shadow-md'
+      )}
+      onClick={() => onTicketClick?.(ticket)}
+    >
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <StatusIndicator status={agentStatus} size="sm" />
+            <CardTitle className="text-base font-medium">
+              {ticket.title}
+            </CardTitle>
+          </div>
+          <span
+            className={cn(
+              'px-2 py-1 text-xs rounded-full font-medium',
+              statusColors[ticket.status]
+            )}
+          >
+            {ticket.status.replace('_', ' ')}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span>#{ticket.id}</span>
+          {ticket.priority !== null && (
+            <span>Priority: {priorityLabels[ticket.priority]}</span>
+          )}
+          {ticket.project_id && <span>Project: {ticket.project_id}</span>}
+          <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
+        </div>
+        {ticket.labels && ticket.labels.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {ticket.labels.map((label) => (
+              <LabelBadge key={label.id} label={label} size="sm" />
+            ))}
+          </div>
+        )}
+        {ticket.body && (
+          <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+            {ticket.body}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function TicketList({ tickets, className, onTicketClick }: TicketListProps) {
   if (tickets.length === 0) {
     return (
@@ -36,52 +98,11 @@ function TicketList({ tickets, className, onTicketClick }: TicketListProps) {
   return (
     <div className={cn('space-y-4', className)}>
       {tickets.map((ticket) => (
-        <Card
+        <TicketItem
           key={ticket.id}
-          className={cn(
-            'cursor-pointer hover:border-primary/50 transition-colors',
-            onTicketClick && 'hover:shadow-md'
-          )}
-          onClick={() => onTicketClick?.(ticket)}
-        >
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium">
-                {ticket.title}
-              </CardTitle>
-              <span
-                className={cn(
-                  'px-2 py-1 text-xs rounded-full font-medium',
-                  statusColors[ticket.status]
-                )}
-              >
-                {ticket.status.replace('_', ' ')}
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>#{ticket.id}</span>
-              {ticket.priority !== null && (
-                <span>Priority: {priorityLabels[ticket.priority]}</span>
-              )}
-              {ticket.project_id && <span>Project: {ticket.project_id}</span>}
-              <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
-            </div>
-            {ticket.labels && ticket.labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {ticket.labels.map((label) => (
-                  <LabelBadge key={label.id} label={label} size="sm" />
-                ))}
-              </div>
-            )}
-            {ticket.body && (
-              <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-                {ticket.body}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+          ticket={ticket}
+          onTicketClick={onTicketClick}
+        />
       ))}
     </div>
   )

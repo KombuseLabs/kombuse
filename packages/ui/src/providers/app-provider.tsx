@@ -8,6 +8,7 @@ import type {
   AppContextValue,
   ServerMessage,
   PendingPermission,
+  TicketAgentStatus,
 } from '@kombuse/types'
 import { AppCtx } from './app-context'
 import { useWebSocket } from '../hooks/use-websocket'
@@ -38,6 +39,9 @@ export function AppProvider({
   )
   const [pendingPermissions, setPendingPermissions] = useState<
     Map<string, PendingPermission>
+  >(() => new Map())
+  const [ticketAgentStatus, setTicketAgentStatus] = useState<
+    Map<number, TicketAgentStatus>
   >(() => new Map())
 
   // Wrap setters in useCallback for stable references
@@ -91,12 +95,29 @@ export function AppProvider({
     })
   }, [])
 
-  // Global WebSocket handler to track pending permissions for all sessions
+  const updateTicketAgentStatus = useCallback(
+    (ticketId: number, status: TicketAgentStatus) => {
+      setTicketAgentStatus((prev) => {
+        const next = new Map(prev)
+        next.set(ticketId, status)
+        return next
+      })
+    },
+    []
+  )
+
+  const getTicketAgentStatus = useCallback(
+    (ticketId: number): TicketAgentStatus | undefined => {
+      return ticketAgentStatus.get(ticketId)
+    },
+    [ticketAgentStatus]
+  )
+
+  // Global WebSocket handler to track pending permissions and ticket agent status
   const handleMessage = useCallback(
     (message: ServerMessage) => {
       switch (message.type) {
         case 'agent.permission_pending': {
-          // Phase 1: Log permission_pending messages to verify data flow
           console.log('[client] received permission_pending:', message)
           addPendingPermission({
             sessionId: message.sessionId,
@@ -104,6 +125,7 @@ export function AppProvider({
             toolName: message.toolName,
             input: message.input,
             description: message.description,
+            ticketId: message.ticketId,
           })
           break
         }
@@ -116,9 +138,16 @@ export function AppProvider({
           clearPendingPermissionsForSession(message.kombuseSessionId)
           break
         }
+        case 'ticket.agent_status': {
+          updateTicketAgentStatus(message.ticketId, {
+            status: message.status,
+            sessionCount: message.sessionCount,
+          })
+          break
+        }
       }
     },
-    [addPendingPermission, removePendingPermission, clearPendingPermissionsForSession]
+    [addPendingPermission, removePendingPermission, clearPendingPermissionsForSession, updateTicketAgentStatus]
   )
 
   useWebSocket({ topics: ['*'], onMessage: handleMessage })
@@ -132,6 +161,7 @@ export function AppProvider({
       isGenerating,
       currentSession,
       pendingPermissions,
+      ticketAgentStatus,
       // Actions
       setCurrentTicket,
       setCurrentProjectId,
@@ -141,6 +171,8 @@ export function AppProvider({
       addPendingPermission,
       removePendingPermission,
       clearPendingPermissionsForSession,
+      updateTicketAgentStatus,
+      getTicketAgentStatus,
     }),
     [
       currentTicket,
@@ -149,6 +181,7 @@ export function AppProvider({
       isGenerating,
       currentSession,
       pendingPermissions,
+      ticketAgentStatus,
       setCurrentTicket,
       setCurrentProjectId,
       setView,
@@ -157,6 +190,8 @@ export function AppProvider({
       addPendingPermission,
       removePendingPermission,
       clearPendingPermissionsForSession,
+      updateTicketAgentStatus,
+      getTicketAgentStatus,
     ]
   )
 

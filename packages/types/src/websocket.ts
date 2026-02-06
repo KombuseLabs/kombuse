@@ -1,6 +1,7 @@
 import type { ActorType } from './events'
 import type { UpdateStatus } from './updates'
 import type { SerializedAgentEvent } from './agent'
+import type { AgentActivityStatus } from './app-context'
 
 /**
  * Agent events streamed over websocket.
@@ -56,12 +57,13 @@ export type ServerMessage =
   | { type: 'pong' }
   | { type: 'error'; message: string }
   | { type: 'update:status'; status: UpdateStatus }
-  | { type: 'agent.started'; kombuseSessionId: string }
+  | { type: 'agent.started'; kombuseSessionId: string; ticketId?: number }
   | { type: 'agent.event'; kombuseSessionId: string; event: AgentStreamEvent }
   | {
       type: 'agent.complete'
       kombuseSessionId: string
       backendSessionId?: string
+      ticketId?: number
     }
   | {
       type: 'agent.permission_pending'
@@ -71,11 +73,19 @@ export type ServerMessage =
       input: Record<string, unknown>
       /** Human-readable description of what this permission request will do */
       description?: string
+      /** Ticket ID if this permission is for a ticket-triggered session */
+      ticketId?: number
     }
   | {
       type: 'agent.permission_resolved'
       sessionId: string
       requestId: string
+    }
+  | {
+      type: 'ticket.agent_status'
+      ticketId: number
+      status: AgentActivityStatus
+      sessionCount: number
     }
 
 /**

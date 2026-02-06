@@ -15,7 +15,8 @@ import {
 import { X, Trash2, Pencil } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
-import { useTicketOperations, useLabelOperations } from '../../hooks'
+import { StatusIndicator } from '../status-indicator'
+import { useTicketOperations, useLabelOperations, useTicketAgentStatus } from '../../hooks'
 
 interface TicketDetailProps {
   className?: string
@@ -68,6 +69,8 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
     isDeleting: isDeletingLabel,
   } = useLabelOperations()
 
+  const agentStatus = useTicketAgentStatus(currentTicket?.id)
+
   if (!currentTicket) {
     return null
   }
@@ -108,6 +111,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
             {mode === 'view' ? (
               <>
                 <div className="flex items-center gap-2 mb-2">
+                  <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   <span
                     className={cn(
@@ -123,6 +127,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 mb-2">
+                  <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   <Select value={editStatus} onValueChange={(v) => setEditStatus(v as TicketStatus)}>
                     <SelectTrigger className="w-[140px] h-7 text-xs">

@@ -16,17 +16,32 @@ export const sessionsRepository = {
   list(filters?: SessionFilters): Session[] {
     const db = getDatabase()
 
+    const conditions: string[] = []
+    const params: unknown[] = []
+
+    if (filters?.ticket_id !== undefined) {
+      conditions.push('ticket_id = ?')
+      params.push(filters.ticket_id)
+    }
+    if (filters?.status) {
+      conditions.push('status = ?')
+      params.push(filters.status)
+    }
+
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
+    params.push(limit, offset)
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const stmt = db.prepare(`
       SELECT * FROM sessions
+      ${whereClause}
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
     `)
 
-    const rows = stmt.all(limit, offset) as Session[]
-    return rows
+    return stmt.all(...params) as Session[]
   },
 
   /**
@@ -50,15 +65,16 @@ export const sessionsRepository = {
     db
       .prepare(
         `
-        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id, ticket_id)
+        VALUES (?, ?, ?, ?, ?)
       `
       )
       .run(
         id,
         input?.kombuse_session_id ?? null,
         input?.backend_type ?? null,
-        input?.backend_session_id ?? null
+        input?.backend_session_id ?? null,
+        input?.ticket_id ?? null
       )
 
     return this.get(id) as Session
@@ -136,5 +152,33 @@ export const sessionsRepository = {
       .prepare('SELECT * FROM sessions WHERE kombuse_session_id = ?')
       .get(kombuseSessionId) as Session | undefined
     return row ?? null
+  },
+
+  /**
+   * List all sessions for a specific ticket
+   */
+  listByTicket(ticketId: number, filters?: SessionFilters): Session[] {
+    const db = getDatabase()
+
+    const conditions: string[] = ['ticket_id = ?']
+    const params: unknown[] = [ticketId]
+
+    if (filters?.status) {
+      conditions.push('status = ?')
+      params.push(filters.status)
+    }
+
+    const limit = filters?.limit || 100
+    const offset = filters?.offset || 0
+    params.push(limit, offset)
+
+    const stmt = db.prepare(`
+      SELECT * FROM sessions
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `)
+
+    return stmt.all(...params) as Session[]
   },
 }

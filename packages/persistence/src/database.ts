@@ -376,6 +376,13 @@ const migrations = [
         ON agent_invocations(kombuse_session_id);
     `,
   },
+  {
+    name: '003_session_ticket_id',
+    sql: `
+      ALTER TABLE sessions ADD COLUMN ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_sessions_ticket ON sessions(ticket_id, status) WHERE ticket_id IS NOT NULL;
+    `,
+  },
 ]
 
 /**

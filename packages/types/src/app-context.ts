@@ -22,6 +22,21 @@ export interface PendingPermission {
   input: Record<string, unknown>
   /** Human-readable description of what this permission request will do */
   description?: string
+  /** Ticket ID if this permission is for a ticket-triggered session */
+  ticketId?: number
+}
+
+/**
+ * Status indicator for agent activity
+ */
+export type AgentActivityStatus = 'idle' | 'running' | 'pending' | 'error'
+
+/**
+ * Agent activity status for a ticket
+ */
+export interface TicketAgentStatus {
+  status: AgentActivityStatus
+  sessionCount: number
 }
 
 /**
@@ -40,6 +55,8 @@ export interface AppState {
   currentSession: AppSession | null
   /** Map of requestId -> pending permission details */
   pendingPermissions: Map<string, PendingPermission>
+  /** Map of ticketId -> agent activity status */
+  ticketAgentStatus: Map<number, TicketAgentStatus>
 }
 
 /**
@@ -54,6 +71,10 @@ export interface AppActions {
   addPendingPermission: (permission: PendingPermission) => void
   removePendingPermission: (requestId: string) => void
   clearPendingPermissionsForSession: (sessionId: string) => void
+  /** Update agent activity status for a ticket */
+  updateTicketAgentStatus: (ticketId: number, status: TicketAgentStatus) => void
+  /** Get agent activity status for a ticket */
+  getTicketAgentStatus: (ticketId: number) => TicketAgentStatus | undefined
 }
 
 /**

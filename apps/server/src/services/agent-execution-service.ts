@@ -26,12 +26,13 @@ import {
   buildTemplateContext,
   type ISessionPersistenceService,
 } from '@kombuse/services'
-import { agentInvocationsRepository, eventsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, eventsRepository, sessionsRepository } from '@kombuse/persistence'
 import { EVENT_TYPES, createSessionId } from '@kombuse/types'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
   AgentBackend,
+  AgentActivityStatus,
   AgentEvent,
   ClientMessage,
   ConversationContext,
@@ -155,7 +156,8 @@ function unregisterBackend(sessionId: string): void {
  */
 function broadcastPermissionPending(
   sessionId: string,
-  event: Extract<AgentEvent, { type: 'permission_request' }>
+  event: Extract<AgentEvent, { type: 'permission_request' }>,
+  ticketId?: number
 ): void {
   const description = generatePermissionDescription(event.toolName, event.input)
   console.log('[server] permission_request:', event.requestId, event.toolName, '-', description)
@@ -166,6 +168,43 @@ function broadcastPermissionPending(
     toolName: event.toolName,
     input: event.input,
     description,
+    ticketId,
+  })
+}
+
+/**
+ * Broadcast aggregated agent status for a ticket.
+ * Queries all sessions for the ticket and aggregates their status.
+ * Only considers failures more recent than the last completed session
+ * to avoid permanent error indicators from old historical failures.
+ */
+export function broadcastTicketAgentStatus(ticketId: number): void {
+  const activeSessions = sessionsRepository.listByTicket(ticketId, { status: 'running' })
+  const failedSessions = sessionsRepository.listByTicket(ticketId, { status: 'failed' })
+
+  // Only count failures that are more recent than the last completed session
+  const completedSessions = sessionsRepository.listByTicket(ticketId, { status: 'completed', limit: 1 })
+  const lastCompletedAt = completedSessions[0]?.completed_at
+
+  const recentFailures = lastCompletedAt
+    ? failedSessions.filter((s) => s.completed_at && s.completed_at > lastCompletedAt)
+    : failedSessions
+
+  // Aggregate status: pending > running > error > idle
+  // Note: pending is determined client-side from pendingPermissions
+  let status: AgentActivityStatus = 'idle'
+  if (recentFailures.length > 0) {
+    status = 'error'
+  }
+  if (activeSessions.length > 0) {
+    status = 'running'
+  }
+
+  wsHub.broadcastToTopic('*', {
+    type: 'ticket.agent_status',
+    ticketId,
+    status,
+    sessionCount: activeSessions.length,
   })
 }
 
@@ -371,12 +410,13 @@ function generatePermissionDescription(
 }
 
 export type AgentExecutionEvent =
-  | { type: 'started'; kombuseSessionId: string }
+  | { type: 'started'; kombuseSessionId: string; ticketId?: number }
   | { type: 'event'; kombuseSessionId: string; event: AgentEvent }
   | {
       type: 'complete'
       kombuseSessionId: string
       backendSessionId?: string
+      ticketId?: number
     }
   | { type: 'error'; message: string }
 
@@ -594,7 +634,14 @@ export async function processEventAndRunAgents(
         invocation.context,
         { error: message ?? 'Agent invocation failed' }
       )
+      // Broadcast updated ticket agent status on failure
+      if (ticketIdFromContext) {
+        broadcastTicketAgentStatus(ticketIdFromContext)
+      }
     }
+
+    // Extract ticket_id from invocation context
+    const ticketIdFromContext = invocation.context.ticket_id as number | undefined
 
     // Use the same chat infrastructure as user-initiated sessions
     // Emit to broadcast topic so triggered sessions can be monitored
@@ -607,7 +654,17 @@ export async function processEventAndRunAgents(
       },
       (evt) => {
         // Broadcast to all clients (triggered sessions don't have a specific client)
-        if (evt.type === 'event') {
+        if (evt.type === 'started') {
+          wsHub.broadcastToTopic('*', {
+            type: 'agent.started',
+            kombuseSessionId: evt.kombuseSessionId,
+            ticketId: evt.ticketId,
+          })
+          // Broadcast updated ticket agent status
+          if (evt.ticketId) {
+            broadcastTicketAgentStatus(evt.ticketId)
+          }
+        } else if (evt.type === 'event') {
           if (evt.event.type === 'error') {
             markFailed(evt.event.message)
           }
@@ -637,13 +694,18 @@ export async function processEventAndRunAgents(
             type: 'agent.complete',
             kombuseSessionId: evt.kombuseSessionId,
             backendSessionId: evt.backendSessionId,
+            ticketId: evt.ticketId,
           })
+          // Broadcast updated ticket agent status
+          if (evt.ticketId) {
+            broadcastTicketAgentStatus(evt.ticketId)
+          }
         } else if (evt.type === 'error') {
           markFailed(evt.message)
         }
       },
       dependencies,
-      { projectPath: projectPathOverride }
+      { projectPath: projectPathOverride, ticketId: ticketIdFromContext }
     )
   }
 }
@@ -655,7 +717,7 @@ export function startAgentChatSession(
   message: AgentInvokeMessage,
   emit: (event: AgentExecutionEvent) => void,
   dependencies: AgentExecutionDependencies = defaultDependencies,
-  options?: { projectPath?: string }
+  options?: { projectPath?: string; ticketId?: number }
 ): void {
   const { agentId, message: userMessage, kombuseSessionId, projectId } = message
 
@@ -693,9 +755,11 @@ export function startAgentChatSession(
   }
 
   // Create/get persistent session record
+  const ticketId = options?.ticketId
   const persistentSessionId = dependencies.sessionPersistence.ensureSession(
     appSessionId,
-    'claude-code'
+    'claude-code',
+    ticketId
   )
   const existingSession = dependencies.sessionPersistence.getSession(
     persistentSessionId
@@ -711,6 +775,7 @@ export function startAgentChatSession(
   emit({
     type: 'started',
     kombuseSessionId: appSessionId,
+    ticketId,
   })
 
   // Persist user message before running agent
@@ -801,7 +866,7 @@ export function startAgentChatSession(
           return
         }
         // Not auto-approved - broadcast pending
-        broadcastPermissionPending(appSessionId, event)
+        broadcastPermissionPending(appSessionId, event, ticketId)
       }
 
       // Emit to WebSocket
@@ -825,6 +890,7 @@ export function startAgentChatSession(
         type: 'complete',
         kombuseSessionId: appSessionId,
         backendSessionId: context.backendSessionId,
+        ticketId,
       })
     },
     onError: (error: Error) => {
@@ -856,7 +922,13 @@ export function startAgentChatSession(
       emit({
         type: 'complete',
         kombuseSessionId: appSessionId,
+        ticketId,
       })
+
+      // Broadcast updated ticket agent status
+      if (ticketId) {
+        broadcastTicketAgentStatus(ticketId)
+      }
     },
   }).catch((error: unknown) => {
       // Clean up backend registry
@@ -875,7 +947,13 @@ export function startAgentChatSession(
       emit({
         type: 'complete',
         kombuseSessionId: appSessionId,
+        ticketId,
       })
+
+      // Broadcast updated ticket agent status
+      if (ticketId) {
+        broadcastTicketAgentStatus(ticketId)
+      }
     })
 }
 
