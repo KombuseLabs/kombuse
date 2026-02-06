@@ -150,6 +150,26 @@ import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/c
 />
 ```
 
+### Ticket Components
+
+```typescript
+import { TicketList, TicketDetail } from '@kombuse/ui/components'
+
+// Display ticket details with optional editing
+<TicketDetail
+  onClose={() => setSelectedTicket(null)}
+  isEditable={true}
+/>
+```
+
+Props:
+- `className`: Optional class name for styling
+- `onClose`: Callback when close button is clicked
+- `isEditable`: When `true`, enables:
+  - Edit button to toggle edit mode (title, description, status)
+  - Delete button
+  - Label management
+
 ### Label Hooks
 
 ```typescript

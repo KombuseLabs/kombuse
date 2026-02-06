@@ -1,7 +1,18 @@
+import { useState } from 'react'
+import type { TicketStatus } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
-import { X, Trash2 } from 'lucide-react'
+import { Input } from '../../base/input'
+import { Textarea } from '../../base/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../base/select'
+import { X, Trash2, Pencil } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
 import { useTicketOperations, useLabelOperations } from '../../hooks'
@@ -28,9 +39,21 @@ const priorityLabels: Record<number, string> = {
   4: 'Highest',
 }
 
+const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
+  { value: 'open', label: 'Open' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'blocked', label: 'Blocked' },
+  { value: 'closed', label: 'Closed' },
+]
+
 function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
-  const { currentTicket, deleteCurrentTicket, isDeleting } =
+  const { currentTicket, deleteCurrentTicket, updateCurrentTicket, isDeleting, isUpdating } =
     useTicketOperations()
+
+  const [mode, setMode] = useState<'view' | 'edit'>('view')
+  const [editTitle, setEditTitle] = useState('')
+  const [editBody, setEditBody] = useState('')
+  const [editStatus, setEditStatus] = useState<TicketStatus>('open')
 
   const {
     ticketLabels,
@@ -56,23 +79,72 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
     onClose?.()
   }
 
+  const handleEditClick = () => {
+    setEditTitle(ticket.title)
+    setEditBody(ticket.body ?? '')
+    setEditStatus(ticket.status)
+    setMode('edit')
+  }
+
+  const handleSave = async () => {
+    if (!editTitle.trim()) return
+    await updateCurrentTicket({
+      title: editTitle.trim(),
+      body: editBody.trim() || undefined,
+      status: editStatus,
+    })
+    setMode('view')
+  }
+
+  const handleCancel = () => {
+    setMode('view')
+  }
+
   return (
     <Card className={className}>
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm text-muted-foreground">#{ticket.id}</span>
-              <span
-                className={cn(
-                  'px-2 py-1 text-xs rounded-full font-medium',
-                  statusColors[ticket.status]
-                )}
-              >
-                {ticket.status.replace('_', ' ')}
-              </span>
-            </div>
-            <CardTitle className="text-xl">{ticket.title}</CardTitle>
+            {mode === 'view' ? (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm text-muted-foreground">#{ticket.id}</span>
+                  <span
+                    className={cn(
+                      'px-2 py-1 text-xs rounded-full font-medium',
+                      statusColors[ticket.status]
+                    )}
+                  >
+                    {ticket.status.replace('_', ' ')}
+                  </span>
+                </div>
+                <CardTitle className="text-xl">{ticket.title}</CardTitle>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm text-muted-foreground">#{ticket.id}</span>
+                  <Select value={editStatus} onValueChange={(v) => setEditStatus(v as TicketStatus)}>
+                    <SelectTrigger className="w-[140px] h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Ticket title"
+                  className="text-xl font-semibold"
+                />
+              </div>
+            )}
             {ticketLabels.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {ticketLabels.map((label) => (
@@ -90,15 +162,25 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
           </div>
           <div className="flex items-center gap-1">
             {isEditable && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="size-4" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleEditClick}
+                  disabled={mode === 'edit'}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </>
             )}
             {onClose && (
               <Button variant="ghost" size="icon" onClick={onClose}>
@@ -136,12 +218,24 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
           )}
         </div>
 
-        {ticket.body && (
+        {mode === 'view' ? (
+          ticket.body && (
+            <div className="pt-4 border-t">
+              <h4 className="text-sm font-medium mb-2">Description</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {ticket.body}
+              </p>
+            </div>
+          )
+        ) : (
           <div className="pt-4 border-t">
             <h4 className="text-sm font-medium mb-2">Description</h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {ticket.body}
-            </p>
+            <Textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              placeholder="Add a description..."
+              className="min-h-[100px]"
+            />
           </div>
         )}
 
@@ -174,6 +268,17 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
               isUpdating={isUpdatingLabel}
               isDeleting={isDeletingLabel}
             />
+          </div>
+        )}
+
+        {mode === 'edit' && (
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="ghost" onClick={handleCancel} disabled={isUpdating}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={!editTitle.trim() || isUpdating}>
+              {isUpdating ? 'Saving...' : 'Save'}
+            </Button>
           </div>
         )}
       </CardContent>
