@@ -285,7 +285,21 @@ export function Tickets() {
             <h1 className="text-2xl font-bold">Tickets</h1>
             {allTickets && (
               <span className="text-sm text-muted-foreground">
-                {openCount} Open &middot; {closedCount} Closed
+                <button
+                  type="button"
+                  onClick={() => updateSearchParams({ status: statusFilter === "open" ? "all" : null })}
+                  className={`hover:text-foreground transition-colors ${statusFilter === "open" ? "text-foreground font-medium" : ""}`}
+                >
+                  {openCount} Open
+                </button>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => updateSearchParams({ status: statusFilter === "closed" ? "all" : "closed" })}
+                  className={`hover:text-foreground transition-colors ${statusFilter === "closed" ? "text-foreground font-medium" : ""}`}
+                >
+                  {closedCount} Closed
+                </button>
               </span>
             )}
             <Select
