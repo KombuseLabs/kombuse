@@ -417,8 +417,8 @@ export const attachmentsApi = {
 
   async uploadToComment(commentId: number, file: File, uploadedById: string): Promise<Attachment> {
     const formData = new FormData()
-    formData.append('file', file)
     formData.append('uploaded_by_id', uploadedById)
+    formData.append('file', file)
     const response = await fetch(`${API_BASE}/comments/${commentId}/attachments`, {
       method: 'POST',
       body: formData,
