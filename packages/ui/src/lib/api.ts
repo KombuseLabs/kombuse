@@ -27,6 +27,7 @@ import type {
   Session,
   SessionFilters,
   SessionEvent,
+  TicketTimeline,
 } from '@kombuse/types'
 
 const API_BASE = 'http://localhost:3331/api'
@@ -349,6 +350,13 @@ export const eventsApi = {
     const url = `${API_BASE}/events${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<Event[]>(response)
+  },
+}
+
+export const timelineApi = {
+  async getTicketTimeline(ticketId: number): Promise<TicketTimeline> {
+    const response = await fetch(`${API_BASE}/tickets/${ticketId}/timeline`)
+    return handleResponse<TicketTimeline>(response)
   },
 }
 

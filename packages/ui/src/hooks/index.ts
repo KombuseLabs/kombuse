@@ -51,6 +51,7 @@ export {
   useToggleTrigger,
 } from './use-triggers'
 export { useEvents } from './use-events'
+export { useTicketTimeline } from './use-ticket-timeline'
 export { useChat } from './use-chat'
 export {
   useSessions,

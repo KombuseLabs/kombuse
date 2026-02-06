@@ -170,6 +170,49 @@ Props:
   - Delete button
   - Label management
 
+### Timeline Components
+
+```typescript
+import { ActivityTimeline, CommentItem } from '@kombuse/ui/components'
+import { useTicketTimeline } from '@kombuse/ui/hooks'
+
+// Fetch unified timeline (comments + events)
+const { data: timeline } = useTicketTimeline(ticketId)
+
+// Render unified activity timeline
+<ActivityTimeline
+  items={timeline?.items ?? []}
+  editingCommentId={editingId}
+  editBody={body}
+  onEditBodyChange={setBody}
+  onStartEditComment={(comment) => ...}
+  onSaveEditComment={() => ...}
+  onCancelEditComment={() => ...}
+  onDeleteComment={(id) => ...}
+  isUpdatingComment={isUpdating}
+  isDeletingComment={isDeleting}
+/>
+
+// Render individual comment with edit/delete
+<CommentItem
+  comment={comment}
+  isEditing={false}
+  onStartEdit={() => ...}
+  onDelete={() => ...}
+/>
+```
+
+Props for `ActivityTimeline`:
+- `items`: Array of `TimelineItem` (from `/tickets/:id/timeline` API)
+- `editingCommentId`: ID of comment being edited (or null)
+- `editBody`: Current edit text value
+- `onEditBodyChange`: Callback when edit text changes
+- `onStartEditComment`: Callback when edit button clicked
+- `onSaveEditComment`: Callback to save edited comment
+- `onCancelEditComment`: Callback to cancel editing
+- `onDeleteComment`: Callback to delete a comment
+- `isUpdatingComment`, `isDeletingComment`: Loading states
+
 ### Label Hooks
 
 ```typescript

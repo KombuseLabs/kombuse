@@ -13,10 +13,13 @@ import {
   Pencil,
   X,
   CheckCircle,
+  CheckCircle2,
   RotateCcw,
   UserPlus,
   UserMinus,
   AtSign,
+  Play,
+  XCircle,
 } from 'lucide-react'
 
 interface EventItemProps {
@@ -82,6 +85,21 @@ const eventTypeConfig: Record<
     icon: AtSign,
     color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
     label: 'Mention Created',
+  },
+  'agent.started': {
+    icon: Play,
+    color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+    label: 'Agent Started',
+  },
+  'agent.completed': {
+    icon: CheckCircle2,
+    color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+    label: 'Agent Completed',
+  },
+  'agent.failed': {
+    icon: XCircle,
+    color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+    label: 'Agent Failed',
   },
 }
 

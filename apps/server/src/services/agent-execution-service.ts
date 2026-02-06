@@ -26,7 +26,8 @@ import {
   buildTemplateContext,
   type ISessionPersistenceService,
 } from '@kombuse/services'
-import { agentInvocationsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, eventsRepository } from '@kombuse/persistence'
+import { EVENT_TYPES } from '@kombuse/types'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
@@ -415,6 +416,38 @@ const defaultDependencies: AgentExecutionDependencies = {
 }
 
 /**
+ * Emit an agent lifecycle event for ticket activity timeline.
+ * Only emits if the invocation context includes a ticket_id.
+ */
+function emitAgentEvent(
+  eventType: string,
+  agentId: string,
+  invocationId: number,
+  context: Record<string, unknown>,
+  additionalPayload?: Record<string, unknown>
+): void {
+  const ticketId = context.ticket_id as number | undefined
+  const projectId = context.project_id as string | undefined
+
+  if (!ticketId) {
+    return // Only emit for ticket-related invocations
+  }
+
+  eventsRepository.create({
+    event_type: eventType,
+    ticket_id: ticketId,
+    project_id: projectId,
+    actor_id: agentId,
+    actor_type: 'agent',
+    payload: {
+      invocation_id: invocationId,
+      agent_id: agentId,
+      ...additionalPayload,
+    },
+  })
+}
+
+/**
  * Build an initial message for a triggered agent from the event context.
  * Interpolates template variables in the agent's system prompt using Nunjucks.
  *
@@ -515,6 +548,13 @@ export async function processEventAndRunAgents(
         error: errorMessage,
         completed_at: new Date().toISOString(),
       })
+      emitAgentEvent(
+        EVENT_TYPES.AGENT_FAILED,
+        invocation.agent_id,
+        invocation.id,
+        invocation.context,
+        { error: errorMessage }
+      )
       continue
     }
 
@@ -529,6 +569,12 @@ export async function processEventAndRunAgents(
       started_at: new Date().toISOString(),
       error: null,
     })
+    emitAgentEvent(
+      EVENT_TYPES.AGENT_STARTED,
+      invocation.agent_id,
+      invocation.id,
+      invocation.context
+    )
 
     // Build initial message from event with agent's prompt
     const initialMessage = buildTriggerMessage(event, agent.system_prompt)
@@ -544,6 +590,13 @@ export async function processEventAndRunAgents(
         error: message ?? 'Agent invocation failed',
         completed_at: new Date().toISOString(),
       })
+      emitAgentEvent(
+        EVENT_TYPES.AGENT_FAILED,
+        invocation.agent_id,
+        invocation.id,
+        invocation.context,
+        { error: message ?? 'Agent invocation failed' }
+      )
     }
 
     // Use the same chat infrastructure as user-initiated sessions
@@ -576,6 +629,12 @@ export async function processEventAndRunAgents(
               status: 'completed',
               completed_at: new Date().toISOString(),
             })
+            emitAgentEvent(
+              EVENT_TYPES.AGENT_COMPLETED,
+              invocation.agent_id,
+              invocation.id,
+              invocation.context
+            )
           }
           wsHub.broadcastToTopic('*', {
             type: 'agent.complete',

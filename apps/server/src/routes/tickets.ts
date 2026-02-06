@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
-import { ticketService } from '@kombuse/services'
+import { ticketService, commentService, eventService } from '@kombuse/services'
+import type { TimelineItem } from '@kombuse/types'
 import {
   createTicketSchema,
   claimTicketSchema,
@@ -167,5 +168,38 @@ export async function ticketRoutes(fastify: FastifyInstance) {
     } catch (error) {
       return reply.status(404).send({ error: (error as Error).message })
     }
+  })
+
+  // Get ticket timeline (comments + events merged chronologically)
+  fastify.get<{
+    Params: { id: string }
+  }>('/tickets/:id/timeline', async (request, reply) => {
+    const ticketId = parseInt(request.params.id, 10)
+    if (isNaN(ticketId)) {
+      return reply.status(400).send({ error: 'Invalid ticket ID' })
+    }
+
+    const comments = commentService.list({ ticket_id: ticketId })
+    const events = eventService.getByTicket(ticketId)
+
+    const items: TimelineItem[] = [
+      ...comments.map((c) => ({
+        type: 'comment' as const,
+        timestamp: c.created_at,
+        data: c,
+      })),
+      ...events.map((e) => ({
+        type: 'event' as const,
+        timestamp: e.created_at,
+        data: e,
+      })),
+    ]
+
+    // Sort chronologically (oldest first)
+    items.sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+
+    return { items, total: items.length }
   })
 }

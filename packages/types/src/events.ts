@@ -67,6 +67,9 @@ export const EVENT_TYPES = {
   LABEL_ADDED: 'label.added',
   LABEL_REMOVED: 'label.removed',
   MENTION_CREATED: 'mention.created',
+  AGENT_STARTED: 'agent.started',
+  AGENT_COMPLETED: 'agent.completed',
+  AGENT_FAILED: 'agent.failed',
 } as const
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES]

@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@kombuse/ui/base";
-import { TicketList, TicketDetail, ChatInput, Markdown } from "@kombuse/ui/components";
+import { TicketList, TicketDetail, ChatInput, ActivityTimeline } from "@kombuse/ui/components";
 import {
   useTickets,
   useTicket,
@@ -24,9 +24,10 @@ import {
   useCommentOperations,
   useRealtimeUpdates,
   useProjectLabels,
+  useTicketTimeline,
 } from "@kombuse/ui/hooks";
 import { LabelBadge } from "@kombuse/ui/components";
-import { Plus, Pencil, Trash2, Check, X, Save } from "lucide-react";
+import { Plus, X, Save } from "lucide-react";
 import type { Ticket, TicketStatus } from "@kombuse/types";
 
 export function Tickets() {
@@ -70,7 +71,6 @@ export function Tickets() {
 
   // Comment operations from context-aware hook
   const {
-    comments,
     createComment,
     updateComment,
     deleteComment,
@@ -78,6 +78,9 @@ export function Tickets() {
     isUpdating: isUpdatingComment,
     isDeleting: isDeletingComment,
   } = useCommentOperations();
+
+  // Unified timeline of comments + events
+  const { data: timeline } = useTicketTimeline(ticketId ? Number(ticketId) : 0);
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editBody, setEditBody] = useState("");
@@ -316,103 +319,36 @@ export function Tickets() {
                         isEditable
                       />
 
-                      {/* Comments List */}
+                      {/* Activity Timeline */}
                       <div className="mt-6">
                         <h3 className="text-sm font-medium mb-4">
-                          Comments {comments.length > 0 && `(${comments.length})`}
+                          Activity {timeline?.total ? `(${timeline.total})` : ""}
                         </h3>
 
-                        {comments.length > 0 ? (
-                          <div className="space-y-3">
-                            {comments.map((comment) => (
-                              <div
-                                key={comment.id}
-                                className="p-3 rounded-lg bg-muted/50"
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium">
-                                      {comment.author_id}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {new Date(comment.created_at).toLocaleString()}
-                                    </span>
-                                    {comment.is_edited && (
-                                      <span className="text-xs text-muted-foreground">
-                                        (edited)
-                                      </span>
-                                    )}
-                                  </div>
-                                  {editingCommentId === comment.id ? (
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-6 text-muted-foreground hover:text-primary"
-                                        onClick={async () => {
-                                          await updateComment(comment.id, editBody);
-                                          setEditingCommentId(null);
-                                          setEditBody("");
-                                        }}
-                                        disabled={isUpdatingComment || !editBody.trim()}
-                                      >
-                                        <Check className="size-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-6 text-muted-foreground hover:text-destructive"
-                                        onClick={() => {
-                                          setEditingCommentId(null);
-                                          setEditBody("");
-                                        }}
-                                      >
-                                        <X className="size-3" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-6 text-muted-foreground hover:text-foreground"
-                                        onClick={() => {
-                                          setEditingCommentId(comment.id);
-                                          setEditBody(comment.body);
-                                        }}
-                                      >
-                                        <Pencil className="size-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-6 text-muted-foreground hover:text-destructive"
-                                        onClick={() => deleteComment(comment.id)}
-                                        disabled={isDeletingComment}
-                                      >
-                                        <Trash2 className="size-3" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                                {editingCommentId === comment.id ? (
-                                  <Textarea
-                                    value={editBody}
-                                    onChange={(e) => setEditBody(e.target.value)}
-                                    className="min-h-15 text-sm"
-                                    autoFocus
-                                  />
-                                ) : (
-                                  <div className="text-sm">
-                                    <Markdown>{comment.body}</Markdown>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No comments yet</p>
-                        )}
+                        <ActivityTimeline
+                          items={timeline?.items ?? []}
+                          editingCommentId={editingCommentId}
+                          editBody={editBody}
+                          onEditBodyChange={setEditBody}
+                          onStartEditComment={(comment) => {
+                            setEditingCommentId(comment.id);
+                            setEditBody(comment.body);
+                          }}
+                          onSaveEditComment={async () => {
+                            if (editingCommentId) {
+                              await updateComment(editingCommentId, editBody);
+                              setEditingCommentId(null);
+                              setEditBody("");
+                            }
+                          }}
+                          onCancelEditComment={() => {
+                            setEditingCommentId(null);
+                            setEditBody("");
+                          }}
+                          onDeleteComment={deleteComment}
+                          isUpdatingComment={isUpdatingComment}
+                          isDeletingComment={isDeletingComment}
+                        />
                       </div>
                     </div>
 
