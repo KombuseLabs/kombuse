@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Button,
@@ -27,6 +27,8 @@ import {
   useProjectLabels,
   useTicketTimeline,
   useWebSocket,
+  useCommentsAttachments,
+  useUploadAttachment,
 } from "@kombuse/ui/hooks";
 import { LabelBadge } from "@kombuse/ui/components";
 import { Plus, X, Save } from "lucide-react";
@@ -49,7 +51,7 @@ export function Tickets() {
   const { setCurrentTicket, setCurrentProjectId, setView } = useAppContext();
 
   // Filter state - must be declared before useTickets
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("open");
   const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
 
   const { data: projectLabels } = useProjectLabels(projectId ?? "");
@@ -83,6 +85,17 @@ export function Tickets() {
 
   // Unified timeline of comments + events
   const { data: timeline } = useTicketTimeline(ticketId ? Number(ticketId) : 0);
+
+  // Fetch attachments for all comments in the timeline
+  const commentIds = useMemo(
+    () =>
+      (timeline?.items ?? [])
+        .filter((item) => item.type === "comment")
+        .map((item) => (item.data as CommentWithAuthor).id),
+    [timeline?.items]
+  );
+  const attachmentsByCommentId = useCommentsAttachments(commentIds);
+  const uploadAttachment = useUploadAttachment();
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editBody, setEditBody] = useState("");
@@ -122,7 +135,9 @@ export function Tickets() {
     setReplyTarget(null);
   }, []);
 
-  const handleAddComment = async (body: string) => {
+  const handleAddComment = async (body: string, files?: File[]) => {
+    let newComment: CommentWithAuthor | undefined;
+
     if (replyTarget?.isAgentSession) {
       // Find the original comment to get its kombuse_session_id
       const targetComment = timeline?.items
@@ -138,15 +153,31 @@ export function Tickets() {
         });
       } else {
         // Fallback to a threaded reply if the session can't be resolved
-        await createComment(body, "user-1", replyTarget.commentId); // TODO: Get from auth context
+        newComment = await createComment(body, "user-1", replyTarget.commentId); // TODO: Get from auth context
       }
     } else if (replyTarget) {
       // Threaded reply to a user comment
-      await createComment(body, "user-1", replyTarget.commentId); // TODO: Get from auth context
+      newComment = await createComment(body, "user-1", replyTarget.commentId); // TODO: Get from auth context
     } else {
       // Top-level comment
-      await createComment(body, "user-1"); // TODO: Get from auth context
+      newComment = await createComment(body || "(attachment)", "user-1"); // TODO: Get from auth context
     }
+
+    // Upload files to the newly created comment
+    if (newComment && files?.length) {
+      for (const file of files) {
+        try {
+          await uploadAttachment.mutateAsync({
+            commentId: newComment.id,
+            file,
+            uploadedById: "user-1", // TODO: Get from auth context
+          });
+        } catch {
+          // Individual upload failures don't block remaining uploads
+        }
+      }
+    }
+
     setReplyTarget(null);
   };
 
@@ -372,6 +403,7 @@ export function Tickets() {
 
                         <ActivityTimeline
                           items={timeline?.items ?? []}
+                          attachmentsByCommentId={attachmentsByCommentId}
                           editingCommentId={editingCommentId}
                           editBody={editBody}
                           onEditBodyChange={setEditBody}

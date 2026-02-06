@@ -1,10 +1,11 @@
-import type { TimelineItem, CommentWithAuthor, Event } from '@kombuse/types'
+import type { TimelineItem, CommentWithAuthor, Event, Attachment } from '@kombuse/types'
 import { CommentItem } from '../comments/comment-item'
 import { TimelineEventItem } from './timeline-event-item'
 import { cn } from '../../lib/utils'
 
 interface ActivityTimelineProps {
   items: TimelineItem[]
+  attachmentsByCommentId?: Record<number, Attachment[]>
   editingCommentId?: number | null
   editBody?: string
   onEditBodyChange?: (body: string) => void
@@ -20,6 +21,7 @@ interface ActivityTimelineProps {
 
 function ActivityTimeline({
   items,
+  attachmentsByCommentId,
   editingCommentId,
   editBody = '',
   onEditBodyChange,
@@ -47,6 +49,7 @@ function ActivityTimeline({
             <CommentItem
               key={`comment-${comment.id}`}
               comment={comment}
+              attachments={attachmentsByCommentId?.[comment.id]}
               isEditing={editingCommentId === comment.id}
               editBody={editBody}
               onEditBodyChange={onEditBodyChange}

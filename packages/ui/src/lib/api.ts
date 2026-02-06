@@ -28,6 +28,7 @@ import type {
   SessionFilters,
   SessionEvent,
   TicketTimeline,
+  Attachment,
 } from '@kombuse/types'
 
 const API_BASE = 'http://localhost:3331/api'
@@ -405,5 +406,34 @@ export const sessionsApi = {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
+  },
+}
+
+export const attachmentsApi = {
+  async listByComment(commentId: number): Promise<Attachment[]> {
+    const response = await fetch(`${API_BASE}/comments/${commentId}/attachments`)
+    return handleResponse<Attachment[]>(response)
+  },
+
+  async uploadToComment(commentId: number, file: File, uploadedById: string): Promise<Attachment> {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('uploaded_by_id', uploadedById)
+    const response = await fetch(`${API_BASE}/comments/${commentId}/attachments`, {
+      method: 'POST',
+      body: formData,
+    })
+    return handleResponse<Attachment>(response)
+  },
+
+  async delete(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE}/attachments/${id}`, {
+      method: 'DELETE',
+    })
+    await handleEmptyResponse(response)
+  },
+
+  downloadUrl(id: number): string {
+    return `${API_BASE}/attachments/${id}/download`
   },
 }

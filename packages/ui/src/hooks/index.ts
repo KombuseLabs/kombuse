@@ -61,3 +61,9 @@ export {
   useDeleteSession,
 } from './use-sessions'
 export { useTicketAgentStatus } from './use-ticket-agent-status'
+export {
+  useCommentAttachments,
+  useCommentsAttachments,
+  useUploadAttachment,
+  useDeleteAttachment,
+} from './use-attachments'

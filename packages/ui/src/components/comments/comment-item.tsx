@@ -1,12 +1,14 @@
-import type { CommentWithAuthor } from '@kombuse/types'
+import type { CommentWithAuthor, Attachment } from '@kombuse/types'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { Markdown } from '../markdown'
 import { cn } from '../../lib/utils'
+import { attachmentsApi } from '../../lib/api'
 import { Pencil, Trash2, Check, X, Reply } from 'lucide-react'
 
 interface CommentItemProps {
   comment: CommentWithAuthor
+  attachments?: Attachment[]
   isEditing?: boolean
   editBody?: string
   onEditBodyChange?: (body: string) => void
@@ -22,6 +24,7 @@ interface CommentItemProps {
 
 function CommentItem({
   comment,
+  attachments,
   isEditing = false,
   editBody = '',
   onEditBodyChange,
@@ -104,9 +107,33 @@ function CommentItem({
           autoFocus
         />
       ) : (
-        <div className="text-sm">
-          <Markdown>{comment.body}</Markdown>
-        </div>
+        <>
+          <div className="text-sm">
+            <Markdown>{comment.body}</Markdown>
+          </div>
+          {attachments && attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {attachments.map((attachment) => (
+                <a
+                  key={attachment.id}
+                  href={attachmentsApi.downloadUrl(attachment.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group block"
+                >
+                  <img
+                    src={attachmentsApi.downloadUrl(attachment.id)}
+                    alt={attachment.filename}
+                    className="max-h-48 rounded border object-cover transition-opacity group-hover:opacity-90"
+                  />
+                  <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-48">
+                    {attachment.filename}
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
