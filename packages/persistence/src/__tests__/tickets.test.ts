@@ -394,4 +394,115 @@ describe('ticketsRepository', () => {
       expect(foundTicket?.labels[1]?.name).toBe('c-label')
     })
   })
+
+  /*
+   * LIST WITH LABEL_IDS FILTER TESTS
+   * Verify filtering tickets by label IDs (AND semantics - all labels must match)
+   */
+  describe('list with label_ids filter', () => {
+    it('should filter tickets by single label_id', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'bug',
+      })
+      const ticketWithLabel = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Bug ticket',
+      })
+      const ticketWithoutLabel = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Normal ticket',
+      })
+      labelsRepository.addToTicket(ticketWithLabel.id, label.id)
+
+      const tickets = ticketsRepository.list({ label_ids: [label.id] })
+
+      expect(tickets).toHaveLength(1)
+      expect(tickets[0]?.id).toBe(ticketWithLabel.id)
+    })
+
+    it('should filter tickets by multiple label_ids (AND semantics)', () => {
+      const labelBug = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'bug',
+      })
+      const labelUrgent = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'urgent',
+      })
+      const ticketBothLabels = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Urgent bug',
+      })
+      const ticketOnlyBug = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Regular bug',
+      })
+      labelsRepository.addToTicket(ticketBothLabels.id, labelBug.id)
+      labelsRepository.addToTicket(ticketBothLabels.id, labelUrgent.id)
+      labelsRepository.addToTicket(ticketOnlyBug.id, labelBug.id)
+
+      const tickets = ticketsRepository.list({
+        label_ids: [labelBug.id, labelUrgent.id],
+      })
+
+      expect(tickets, 'Only ticket with BOTH labels should be returned').toHaveLength(1)
+      expect(tickets[0]?.id).toBe(ticketBothLabels.id)
+    })
+
+    it('should return empty array for non-existent label_id', () => {
+      ticketsRepository.create(TEST_TICKET)
+
+      const tickets = ticketsRepository.list({ label_ids: [999999] })
+
+      expect(tickets).toHaveLength(0)
+    })
+
+    it('should combine label_ids filter with status filter', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'feature',
+      })
+      const openTicket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Open feature',
+        status: 'open',
+      })
+      const closedTicket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Closed feature',
+        status: 'closed',
+      })
+      labelsRepository.addToTicket(openTicket.id, label.id)
+      labelsRepository.addToTicket(closedTicket.id, label.id)
+
+      const tickets = ticketsRepository.list({
+        label_ids: [label.id],
+        status: 'open',
+      })
+
+      expect(tickets).toHaveLength(1)
+      expect(tickets[0]?.id).toBe(openTicket.id)
+    })
+
+    it('should return all tickets when label_ids is not provided', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'test',
+      })
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Labeled ticket',
+      })
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Unlabeled ticket',
+      })
+
+      const ticketsWithFilter = ticketsRepository.list({ label_ids: undefined })
+      const ticketsNoFilter = ticketsRepository.list()
+
+      expect(ticketsWithFilter.length).toBe(ticketsNoFilter.length)
+    })
+  })
 })

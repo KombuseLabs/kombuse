@@ -60,6 +60,13 @@ export const ticketsRepository = {
       conditions.push('(title LIKE ? OR body LIKE ?)')
       params.push(`%${filters.search}%`, `%${filters.search}%`)
     }
+    if (filters?.label_ids && filters.label_ids.length > 0) {
+      const placeholders = filters.label_ids.map(() => '?').join(', ')
+      conditions.push(
+        `id IN (SELECT ticket_id FROM ticket_labels WHERE label_id IN (${placeholders}) GROUP BY ticket_id HAVING COUNT(DISTINCT label_id) = ?)`
+      )
+      params.push(...filters.label_ids, filters.label_ids.length)
+    }
 
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''

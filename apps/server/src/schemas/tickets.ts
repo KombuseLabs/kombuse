@@ -63,6 +63,11 @@ export const ticketFiltersSchema = z.object({
   unclaimed: z.coerce.boolean().optional(),
   expired_claims: z.coerce.boolean().optional(),
   search: z.string().optional(),
+  label_ids: z
+    .string()
+    .transform((val) => val.split(',').map(Number))
+    .pipe(z.array(z.number().int().positive()))
+    .optional(),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 })

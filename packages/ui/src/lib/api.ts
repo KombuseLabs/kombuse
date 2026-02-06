@@ -66,6 +66,8 @@ export const ticketsApi = {
     if (filters?.search) params.set('search', filters.search)
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
+    if (filters?.label_ids?.length)
+      params.set('label_ids', filters.label_ids.join(','))
 
     const url = `${API_BASE}/tickets${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)

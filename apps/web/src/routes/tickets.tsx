@@ -9,6 +9,11 @@ import {
   CardTitle,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@kombuse/ui/base";
 import { TicketList, TicketDetail, ChatInput, Markdown } from "@kombuse/ui/components";
 import {
@@ -18,9 +23,11 @@ import {
   useAppContext,
   useCommentOperations,
   useRealtimeUpdates,
+  useProjectLabels,
 } from "@kombuse/ui/hooks";
+import { LabelBadge } from "@kombuse/ui/components";
 import { Plus, Pencil, Trash2, Check, X, Save } from "lucide-react";
-import type { Ticket } from "@kombuse/types";
+import type { Ticket, TicketStatus } from "@kombuse/types";
 
 export function Tickets() {
   const { projectId, ticketId } = useParams<{
@@ -38,11 +45,21 @@ export function Tickets() {
   // Sync route params to app context
   const { setCurrentTicket, setCurrentProjectId, setView } = useAppContext();
 
+  // Filter state - must be declared before useTickets
+  const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
+  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
+
+  const { data: projectLabels } = useProjectLabels(projectId ?? "");
+
   const {
     data: tickets,
     isLoading,
     error,
-  } = useTickets({ project_id: projectId });
+  } = useTickets({
+    project_id: projectId,
+    status: statusFilter === "all" ? undefined : statusFilter,
+    label_ids: selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
+  });
 
   const {
     data: selectedTicket,
@@ -118,6 +135,14 @@ export function Tickets() {
     navigate(`/projects/${projectId}/tickets`);
   };
 
+  const toggleLabelFilter = (labelId: number) => {
+    setSelectedLabelIds((prev) =>
+      prev.includes(labelId)
+        ? prev.filter((id) => id !== labelId)
+        : [...prev, labelId]
+    );
+  };
+
   if (!projectId) {
     return (
       <main className="flex flex-col items-center justify-center p-8">
@@ -131,12 +156,59 @@ export function Tickets() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-6 border-b">
-        <h1 className="text-2xl font-bold">Tickets</h1>
-        <Button onClick={handleStartCreate} disabled={isCreating}>
-          <Plus className="size-4" />
-          Create Ticket
-        </Button>
+      <div className="flex flex-col gap-3 p-6 border-b">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold">Tickets</h1>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => setStatusFilter(value as TicketStatus | "all")}
+            >
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="blocked">Blocked</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleStartCreate} disabled={isCreating}>
+            <Plus className="size-4" />
+            Create Ticket
+          </Button>
+        </div>
+        {projectLabels && projectLabels.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">Labels:</span>
+            {projectLabels.map((label) => (
+              <button
+                key={label.id}
+                type="button"
+                onClick={() => toggleLabelFilter(label.id)}
+                className={`transition-opacity ${
+                  selectedLabelIds.length > 0 && !selectedLabelIds.includes(label.id)
+                    ? "opacity-40 hover:opacity-70"
+                    : ""
+                }`}
+              >
+                <LabelBadge label={label} size="sm" />
+              </button>
+            ))}
+            {selectedLabelIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedLabelIds([])}
+                className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 overflow-hidden">
