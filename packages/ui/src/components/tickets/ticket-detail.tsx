@@ -16,7 +16,8 @@ import { X, Trash2, Pencil } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
 import { StatusIndicator } from '../status-indicator'
-import { useTicketOperations, useLabelOperations, useTicketAgentStatus } from '../../hooks'
+import { Markdown } from '../markdown'
+import { useTicketOperations, useLabelOperations, useTicketAgentStatus, useCurrentProject } from '../../hooks'
 
 interface TicketDetailProps {
   className?: string
@@ -69,6 +70,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
     isDeleting: isDeletingLabel,
   } = useLabelOperations()
 
+  const { currentProjectId } = useCurrentProject()
   const agentStatus = useTicketAgentStatus(currentTicket?.id)
 
   if (!currentTicket) {
@@ -208,9 +210,9 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
       <CardContent className="space-y-3">
         {mode === 'view' ? (
           ticket.body && (
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {ticket.body}
-            </p>
+            <div className="text-sm text-muted-foreground">
+              <Markdown projectId={currentProjectId}>{ticket.body}</Markdown>
+            </div>
           )
         ) : (
           <Textarea

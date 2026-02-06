@@ -1,6 +1,7 @@
 import type { SerializedAgentMessageEvent } from '@kombuse/types'
 import { cn } from '../../../lib/utils'
 import { Markdown } from '../../markdown'
+import { useCurrentProject } from '../../../hooks/use-app-context'
 
 export interface MessageRendererProps {
   event: SerializedAgentMessageEvent
@@ -8,6 +9,7 @@ export interface MessageRendererProps {
 
 export function MessageRenderer({ event }: MessageRendererProps) {
   const { role, content } = event
+  const { currentProjectId } = useCurrentProject()
 
   return (
     <div
@@ -21,7 +23,7 @@ export function MessageRenderer({ event }: MessageRendererProps) {
       <div className="mb-2 text-xs font-medium uppercase text-muted-foreground">
         {role}
       </div>
-      <Markdown>{content}</Markdown>
+      <Markdown projectId={currentProjectId}>{content}</Markdown>
     </div>
   )
 }

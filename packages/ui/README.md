@@ -151,6 +151,23 @@ import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/c
 />
 ```
 
+### Markdown
+
+```typescript
+import { Markdown } from '@kombuse/ui/components'
+
+// Basic markdown rendering
+<Markdown>{'# Hello **world**'}</Markdown>
+
+// With ticket link support (#22 → clickable link to /projects/:id/tickets/22)
+<Markdown projectId="my-project">{'See #22 for details'}</Markdown>
+```
+
+Props:
+- `children`: Markdown string to render
+- `className`: Optional class name
+- `projectId`: Optional project ID — when provided, `#<number>` patterns in text are rendered as SPA-navigable links to the corresponding ticket
+
 ### Ticket Components
 
 ```typescript
@@ -236,6 +253,7 @@ const { data: timeline } = useTicketTimeline(ticketId)
 
 Props for `ActivityTimeline`:
 - `items`: Array of `TimelineItem` (from `/tickets/:id/timeline` API)
+- `projectId`: Optional project ID — passed through to `CommentItem` → `Markdown` for ticket link rendering
 - `attachmentsByCommentId`: Optional `Record<number, Attachment[]>` mapping comment IDs to their attachments
 - `editingCommentId`: ID of comment being edited (or null)
 - `editBody`: Current edit text value
@@ -249,6 +267,7 @@ Props for `ActivityTimeline`:
 
 Props for `CommentItem`:
 - `comment`: `CommentWithAuthor` object
+- `projectId`: Optional project ID — enables `#<number>` ticket link rendering in comment body
 - `attachments`: Optional `Attachment[]` to display as inline image thumbnails below the comment body
 
 Props for `ChatInput`:

@@ -8,6 +8,7 @@ import { Pencil, Trash2, Check, X, Reply } from 'lucide-react'
 
 interface CommentItemProps {
   comment: CommentWithAuthor
+  projectId?: string | null
   attachments?: Attachment[]
   isEditing?: boolean
   editBody?: string
@@ -24,6 +25,7 @@ interface CommentItemProps {
 
 function CommentItem({
   comment,
+  projectId,
   attachments,
   isEditing = false,
   editBody = '',
@@ -109,7 +111,7 @@ function CommentItem({
       ) : (
         <>
           <div className="text-sm">
-            <Markdown>{comment.body}</Markdown>
+            <Markdown projectId={projectId}>{comment.body}</Markdown>
           </div>
           {attachments && attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">

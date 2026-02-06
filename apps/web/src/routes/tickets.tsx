@@ -407,6 +407,7 @@ export function Tickets() {
 
                         <ActivityTimeline
                           items={timeline?.items ?? []}
+                          projectId={projectId}
                           attachmentsByCommentId={attachmentsByCommentId}
                           editingCommentId={editingCommentId}
                           editBody={editBody}

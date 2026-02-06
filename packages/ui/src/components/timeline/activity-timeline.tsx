@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils'
 
 interface ActivityTimelineProps {
   items: TimelineItem[]
+  projectId?: string | null
   attachmentsByCommentId?: Record<number, Attachment[]>
   editingCommentId?: number | null
   editBody?: string
@@ -21,6 +22,7 @@ interface ActivityTimelineProps {
 
 function ActivityTimeline({
   items,
+  projectId,
   attachmentsByCommentId,
   editingCommentId,
   editBody = '',
@@ -49,6 +51,7 @@ function ActivityTimeline({
             <CommentItem
               key={`comment-${comment.id}`}
               comment={comment}
+              projectId={projectId}
               attachments={attachmentsByCommentId?.[comment.id]}
               isEditing={editingCommentId === comment.id}
               editBody={editBody}

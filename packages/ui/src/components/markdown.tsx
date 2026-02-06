@@ -1,13 +1,40 @@
 import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Link } from 'react-router-dom'
+import { remarkTicketLinks } from './remark-ticket-links'
 import { cn } from '../lib/utils'
+import type { PluggableList } from 'unified'
 
 interface MarkdownProps {
   children: string
   className?: string
+  projectId?: string | null
 }
 
-export function Markdown({ children, className }: MarkdownProps) {
+const components: Components = {
+  a: ({ href, children: linkChildren, ...props }) => {
+    if (href?.startsWith('/projects/')) {
+      return (
+        <Link to={href} className={props.className}>
+          {linkChildren}
+        </Link>
+      )
+    }
+    return (
+      <a href={href} {...props}>
+        {linkChildren}
+      </a>
+    )
+  },
+}
+
+export function Markdown({ children, className, projectId }: MarkdownProps) {
+  const remarkPlugins: PluggableList = [remarkGfm]
+  if (projectId) {
+    remarkPlugins.push([remarkTicketLinks, { projectId }])
+  }
+
   return (
     <div
       className={cn(
@@ -25,7 +52,9 @@ export function Markdown({ children, className }: MarkdownProps) {
         className
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+        {children}
+      </ReactMarkdown>
     </div>
   )
 }
