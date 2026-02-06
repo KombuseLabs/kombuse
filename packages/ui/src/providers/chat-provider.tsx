@@ -20,6 +20,8 @@ interface ChatProviderProps {
   agentId?: string
   /** The session ID to load/continue a conversation */
   sessionId?: string | null
+  /** Optional project context for resolving workspace paths */
+  projectId?: string | null
   /** Create/resolve a session ID when sending from a draft chat */
   onEnsureSession?: () => Promise<string>
 }
@@ -35,6 +37,7 @@ export function ChatProvider({
   children,
   agentId,
   sessionId,
+  projectId,
   onEnsureSession,
 }: ChatProviderProps) {
   const queryClient = useQueryClient()
@@ -229,11 +232,13 @@ export function ChatProvider({
         agentId,
         message,
         kombuseSessionId: targetSessionId,
+        projectId: projectId ?? undefined,
       })
     },
     [
       agentId,
       sessionId,
+      projectId,
       kombuseSessionId,
       isConnected,
       isLoading,

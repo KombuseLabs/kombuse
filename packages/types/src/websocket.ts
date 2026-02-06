@@ -35,6 +35,7 @@ export type ClientMessage =
       agentId?: string
       message: string
       kombuseSessionId?: string
+      projectId?: string
     }
   | {
       type: 'permission.response'

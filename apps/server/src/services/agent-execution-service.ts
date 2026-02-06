@@ -1,6 +1,9 @@
+import { statSync } from 'node:fs'
+import { resolve as resolvePath } from 'node:path'
 import { ClaudeCodeBackend } from '@kombuse/agent'
 import {
   agentService,
+  projectService,
   sessionPersistenceService,
   type ISessionPersistenceService,
 } from '@kombuse/services'
@@ -205,6 +208,40 @@ function buildTriggerMessage(event: Event): string {
 }
 
 /**
+ * Resolve a project local path if available (used for triggered invocations).
+ */
+function resolveProjectPathForProject(projectId: string | null): string | undefined {
+  if (!projectId) {
+    return undefined
+  }
+
+  const project = projectService.get(projectId)
+  const localPath = project?.local_path?.trim()
+
+  if (!localPath) {
+    return undefined
+  }
+
+  const candidatePath = resolvePath(localPath)
+
+  try {
+    if (statSync(candidatePath).isDirectory()) {
+      return candidatePath
+    }
+
+    console.warn(
+      `[Server] Project ${projectId} local_path is not a directory: ${candidatePath}`
+    )
+  } catch {
+    console.warn(
+      `[Server] Project ${projectId} local_path does not exist: ${candidatePath}`
+    )
+  }
+
+  return undefined
+}
+
+/**
  * Process a domain event by creating invocations and running them via chat infrastructure.
  * This ensures triggered agents have the same persistence, streaming, and permission handling as chat agents.
  */
@@ -232,6 +269,16 @@ export async function processEventAndRunAgents(
       continue
     }
 
+    if (invocation.attempts >= invocation.max_attempts) {
+      const errorMessage = `Invocation exceeded max attempts (${invocation.max_attempts})`
+      agentInvocationsRepository.update(invocation.id, {
+        status: 'failed',
+        error: errorMessage,
+        completed_at: new Date().toISOString(),
+      })
+      continue
+    }
+
     // Generate session ID from invocation for easy lookup
     const kombuseSessionId = `invocation-${invocation.id}`
 
@@ -239,11 +286,26 @@ export async function processEventAndRunAgents(
     agentInvocationsRepository.update(invocation.id, {
       kombuse_session_id: kombuseSessionId,
       status: 'running',
+      attempts: invocation.attempts + 1,
       started_at: new Date().toISOString(),
+      error: null,
     })
 
     // Build initial message from event
     const initialMessage = buildTriggerMessage(event)
+    const projectPathOverride =
+      resolveProjectPathForProject(event.project_id ?? null) ??
+      dependencies.resolveProjectPath()
+
+    let invocationFailed = false
+    const markFailed = (message?: string) => {
+      invocationFailed = true
+      agentInvocationsRepository.update(invocation.id, {
+        status: 'failed',
+        error: message ?? 'Agent invocation failed',
+        completed_at: new Date().toISOString(),
+      })
+    }
 
     // Use the same chat infrastructure as user-initiated sessions
     // Emit to broadcast topic so triggered sessions can be monitored
@@ -257,6 +319,9 @@ export async function processEventAndRunAgents(
       (evt) => {
         // Broadcast to all clients (triggered sessions don't have a specific client)
         if (evt.type === 'event') {
+          if (evt.event.type === 'error') {
+            markFailed(evt.event.message)
+          }
           const serialized = serializeAgentStreamEvent(evt.event)
           if (serialized) {
             wsHub.broadcastToTopic('*', {
@@ -266,25 +331,24 @@ export async function processEventAndRunAgents(
             })
           }
         } else if (evt.type === 'complete') {
-          // Update invocation status
-          agentInvocationsRepository.update(invocation.id, {
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-          })
+          if (!invocationFailed) {
+            // Update invocation status
+            agentInvocationsRepository.update(invocation.id, {
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+            })
+          }
           wsHub.broadcastToTopic('*', {
             type: 'agent.complete',
             kombuseSessionId: evt.kombuseSessionId,
             backendSessionId: evt.backendSessionId,
           })
         } else if (evt.type === 'error') {
-          agentInvocationsRepository.update(invocation.id, {
-            status: 'failed',
-            error: evt.message,
-            completed_at: new Date().toISOString(),
-          })
+          markFailed(evt.message)
         }
       },
-      dependencies
+      dependencies,
+      { projectPath: projectPathOverride }
     )
   }
 }
@@ -295,9 +359,10 @@ export async function processEventAndRunAgents(
 export function startAgentChatSession(
   message: AgentInvokeMessage,
   emit: (event: AgentExecutionEvent) => void,
-  dependencies: AgentExecutionDependencies = defaultDependencies
+  dependencies: AgentExecutionDependencies = defaultDependencies,
+  options?: { projectPath?: string }
 ): void {
-  const { agentId, message: userMessage, kombuseSessionId } = message
+  const { agentId, message: userMessage, kombuseSessionId, projectId } = message
 
   const normalizedAgentId =
     typeof agentId === 'string' && agentId.trim().length > 0
@@ -364,8 +429,14 @@ export function startAgentChatSession(
   // Register backend for permission response routing
   registerBackend(appSessionId, backend)
 
+  const projectPathOverride =
+    options?.projectPath ??
+    (typeof projectId === 'string' && projectId.trim().length > 0
+      ? resolveProjectPathForProject(projectId.trim())
+      : undefined)
+
   runAgentChat(backend, userMessage, appSessionId, {
-    projectPath: dependencies.resolveProjectPath(),
+    projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
     resumeSessionId,
     systemPrompt: agent?.system_prompt,
     onEvent: (event: AgentEvent) => {

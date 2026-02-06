@@ -241,6 +241,7 @@ export function Chats() {
           <ChatProvider
             key={chatKey}
             sessionId={selectedSessionId}
+            projectId={projectId ?? null}
             onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
           >
             <Chat
