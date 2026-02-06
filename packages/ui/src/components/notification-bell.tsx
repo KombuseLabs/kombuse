@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../base/popover'
 import { useAppContext } from '../hooks/use-app-context'
 import { useWebSocket } from '../hooks/use-websocket'
 import type { PendingPermission } from '@kombuse/types'
+import { extractPermissionDetail } from '../lib/permission-utils'
 
 export interface NotificationBellProps {
   /** Navigation function - receives full path to navigate to */
@@ -87,10 +88,22 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                   </span>
                 </div>
                 {permission.description && (
-                  <p className="mb-2 pl-6 text-sm text-foreground">
+                  <p className="mb-1 pl-6 text-sm text-foreground">
                     {permission.description}
                   </p>
                 )}
+                {(() => {
+                  const detail = extractPermissionDetail(
+                    permission.toolName,
+                    permission.input,
+                    permission.description
+                  )
+                  return detail ? (
+                    <pre className="mb-2 ml-6 overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-xs">
+                      {detail.value}
+                    </pre>
+                  ) : null
+                })()}
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"

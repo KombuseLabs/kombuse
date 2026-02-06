@@ -1,6 +1,7 @@
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { Shield } from 'lucide-react'
 import { cn } from '../../../lib/utils'
+import { extractPermissionDetail } from '../../../lib/permission-utils'
 
 export interface PermissionRequestRendererProps {
   event: SerializedAgentPermissionRequestEvent
@@ -9,7 +10,7 @@ export interface PermissionRequestRendererProps {
 export function PermissionRequestRenderer({ event }: PermissionRequestRendererProps) {
   const { toolName, input } = event
   const description = typeof input.description === 'string' ? input.description : null
-  const command = typeof input.command === 'string' ? input.command : null
+  const detail = extractPermissionDetail(toolName, input as Record<string, unknown>, description)
 
   return (
     <div className={cn('rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm')}>
@@ -25,14 +26,9 @@ export function PermissionRequestRenderer({ event }: PermissionRequestRendererPr
       {description && (
         <p className="mb-2 text-foreground">{description}</p>
       )}
-      {command && (
+      {detail && (
         <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-xs">
-          {command}
-        </pre>
-      )}
-      {!command && !description && (
-        <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-xs text-muted-foreground">
-          {JSON.stringify(input, null, 2)}
+          {detail.value}
         </pre>
       )}
     </div>

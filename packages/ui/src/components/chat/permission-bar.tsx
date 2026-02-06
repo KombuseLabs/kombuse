@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { Shield, Check, X, MessageSquare } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { extractPermissionDetail } from '../../lib/permission-utils'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 
@@ -18,7 +19,7 @@ export function PermissionBar({ permission, onRespond }: PermissionBarProps) {
 
   const { toolName, input } = permission
   const description = typeof input.description === 'string' ? input.description : null
-  const command = typeof input.command === 'string' ? input.command : null
+  const detail = extractPermissionDetail(toolName, input as Record<string, unknown>, description)
 
   const handleAllow = () => {
     onRespond('allow')
@@ -55,9 +56,9 @@ export function PermissionBar({ permission, onRespond }: PermissionBarProps) {
             <p className="mb-1 text-sm text-foreground">{description}</p>
           )}
 
-          {command && (
+          {detail && (
             <pre className="mb-2 overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-xs">
-              {command}
+              {detail.value}
             </pre>
           )}
 

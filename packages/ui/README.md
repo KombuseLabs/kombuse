@@ -350,6 +350,19 @@ import { cn } from '@kombuse/ui/lib/utils'
 cn('px-4 py-2', conditional && 'bg-primary', className)
 ```
 
+```typescript
+import { extractPermissionDetail } from '@kombuse/ui/lib/permission-utils'
+
+// Extract tool-specific raw detail from a permission request's input
+const detail = extractPermissionDetail('Bash', { command: 'git checkout main', description: 'Checkout main' })
+// => { label: 'Command', value: 'git checkout main' }
+
+// Supported tools: Bash (command), Read/Write/Edit (file_path),
+// Grep/Glob (pattern + path), WebFetch (url)
+// Falls back to JSON of input for unknown tools
+// Returns null if detail matches description or no meaningful detail exists
+```
+
 ### Styles
 
 ```typescript
