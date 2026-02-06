@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import websocket from "@fastify/websocket";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -21,6 +22,7 @@ import {
   agentRoutes,
   sessionRoutes,
   updateRoutes,
+  attachmentRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
 import { processEventAndRunAgents } from "./services/agent-execution-service";
@@ -51,6 +53,14 @@ export async function createServer({ port, db }: ServerOptions) {
     methods: ["GET", "POST", "PATCH", "DELETE"],
   });
 
+  // Multipart file uploads (10 MB limit)
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+      files: 1,
+    },
+  });
+
   // WebSocket support for real-time updates
   await fastify.register(websocket);
   fastify.register(websocketRoutes);
@@ -73,6 +83,7 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(agentRoutes, { prefix: "/api" });
   fastify.register(sessionRoutes, { prefix: "/api" });
   fastify.register(updateRoutes, { prefix: "/api" });
+  fastify.register(attachmentRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {
     return { hello: "world" };

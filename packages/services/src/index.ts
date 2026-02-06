@@ -35,6 +35,12 @@ export type {
   SessionPersistenceOptions,
 } from './session-persistence-service'
 
+export { AttachmentService, attachmentService } from './attachment-service'
+export type { IAttachmentService, UploadParams } from './attachment-service'
+
+export { FileStorage, fileStorage, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from './file-storage'
+export type { IFileStorage } from './file-storage'
+
 // Template rendering
 export {
   renderTemplate,

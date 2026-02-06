@@ -29,3 +29,4 @@ export {
 } from './agents'
 export { sessionsRepository } from './sessions'
 export { sessionEventsRepository } from './session-events'
+export { attachmentsRepository } from './attachments'
