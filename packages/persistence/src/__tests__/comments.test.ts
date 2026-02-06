@@ -108,6 +108,42 @@ describe('commentsRepository', () => {
       expect(comment.external_source).toBe('github')
       expect(comment.external_id).toBe('gh-comment-123')
     })
+
+    it('should create a comment with kombuse_session_id', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_AGENT_ID,
+        body: 'Agent comment linked to session',
+        kombuse_session_id: 'trigger-abc-123',
+      })
+
+      expect(comment.kombuse_session_id).toBe('trigger-abc-123')
+    })
+
+    it('should default kombuse_session_id to null when not provided', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'User comment without session',
+      })
+
+      expect(comment.kombuse_session_id).toBeNull()
+    })
+
+    it('should return kombuse_session_id in get() and getByTicket()', () => {
+      const created = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_AGENT_ID,
+        body: 'Linked comment',
+        kombuse_session_id: 'trigger-xyz-456',
+      })
+
+      const fetched = commentsRepository.get(created.id)
+      expect(fetched?.kombuse_session_id).toBe('trigger-xyz-456')
+
+      const byTicket = commentsRepository.getByTicket(testTicketId)
+      expect(byTicket[0]?.kombuse_session_id).toBe('trigger-xyz-456')
+    })
   })
 
   /*

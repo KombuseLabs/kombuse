@@ -3,7 +3,7 @@ import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { Markdown } from '../markdown'
 import { cn } from '../../lib/utils'
-import { Pencil, Trash2, Check, X } from 'lucide-react'
+import { Pencil, Trash2, Check, X, Reply } from 'lucide-react'
 
 interface CommentItemProps {
   comment: Comment
@@ -14,6 +14,7 @@ interface CommentItemProps {
   onSaveEdit?: () => void
   onCancelEdit?: () => void
   onDelete?: () => void
+  onReply?: () => void
   isUpdating?: boolean
   isDeleting?: boolean
   className?: string
@@ -28,6 +29,7 @@ function CommentItem({
   onSaveEdit,
   onCancelEdit,
   onDelete,
+  onReply,
   isUpdating = false,
   isDeleting = false,
   className,
@@ -66,6 +68,14 @@ function CommentItem({
           </div>
         ) : (
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6 text-muted-foreground hover:text-foreground"
+              onClick={onReply}
+            >
+              <Reply className="size-3" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

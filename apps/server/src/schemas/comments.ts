@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const createCommentSchema = z.object({
   author_id: z.string().min(1),
   parent_id: z.coerce.number().int().positive().optional(),
+  kombuse_session_id: z.string().optional(),
   body: z.string().min(1),
   external_source: z.string().optional(),
   external_id: z.string().optional(),

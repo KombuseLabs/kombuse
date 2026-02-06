@@ -98,6 +98,7 @@ function handleAgentInvoke(
         sendServerMessage(socket, {
           type: 'agent.started',
           kombuseSessionId: event.kombuseSessionId,
+          ticketId: event.ticketId,
         })
         break
       case 'event': {
@@ -117,6 +118,7 @@ function handleAgentInvoke(
           type: 'agent.complete',
           kombuseSessionId: event.kombuseSessionId,
           backendSessionId: event.backendSessionId,
+          ticketId: event.ticketId,
         })
         break
       case 'error':

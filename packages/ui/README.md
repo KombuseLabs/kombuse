@@ -189,16 +189,26 @@ const { data: timeline } = useTicketTimeline(ticketId)
   onSaveEditComment={() => ...}
   onCancelEditComment={() => ...}
   onDeleteComment={(id) => ...}
+  onReplyComment={(comment) => ...}
   isUpdatingComment={isUpdating}
   isDeletingComment={isDeleting}
 />
 
-// Render individual comment with edit/delete
+// Render individual comment with edit/delete/reply
 <CommentItem
   comment={comment}
   isEditing={false}
   onStartEdit={() => ...}
   onDelete={() => ...}
+  onReply={() => ...}
+/>
+
+// ChatInput with reply mode
+<ChatInput
+  onSubmit={handleSubmit}
+  placeholder="Add a comment..."
+  replyTarget={{ commentId: 1, authorId: 'user-1', isAgentSession: true }}
+  onCancelReply={() => setReplyTarget(null)}
 />
 ```
 
@@ -211,7 +221,15 @@ Props for `ActivityTimeline`:
 - `onSaveEditComment`: Callback to save edited comment
 - `onCancelEditComment`: Callback to cancel editing
 - `onDeleteComment`: Callback to delete a comment
+- `onReplyComment`: Callback when reply button clicked on a comment
 - `isUpdatingComment`, `isDeletingComment`: Loading states
+
+Props for `ChatInput`:
+- `onSubmit`: Callback when message is submitted
+- `placeholder`: Input placeholder text
+- `isLoading`, `disabled`: Loading/disabled states
+- `replyTarget`: Optional `ReplyTarget` object (`{ commentId, authorId, isAgentSession }`) — shows reply indicator when set
+- `onCancelReply`: Callback to dismiss reply mode
 
 ### Label Hooks
 

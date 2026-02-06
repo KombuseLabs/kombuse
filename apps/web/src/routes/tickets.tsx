@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Button,
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@kombuse/ui/base";
 import { TicketList, TicketDetail, ChatInput, ActivityTimeline } from "@kombuse/ui/components";
+import type { ReplyTarget } from "@kombuse/ui/components";
 import {
   useTickets,
   useTicket,
@@ -25,10 +26,11 @@ import {
   useRealtimeUpdates,
   useProjectLabels,
   useTicketTimeline,
+  useWebSocket,
 } from "@kombuse/ui/hooks";
 import { LabelBadge } from "@kombuse/ui/components";
 import { Plus, X, Save } from "lucide-react";
-import type { Ticket, TicketStatus } from "@kombuse/types";
+import type { Ticket, TicketStatus, Comment } from "@kombuse/types";
 
 export function Tickets() {
   const { projectId, ticketId } = useParams<{
@@ -87,6 +89,12 @@ export function Tickets() {
   const [newTicketTitle, setNewTicketTitle] = useState("");
   const [newTicketBody, setNewTicketBody] = useState("");
 
+  // Reply state
+  const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
+
+  // WebSocket for sending agent.invoke messages
+  const { send: wsSend } = useWebSocket({ topics: [] });
+
   // Determine if we're in create mode
   const isCreating = ticketId === "new";
 
@@ -99,10 +107,47 @@ export function Tickets() {
   // Sync selected ticket to context
   useEffect(() => {
     setCurrentTicket(selectedTicket ?? null);
+    setReplyTarget(null);
   }, [selectedTicket, setCurrentTicket]);
 
+  const handleReplyToComment = useCallback((comment: Comment) => {
+    setReplyTarget({
+      commentId: comment.id,
+      authorId: comment.author_id,
+      isAgentSession: !!comment.kombuse_session_id,
+    });
+  }, []);
+
+  const handleCancelReply = useCallback(() => {
+    setReplyTarget(null);
+  }, []);
+
   const handleAddComment = async (body: string) => {
-    await createComment(body, "user-1"); // TODO: Get from auth context
+    if (replyTarget?.isAgentSession) {
+      // Find the original comment to get its kombuse_session_id
+      const targetComment = timeline?.items
+        .filter((item): item is typeof item & { type: 'comment' } => item.type === 'comment')
+        .map((item) => item.data as Comment)
+        .find((c) => c.id === replyTarget.commentId);
+
+      if (targetComment?.kombuse_session_id) {
+        wsSend({
+          type: "agent.invoke",
+          message: body,
+          kombuseSessionId: targetComment.kombuse_session_id,
+        });
+      } else {
+        // Fallback to a threaded reply if the session can't be resolved
+        await createComment(body, "user-1", replyTarget.commentId); // TODO: Get from auth context
+      }
+    } else if (replyTarget) {
+      // Threaded reply to a user comment
+      await createComment(body, "user-1", replyTarget.commentId); // TODO: Get from auth context
+    } else {
+      // Top-level comment
+      await createComment(body, "user-1"); // TODO: Get from auth context
+    }
+    setReplyTarget(null);
   };
 
   const handleStartCreate = () => {
@@ -346,6 +391,7 @@ export function Tickets() {
                             setEditBody("");
                           }}
                           onDeleteComment={deleteComment}
+                          onReplyComment={handleReplyToComment}
                           isUpdatingComment={isUpdatingComment}
                           isDeletingComment={isDeletingComment}
                         />
@@ -358,6 +404,8 @@ export function Tickets() {
                         onSubmit={handleAddComment}
                         isLoading={isCreatingComment}
                         placeholder="Add a comment..."
+                        replyTarget={replyTarget}
+                        onCancelReply={handleCancelReply}
                       />
                     </div>
                   </>

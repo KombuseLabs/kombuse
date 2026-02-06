@@ -615,6 +615,7 @@ export async function processEventAndRunAgents(
 
     // Build initial message from event with agent's prompt
     const initialMessage = buildTriggerMessage(event, agent.system_prompt)
+      + `\n\nWhen using add_comment, always include kombuse_session_id: "${kombuseSessionId}" to link your comments to this session.`
     const projectPathOverride =
       resolveProjectPathForProject(event.project_id ?? null) ??
       dependencies.resolveProjectPath()
@@ -755,15 +756,17 @@ export function startAgentChatSession(
   }
 
   // Create/get persistent session record
-  const ticketId = options?.ticketId
   const persistentSessionId = dependencies.sessionPersistence.ensureSession(
     appSessionId,
     'claude-code',
-    ticketId
+    options?.ticketId
   )
   const existingSession = dependencies.sessionPersistence.getSession(
     persistentSessionId
   )
+  // Use provided ticketId, or fall back to the existing session's ticket_id
+  // (important for resumed sessions where the client doesn't pass ticketId)
+  const ticketId = options?.ticketId ?? existingSession?.ticket_id ?? undefined
   const resumeSessionId =
     typeof existingSession?.backend_session_id === 'string' &&
     existingSession.backend_session_id.trim().length > 0

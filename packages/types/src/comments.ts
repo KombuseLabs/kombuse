@@ -8,6 +8,7 @@ export interface Comment {
   ticket_id: number
   author_id: string
   parent_id: number | null
+  kombuse_session_id: string | null
   body: string
   external_source: string | null
   external_id: string | null
@@ -31,6 +32,7 @@ export interface CreateCommentInput {
   ticket_id: number
   author_id: string
   parent_id?: number
+  kombuse_session_id?: string
   body: string
   external_source?: string
   external_id?: string

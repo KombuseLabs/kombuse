@@ -1,1 +1,1 @@
-export { ChatInput, type ChatInputProps } from './chat-input'
+export { ChatInput, type ChatInputProps, type ReplyTarget } from './chat-input'

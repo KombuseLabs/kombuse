@@ -15,6 +15,7 @@ interface RawComment {
   ticket_id: number
   author_id: string
   parent_id: number | null
+  kombuse_session_id: string | null
   body: string
   external_source: string | null
   external_id: string | null
@@ -136,10 +137,10 @@ export const commentsRepository = {
 
     const insertComment = db.prepare(`
       INSERT INTO comments (
-        ticket_id, author_id, parent_id, body,
+        ticket_id, author_id, parent_id, kombuse_session_id, body,
         external_source, external_id, is_edited
       )
-      VALUES (?, ?, ?, ?, ?, ?, 0)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0)
     `)
 
     // Get project_id from ticket for event logging
@@ -153,6 +154,7 @@ export const commentsRepository = {
         payload.ticket_id,
         payload.author_id,
         payload.parent_id ?? null,
+        payload.kombuse_session_id ?? null,
         payload.body,
         payload.external_source ?? null,
         payload.external_id ?? null

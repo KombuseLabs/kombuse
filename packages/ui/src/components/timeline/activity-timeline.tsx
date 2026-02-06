@@ -12,6 +12,7 @@ interface ActivityTimelineProps {
   onSaveEditComment?: () => void
   onCancelEditComment?: () => void
   onDeleteComment?: (id: number) => void
+  onReplyComment?: (comment: Comment) => void
   isUpdatingComment?: boolean
   isDeletingComment?: boolean
   className?: string
@@ -26,6 +27,7 @@ function ActivityTimeline({
   onSaveEditComment,
   onCancelEditComment,
   onDeleteComment,
+  onReplyComment,
   isUpdatingComment = false,
   isDeletingComment = false,
   className,
@@ -52,6 +54,7 @@ function ActivityTimeline({
               onSaveEdit={onSaveEditComment}
               onCancelEdit={onCancelEditComment}
               onDelete={() => onDeleteComment?.(comment.id)}
+              onReply={() => onReplyComment?.(comment)}
               isUpdating={isUpdatingComment}
               isDeleting={isDeletingComment}
             />

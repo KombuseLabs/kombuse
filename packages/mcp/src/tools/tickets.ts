@@ -85,9 +85,13 @@ export function registerTicketTools(server: McpServer): void {
           .positive()
           .optional()
           .describe('Optional parent comment ID for replies'),
+        kombuse_session_id: z
+          .string()
+          .optional()
+          .describe('Optional session ID linking this comment to the agent session that created it'),
       },
     },
-    async ({ ticket_id, author_id, body, parent_id }) => {
+    async ({ ticket_id, author_id, body, parent_id, kombuse_session_id }) => {
       // Verify ticket exists first
       const ticket = ticketsRepository.get(ticket_id)
       if (!ticket) {
@@ -107,6 +111,7 @@ export function registerTicketTools(server: McpServer): void {
         author_id,
         body,
         parent_id,
+        kombuse_session_id,
       })
 
       return {
