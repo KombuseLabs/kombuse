@@ -146,6 +146,9 @@ export function Tickets() {
         .find((c) => c.id === replyTarget.commentId);
 
       if (targetComment?.kombuse_session_id) {
+        // Create the reply comment so it appears in timeline immediately
+        newComment = await createComment(body, "user-1", replyTarget.commentId); // TODO: Get from auth context
+        // Also invoke the agent session
         wsSend({
           type: "agent.invoke",
           message: body,
@@ -312,6 +315,7 @@ export function Tickets() {
           {!isLoading && !error && tickets && (
             <TicketList
               tickets={tickets}
+              selectedTicketId={ticketId ? Number(ticketId) : undefined}
               onTicketClick={handleTicketClick}
             />
           )}
