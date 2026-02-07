@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CommentWithAuthor, Attachment } from '@kombuse/types'
 import { parseSessionId } from '@kombuse/types'
 import { Link } from 'react-router-dom'
@@ -5,6 +6,7 @@ import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
 import { Markdown } from '../markdown'
+import { ImageLightbox } from '../image-lightbox'
 import { cn } from '../../lib/utils'
 import { attachmentsApi } from '../../lib/api'
 import { useSessionByKombuseId } from '../../hooks/use-sessions'
@@ -22,6 +24,7 @@ interface CommentItemProps {
   onCancelEdit?: () => void
   onDelete?: () => void
   onReply?: () => void
+  onSessionClick?: (sessionId: string) => void
   isUpdating?: boolean
   isDeleting?: boolean
   className?: string
@@ -39,10 +42,13 @@ function CommentItem({
   onCancelEdit,
   onDelete,
   onReply,
+  onSessionClick,
   isUpdating = false,
   isDeleting = false,
   className,
 }: CommentItemProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
   const { data: linkedSession } = useSessionByKombuseId(comment.kombuse_session_id)
 
   const sessionUrl = linkedSession
@@ -60,19 +66,33 @@ function CommentItem({
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{comment.author.name}</span>
-          {sessionUrl && (
+          {sessionUrl && linkedSession && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link
-                  to={sessionUrl}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {sessionOrigin === 'trigger' ? (
-                    <Zap className="size-3" />
-                  ) : (
-                    <MessageSquare className="size-3" />
-                  )}
-                </Link>
+                {onSessionClick ? (
+                  <button
+                    type="button"
+                    onClick={() => onSessionClick(linkedSession.id)}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {sessionOrigin === 'trigger' ? (
+                      <Zap className="size-3" />
+                    ) : (
+                      <MessageSquare className="size-3" />
+                    )}
+                  </button>
+                ) : (
+                  <Link
+                    to={sessionUrl}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {sessionOrigin === 'trigger' ? (
+                      <Zap className="size-3" />
+                    ) : (
+                      <MessageSquare className="size-3" />
+                    )}
+                  </Link>
+                )}
               </TooltipTrigger>
               <TooltipContent>View session</TooltipContent>
             </Tooltip>
@@ -147,26 +167,36 @@ function CommentItem({
             <Markdown projectId={projectId}>{comment.body}</Markdown>
           </div>
           {attachments && attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {attachments.map((attachment) => (
-                <a
-                  key={attachment.id}
-                  href={attachmentsApi.downloadUrl(attachment.id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group block"
-                >
-                  <img
-                    src={attachmentsApi.downloadUrl(attachment.id)}
-                    alt={attachment.filename}
-                    className="max-h-48 rounded border object-cover transition-opacity group-hover:opacity-90"
-                  />
-                  <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-48">
-                    {attachment.filename}
-                  </div>
-                </a>
-              ))}
-            </div>
+            <>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {attachments.map((attachment, index) => (
+                  <button
+                    key={attachment.id}
+                    type="button"
+                    onClick={() => {
+                      setLightboxIndex(index)
+                      setLightboxOpen(true)
+                    }}
+                    className="group block text-left cursor-pointer"
+                  >
+                    <img
+                      src={attachmentsApi.downloadUrl(attachment.id)}
+                      alt={attachment.filename}
+                      className="max-h-48 rounded border object-cover transition-opacity group-hover:opacity-90"
+                    />
+                    <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-48">
+                      {attachment.filename}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <ImageLightbox
+                attachments={attachments}
+                initialIndex={lightboxIndex}
+                open={lightboxOpen}
+                onOpenChange={setLightboxOpen}
+              />
+            </>
           )}
         </>
       )}

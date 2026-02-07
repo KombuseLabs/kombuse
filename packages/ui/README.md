@@ -53,7 +53,29 @@ import { Dialog, DialogContent, DialogTrigger } from '@kombuse/ui/base'
 import { Input } from '@kombuse/ui/base'
 ```
 
-Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Select`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
+Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Resizable`, `Select`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
+
+### Resizable Panels
+
+```typescript
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@kombuse/ui/base'
+
+// Horizontal split with drag handle
+<ResizablePanelGroup orientation="horizontal">
+  <ResizablePanel id="list" defaultSize={50} minSize={25}>
+    <LeftContent />
+  </ResizablePanel>
+  <ResizableHandle withHandle />
+  <ResizablePanel id="detail" defaultSize={50} minSize={25}>
+    <RightContent />
+  </ResizablePanel>
+</ResizablePanelGroup>
+```
+
+Props:
+- `ResizablePanelGroup`: `orientation` ("horizontal" | "vertical"), `defaultLayout`, `onLayoutChanged`, `className`
+- `ResizablePanel`: `id`, `defaultSize`, `minSize`, `maxSize`, `collapsible`, `collapsedSize`
+- `ResizableHandle`: `withHandle` (shows grip icon), `disabled`, `className`
 
 ### Hooks
 
@@ -353,7 +375,29 @@ Props for `ActivityTimeline`:
 Props for `CommentItem`:
 - `comment`: `CommentWithAuthor` object
 - `projectId`: Optional project ID — enables `#<number>` ticket link rendering in comment body and builds correct route for session links on agent comments
-- `attachments`: Optional `Attachment[]` to display as inline image thumbnails below the comment body
+- `attachments`: Optional `Attachment[]` to display as inline image thumbnails below the comment body — clicking a thumbnail opens the image lightbox
+
+### Image Lightbox
+
+```typescript
+import { ImageLightbox } from '@kombuse/ui/components'
+
+// Full-screen image viewer with navigation
+<ImageLightbox
+  attachments={attachments}
+  initialIndex={0}
+  open={lightboxOpen}
+  onOpenChange={setLightboxOpen}
+/>
+```
+
+Props for `ImageLightbox`:
+- `attachments`: `Attachment[]` — list of attachments (automatically filters to image types)
+- `initialIndex`: Index of the image to show first when opened
+- `open`: Whether the lightbox is visible
+- `onOpenChange`: Callback when open state changes (close via Escape key, close button, or overlay click)
+- Keyboard navigation: ArrowLeft/ArrowRight to navigate between images, Escape to close
+- Shows filename, image counter (e.g. "2 / 5"), and download link in footer
 
 Props for `ChatInput`:
 - `onSubmit`: Callback `(message: string, files?: File[]) => void` — receives message text and optional staged files
