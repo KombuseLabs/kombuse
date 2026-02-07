@@ -22,14 +22,18 @@ function SidebarItem({ icon, label, to, isCollapsed }: SidebarItemProps) {
       to={to}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors",
+          "flex items-center rounded-md text-sm font-medium transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
           isActive && "bg-accent text-accent-foreground",
-          isCollapsed && "justify-center"
+          isCollapsed
+            ? "w-10 py-2 justify-center"
+            : "gap-3 px-3 py-2"
         )
       }
     >
-      <span className="shrink-0">{icon}</span>
+      <span className={cn("shrink-0", isCollapsed && "[&>svg]:size-5")}>
+        {icon}
+      </span>
       {!isCollapsed && <span>{label}</span>}
     </NavLink>
   );

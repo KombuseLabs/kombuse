@@ -53,7 +53,14 @@ function Sidebar({
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-1 py-2 px-1">{children}</nav>
+        <nav
+          className={cn(
+            "flex flex-1 flex-col gap-1 py-2",
+            isCollapsed ? "items-center px-2" : "px-2"
+          )}
+        >
+          {children}
+        </nav>
       </aside>
     </TooltipProvider>
   );
