@@ -1,10 +1,14 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
+import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { Button } from '../../base/button'
 import { MessageRenderer, PermissionRequestRenderer, RawRenderer, ToolResultRenderer, ToolUseRenderer } from './renderers'
 import type { ViewMode } from './session-header'
+
+const SCROLL_THRESHOLD = 100
 
 interface SessionViewerProps {
   events: SerializedAgentEvent[]
@@ -15,6 +19,31 @@ interface SessionViewerProps {
 }
 
 function SessionViewer({ events, isLoading = false, emptyMessage = 'No events yet', viewMode = 'normal', className }: SessionViewerProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [isAtBottom, setIsAtBottom] = useState(true)
+
+  const checkIfAtBottom = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setIsAtBottom(distanceFromBottom <= SCROLL_THRESHOLD)
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }, [])
+
+  // Auto-scroll when new events arrive and user is at the bottom
+  useEffect(() => {
+    if (isAtBottom) {
+      const el = scrollRef.current
+      if (el) {
+        el.scrollTop = el.scrollHeight
+      }
+    }
+  }, [events.length, isLoading, isAtBottom])
   // Build maps for tool_use events and track which ones have results
   const { toolUseMap, toolUseIdsWithResults } = useMemo(() => {
     const useMap = new Map<string, SerializedAgentToolUseEvent>()
@@ -45,7 +74,8 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
   }
 
   return (
-    <div className={cn('flex-1 overflow-y-auto p-4 space-y-4', className)}>
+    <div className={cn('relative flex-1 overflow-hidden', className)}>
+      <div ref={scrollRef} onScroll={checkIfAtBottom} className="h-full overflow-y-auto p-4 space-y-4">
       {visibleEvents.map((event) => {
         if (event.type === 'message') {
           return <MessageRenderer key={`${event.type}-${event.timestamp}`} event={event} />
@@ -99,6 +129,18 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         <div className="bg-muted p-3 rounded-lg text-sm">
           <span className="animate-pulse">Thinking...</span>
         </div>
+      )}
+      </div>
+      {!isAtBottom && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+          onClick={scrollToBottom}
+          aria-label="Scroll to bottom"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </Button>
       )}
     </div>
   )

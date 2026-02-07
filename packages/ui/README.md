@@ -315,6 +315,8 @@ import type { ViewMode } from '@kombuse/ui/components'
 - `events`: `SerializedAgentEvent[]` to render
 - `isLoading`, `emptyMessage`: Loading/empty states
 - `viewMode`: `'clean' | 'normal'` (default `'normal'`) — in `'clean'` mode, only `message` events are shown; tool uses, permission requests, and raw events are hidden
+- Auto-scrolls to bottom when new events arrive (if already at bottom)
+- Shows a floating scroll-to-bottom button when the user scrolls up
 
 `Chat` manages `viewMode` state internally and passes it to both `SessionHeader` and `SessionViewer`.
 
