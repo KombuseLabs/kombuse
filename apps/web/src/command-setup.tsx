@@ -1,11 +1,21 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, createContext, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { createCommandRegistry } from "@kombuse/core";
 import { CommandProvider } from "@kombuse/ui/providers";
-import { CommandPalette } from "@kombuse/ui/components";
 import { useAppContext } from "@kombuse/ui/hooks";
 import type { CommandContext } from "@kombuse/types";
+
+interface PaletteState {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
+
+const PaletteCtx = createContext<PaletteState>({ open: false, setOpen: () => {} });
+
+export function usePalette() {
+  return useContext(PaletteCtx);
+}
 
 interface CommandSetupProps {
   children: React.ReactNode;
@@ -28,7 +38,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
         title: "Open Command Palette",
         category: "General",
         keybinding: "mod+k",
-        handler: () => setPaletteOpen(true),
+        handler: () => setPaletteOpen((prev) => !prev),
       }),
       registry.register({
         id: "theme.toggle",
@@ -83,10 +93,16 @@ export function CommandSetup({ children }: CommandSetupProps) {
     [currentTicket, currentSession, isGenerating, view, currentProjectId]
   );
 
+  const paletteState = useMemo(
+    () => ({ open: paletteOpen, setOpen: setPaletteOpen }),
+    [paletteOpen]
+  );
+
   return (
     <CommandProvider registry={registry} context={context}>
-      {children}
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNavigate={navigate} />
+      <PaletteCtx.Provider value={paletteState}>
+        {children}
+      </PaletteCtx.Provider>
     </CommandProvider>
   );
 }

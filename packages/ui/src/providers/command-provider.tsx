@@ -23,13 +23,15 @@ export function CommandProvider({
   // Setup global keyboard listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip if user is typing in an input
       const target = e.target as HTMLElement
-      if (
+      const isInInput =
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable
-      ) {
+      const hasModifier = e.metaKey || e.ctrlKey
+
+      // Skip non-modifier keybindings when typing in an input
+      if (isInInput && !hasModifier) {
         return
       }
 

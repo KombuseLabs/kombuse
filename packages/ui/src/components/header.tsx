@@ -1,19 +1,27 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "../lib/utils";
 import { ModeToggle } from "./mode-toggle";
 
-function Header({ className, ...props }: React.ComponentProps<"header">) {
+interface HeaderProps extends React.ComponentProps<"header"> {
+  center?: ReactNode;
+}
+
+function Header({ className, center, ...props }: HeaderProps) {
   return (
     <header
       className={cn(
-        "flex h-16 items-center justify-between border-b px-6",
+        "flex h-16 items-center border-b px-6",
         className
       )}
       {...props}
     >
-      <span className="text-xl font-semibold">Kombuse</span>
-      <nav className="flex items-center gap-4">
+      <span className="shrink-0 text-xl font-semibold">Kombuse</span>
+      <div className="flex flex-1 justify-center px-4">
+        {center}
+      </div>
+      <nav className="flex shrink-0 items-center gap-4">
         {props.children}
         <ModeToggle />
       </nav>

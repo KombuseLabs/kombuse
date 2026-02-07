@@ -1,9 +1,9 @@
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UpdateNotification, NotificationBell } from "@kombuse/ui/components";
+import { Header, UpdateNotification, NotificationBell, CommandPalette } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
-import { CommandSetup } from "./command-setup";
+import { CommandSetup, usePalette } from "./command-setup";
 import { Home } from "./routes/home";
 import { Chats } from "./routes/chats";
 import { Projects } from "./routes/projects";
@@ -20,9 +20,45 @@ const queryClient = new QueryClient({
   }),
 });
 
-export function App() {
+function AppContent() {
   const navigate = useNavigate();
+  const { open, setOpen } = usePalette();
 
+  return (
+    <div className="min-h-screen">
+      <Header
+        center={
+          <CommandPalette open={open} onOpenChange={setOpen} onNavigate={navigate} />
+        }
+      >
+        <NotificationBell onNavigate={navigate} />
+      </Header>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/chats" element={<Chats />} />
+        <Route path="/chats/:sessionId" element={<Chats />} />
+        <Route path="/projects" element={<Projects />} />
+
+        {/* Project routes with sidebar */}
+        <Route path="/projects/:projectId" element={<ProjectLayout />}>
+          <Route path="tickets" element={<Tickets />} />
+          <Route path="tickets/:ticketId" element={<Tickets />} />
+          <Route path="chats" element={<Chats />} />
+          <Route path="chats/:sessionId" element={<Chats />} />
+          <Route path="agents" element={<Agents />} />
+          <Route path="agents/:agentId" element={<Agents />} />
+          <Route path="events" element={<Events />} />
+        </Route>
+
+        {/* Global agents (outside project context) */}
+        <Route path="/agents" element={<Agents />} />
+        <Route path="/agents/:agentId" element={<Agents />} />
+      </Routes>
+    </div>
+  );
+}
+
+export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
@@ -34,32 +70,7 @@ export function App() {
         <WebSocketProvider url="ws://localhost:3331/ws">
           <AppProvider>
             <CommandSetup>
-              <div className="min-h-screen">
-                <Header>
-                  <NotificationBell onNavigate={navigate} />
-                </Header>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/chats" element={<Chats />} />
-                  <Route path="/chats/:sessionId" element={<Chats />} />
-                  <Route path="/projects" element={<Projects />} />
-
-                  {/* Project routes with sidebar */}
-                  <Route path="/projects/:projectId" element={<ProjectLayout />}>
-                    <Route path="tickets" element={<Tickets />} />
-                    <Route path="tickets/:ticketId" element={<Tickets />} />
-                    <Route path="chats" element={<Chats />} />
-                    <Route path="chats/:sessionId" element={<Chats />} />
-                    <Route path="agents" element={<Agents />} />
-                    <Route path="agents/:agentId" element={<Agents />} />
-                    <Route path="events" element={<Events />} />
-                  </Route>
-
-                  {/* Global agents (outside project context) */}
-                  <Route path="/agents" element={<Agents />} />
-                  <Route path="/agents/:agentId" element={<Agents />} />
-                </Routes>
-              </div>
+              <AppContent />
             </CommandSetup>
           </AppProvider>
           <Toaster />

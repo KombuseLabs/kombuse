@@ -120,15 +120,25 @@ import { CommandProvider, ThemeProvider } from '@kombuse/ui/providers'
 ### Components
 
 ```typescript
-import { CommandPalette, Header, ModeToggle } from '@kombuse/ui/components'
+import { CommandPalette, SearchBar, Header, ModeToggle } from '@kombuse/ui/components'
+
+// CommandPalette renders a search bar trigger + popover dropdown
+// Place it in the Header's center slot for VS Code-style search
+<Header
+  center={
+    <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNavigate={navigate} />
+  }
+>
+  <NotificationBell />
+</Header>
+
+// Header props:
+// - center: ReactNode rendered in the center between title and nav
+// - children: rendered in the right nav area
 
 // CommandPalette supports #ticket search and navigation
 // Type # followed by a number or search term to find tickets
-<CommandPalette
-  open={paletteOpen}
-  onOpenChange={setPaletteOpen}
-  onNavigate={navigate}  // from useNavigate() — enables #55 → go to ticket, #bug → search
-/>
+// Includes a SearchBar trigger showing "Search commands and tickets..." with ⌘K badge
 import { TicketList, TicketDetail } from '@kombuse/ui/components'
 import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/components'
 import { Sidebar, SidebarItem } from '@kombuse/ui/components'
