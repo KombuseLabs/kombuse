@@ -1,129 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Chat, StatusIndicator, type StatusIndicatorStatus } from "@kombuse/ui/components";
+import { Chat, SessionList } from "@kombuse/ui/components";
 import { useCreateSession, useSessions, useAppContext, useDeleteSession } from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@kombuse/ui/base";
-import { Trash2 } from "lucide-react";
-import type { Session } from "@kombuse/types";
-
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function getIndicatorStatus(
-  session: Session,
-  hasPendingPermission: boolean
-): StatusIndicatorStatus {
-  if (hasPendingPermission) {
-    return 'pending'
-  }
-  if (session.status === 'running') {
-    return 'running'
-  }
-  if (session.status === 'failed') {
-    return 'error'
-  }
-  return 'idle'
-}
-
-function SessionItem({
-  session,
-  isSelected,
-  onClick,
-  onDelete,
-  hasPendingPermission,
-}: {
-  session: Session;
-  isSelected: boolean;
-  onClick: () => void;
-  onDelete: () => void;
-  hasPendingPermission: boolean;
-}) {
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const indicatorStatus = getIndicatorStatus(session, hasPendingPermission)
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors relative group",
-        isSelected
-          ? "bg-primary text-primary-foreground"
-          : "hover:bg-muted"
-      )}
-    >
-      <StatusIndicator
-        status={indicatorStatus}
-        size="sm"
-        className="absolute top-2.5 left-1.5"
-      />
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogTrigger asChild>
-          <span
-            role="button"
-            onClick={(e) => e.stopPropagation()}
-            className={cn(
-              "absolute top-2 right-2 opacity-0 group-hover:opacity-100 rounded p-0.5 transition-opacity",
-              isSelected
-                ? "text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
-                : "text-destructive hover:bg-destructive/10"
-            )}
-          >
-            <Trash2 className="size-3.5" />
-          </span>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete session?</DialogTitle>
-            <DialogDescription>
-              This will permanently delete this chat session and all its messages.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                onDelete()
-                setShowDeleteDialog(false)
-              }}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <div className="font-medium truncate pl-3 pr-6">
-        {session.kombuse_session_id?.slice(0, 8) || session.id.slice(0, 8)}
-      </div>
-      <div className={cn(
-        "text-xs pl-3",
-        isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
-      )}>
-        {formatDate(session.started_at)}
-      </div>
-    </button>
-  );
-}
 
 export function Chats() {
   const navigate = useNavigate();
@@ -193,33 +73,20 @@ export function Chats() {
         </div>
 
         {/* Sessions list */}
-        <div className="flex-1 overflow-y-auto px-2 space-y-1">
-          {sessionsLoading ? (
-            <div className="text-sm text-muted-foreground px-3 py-2">
-              Loading sessions...
-            </div>
-          ) : sessions && sessions.length > 0 ? (
-            sessions.map((session) => (
-              <SessionItem
-                key={session.id}
-                session={session}
-                isSelected={selectedSessionId === session.id}
-                onClick={() => handleSelectSession(session.id)}
-                onDelete={() => {
-                  deleteSession.mutate(session.id)
-                  // Navigate away if deleting the currently selected session
-                  if (selectedSessionId === session.id) {
-                    navigate(chatsBasePath)
-                  }
-                }}
-                hasPendingPermission={sessionHasPendingPermission(session.kombuse_session_id)}
-              />
-            ))
-          ) : (
-            <div className="text-sm text-muted-foreground px-3 py-2">
-              No sessions yet
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto">
+          <SessionList
+            sessions={sessions ?? []}
+            selectedSessionId={selectedSessionId}
+            onSessionClick={(session) => handleSelectSession(session.id)}
+            onSessionDelete={(session) => {
+              deleteSession.mutate(session.id)
+              if (selectedSessionId === session.id) {
+                navigate(chatsBasePath)
+              }
+            }}
+            isSessionPendingPermission={sessionHasPendingPermission}
+            isLoading={sessionsLoading}
+          />
         </div>
       </div>
 

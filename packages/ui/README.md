@@ -21,6 +21,7 @@ src/
 │   ├── command-palette/  - Command palette UI
 │   ├── labels/           - Label management components
 │   ├── sidebar/          - Collapsible sidebar navigation
+│   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components
 │   ├── header.tsx
 │   └── mode-toggle.tsx
@@ -230,6 +231,39 @@ Props:
   - Edit button to toggle edit mode (title, description, status)
   - Delete button
   - Label management
+
+### Session Components
+
+```typescript
+import { SessionItem, SessionList } from '@kombuse/ui/components'
+
+// Render a list of sessions with selection, delete, and status indicators
+<SessionList
+  sessions={sessions}
+  selectedSessionId={selectedId}
+  onSessionClick={(session) => navigate(`/chats/${session.id}`)}
+  onSessionDelete={(session) => deleteSession(session.id)}
+  isSessionPendingPermission={(id) => hasPendingPermission(id)}
+  isLoading={isLoading}
+/>
+```
+
+`SessionItem` props:
+- `session`: `Session` object
+- `isSelected`: Whether this item is visually selected
+- `onClick`: Click handler
+- `onDelete`: Delete handler (shows confirmation dialog)
+- `hasPendingPermission`: Shows orange pulsing indicator when true
+
+`SessionList` props:
+- `sessions`: `Session[]` to render
+- `className`: Optional class name
+- `selectedSessionId`: ID of the currently selected session
+- `onSessionClick`: `(session: Session) => void`
+- `onSessionDelete`: `(session: Session) => void`
+- `isSessionPendingPermission`: `(kombuseSessionId: string | null) => boolean`
+- `isLoading`: Shows loading state
+- `emptyMessage`: Custom empty state text (default: "No sessions yet")
 
 ### Chat Components
 
