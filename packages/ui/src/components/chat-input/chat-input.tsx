@@ -1,16 +1,11 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, type FormEvent, type KeyboardEvent, type DragEvent, type ClipboardEvent, type ChangeEvent } from 'react'
+import { useState, useCallback, useRef, useEffect, type FormEvent, type KeyboardEvent, type DragEvent, type ClipboardEvent } from 'react'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { cn } from '../../lib/utils'
-import { getMentionContext, getCaretCoordinates, insertMention } from '../../lib/mention-utils'
-import { useProfileSearch } from '../../hooks/use-profile-search'
-import { useTicketSearch } from '../../hooks/use-ticket-search'
-import { MentionAutocomplete } from './mention-autocomplete'
-import { TicketMentionAutocomplete } from './ticket-mention-autocomplete'
+import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
 import { Send, Loader2, X, Paperclip } from 'lucide-react'
-import type { Profile, TicketWithLabels } from '@kombuse/types'
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
@@ -53,24 +48,11 @@ function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Mention autocomplete state
-  const [mentionContext, setMentionContext] = useState(() => getMentionContext('', 0))
-  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
-  const [selectedTicketIndex, setSelectedTicketIndex] = useState(0)
-  const [caretPosition, setCaretPosition] = useState({ top: 0, left: 0, height: 0 })
-
-  const isProfileMention = mentionContext.isActive && mentionContext.trigger === '@'
-  const isTicketMention = mentionContext.isActive && mentionContext.trigger === '#'
-
-  const { data: mentionProfiles = [] } = useProfileSearch(mentionContext.query, {
-    enabled: isProfileMention,
+  const { textareaProps: autocompleteProps, AutocompletePortal } = useTextareaAutocomplete({
+    value: message,
+    onValueChange: setMessage,
+    textareaRef,
   })
-  const { data: mentionTickets = [] } = useTicketSearch(mentionContext.query, {
-    enabled: isTicketMention,
-  })
-
-  const profileDropdownVisible = isProfileMention && mentionProfiles.length > 0
-  const ticketDropdownVisible = isTicketMention && mentionTickets.length > 0
 
   // Clean up preview URLs on unmount or when files change
   useEffect(() => {
@@ -113,7 +95,6 @@ function ChatInput({
       const filesToSend = stagedFiles.length > 0 ? [...stagedFiles] : undefined
       await onSubmit(trimmed, filesToSend)
       setMessage('')
-      setMentionContext(getMentionContext('', 0))
       setStagedFiles([])
       setPreviewUrls((prev) => {
         prev.forEach((url) => URL.revokeObjectURL(url))
@@ -123,137 +104,18 @@ function ChatInput({
     [message, stagedFiles, isLoading, disabled, onSubmit]
   )
 
-  const handleMentionSelect = useCallback(
-    (profile: Profile) => {
-      const cursorPos = textareaRef.current?.selectionStart ?? message.length
-      const { newValue, newCursorPosition } = insertMention(
-        message,
-        mentionContext.triggerIndex,
-        cursorPos,
-        profile.name,
-        '@',
-        profile.id
-      )
-      setMessage(newValue)
-      setMentionContext(getMentionContext('', 0))
-      setSelectedMentionIndex(0)
-
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = newCursorPosition
-          textareaRef.current.selectionEnd = newCursorPosition
-          textareaRef.current.focus()
-        }
-      })
-    },
-    [message, mentionContext.triggerIndex]
-  )
-
-  const handleTicketMentionSelect = useCallback(
-    (ticket: TicketWithLabels) => {
-      const cursorPos = textareaRef.current?.selectionStart ?? message.length
-      const { newValue, newCursorPosition } = insertMention(
-        message,
-        mentionContext.triggerIndex,
-        cursorPos,
-        String(ticket.id),
-        '#'
-      )
-      setMessage(newValue)
-      setMentionContext(getMentionContext('', 0))
-      setSelectedTicketIndex(0)
-
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = newCursorPosition
-          textareaRef.current.selectionEnd = newCursorPosition
-          textareaRef.current.focus()
-        }
-      })
-    },
-    [message, mentionContext.triggerIndex]
-  )
-
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (profileDropdownVisible) {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault()
-          setSelectedMentionIndex((prev) =>
-            prev < mentionProfiles.length - 1 ? prev + 1 : 0
-          )
-          return
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault()
-          setSelectedMentionIndex((prev) =>
-            prev > 0 ? prev - 1 : mentionProfiles.length - 1
-          )
-          return
-        }
-        if (e.key === 'Enter' || e.key === 'Tab') {
-          e.preventDefault()
-          const selected = mentionProfiles[selectedMentionIndex]
-          if (selected) handleMentionSelect(selected)
-          return
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          setMentionContext(getMentionContext('', 0))
-          return
-        }
-      } else if (ticketDropdownVisible) {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault()
-          setSelectedTicketIndex((prev) =>
-            prev < mentionTickets.length - 1 ? prev + 1 : 0
-          )
-          return
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault()
-          setSelectedTicketIndex((prev) =>
-            prev > 0 ? prev - 1 : mentionTickets.length - 1
-          )
-          return
-        }
-        if (e.key === 'Enter' || e.key === 'Tab') {
-          e.preventDefault()
-          const selected = mentionTickets[selectedTicketIndex]
-          if (selected) handleTicketMentionSelect(selected)
-          return
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          setMentionContext(getMentionContext('', 0))
-          return
-        }
-      }
+      // Let autocomplete handle its keys first
+      autocompleteProps.onKeyDown(e)
+      if (e.defaultPrevented) return
 
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         handleSubmit()
       }
     },
-    [profileDropdownVisible, ticketDropdownVisible, mentionProfiles, mentionTickets, selectedMentionIndex, selectedTicketIndex, handleMentionSelect, handleTicketMentionSelect, handleSubmit]
-  )
-
-  const handleChange = useCallback(
-    (e: ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value
-      const cursorPos = e.target.selectionStart ?? value.length
-      setMessage(value)
-
-      const ctx = getMentionContext(value, cursorPos)
-      setMentionContext(ctx)
-      setSelectedMentionIndex(0)
-      setSelectedTicketIndex(0)
-
-      if (ctx.isActive && textareaRef.current) {
-        setCaretPosition(getCaretCoordinates(textareaRef.current, cursorPos))
-      }
-    },
-    []
+    [autocompleteProps.onKeyDown, handleSubmit]
   )
 
   const handleDragOver = useCallback((e: DragEvent) => {
@@ -350,7 +212,7 @@ function ChatInput({
         <Textarea
           ref={textareaRef}
           value={message}
-          onChange={handleChange}
+          onChange={autocompleteProps.onChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder={effectivePlaceholder}
@@ -374,22 +236,7 @@ function ChatInput({
           </Button>
         </div>
       </form>
-      <MentionAutocomplete
-        profiles={mentionProfiles}
-        selectedIndex={selectedMentionIndex}
-        caretOffset={caretPosition}
-        textareaRef={textareaRef}
-        onSelect={handleMentionSelect}
-        visible={profileDropdownVisible}
-      />
-      <TicketMentionAutocomplete
-        tickets={mentionTickets}
-        selectedIndex={selectedTicketIndex}
-        caretOffset={caretPosition}
-        textareaRef={textareaRef}
-        onSelect={handleTicketMentionSelect}
-        visible={ticketDropdownVisible}
-      />
+      <AutocompletePortal />
       <input
         ref={fileInputRef}
         type="file"

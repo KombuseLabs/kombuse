@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { TicketStatus } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
@@ -18,6 +18,7 @@ import { LabelSelector } from '../labels/label-selector'
 import { StatusIndicator } from '../status-indicator'
 import { Markdown } from '../markdown'
 import { useTicketOperations, useLabelOperations, useTicketAgentStatus, useCurrentProject } from '../../hooks'
+import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
 
 interface TicketDetailProps {
   className?: string
@@ -56,6 +57,12 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   const [editTitle, setEditTitle] = useState('')
   const [editBody, setEditBody] = useState('')
   const [editStatus, setEditStatus] = useState<TicketStatus>('open')
+  const editBodyRef = useRef<HTMLTextAreaElement>(null)
+  const { textareaProps: autocompleteProps, AutocompletePortal } = useTextareaAutocomplete({
+    value: editBody,
+    onValueChange: setEditBody,
+    textareaRef: editBodyRef,
+  })
 
   const {
     ticketLabels,
@@ -239,12 +246,17 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
             </div>
           )
         ) : (
-          <Textarea
-            value={editBody}
-            onChange={(e) => setEditBody(e.target.value)}
-            placeholder="Add a description..."
-            className="min-h-[100px]"
-          />
+          <>
+            <Textarea
+              ref={editBodyRef}
+              value={editBody}
+              onChange={autocompleteProps.onChange}
+              onKeyDown={autocompleteProps.onKeyDown}
+              placeholder="Add a description..."
+              className="min-h-[100px]"
+            />
+            <AutocompletePortal />
+          </>
         )}
 
         {ticket.external_url && (

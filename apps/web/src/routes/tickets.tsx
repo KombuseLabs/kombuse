@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   Button,
@@ -33,6 +33,7 @@ import {
   useWebSocket,
   useCommentsAttachments,
   useUploadAttachment,
+  useTextareaAutocomplete,
 } from "@kombuse/ui/hooks";
 import { LabelBadge } from "@kombuse/ui/components";
 import { Plus, X, Save } from "lucide-react";
@@ -132,6 +133,12 @@ export function Tickets() {
   const [editBody, setEditBody] = useState("");
   const [newTicketTitle, setNewTicketTitle] = useState("");
   const [newTicketBody, setNewTicketBody] = useState("");
+  const newTicketBodyRef = useRef<HTMLTextAreaElement>(null);
+  const { textareaProps: newTicketAutocomplete, AutocompletePortal: NewTicketAutocomplete } = useTextareaAutocomplete({
+    value: newTicketBody,
+    onValueChange: setNewTicketBody,
+    textareaRef: newTicketBodyRef,
+  });
 
   // Reply state
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
@@ -456,11 +463,14 @@ export function Tickets() {
                         <Label htmlFor="new-ticket-body">Description</Label>
                         <Textarea
                           id="new-ticket-body"
+                          ref={newTicketBodyRef}
                           value={newTicketBody}
-                          onChange={(e) => setNewTicketBody(e.target.value)}
+                          onChange={newTicketAutocomplete.onChange}
+                          onKeyDown={newTicketAutocomplete.onKeyDown}
                           placeholder="Describe the ticket..."
                           className="min-h-32"
                         />
+                        <NewTicketAutocomplete />
                       </div>
 
                       {/* Create Button */}

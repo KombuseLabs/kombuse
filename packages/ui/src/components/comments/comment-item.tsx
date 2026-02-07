@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import type { CommentWithAuthor, Attachment } from '@kombuse/types'
 import { parseSessionId } from '@kombuse/types'
 import { Link } from 'react-router-dom'
@@ -10,11 +10,13 @@ import { ImageLightbox } from '../image-lightbox'
 import { cn } from '../../lib/utils'
 import { attachmentsApi } from '../../lib/api'
 import { useSessionByKombuseId } from '../../hooks/use-sessions'
+import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
 import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare } from 'lucide-react'
 import { getAvatarIcon } from '../agents/avatar-picker'
 
 interface CommentItemProps {
   comment: CommentWithAuthor
+  parentComment?: CommentWithAuthor
   projectId?: string | null
   attachments?: Attachment[]
   isEditing?: boolean
@@ -33,6 +35,7 @@ interface CommentItemProps {
 
 function CommentItem({
   comment,
+  parentComment,
   projectId,
   attachments,
   isEditing = false,
@@ -51,6 +54,16 @@ function CommentItem({
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const { data: linkedSession } = useSessionByKombuseId(comment.kombuse_session_id)
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const handleEditBodyChange = useCallback(
+    (value: string) => onEditBodyChange?.(value),
+    [onEditBodyChange]
+  )
+  const { textareaProps: autocompleteProps, AutocompletePortal } = useTextareaAutocomplete({
+    value: editBody,
+    onValueChange: handleEditBodyChange,
+    textareaRef: editTextareaRef,
+  })
 
   const sessionUrl = linkedSession
     ? projectId
@@ -159,13 +172,26 @@ function CommentItem({
           </div>
         )}
       </div>
+      {parentComment && (
+        <div className="flex items-center gap-1 mt-1 mb-0.5 text-xs text-muted-foreground">
+          <Reply className="size-3" />
+          <span>
+            Replying to <span className="font-medium">{parentComment.author.name}</span>
+          </span>
+        </div>
+      )}
       {isEditing ? (
-        <Textarea
-          value={editBody}
-          onChange={(e) => onEditBodyChange?.(e.target.value)}
-          className="min-h-15 text-sm"
-          autoFocus
-        />
+        <>
+          <Textarea
+            ref={editTextareaRef}
+            value={editBody}
+            onChange={autocompleteProps.onChange}
+            onKeyDown={autocompleteProps.onKeyDown}
+            className="min-h-15 text-sm"
+            autoFocus
+          />
+          <AutocompletePortal />
+        </>
       ) : (
         <>
           <div className="text-sm">
