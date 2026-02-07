@@ -36,7 +36,7 @@ import type {
   AgentEvent,
   ClientMessage,
   ConversationContext,
-  Event,
+  EventWithActor,
   KombuseSessionId,
 } from '@kombuse/types'
 
@@ -479,7 +479,7 @@ export type AgentExecutionEvent =
  */
 interface AgentExecutionDependencies {
   getAgent: (agentId: string) => ReturnType<typeof agentService.getAgent>
-  processEvent: (event: Event) => ReturnType<typeof agentService.processEvent>
+  processEvent: (event: EventWithActor) => ReturnType<typeof agentService.processEvent>
   createBackend: () => AgentBackend
   generateSessionId: () => KombuseSessionId
   resolveProjectPath: () => string
@@ -511,7 +511,8 @@ function emitAgentEvent(
   agentId: string,
   invocationId: number,
   context: Record<string, unknown>,
-  additionalPayload?: Record<string, unknown>
+  additionalPayload?: Record<string, unknown>,
+  kombuseSessionId?: string
 ): void {
   const ticketId = context.ticket_id as number | undefined
   const projectId = context.project_id as string | undefined
@@ -526,6 +527,7 @@ function emitAgentEvent(
     project_id: projectId,
     actor_id: agentId,
     actor_type: 'agent',
+    kombuse_session_id: kombuseSessionId,
     payload: {
       invocation_id: invocationId,
       agent_id: agentId,
@@ -544,7 +546,7 @@ function emitAgentEvent(
  * - {{ ticket.title }}, {{ ticket.author.name }}, etc. for enriched context
  * - {{ project.name }}, {{ actor.name }}, etc.
  */
-function buildTriggerMessage(event: Event, systemPrompt?: string): string {
+function buildTriggerMessage(event: EventWithActor, systemPrompt?: string): string {
   const lines: string[] = []
 
   if (systemPrompt) {
@@ -605,7 +607,7 @@ function resolveProjectPathForProject(projectId: string | null): string | undefi
  * This ensures triggered agents have the same persistence, streaming, and permission handling as chat agents.
  */
 export async function processEventAndRunAgents(
-  event: Event,
+  event: EventWithActor,
   dependencies: AgentExecutionDependencies = defaultDependencies
 ): Promise<void> {
   console.log(
@@ -670,7 +672,9 @@ export async function processEventAndRunAgents(
       EVENT_TYPES.AGENT_STARTED,
       invocation.agent_id,
       invocation.id,
-      invocation.context
+      invocation.context,
+      undefined,
+      kombuseSessionId
     )
 
     // Build initial message from event with agent's prompt
@@ -693,7 +697,8 @@ export async function processEventAndRunAgents(
         invocation.agent_id,
         invocation.id,
         invocation.context,
-        { error: message ?? 'Agent invocation failed' }
+        { error: message ?? 'Agent invocation failed' },
+        kombuseSessionId
       )
       // Broadcast updated ticket agent status on failure
       if (ticketIdFromContext) {
@@ -748,7 +753,9 @@ export async function processEventAndRunAgents(
               EVENT_TYPES.AGENT_COMPLETED,
               invocation.agent_id,
               invocation.id,
-              invocation.context
+              invocation.context,
+              undefined,
+              kombuseSessionId
             )
           }
           wsHub.broadcastToTopic('*', {

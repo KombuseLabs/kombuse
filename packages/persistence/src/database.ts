@@ -390,6 +390,13 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_comments_session ON comments(kombuse_session_id) WHERE kombuse_session_id IS NOT NULL;
     `,
   },
+  {
+    name: '005_event_kombuse_session_id',
+    sql: `
+      ALTER TABLE events ADD COLUMN kombuse_session_id TEXT;
+      CREATE INDEX IF NOT EXISTS idx_events_session ON events(kombuse_session_id) WHERE kombuse_session_id IS NOT NULL;
+    `,
+  },
 ]
 
 /**

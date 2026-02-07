@@ -1,9 +1,9 @@
-import type { Event } from '@kombuse/types'
+import type { EventWithActor } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { EventItem } from './event-item'
 
 interface EventListProps {
-  events: Event[]
+  events: EventWithActor[]
   className?: string
   emptyMessage?: string
 }

@@ -22,7 +22,7 @@ import type {
   ProfileFilters,
   CreateProfileInput,
   UpdateProfileInput,
-  Event,
+  EventWithActor,
   EventFilters,
   Session,
   SessionFilters,
@@ -339,7 +339,7 @@ export const triggersApi = {
 }
 
 export const eventsApi = {
-  async list(filters?: EventFilters): Promise<Event[]> {
+  async list(filters?: EventFilters): Promise<EventWithActor[]> {
     const params = new URLSearchParams()
     if (filters?.event_type) params.set('event_type', filters.event_type)
     if (filters?.project_id) params.set('project_id', filters.project_id)
@@ -352,7 +352,7 @@ export const eventsApi = {
 
     const url = `${API_BASE}/events${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
-    return handleResponse<Event[]>(response)
+    return handleResponse<EventWithActor[]>(response)
   },
 }
 

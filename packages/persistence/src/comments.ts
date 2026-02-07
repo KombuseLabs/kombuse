@@ -252,6 +252,7 @@ export const commentsRepository = {
             comment_id: commentId,
             actor_id: payload.author_id,
             actor_type: actorType,
+            kombuse_session_id: payload.kombuse_session_id,
             payload: {
               mention_type: 'profile',
               mentioned_profile_id: profile.id,
@@ -279,6 +280,7 @@ export const commentsRepository = {
             comment_id: commentId,
             actor_id: payload.author_id,
             actor_type: actorType,
+            kombuse_session_id: payload.kombuse_session_id,
             payload: {
               mention_type: 'profile',
               mentioned_profile_id: profile.id,
@@ -312,6 +314,7 @@ export const commentsRepository = {
           comment_id: commentId,
           actor_id: payload.author_id,
           actor_type: actorType,
+          kombuse_session_id: payload.kombuse_session_id,
           payload: {
             mention_type: 'ticket',
             mentioned_ticket_id: mentionedTicketId,
@@ -328,6 +331,7 @@ export const commentsRepository = {
         comment_id: commentId,
         actor_id: payload.author_id,
         actor_type: actorType,
+        kombuse_session_id: payload.kombuse_session_id,
         payload: {
           comment_id: commentId,
           ticket_id: payload.ticket_id,
@@ -446,6 +450,7 @@ export const commentsRepository = {
             comment_id: id,
             actor_id: existingRow.author_id,
             actor_type: editActorType,
+            kombuse_session_id: existingRow.kombuse_session_id ?? undefined,
             payload: { comment_id: id },
           })
         }

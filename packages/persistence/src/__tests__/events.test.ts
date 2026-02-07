@@ -69,6 +69,56 @@ describe('eventsRepository', () => {
       expect(event.actor_type).toBe('user')
     })
 
+    it('should resolve actor profile when actor_id matches a profile', () => {
+      const event = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: TEST_USER_ID,
+        actor_type: 'user',
+        payload: {},
+      })
+
+      expect(event.actor).not.toBeNull()
+      expect(event.actor?.name).toBe('Test User')
+      expect(event.actor?.type).toBe('user')
+      expect(event.actor?.id).toBe(TEST_USER_ID)
+    })
+
+    it('should return null actor for system events with no actor_id', () => {
+      const event = eventsRepository.create({
+        event_type: 'system.startup',
+        actor_type: 'system',
+        payload: {},
+      })
+
+      expect(event.actor).toBeNull()
+      expect(event.actor_id).toBeNull()
+    })
+
+    it('should store and return kombuse_session_id', () => {
+      const sessionId = 'trigger-test-session-123'
+      const event = eventsRepository.create({
+        event_type: 'agent.started',
+        actor_id: TEST_AGENT_ID,
+        actor_type: 'agent',
+        kombuse_session_id: sessionId,
+        payload: {},
+      })
+
+      expect(event.kombuse_session_id).toBe(sessionId)
+    })
+
+    it('should default kombuse_session_id to null', () => {
+      const event = eventsRepository.create({
+        event_type: 'ticket.created',
+        actor_type: 'user',
+        payload: {},
+      })
+
+      expect(event.kombuse_session_id).toBeNull()
+    })
+
     it('should serialize payload to JSON string', () => {
       const payload = { key: 'value', nested: { foo: 'bar' } }
       const event = eventsRepository.create({
@@ -131,6 +181,21 @@ describe('eventsRepository', () => {
       expect(event).not.toBeNull()
       expect(event?.id).toBe(created.id)
       expect(event?.event_type).toBe('ticket.updated')
+    })
+
+    it('should include actor profile in get result', () => {
+      const created = eventsRepository.create({
+        event_type: 'ticket.updated',
+        ticket_id: testTicketId,
+        actor_type: 'user',
+        actor_id: TEST_USER_ID,
+        payload: {},
+      })
+
+      const event = eventsRepository.get(created.id)
+
+      expect(event?.actor).not.toBeNull()
+      expect(event?.actor?.name).toBe('Test User')
     })
   })
 

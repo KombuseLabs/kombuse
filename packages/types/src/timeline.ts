@@ -1,4 +1,4 @@
-import type { Event } from './events'
+import type { EventWithActor } from './events'
 import type { CommentWithAuthor } from './comments'
 
 /**
@@ -12,7 +12,7 @@ export type TimelineItemType = 'comment' | 'event'
 export interface TimelineItem {
   type: TimelineItemType
   timestamp: string
-  data: CommentWithAuthor | Event
+  data: CommentWithAuthor | EventWithActor
 }
 
 /**

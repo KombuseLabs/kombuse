@@ -1,4 +1,4 @@
-import type { Event } from '@kombuse/types'
+import type { EventWithActor } from '@kombuse/types'
 import { wsHub } from './hub'
 
 /**
@@ -7,7 +7,7 @@ import { wsHub } from './hub'
  *
  * The event payload is parsed from JSON string if needed.
  */
-export function broadcastEvent(event: Event): void {
+export function broadcastEvent(event: EventWithActor): void {
   const payload = {
     ...event,
     payload:

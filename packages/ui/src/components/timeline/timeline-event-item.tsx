@@ -1,5 +1,9 @@
-import type { Event } from '@kombuse/types'
+import type { EventWithActor } from '@kombuse/types'
+import { parseSessionId } from '@kombuse/types'
+import { Link } from 'react-router-dom'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
 import { cn } from '../../lib/utils'
+import { useSessionByKombuseId } from '../../hooks/use-sessions'
 import {
   Tag,
   Plus,
@@ -14,11 +18,14 @@ import {
   XCircle,
   MessageSquare,
   AtSign,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 
 interface TimelineEventItemProps {
-  event: Event
+  event: EventWithActor
+  projectId?: string | null
+  onSessionClick?: (sessionId: string) => void
   className?: string
 }
 
@@ -39,14 +46,26 @@ const eventConfig: Record<string, { icon: LucideIcon; label: string }> = {
   'agent.failed': { icon: XCircle, label: 'failed to process' },
 }
 
-function TimelineEventItem({ event, className }: TimelineEventItemProps) {
+function TimelineEventItem({ event, projectId, onSessionClick, className }: TimelineEventItemProps) {
   const config = eventConfig[event.event_type] || {
     icon: Plus,
     label: event.event_type,
   }
   const Icon = config.icon
 
-  const actorLabel = event.actor_id || event.actor_type
+  const actorLabel = event.actor?.name || event.actor_id || event.actor_type
+
+  const { data: linkedSession } = useSessionByKombuseId(event.kombuse_session_id)
+
+  const sessionUrl = linkedSession
+    ? projectId
+      ? `/projects/${projectId}/chats/${linkedSession.id}`
+      : `/chats/${linkedSession.id}`
+    : null
+
+  const sessionOrigin = event.kombuse_session_id
+    ? parseSessionId(event.kombuse_session_id)?.origin ?? null
+    : null
 
   return (
     <div
@@ -58,6 +77,37 @@ function TimelineEventItem({ event, className }: TimelineEventItemProps) {
       <Icon className="size-4 shrink-0" />
       <span>
         <span className="font-medium text-foreground">{actorLabel}</span>
+        {sessionUrl && linkedSession && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {onSessionClick ? (
+                <button
+                  type="button"
+                  onClick={() => onSessionClick(linkedSession.id)}
+                  className="inline-flex ml-1 text-muted-foreground hover:text-foreground transition-colors align-middle"
+                >
+                  {sessionOrigin === 'trigger' ? (
+                    <Zap className="size-3" />
+                  ) : (
+                    <MessageSquare className="size-3" />
+                  )}
+                </button>
+              ) : (
+                <Link
+                  to={sessionUrl}
+                  className="inline-flex ml-1 text-muted-foreground hover:text-foreground transition-colors align-middle"
+                >
+                  {sessionOrigin === 'trigger' ? (
+                    <Zap className="size-3" />
+                  ) : (
+                    <MessageSquare className="size-3" />
+                  )}
+                </Link>
+              )}
+            </TooltipTrigger>
+            <TooltipContent>View session</TooltipContent>
+          </Tooltip>
+        )}
         {' '}{config.label}
       </span>
       <span className="text-xs">

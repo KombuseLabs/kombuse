@@ -1,4 +1,4 @@
-import type { TimelineItem, CommentWithAuthor, Event, Attachment } from '@kombuse/types'
+import type { TimelineItem, CommentWithAuthor, EventWithActor, Attachment } from '@kombuse/types'
 import { CommentItem } from '../comments/comment-item'
 import { TimelineEventItem } from './timeline-event-item'
 import { cn } from '../../lib/utils'
@@ -15,6 +15,7 @@ interface ActivityTimelineProps {
   onCancelEditComment?: () => void
   onDeleteComment?: (id: number) => void
   onReplyComment?: (comment: CommentWithAuthor) => void
+  onSessionClick?: (sessionId: string) => void
   isUpdatingComment?: boolean
   isDeletingComment?: boolean
   className?: string
@@ -32,6 +33,7 @@ function ActivityTimeline({
   onCancelEditComment,
   onDeleteComment,
   onReplyComment,
+  onSessionClick,
   isUpdatingComment = false,
   isDeletingComment = false,
   className,
@@ -61,16 +63,19 @@ function ActivityTimeline({
               onCancelEdit={onCancelEditComment}
               onDelete={() => onDeleteComment?.(comment.id)}
               onReply={() => onReplyComment?.(comment)}
+              onSessionClick={onSessionClick}
               isUpdating={isUpdatingComment}
               isDeleting={isDeletingComment}
             />
           )
         } else {
-          const event = item.data as Event
+          const event = item.data as EventWithActor
           return (
             <TimelineEventItem
               key={`event-${event.id}`}
               event={event}
+              projectId={projectId}
+              onSessionClick={onSessionClick}
             />
           )
         }

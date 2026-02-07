@@ -1,4 +1,4 @@
-import type { Event, ActorType } from '@kombuse/types'
+import type { EventWithActor, ActorType } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Badge } from '../../base/badge'
 import { Link } from 'react-router-dom'
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 
 interface EventItemProps {
-  event: Event
+  event: EventWithActor
   className?: string
 }
 
@@ -159,7 +159,7 @@ function EventItem({ event, className }: EventItemProps) {
 
           <Badge variant="outline" className="text-xs gap-1">
             <ActorIcon className="size-3" />
-            {event.actor_id || actorConfig.label}
+            {event.actor?.name || event.actor_id || actorConfig.label}
           </Badge>
 
           {event.ticket_id && event.project_id && (

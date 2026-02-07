@@ -1,5 +1,6 @@
 import type {
   Event,
+  EventWithActor,
   EventFilters,
   CreateEventInput,
   EventSubscription,
@@ -12,10 +13,10 @@ import { eventsRepository, eventSubscriptionsRepository } from '@kombuse/persist
  */
 export interface IEventService {
   // Event methods
-  list(filters?: EventFilters): Event[]
-  get(id: number): Event | null
-  getByTicket(ticketId: number): Event[]
-  create(input: CreateEventInput): Event
+  list(filters?: EventFilters): EventWithActor[]
+  get(id: number): EventWithActor | null
+  getByTicket(ticketId: number): EventWithActor[]
+  create(input: CreateEventInput): EventWithActor
 
   // Subscription methods
   listSubscriptions(subscriberId: string): EventSubscription[]
@@ -31,19 +32,19 @@ export interface IEventService {
  */
 export class EventService implements IEventService {
   // Event methods
-  list(filters?: EventFilters): Event[] {
+  list(filters?: EventFilters): EventWithActor[] {
     return eventsRepository.list(filters)
   }
 
-  get(id: number): Event | null {
+  get(id: number): EventWithActor | null {
     return eventsRepository.get(id)
   }
 
-  getByTicket(ticketId: number): Event[] {
+  getByTicket(ticketId: number): EventWithActor[] {
     return eventsRepository.getByTicket(ticketId)
   }
 
-  create(input: CreateEventInput): Event {
+  create(input: CreateEventInput): EventWithActor {
     return eventsRepository.create(input)
   }
 

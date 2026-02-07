@@ -1,3 +1,5 @@
+import type { Profile } from './profiles'
+
 /**
  * Actor type for events
  */
@@ -14,8 +16,16 @@ export interface Event {
   comment_id: number | null
   actor_id: string | null
   actor_type: ActorType
+  kombuse_session_id: string | null
   payload: string // JSON string
   created_at: string
+}
+
+/**
+ * Event with resolved actor profile
+ */
+export interface EventWithActor extends Event {
+  actor: Profile | null
 }
 
 /**
@@ -35,6 +45,7 @@ export interface CreateEventInput {
   comment_id?: number
   actor_id?: string
   actor_type: ActorType
+  kombuse_session_id?: string
   payload: Record<string, unknown>
 }
 
