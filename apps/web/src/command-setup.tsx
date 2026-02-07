@@ -1,12 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { useQueryClient } from "@tanstack/react-query";
 import { createCommandRegistry } from "@kombuse/core";
 import { CommandProvider } from "@kombuse/ui/providers";
 import { CommandPalette } from "@kombuse/ui/components";
 import { useAppContext } from "@kombuse/ui/hooks";
-import { ticketsApi } from "@kombuse/ui/lib/api";
 import type { CommandContext } from "@kombuse/types";
 
 interface CommandSetupProps {
@@ -17,7 +15,6 @@ export function CommandSetup({ children }: CommandSetupProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const navigate = useNavigate();
   const { setTheme, resolvedTheme } = useTheme();
-  const queryClient = useQueryClient();
   const { currentTicket, currentSession, isGenerating, view, currentProjectId } =
     useAppContext();
 
@@ -63,20 +60,15 @@ export function CommandSetup({ children }: CommandSetupProps) {
         title: "Create New Ticket",
         category: "Tickets",
         keybinding: "mod+shift+t",
-        handler: async () => {
-          const date = new Date().toISOString().split("T")[0];
-          await ticketsApi.create({
-            title: `New ticket ${date}`,
-            project_id: "1", // TODO: Get from current route context
-            author_id: "user-1", // TODO: Get from auth context
-          });
-          queryClient.invalidateQueries({ queryKey: ["tickets"] });
+        when: (ctx) => ctx.currentProjectId != null,
+        handler: () => {
+          navigate(`/projects/${currentProjectId}/tickets/new`);
         },
       }),
     ];
 
     return () => unregisterFns.forEach((fn) => fn());
-  }, [registry, setTheme, resolvedTheme, queryClient]);
+  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId]);
 
   const context: CommandContext = useMemo(
     () => ({
