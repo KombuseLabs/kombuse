@@ -30,7 +30,12 @@ function Sidebar({
           className
         )}
       >
-        <div className="flex h-14 items-center justify-between border-b px-3">
+        <div
+          className={cn(
+            "flex h-14 items-center border-b",
+            isCollapsed ? "justify-center" : "justify-between px-3"
+          )}
+        >
           {!isCollapsed && (
             <div className="flex-1 truncate text-sm font-medium">{header}</div>
           )}
@@ -48,7 +53,7 @@ function Sidebar({
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-1 p-2">{children}</nav>
+        <nav className="flex-1 space-y-1 py-2 px-1">{children}</nav>
       </aside>
     </TooltipProvider>
   );
