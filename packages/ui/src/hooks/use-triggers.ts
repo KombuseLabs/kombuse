@@ -68,3 +68,11 @@ export function useToggleTrigger() {
     },
   })
 }
+
+export function useTriggersByLabel(labelId: number) {
+  return useQuery({
+    queryKey: ['triggers', 'label', labelId],
+    queryFn: () => triggersApi.listByLabel(labelId),
+    enabled: labelId > 0,
+  })
+}

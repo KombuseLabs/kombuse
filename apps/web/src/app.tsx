@@ -10,6 +10,7 @@ import { Projects } from "./routes/projects";
 import { Tickets } from "./routes/tickets";
 import { Agents } from "./routes/agents";
 import { Events } from "./routes/events";
+import { Labels } from "./routes/labels";
 import { ProjectLayout } from "./layouts/project-layout";
 
 const queryClient = new QueryClient({
@@ -47,6 +48,8 @@ function AppContent() {
           <Route path="chats/:sessionId" element={<Chats />} />
           <Route path="agents" element={<Agents />} />
           <Route path="agents/:agentId" element={<Agents />} />
+          <Route path="labels" element={<Labels />} />
+          <Route path="labels/:labelId" element={<Labels />} />
           <Route path="events" element={<Events />} />
         </Route>
 

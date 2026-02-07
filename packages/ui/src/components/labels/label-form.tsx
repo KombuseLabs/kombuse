@@ -5,6 +5,7 @@ import type { Label } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
+import { Textarea } from '../../base/textarea'
 import { Check, Pipette } from 'lucide-react'
 
 const PRESET_COLORS = [
@@ -46,13 +47,14 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
 
 interface LabelFormProps {
   label?: Label
-  onSubmit: (data: { name: string; color: string }) => void | Promise<void>
+  onSubmit: (data: { name: string; color: string; description?: string }) => void | Promise<void>
   onCancel: () => void
   isLoading?: boolean
 }
 
 function LabelForm({ label, onSubmit, onCancel, isLoading }: LabelFormProps) {
   const [name, setName] = useState(label?.name ?? '')
+  const [description, setDescription] = useState(label?.description ?? '')
   const [color, setColor] = useState(label?.color ?? DEFAULT_COLOR)
   const [hexInput, setHexInput] = useState(label?.color ?? DEFAULT_COLOR)
   const nativePickerRef = useRef<HTMLInputElement>(null)
@@ -86,7 +88,7 @@ function LabelForm({ label, onSubmit, onCancel, isLoading }: LabelFormProps) {
     e.preventDefault()
     e.stopPropagation()
     if (name.trim() && isHexValid) {
-      onSubmit({ name: name.trim(), color })
+      onSubmit({ name: name.trim(), color, description: description.trim() || undefined })
     }
   }
 
@@ -99,6 +101,14 @@ function LabelForm({ label, onSubmit, onCancel, isLoading }: LabelFormProps) {
           onChange={(e) => setName(e.target.value)}
           autoFocus
           className="h-8 text-sm"
+        />
+      </div>
+      <div>
+        <Textarea
+          placeholder="Description (optional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="h-16 text-sm resize-none"
         />
       </div>
       <div className="space-y-2">

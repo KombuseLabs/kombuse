@@ -1,4 +1,8 @@
 export { LabelBadge, getContrastColor } from './label-badge'
+export { LabelCard } from './label-card'
+export type { LabelCardProps } from './label-card'
+export { LabelDetail } from './label-detail'
+export type { LabelDetailProps } from './label-detail'
 export { LabelForm, PRESET_COLORS } from './label-form'
 export { LabelPicker } from './label-picker'
 export { LabelSelector } from './label-selector'

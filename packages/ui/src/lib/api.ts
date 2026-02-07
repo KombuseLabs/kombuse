@@ -336,6 +336,11 @@ export const triggersApi = {
     })
     await handleEmptyResponse(response)
   },
+
+  async listByLabel(labelId: number): Promise<AgentTrigger[]> {
+    const response = await fetch(`${API_BASE}/labels/${labelId}/triggers`)
+    return handleResponse<AgentTrigger[]>(response)
+  },
 }
 
 export const eventsApi = {

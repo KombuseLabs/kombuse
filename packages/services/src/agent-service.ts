@@ -41,6 +41,7 @@ export interface IAgentService {
 
   // Trigger CRUD
   listTriggers(agentId: string): AgentTrigger[]
+  listTriggersByLabelId(labelId: number): AgentTrigger[]
   getTrigger(id: number): AgentTrigger | null
   createTrigger(input: CreateAgentTriggerInput): AgentTrigger
   updateTrigger(id: number, input: UpdateAgentTriggerInput): AgentTrigger
@@ -150,6 +151,10 @@ export class AgentService implements IAgentService {
 
   listTriggers(agentId: string): AgentTrigger[] {
     return agentTriggersRepository.listByAgent(agentId)
+  }
+
+  listTriggersByLabelId(labelId: number): AgentTrigger[] {
+    return agentTriggersRepository.listByLabelId(labelId)
   }
 
   getTrigger(id: number): AgentTrigger | null {

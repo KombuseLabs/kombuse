@@ -259,6 +259,21 @@ export const agentTriggersRepository = {
     const result = db.prepare('DELETE FROM agent_triggers WHERE id = ?').run(id)
     return result.changes > 0
   },
+
+  /**
+   * List triggers whose conditions contain a matching label_id
+   */
+  listByLabelId(labelId: number): AgentTrigger[] {
+    const db = getDatabase()
+    const rows = db
+      .prepare(
+        `SELECT * FROM agent_triggers
+         WHERE json_extract(conditions, '$.label_id') = ?
+         ORDER BY created_at DESC`
+      )
+      .all(labelId) as RawAgentTrigger[]
+    return rows.map(mapAgentTrigger)
+  },
 }
 
 /**

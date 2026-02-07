@@ -104,6 +104,25 @@ const { data: tickets } = useTicketSearch('fix', { enabled: true })
 ```
 
 ```typescript
+import { useTextareaAutocomplete } from '@kombuse/ui/hooks'
+
+// Add @mention and #ticket autocomplete to any controlled textarea
+const textareaRef = useRef<HTMLTextAreaElement>(null)
+const { textareaProps, AutocompletePortal } = useTextareaAutocomplete({
+  value,
+  onValueChange: setValue,
+  textareaRef,
+})
+
+<Textarea ref={textareaRef} value={value} {...textareaProps} />
+<AutocompletePortal />
+```
+
+- `textareaProps`: `{ onChange, onKeyDown }` — spread onto the Textarea
+- `AutocompletePortal`: Component that renders the autocomplete popovers (profile and ticket)
+- Handles mention context detection, debounced search, keyboard navigation (Arrow keys, Enter/Tab, Escape), and mention insertion
+
+```typescript
 import { useSessionByKombuseId } from '@kombuse/ui/hooks'
 
 // Resolve a kombuse session ID (e.g. "trigger-abc123") to its Session object
@@ -178,10 +197,31 @@ Props:
 ### Label Components
 
 ```typescript
-import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/components'
+import {
+  LabelBadge, LabelCard, LabelDetail, LabelPicker, LabelSelector, LabelForm
+} from '@kombuse/ui/components'
 
 // Display a colored label badge
 <LabelBadge label={label} onRemove={() => handleRemove(label.id)} />
+
+// Label list item card (used in label management view)
+<LabelCard
+  label={label}
+  isSelected={isSelected}
+  onClick={() => handleClick(label)}
+/>
+
+// Label detail/edit panel with triggers section
+<LabelDetail
+  label={label}
+  projectId={projectId}
+  onClose={() => ...}
+  onSave={(data) => ...}           // { name?, color?, description? }
+  onDelete={() => ...}
+  onNavigateToAgent={(agentId) => ...}
+  isSaving={false}
+  isDeleting={false}
+/>
 
 // Single-select dropdown for picking one label (used in trigger conditions)
 <LabelPicker
@@ -203,10 +243,10 @@ import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/c
   onLabelDelete={(id) => ...}       // Optional: enables delete button
 />
 
-// Inline form for creating/editing labels
+// Inline form for creating/editing labels (now includes description field)
 <LabelForm
   label={existingLabel}  // Optional: for edit mode
-  onSubmit={(data) => ...}
+  onSubmit={(data) => ...}  // { name, color, description? }
   onCancel={() => ...}
 />
 ```
@@ -242,7 +282,7 @@ import { Markdown } from '@kombuse/ui/components'
 // Basic markdown rendering
 <Markdown>{'# Hello **world**'}</Markdown>
 
-// With ticket link support (#22 → clickable link to /projects/:id/tickets/22)
+// With ticket link support (#22 → rich inline chip with title and status)
 <Markdown projectId="my-project">{'See #22 for details'}</Markdown>
 
 // @mentions are automatically styled (e.g., @AgentName renders as highlighted text)
@@ -252,7 +292,23 @@ import { Markdown } from '@kombuse/ui/components'
 Props:
 - `children`: Markdown string to render
 - `className`: Optional class name
-- `projectId`: Optional project ID — when provided, `#<number>` patterns in text are rendered as SPA-navigable links to the corresponding ticket
+- `projectId`: Optional project ID — when provided, `#<number>` patterns render as rich inline chips showing the ticket ID, title, and a status dot (fetched automatically via React Query)
+
+### TicketMentionChip
+
+Used internally by `Markdown` to render rich ticket references. Can also be used standalone:
+
+```typescript
+import { TicketMentionChip } from '@kombuse/ui/components'
+
+// Renders an inline chip: #42 · Ticket Title [status dot]
+<TicketMentionChip ticketId={42} href="/projects/my-project/tickets/42" />
+```
+
+Props:
+- `ticketId`: Ticket ID to fetch and display
+- `href`: Navigation URL for the chip link
+- Falls back to a plain `#ID` link while loading or on error
 
 ### Ticket Components
 
@@ -485,6 +541,13 @@ updateLabel.mutate({ id: 1, input: { name: 'Bug', color: '#ff0000' } })
 
 const deleteLabel = useDeleteLabel('project-id')
 deleteLabel.mutate(labelId)
+```
+
+```typescript
+import { useTriggersByLabel } from '@kombuse/ui/hooks'
+
+// Fetch triggers that reference a label (via conditions.label_id)
+const { data: triggers } = useTriggersByLabel(labelId)
 ```
 
 ### Utilities

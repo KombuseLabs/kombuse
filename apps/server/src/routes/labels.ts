@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { labelService } from '@kombuse/services'
+import { labelService, agentService } from '@kombuse/services'
 import {
   createLabelSchema,
   updateLabelSchema,
@@ -146,5 +146,22 @@ export async function labelRoutes(fastify: FastifyInstance) {
     }
 
     return labelService.getTicketLabels(ticketId)
+  })
+
+  // Get triggers that reference a label
+  fastify.get<{
+    Params: { labelId: string }
+  }>('/labels/:labelId/triggers', async (request, reply) => {
+    const labelId = parseInt(request.params.labelId, 10)
+    if (isNaN(labelId)) {
+      return reply.status(400).send({ error: 'Invalid label ID' })
+    }
+
+    const label = labelService.get(labelId)
+    if (!label) {
+      return reply.status(404).send({ error: 'Label not found' })
+    }
+
+    return agentService.listTriggersByLabelId(labelId)
   })
 }
