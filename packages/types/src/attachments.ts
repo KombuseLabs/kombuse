@@ -1,4 +1,14 @@
 /**
+ * Lightweight attachment metadata (excludes internal fields like storage_path)
+ */
+export interface AttachmentMeta {
+  id: number
+  filename: string
+  mime_type: string
+  size_bytes: number
+}
+
+/**
  * Core attachment entity
  */
 export interface Attachment {

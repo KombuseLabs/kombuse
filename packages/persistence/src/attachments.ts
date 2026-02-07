@@ -104,6 +104,32 @@ export const attachmentsRepository = {
   },
 
   /**
+   * Get all attachments for a ticket's comments, grouped by comment_id.
+   * Fetches in a single query to avoid N+1.
+   */
+  getByTicketComments(ticketId: number): Record<number, Attachment[]> {
+    const db = getDatabase()
+    const rows = db
+      .prepare(
+        `SELECT a.* FROM attachments a
+         JOIN comments c ON a.comment_id = c.id
+         WHERE c.ticket_id = ?
+         ORDER BY a.created_at ASC`
+      )
+      .all(ticketId) as Attachment[]
+
+    const grouped: Record<number, Attachment[]> = {}
+    for (const row of rows) {
+      const commentId = row.comment_id!
+      if (!grouped[commentId]) {
+        grouped[commentId] = []
+      }
+      grouped[commentId].push(row)
+    }
+    return grouped
+  },
+
+  /**
    * Delete an attachment record
    */
   delete(id: number): boolean {

@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { ticketsRepository, commentsRepository, agentInvocationsRepository } from '@kombuse/persistence'
-import type { Ticket, CommentWithAuthor } from '@kombuse/types'
+import { ticketsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository } from '@kombuse/persistence'
+import type { Ticket, CommentWithAuthorAndAttachments } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import { z } from 'zod'
 
@@ -9,7 +9,7 @@ import { z } from 'zod'
  */
 interface TicketWithComments {
   ticket: Ticket
-  comments: CommentWithAuthor[]
+  comments: CommentWithAuthorAndAttachments[]
 }
 
 /**
@@ -21,7 +21,7 @@ export function registerTicketTools(server: McpServer): void {
     'get_ticket',
     {
       description:
-        'Get a ticket by ID including all its comments. Returns the ticket details and an array of comments in chronological order.',
+        'Get a ticket by ID including all its comments. Returns the ticket details and an array of comments in chronological order. Each comment includes attachment metadata (filename, mime_type, size_bytes) if any files are attached.',
       inputSchema: {
         ticket_id: z
           .number()
@@ -46,10 +46,21 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       const comments = commentsRepository.getByTicket(ticket_id)
+      const attachmentsByComment = attachmentsRepository.getByTicketComments(ticket_id)
+
+      const commentsWithAttachments: CommentWithAuthorAndAttachments[] = comments.map((comment) => ({
+        ...comment,
+        attachments: (attachmentsByComment[comment.id] ?? []).map((a) => ({
+          id: a.id,
+          filename: a.filename,
+          mime_type: a.mime_type,
+          size_bytes: a.size_bytes,
+        })),
+      }))
 
       const result: TicketWithComments = {
         ticket,
-        comments,
+        comments: commentsWithAttachments,
       }
 
       return {

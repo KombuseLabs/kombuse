@@ -1,4 +1,5 @@
 import type { Profile } from './profiles'
+import type { AttachmentMeta } from './attachments'
 
 /**
  * Core comment entity
@@ -23,6 +24,13 @@ export interface Comment {
  */
 export interface CommentWithAuthor extends Comment {
   author: Profile
+}
+
+/**
+ * Comment with author profile and attachment metadata
+ */
+export interface CommentWithAuthorAndAttachments extends CommentWithAuthor {
+  attachments: AttachmentMeta[]
 }
 
 /**
