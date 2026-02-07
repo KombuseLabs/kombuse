@@ -14,9 +14,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
 } from "@kombuse/ui/base";
-import { TicketList, TicketDetail, ChatInput, ActivityTimeline } from "@kombuse/ui/components";
+import { TicketList, TicketDetail, ChatInput, ActivityTimeline, Chat } from "@kombuse/ui/components";
 import type { ReplyTarget } from "@kombuse/ui/components";
+import { ChatProvider } from "@kombuse/ui/providers";
 import {
   useTickets,
   useTicket,
@@ -33,6 +37,8 @@ import {
 import { LabelBadge } from "@kombuse/ui/components";
 import { Plus, X, Save } from "lucide-react";
 import type { Ticket, TicketStatus, CommentWithAuthor } from "@kombuse/types";
+
+const TICKETS_PANEL_LAYOUT_KEY = "tickets-panel-layout";
 
 export function Tickets() {
   const { projectId, ticketId } = useParams<{
@@ -130,11 +136,31 @@ export function Tickets() {
   // Reply state
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
 
+  // Chat panel state — session ID to display inline
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+
   // WebSocket for sending agent.invoke messages
   const { send: wsSend } = useWebSocket({ topics: [] });
 
   // Determine if we're in create mode
   const isCreating = ticketId === "new";
+
+  // Resizable panel layout persistence
+  const [defaultLayout] = useState<Record<string, number> | undefined>(() => {
+    const stored = localStorage.getItem(TICKETS_PANEL_LAYOUT_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  });
+
+  const handleLayoutChanged = useCallback((layout: Record<string, number>) => {
+    localStorage.setItem(TICKETS_PANEL_LAYOUT_KEY, JSON.stringify(layout));
+  }, []);
 
   // Sync project ID to context
   useEffect(() => {
@@ -146,6 +172,7 @@ export function Tickets() {
   useEffect(() => {
     setCurrentTicket(selectedTicket ?? null);
     setReplyTarget(null);
+    setChatSessionId(null);
   }, [selectedTicket, setCurrentTicket]);
 
   const handleReplyToComment = useCallback((comment: CommentWithAuthor) => {
@@ -266,6 +293,30 @@ export function Tickets() {
     updateSearchParams({ labels: nextNames?.length ? nextNames.join(",") : null });
   };
 
+  const ticketListContent = (
+    <>
+      {isLoading && (
+        <div className="text-center py-8 text-muted-foreground">
+          Loading tickets...
+        </div>
+      )}
+
+      {error && (
+        <div className="text-center py-8 text-destructive">
+          Error: {error.message}
+        </div>
+      )}
+
+      {!isLoading && !error && tickets && (
+        <TicketList
+          tickets={tickets}
+          selectedTicketId={ticketId ? Number(ticketId) : undefined}
+          onTicketClick={handleTicketClick}
+        />
+      )}
+    </>
+  );
+
   if (!projectId) {
     return (
       <main className="flex flex-col items-center justify-center p-8">
@@ -354,161 +405,187 @@ export function Tickets() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Ticket List */}
-        <div
-          className={`${
-            ticketId ? "w-1/2 border-r" : "w-full"
-          } overflow-y-auto p-6`}
-        >
-          {isLoading && (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading tickets...
-            </div>
-          )}
+        {ticketId ? (
+          <ResizablePanelGroup
+            orientation="horizontal"
+            defaultLayout={defaultLayout}
+            onLayoutChanged={handleLayoutChanged}
+          >
+            <ResizablePanel id="list" defaultSize={50} minSize={25}>
+              <div className="overflow-y-auto p-6 h-full">
+                {ticketListContent}
+              </div>
+            </ResizablePanel>
 
-          {error && (
-            <div className="text-center py-8 text-destructive">
-              Error: {error.message}
-            </div>
-          )}
+            <ResizableHandle withHandle />
 
-          {!isLoading && !error && tickets && (
-            <TicketList
-              tickets={tickets}
-              selectedTicketId={ticketId ? Number(ticketId) : undefined}
-              onTicketClick={handleTicketClick}
-            />
-          )}
-        </div>
-
-        {/* Detail Panel - Create or View */}
-        {ticketId && (
-          <div className="w-1/2 flex flex-col">
-            {isCreating ? (
-              // Create Form
-              <Card className="h-full flex flex-col">
-                <CardHeader className="pb-4 shrink-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="size-12 rounded-lg bg-muted flex items-center justify-center">
-                        <Plus className="size-6" />
+            <ResizablePanel id="detail" defaultSize={50} minSize={25}>
+              <div className="flex flex-col h-full">
+                {isCreating ? (
+                  // Create Form
+                  <Card className="h-full flex flex-col">
+                    <CardHeader className="pb-4 shrink-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-12 rounded-lg bg-muted flex items-center justify-center">
+                            <Plus className="size-6" />
+                          </div>
+                          <CardTitle className="text-xl">New Ticket</CardTitle>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={handleCloseDetail}>
+                          <X className="size-4" />
+                        </Button>
                       </div>
-                      <CardTitle className="text-xl">New Ticket</CardTitle>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={handleCloseDetail}>
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
+                    </CardHeader>
 
-                <CardContent className="flex-1 overflow-y-auto space-y-6">
-                  {/* Title */}
-                  <div className="space-y-2">
-                    <Label htmlFor="new-ticket-title">Title *</Label>
-                    <Input
-                      id="new-ticket-title"
-                      value={newTicketTitle}
-                      onChange={(e) => setNewTicketTitle(e.target.value)}
-                      placeholder="Ticket title"
-                      autoFocus
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="new-ticket-body">Description</Label>
-                    <Textarea
-                      id="new-ticket-body"
-                      value={newTicketBody}
-                      onChange={(e) => setNewTicketBody(e.target.value)}
-                      placeholder="Describe the ticket..."
-                      className="min-h-32"
-                    />
-                  </div>
-
-                  {/* Create Button */}
-                  <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button variant="outline" onClick={handleCloseDetail}>
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleCreateTicket}
-                      disabled={createTicket.isPending || !newTicketTitle.trim()}
-                    >
-                      <Save className="size-4 mr-2" />
-                      {createTicket.isPending ? "Creating..." : "Create Ticket"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              // View existing ticket
-              <>
-                {isLoadingTicket && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Loading ticket...
-                  </div>
-                )}
-
-                {selectedTicket && (
-                  <>
-                    {/* Scrollable area: ticket detail + comments */}
-                    <div className="flex-1 overflow-y-auto p-4">
-                      <TicketDetail
-                        onClose={handleCloseDetail}
-                        isEditable
-                      />
-
-                      {/* Activity Timeline */}
-                      <div className="mt-6">
-                        <h3 className="text-sm font-medium mb-4">
-                          Activity {timeline?.total ? `(${timeline.total})` : ""}
-                        </h3>
-
-                        <ActivityTimeline
-                          items={timeline?.items ?? []}
-                          projectId={projectId}
-                          attachmentsByCommentId={attachmentsByCommentId}
-                          editingCommentId={editingCommentId}
-                          editBody={editBody}
-                          onEditBodyChange={setEditBody}
-                          onStartEditComment={(comment) => {
-                            setEditingCommentId(comment.id);
-                            setEditBody(comment.body);
-                          }}
-                          onSaveEditComment={async () => {
-                            if (editingCommentId) {
-                              await updateComment(editingCommentId, editBody);
-                              setEditingCommentId(null);
-                              setEditBody("");
-                            }
-                          }}
-                          onCancelEditComment={() => {
-                            setEditingCommentId(null);
-                            setEditBody("");
-                          }}
-                          onDeleteComment={deleteComment}
-                          onReplyComment={handleReplyToComment}
-                          isUpdatingComment={isUpdatingComment}
-                          isDeletingComment={isDeletingComment}
+                    <CardContent className="flex-1 overflow-y-auto space-y-6">
+                      {/* Title */}
+                      <div className="space-y-2">
+                        <Label htmlFor="new-ticket-title">Title *</Label>
+                        <Input
+                          id="new-ticket-title"
+                          value={newTicketTitle}
+                          onChange={(e) => setNewTicketTitle(e.target.value)}
+                          placeholder="Ticket title"
+                          autoFocus
                         />
                       </div>
-                    </div>
 
-                    {/* Fixed ChatInput at bottom */}
-                    <div className="border-t p-4">
-                      <ChatInput
-                        onSubmit={handleAddComment}
-                        isLoading={isCreatingComment}
-                        placeholder="Add a comment..."
-                        replyTarget={replyTarget}
-                        onCancelReply={handleCancelReply}
-                      />
-                    </div>
+                      {/* Description */}
+                      <div className="space-y-2">
+                        <Label htmlFor="new-ticket-body">Description</Label>
+                        <Textarea
+                          id="new-ticket-body"
+                          value={newTicketBody}
+                          onChange={(e) => setNewTicketBody(e.target.value)}
+                          placeholder="Describe the ticket..."
+                          className="min-h-32"
+                        />
+                      </div>
+
+                      {/* Create Button */}
+                      <div className="flex justify-end gap-2 pt-4 border-t">
+                        <Button variant="outline" onClick={handleCloseDetail}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleCreateTicket}
+                          disabled={createTicket.isPending || !newTicketTitle.trim()}
+                        >
+                          <Save className="size-4 mr-2" />
+                          {createTicket.isPending ? "Creating..." : "Create Ticket"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  // View existing ticket
+                  <>
+                    {isLoadingTicket && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Loading ticket...
+                      </div>
+                    )}
+
+                    {selectedTicket && (
+                      <>
+                        {/* Scrollable area: ticket detail + comments */}
+                        <div className="flex-1 overflow-y-auto p-4">
+                          <TicketDetail
+                            onClose={handleCloseDetail}
+                            isEditable
+                          />
+
+                          {/* Activity Timeline */}
+                          <div className="mt-6">
+                            <h3 className="text-sm font-medium mb-4">
+                              Activity {timeline?.total ? `(${timeline.total})` : ""}
+                            </h3>
+
+                            <ActivityTimeline
+                              items={timeline?.items ?? []}
+                              projectId={projectId}
+                              attachmentsByCommentId={attachmentsByCommentId}
+                              editingCommentId={editingCommentId}
+                              editBody={editBody}
+                              onEditBodyChange={setEditBody}
+                              onStartEditComment={(comment) => {
+                                setEditingCommentId(comment.id);
+                                setEditBody(comment.body);
+                              }}
+                              onSaveEditComment={async () => {
+                                if (editingCommentId) {
+                                  await updateComment(editingCommentId, editBody);
+                                  setEditingCommentId(null);
+                                  setEditBody("");
+                                }
+                              }}
+                              onCancelEditComment={() => {
+                                setEditingCommentId(null);
+                                setEditBody("");
+                              }}
+                              onDeleteComment={deleteComment}
+                              onReplyComment={handleReplyToComment}
+                              onSessionClick={setChatSessionId}
+                              isUpdatingComment={isUpdatingComment}
+                              isDeletingComment={isDeletingComment}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Fixed ChatInput at bottom */}
+                        <div className="border-t p-4">
+                          <ChatInput
+                            onSubmit={handleAddComment}
+                            isLoading={isCreatingComment}
+                            placeholder="Add a comment..."
+                            replyTarget={replyTarget}
+                            onCancelReply={handleCancelReply}
+                          />
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
+              </div>
+            </ResizablePanel>
+
+            {chatSessionId && (
+              <>
+                <ResizableHandle withHandle />
+                <ResizablePanel id="chat" defaultSize={40} minSize={25}>
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
+                      <h3 className="text-sm font-medium">Session</h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-6"
+                        onClick={() => setChatSessionId(null)}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 min-h-0">
+                      <ChatProvider
+                        key={chatSessionId}
+                        sessionId={chatSessionId}
+                        projectId={projectId ?? null}
+                      >
+                        <Chat
+                          emptyMessage="Loading session..."
+                          className="h-full"
+                        />
+                      </ChatProvider>
+                    </div>
+                  </div>
+                </ResizablePanel>
               </>
             )}
+          </ResizablePanelGroup>
+        ) : (
+          <div className="w-full overflow-y-auto p-6">
+            {ticketListContent}
           </div>
         )}
       </div>
