@@ -56,6 +56,7 @@ export { useChat } from './use-chat'
 export {
   useSessions,
   useSession,
+  useSessionByKombuseId,
   useSessionEvents,
   useCreateSession,
   useDeleteSession,

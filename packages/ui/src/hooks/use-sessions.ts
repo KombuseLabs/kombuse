@@ -17,6 +17,15 @@ export function useSession(id: string | null) {
   })
 }
 
+export function useSessionByKombuseId(kombuseSessionId: string | null) {
+  return useQuery({
+    queryKey: ['sessions', 'by-kombuse', kombuseSessionId],
+    queryFn: () => sessionsApi.getByKombuseId(kombuseSessionId!),
+    enabled: !!kombuseSessionId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useSessionEvents(sessionId: string | null) {
   return useQuery({
     queryKey: ['sessions', sessionId, 'events'],

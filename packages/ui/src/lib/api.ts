@@ -403,6 +403,11 @@ export const sessionsApi = {
     return handleResponse<{ session_id: string; events: SessionEvent[]; total: number }>(response)
   },
 
+  async getByKombuseId(kombuseSessionId: string): Promise<Session> {
+    const response = await fetch(`${API_BASE}/sessions/by-kombuse/${kombuseSessionId}`)
+    return handleResponse<Session>(response)
+  },
+
   async delete(id: string): Promise<void> {
     const response = await fetch(`${API_BASE}/sessions/${id}`, {
       method: 'DELETE',

@@ -1,10 +1,14 @@
 import type { CommentWithAuthor, Attachment } from '@kombuse/types'
+import { parseSessionId } from '@kombuse/types'
+import { Link } from 'react-router-dom'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
 import { Markdown } from '../markdown'
 import { cn } from '../../lib/utils'
 import { attachmentsApi } from '../../lib/api'
-import { Pencil, Trash2, Check, X, Reply } from 'lucide-react'
+import { useSessionByKombuseId } from '../../hooks/use-sessions'
+import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare } from 'lucide-react'
 
 interface CommentItemProps {
   comment: CommentWithAuthor
@@ -39,11 +43,40 @@ function CommentItem({
   isDeleting = false,
   className,
 }: CommentItemProps) {
+  const { data: linkedSession } = useSessionByKombuseId(comment.kombuse_session_id)
+
+  const sessionUrl = linkedSession
+    ? projectId
+      ? `/projects/${projectId}/chats/${linkedSession.id}`
+      : `/chats/${linkedSession.id}`
+    : null
+
+  const sessionOrigin = comment.kombuse_session_id
+    ? parseSessionId(comment.kombuse_session_id)?.origin ?? null
+    : null
+
   return (
     <div className={cn('p-3 rounded-lg bg-muted/50', className)}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{comment.author.name}</span>
+          {sessionUrl && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to={sessionUrl}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {sessionOrigin === 'trigger' ? (
+                    <Zap className="size-3" />
+                  ) : (
+                    <MessageSquare className="size-3" />
+                  )}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>View session</TooltipContent>
+            </Tooltip>
+          )}
           <span className="text-xs text-muted-foreground">
             {new Date(comment.created_at).toLocaleString()}
           </span>

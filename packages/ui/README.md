@@ -80,6 +80,14 @@ const { data: profiles, isLoading } = useProfileSearch('clau', { enabled: true }
 const { data: tickets } = useTicketSearch('fix', { enabled: true })
 ```
 
+```typescript
+import { useSessionByKombuseId } from '@kombuse/ui/hooks'
+
+// Resolve a kombuse session ID (e.g. "trigger-abc123") to its Session object
+// Used internally by CommentItem to render session links on agent comments
+const { data: session } = useSessionByKombuseId(kombuseSessionId)
+```
+
 ### Providers
 
 ```typescript
@@ -344,7 +352,7 @@ Props for `ActivityTimeline`:
 
 Props for `CommentItem`:
 - `comment`: `CommentWithAuthor` object
-- `projectId`: Optional project ID — enables `#<number>` ticket link rendering in comment body
+- `projectId`: Optional project ID — enables `#<number>` ticket link rendering in comment body and builds correct route for session links on agent comments
 - `attachments`: Optional `Attachment[]` to display as inline image thumbnails below the comment body
 
 Props for `ChatInput`:
