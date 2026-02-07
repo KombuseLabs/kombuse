@@ -71,13 +71,19 @@ export const ticketsRepository = {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
+    const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'closed_at', 'opened_at'] as const
+    const sortBy = filters?.sort_by && ALLOWED_SORT_COLUMNS.includes(filters.sort_by)
+      ? filters.sort_by
+      : 'created_at'
+    const sortOrder = filters?.sort_order === 'asc' ? 'ASC' : 'DESC'
+
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
 
     const stmt = db.prepare(`
       SELECT * FROM tickets
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY ${sortBy} ${sortOrder}
       LIMIT ? OFFSET ?
     `)
 
@@ -119,9 +125,10 @@ export const ticketsRepository = {
     const insertTicket = db.prepare(`
       INSERT INTO tickets (
         project_id, author_id, assignee_id, title, body, status, priority,
-        external_source, external_id, external_url
+        external_source, external_id, external_url,
+        opened_at, closed_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END)
     `)
 
     const insertTicketLabels = db.prepare(`
@@ -134,17 +141,19 @@ export const ticketsRepository = {
         new Set((payload.label_ids ?? []).filter((id) => Number.isFinite(id)))
       )
 
+      const status = payload.status ?? 'open'
       const result = insertTicket.run(
         payload.project_id,
         payload.author_id,
         payload.assignee_id ?? null,
         payload.title,
         payload.body ?? null,
-        payload.status ?? 'open',
+        status,
         payload.priority ?? null,
         payload.external_source ?? null,
         payload.external_id ?? null,
-        payload.external_url ?? null
+        payload.external_url ?? null,
+        status
       )
 
       const ticketId = result.lastInsertRowid as number
@@ -209,6 +218,15 @@ export const ticketsRepository = {
     if (input.status !== undefined) {
       fields.push('status = ?')
       params.push(input.status)
+      // Track opened_at / closed_at on status transitions
+      if (input.status !== currentTicket.status) {
+        if (input.status === 'closed') {
+          fields.push("closed_at = datetime('now')")
+        } else if (currentTicket.status === 'closed') {
+          fields.push("opened_at = datetime('now')")
+          fields.push('closed_at = NULL')
+        }
+      }
     }
     if (input.priority !== undefined) {
       fields.push('priority = ?')

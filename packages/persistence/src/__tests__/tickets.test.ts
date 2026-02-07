@@ -321,6 +321,142 @@ describe('ticketsRepository', () => {
   })
 
   /*
+   * SORT_BY AND SORT_ORDER TESTS
+   * Verify dynamic sorting of ticket list queries
+   */
+  describe('sort_by and sort_order', () => {
+    it('should default to created_at DESC when no sort specified', () => {
+      ticketsRepository.create({ ...TEST_TICKET, title: 'First' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Second' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Third' })
+
+      const tickets = ticketsRepository.list()
+
+      expect(tickets).toHaveLength(3)
+      // Verify descending order by created_at
+      for (let i = 1; i < tickets.length; i++) {
+        const prevTime = new Date(tickets[i - 1]!.created_at).getTime()
+        const currTime = new Date(tickets[i]!.created_at).getTime()
+        expect(prevTime).toBeGreaterThanOrEqual(currTime)
+      }
+    })
+
+    it('should sort by opened_at DESC', () => {
+      const t1 = ticketsRepository.create({ ...TEST_TICKET, title: 'First' })
+      const t2 = ticketsRepository.create({ ...TEST_TICKET, title: 'Second' })
+      // Reopen t1 to give it a newer opened_at
+      ticketsRepository.update(t1.id, { status: 'closed' })
+      ticketsRepository.update(t1.id, { status: 'open' })
+
+      const tickets = ticketsRepository.list({ sort_by: 'opened_at' })
+
+      expect(tickets[0]?.title, 'Reopened ticket should sort first').toBe('First')
+    })
+
+    it('should sort by closed_at ASC', () => {
+      const t1 = ticketsRepository.create({ ...TEST_TICKET, title: 'First' })
+      const t2 = ticketsRepository.create({ ...TEST_TICKET, title: 'Second' })
+      ticketsRepository.update(t1.id, { status: 'closed' })
+      ticketsRepository.update(t2.id, { status: 'closed' })
+
+      const tickets = ticketsRepository.list({
+        sort_by: 'closed_at',
+        sort_order: 'asc',
+        status: 'closed',
+      })
+
+      expect(tickets[0]?.title).toBe('First')
+      expect(tickets[1]?.title).toBe('Second')
+    })
+
+    it('should sort by updated_at DESC', () => {
+      const t1 = ticketsRepository.create({ ...TEST_TICKET, title: 'First' })
+      const t2 = ticketsRepository.create({ ...TEST_TICKET, title: 'Second' })
+      // Update t1 to give it a newer updated_at
+      ticketsRepository.update(t1.id, { title: 'First Updated' })
+
+      const tickets = ticketsRepository.list({ sort_by: 'updated_at' })
+
+      expect(tickets[0]?.title).toBe('First Updated')
+    })
+
+    it('should combine sort with status filter', () => {
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Open 1', status: 'open' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Closed 1', status: 'closed' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Open 2', status: 'open' })
+
+      const tickets = ticketsRepository.list({
+        status: 'open',
+        sort_by: 'created_at',
+        sort_order: 'asc',
+      })
+
+      expect(tickets).toHaveLength(2)
+      expect(tickets[0]?.title).toBe('Open 1')
+      expect(tickets[1]?.title).toBe('Open 2')
+    })
+  })
+
+  /*
+   * OPENED_AT / CLOSED_AT COLUMN TESTS
+   * Verify timestamp tracking for status transitions
+   */
+  describe('opened_at / closed_at columns', () => {
+    it('should set opened_at on ticket creation', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+
+      expect(ticket.opened_at, 'opened_at should be set').toBeDefined()
+      expect(() => new Date(ticket.opened_at)).not.toThrow()
+      expect(ticket.closed_at, 'closed_at should be null for open ticket').toBeNull()
+    })
+
+    it('should set both opened_at and closed_at when created with status closed', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        status: 'closed',
+      })
+
+      expect(ticket.opened_at, 'opened_at should be set').toBeDefined()
+      expect(ticket.closed_at, 'closed_at should be set for closed ticket').toBeDefined()
+      expect(() => new Date(ticket.opened_at)).not.toThrow()
+      expect(() => new Date(ticket.closed_at!)).not.toThrow()
+    })
+
+    it('should set closed_at when status changes to closed', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      expect(ticket.closed_at).toBeNull()
+
+      const updated = ticketsRepository.update(ticket.id, { status: 'closed' })
+
+      expect(updated?.closed_at, 'closed_at should be set after closing').toBeDefined()
+      expect(() => new Date(updated!.closed_at!)).not.toThrow()
+    })
+
+    it('should set opened_at and clear closed_at when reopened', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        status: 'closed',
+      })
+      const originalOpenedAt = ticket.opened_at
+
+      const reopened = ticketsRepository.update(ticket.id, { status: 'open' })
+
+      expect(reopened?.closed_at, 'closed_at should be cleared on reopen').toBeNull()
+      expect(reopened?.opened_at, 'opened_at should be updated on reopen').toBeDefined()
+    })
+
+    it('should not modify opened_at or closed_at on non-status updates', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      const originalOpenedAt = ticket.opened_at
+
+      const updated = ticketsRepository.update(ticket.id, { title: 'New title' })
+
+      expect(updated?.opened_at).toBe(originalOpenedAt)
+      expect(updated?.closed_at).toBeNull()
+    })
+  })
+
+  /*
    * LIST WITH LABELS TESTS
    * Verify tickets are returned with their associated labels
    */

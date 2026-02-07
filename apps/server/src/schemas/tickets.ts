@@ -63,6 +63,8 @@ export const ticketFiltersSchema = z.object({
   unclaimed: z.coerce.boolean().optional(),
   expired_claims: z.coerce.boolean().optional(),
   search: z.string().optional(),
+  sort_by: z.enum(['created_at', 'updated_at', 'closed_at', 'opened_at']).optional(),
+  sort_order: z.enum(['asc', 'desc']).optional(),
   label_ids: z
     .string()
     .transform((val) => val.split(',').map(Number))

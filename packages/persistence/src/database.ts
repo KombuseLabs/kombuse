@@ -397,6 +397,25 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_events_session ON events(kombuse_session_id) WHERE kombuse_session_id IS NOT NULL;
     `,
   },
+  {
+    name: '006_ticket_opened_closed_at',
+    sql: `
+      ALTER TABLE tickets ADD COLUMN opened_at TEXT;
+      ALTER TABLE tickets ADD COLUMN closed_at TEXT;
+
+      UPDATE tickets SET opened_at = created_at;
+
+      UPDATE tickets SET closed_at = (
+        SELECT e.created_at FROM events e
+        WHERE e.ticket_id = tickets.id
+          AND e.event_type = 'ticket.closed'
+        ORDER BY e.created_at DESC LIMIT 1
+      ) WHERE status = 'closed';
+
+      CREATE INDEX IF NOT EXISTS idx_tickets_opened_at ON tickets(opened_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_tickets_closed_at ON tickets(closed_at DESC) WHERE closed_at IS NOT NULL;
+    `,
+  },
 ]
 
 /**

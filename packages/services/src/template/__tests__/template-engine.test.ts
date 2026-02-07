@@ -77,6 +77,8 @@ describe('renderTemplate', () => {
         claim_expires_at: null,
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
+        opened_at: '2024-01-01',
+        closed_at: null,
         labels: [
           { id: 1, project_id: 'proj-abc', name: 'bug', color: 'red', description: null, created_at: '2024-01-01' },
           { id: 2, project_id: 'proj-abc', name: 'urgent', color: 'orange', description: null, created_at: '2024-01-01' },
@@ -115,6 +117,8 @@ describe('renderTemplate', () => {
         claim_expires_at: null,
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
+        opened_at: '2024-01-01',
+        closed_at: null,
         author: {
           id: 'user-alice',
           type: 'user',
