@@ -293,13 +293,13 @@ export function ChatProvider({
       events,
       isLoading,
       isConnected,
-      kombuseSessionId,
+      kombuseSessionId: effectiveKombuseSessionId,
       pendingPermission,
       send,
       respondToPermission,
       reset,
     }),
-    [events, isLoading, isConnected, kombuseSessionId, pendingPermission, send, respondToPermission, reset]
+    [events, isLoading, isConnected, effectiveKombuseSessionId, pendingPermission, send, respondToPermission, reset]
   )
 
   return <ChatCtx.Provider value={value}>{children}</ChatCtx.Provider>
