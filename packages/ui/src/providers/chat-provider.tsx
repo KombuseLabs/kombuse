@@ -135,6 +135,13 @@ export function ChatProvider({
         break
       }
 
+      case 'agent.permission_resolved': {
+        if (effectiveKombuseSessionId && message.sessionId === effectiveKombuseSessionId) {
+          setPendingPermission(null)
+        }
+        break
+      }
+
       case 'agent.complete': {
         if (!effectiveKombuseSessionId) {
           break

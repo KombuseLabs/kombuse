@@ -194,7 +194,7 @@ function broadcastPermissionPending(
     description,
     ticketId,
   })
-  wsHub.broadcastToTopic('*', {
+  const msg: ServerMessage = {
     type: 'agent.permission_pending',
     sessionId,
     requestId: event.requestId,
@@ -202,7 +202,9 @@ function broadcastPermissionPending(
     input: event.input,
     description,
     ticketId,
-  })
+  }
+  wsHub.broadcastToTopic('*', msg)
+  wsHub.broadcastToTopic(`session:${sessionId}`, msg)
 }
 
 /**
@@ -731,16 +733,15 @@ export async function processEventAndRunAgents(
         kombuseSessionId,
       },
       (evt) => {
-        // Broadcast to all clients (triggered sessions don't have a specific client)
+        // Broadcast to session subscribers + wildcard for lifecycle events
         if (evt.type === 'started') {
           const msg: ServerMessage = {
             type: 'agent.started',
             kombuseSessionId: evt.kombuseSessionId,
             ticketId: evt.ticketId,
           }
+          wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           wsHub.broadcastToTopic('*', msg)
-          wsHub.broadcastToTopic(`session:${evt.kombuseSessionId}`, msg)
-          // Broadcast updated ticket agent status
           if (evt.ticketId) {
             broadcastTicketAgentStatus(evt.ticketId)
           }
@@ -755,12 +756,11 @@ export async function processEventAndRunAgents(
               kombuseSessionId: evt.kombuseSessionId,
               event: serialized,
             }
-            wsHub.broadcastToTopic('*', msg)
-            wsHub.broadcastToTopic(`session:${evt.kombuseSessionId}`, msg)
+            // Only send to session subscribers — no wildcard for streaming events
+            wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           }
         } else if (evt.type === 'complete') {
           if (!invocationFailed) {
-            // Update invocation status
             agentInvocationsRepository.update(invocation.id, {
               status: 'completed',
               completed_at: new Date().toISOString(),
@@ -780,9 +780,8 @@ export async function processEventAndRunAgents(
             backendSessionId: evt.backendSessionId,
             ticketId: evt.ticketId,
           }
+          wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           wsHub.broadcastToTopic('*', msg)
-          wsHub.broadcastToTopic(`session:${evt.kombuseSessionId}`, msg)
-          // Broadcast updated ticket agent status
           if (evt.ticketId) {
             broadcastTicketAgentStatus(evt.ticketId)
           }
@@ -942,11 +941,13 @@ export function startAgentChatSession(
         ) {
           console.log('[server] auto-approving:', event.requestId, event.toolName)
           backend.respondToPermission(event.requestId, 'allow', { updatedInput: event.input })
-          wsHub.broadcastToTopic('*', {
+          const resolvedMsg: ServerMessage = {
             type: 'agent.permission_resolved',
             sessionId: appSessionId,
             requestId: event.requestId,
-          })
+          }
+          wsHub.broadcastToTopic('*', resolvedMsg)
+          wsHub.broadcastToTopic(`session:${appSessionId}`, resolvedMsg)
           // Emit with autoApproved flag so UI can skip showing prompt
           emit({
             type: 'event',
@@ -1071,11 +1072,13 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
   })
 
   // Broadcast resolution so all clients can update their UI
-  wsHub.broadcastToTopic('*', {
+  const resolvedMsg: ServerMessage = {
     type: 'agent.permission_resolved',
     sessionId: kombuseSessionId,
     requestId,
-  })
+  }
+  wsHub.broadcastToTopic('*', resolvedMsg)
+  wsHub.broadcastToTopic(`session:${kombuseSessionId}`, resolvedMsg)
   serverPendingPermissions.delete(requestId)
 
   return true

@@ -100,8 +100,7 @@ function handleAgentInvoke(
           kombuseSessionId: event.kombuseSessionId,
           ticketId: event.ticketId,
         }
-        sendServerMessage(socket, msg)
-        wsHub.broadcastToSession(event.kombuseSessionId, msg, socket)
+        wsHub.broadcastAgentMessage(event.kombuseSessionId, msg, socket)
         break
       }
       case 'event': {
@@ -114,8 +113,7 @@ function handleAgentInvoke(
           kombuseSessionId: event.kombuseSessionId,
           event: wsEvent,
         }
-        sendServerMessage(socket, msg)
-        wsHub.broadcastToSession(event.kombuseSessionId, msg, socket)
+        wsHub.broadcastAgentMessage(event.kombuseSessionId, msg, socket)
         break
       }
       case 'complete': {
@@ -125,8 +123,7 @@ function handleAgentInvoke(
           backendSessionId: event.backendSessionId,
           ticketId: event.ticketId,
         }
-        sendServerMessage(socket, msg)
-        wsHub.broadcastToSession(event.kombuseSessionId, msg, socket)
+        wsHub.broadcastAgentMessage(event.kombuseSessionId, msg, socket)
         break
       }
       case 'error':

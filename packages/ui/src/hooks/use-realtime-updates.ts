@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { WebSocketEvent, EventType } from '@kombuse/types'
+import type { WebSocketEvent, EventType, ServerMessage } from '@kombuse/types'
 import { EVENT_TYPES } from '@kombuse/types'
 import { useWebSocket } from './use-websocket'
 
@@ -119,9 +119,18 @@ export function useRealtimeUpdates({
     return result
   }, [projectId, ticketId])
 
+  const handleMessage = useCallback(
+    (message: ServerMessage) => {
+      if (message.type === 'event') {
+        handleEvent(message.event)
+      }
+    },
+    [handleEvent]
+  )
+
   const { isConnected } = useWebSocket({
     topics,
-    onEvent: handleEvent,
+    onMessage: handleMessage,
   })
 
   return { isConnected }

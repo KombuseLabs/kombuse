@@ -123,17 +123,27 @@ class WebSocketHub {
   }
 
   /**
-   * Broadcast a message to all subscribers of a session topic,
-   * optionally excluding a specific WebSocket (to prevent double-delivery
-   * to the originating client).
+   * Broadcast an agent message to the appropriate recipients.
+   *
+   * - Always sends to `session:{kombuseSessionId}` subscribers
+   * - Sends directly to `originSocket` if provided (user-initiated sessions)
+   * - Excludes `originSocket` from session topic broadcast to prevent double-delivery
    */
-  broadcastToSession(kombuseSessionId: string, message: ServerMessage, exclude?: WebSocket): void {
+  broadcastAgentMessage(
+    kombuseSessionId: string,
+    message: ServerMessage,
+    originSocket?: WebSocket
+  ): void {
+    if (originSocket) {
+      this.send(originSocket, message)
+    }
+
     const topic = `session:${kombuseSessionId}`
     const subscribers = this.topicSubscribers.get(topic)
     if (!subscribers) return
 
     for (const ws of subscribers) {
-      if (ws === exclude) continue
+      if (ws === originSocket) continue
       this.send(ws, message)
     }
   }
