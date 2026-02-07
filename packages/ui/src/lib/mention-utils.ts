@@ -1,61 +1,77 @@
+export type MentionTrigger = '@' | '#'
+
 export interface MentionContext {
   /** Whether a mention trigger is active */
   isActive: boolean
-  /** The search query text after the @ (empty string if just typed @) */
+  /** Which trigger character matched, or null if inactive */
+  trigger: MentionTrigger | null
+  /** The search query text after the trigger (empty string if just typed the trigger) */
   query: string
-  /** Character index of the @ trigger in the textarea value */
+  /** Character index of the trigger in the textarea value */
   triggerIndex: number
 }
 
 const MENTION_CHAR_REGEX = /^[a-zA-Z0-9_-]*$/
+const TRIGGER_CHARS: MentionTrigger[] = ['@', '#']
 
 /**
- * Analyze textarea value at cursor position to detect @mention context.
- * The @ must be at position 0 or preceded by whitespace.
- * Characters between @ and cursor must match [a-zA-Z0-9_-]* (aligned with backend regex).
+ * Analyze textarea value at cursor position to detect a mention trigger.
+ * Supports both @ (profile) and # (ticket) triggers.
+ * The trigger must be at position 0 or preceded by whitespace.
+ * Characters between trigger and cursor must match [a-zA-Z0-9_-]*.
+ * The closest valid trigger to the cursor wins (natural mutual exclusion).
  */
 export function getMentionContext(
   value: string,
   cursorPosition: number
 ): MentionContext {
-  const inactive: MentionContext = { isActive: false, query: '', triggerIndex: -1 }
+  const inactive: MentionContext = { isActive: false, trigger: null, query: '', triggerIndex: -1 }
 
   if (cursorPosition <= 0) return inactive
 
-  // Scan backward from cursor to find the @ trigger
+  // Scan backward from cursor to find the nearest valid trigger
   for (let i = cursorPosition - 1; i >= 0; i--) {
-    const char = value[i]
+    const char = value[i] as string
 
-    if (char === '@') {
-      // @ must be at start or preceded by whitespace
-      if (i > 0 && !/\s/.test(value[i - 1]!)) return inactive
+    const trigger = TRIGGER_CHARS.find((t) => t === char)
+    if (trigger) {
+      // Trigger must be at start or preceded by whitespace
+      if (i > 0 && !/\s/.test(value[i - 1]!)) {
+        // This trigger failed boundary check — continue scanning
+        // (there may be a valid trigger further back, e.g. `foo@bar #42`)
+        continue
+      }
 
       const query = value.substring(i + 1, cursorPosition)
-      if (!MENTION_CHAR_REGEX.test(query)) return inactive
+      if (!MENTION_CHAR_REGEX.test(query)) {
+        // Invalid chars in query — continue scanning
+        continue
+      }
 
-      return { isActive: true, query, triggerIndex: i }
+      return { isActive: true, trigger, query, triggerIndex: i }
     }
 
-    // If we hit whitespace before finding @, no active mention
-    if (/\s/.test(char!)) return inactive
+    // If we hit whitespace before finding a trigger, no active mention
+    if (/\s/.test(char)) return inactive
   }
 
   return inactive
 }
 
 /**
- * Insert a mention into the textarea value, replacing the @query portion.
+ * Insert a mention into the textarea value, replacing the trigger+query portion.
  * Returns the new value and the cursor position after insertion.
  */
 export function insertMention(
   value: string,
   triggerIndex: number,
   cursorPosition: number,
-  profileName: string
+  replacement: string,
+  triggerChar: MentionTrigger = '@'
 ): { newValue: string; newCursorPosition: number } {
   const before = value.substring(0, triggerIndex)
   const after = value.substring(cursorPosition)
-  const mention = `@${profileName} `
+  const mention = `${triggerChar}${replacement} `
   return {
     newValue: before + mention + after,
     newCursorPosition: before.length + mention.length,

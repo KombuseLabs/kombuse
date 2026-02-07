@@ -6,9 +6,11 @@ import { Textarea } from '../../base/textarea'
 import { cn } from '../../lib/utils'
 import { getMentionContext, getCaretCoordinates, insertMention } from '../../lib/mention-utils'
 import { useProfileSearch } from '../../hooks/use-profile-search'
+import { useTicketSearch } from '../../hooks/use-ticket-search'
 import { MentionAutocomplete } from './mention-autocomplete'
+import { TicketMentionAutocomplete } from './ticket-mention-autocomplete'
 import { Send, Loader2, X, Paperclip } from 'lucide-react'
-import type { Profile } from '@kombuse/types'
+import type { Profile, TicketWithLabels } from '@kombuse/types'
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
@@ -54,13 +56,21 @@ function ChatInput({
   // Mention autocomplete state
   const [mentionContext, setMentionContext] = useState(() => getMentionContext('', 0))
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
+  const [selectedTicketIndex, setSelectedTicketIndex] = useState(0)
   const [caretPosition, setCaretPosition] = useState({ top: 0, left: 0, height: 0 })
 
+  const isProfileMention = mentionContext.isActive && mentionContext.trigger === '@'
+  const isTicketMention = mentionContext.isActive && mentionContext.trigger === '#'
+
   const { data: mentionProfiles = [] } = useProfileSearch(mentionContext.query, {
-    enabled: mentionContext.isActive,
+    enabled: isProfileMention,
+  })
+  const { data: mentionTickets = [] } = useTicketSearch(mentionContext.query, {
+    enabled: isTicketMention,
   })
 
-  const mentionVisible = mentionContext.isActive && mentionProfiles.length > 0
+  const profileDropdownVisible = isProfileMention && mentionProfiles.length > 0
+  const ticketDropdownVisible = isTicketMention && mentionTickets.length > 0
 
   // Clean up preview URLs on unmount or when files change
   useEffect(() => {
@@ -137,9 +147,34 @@ function ChatInput({
     [message, mentionContext.triggerIndex]
   )
 
+  const handleTicketMentionSelect = useCallback(
+    (ticket: TicketWithLabels) => {
+      const cursorPos = textareaRef.current?.selectionStart ?? message.length
+      const { newValue, newCursorPosition } = insertMention(
+        message,
+        mentionContext.triggerIndex,
+        cursorPos,
+        String(ticket.id),
+        '#'
+      )
+      setMessage(newValue)
+      setMentionContext(getMentionContext('', 0))
+      setSelectedTicketIndex(0)
+
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = newCursorPosition
+          textareaRef.current.selectionEnd = newCursorPosition
+          textareaRef.current.focus()
+        }
+      })
+    },
+    [message, mentionContext.triggerIndex]
+  )
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (mentionVisible) {
+      if (profileDropdownVisible) {
         if (e.key === 'ArrowDown') {
           e.preventDefault()
           setSelectedMentionIndex((prev) =>
@@ -165,6 +200,32 @@ function ChatInput({
           setMentionContext(getMentionContext('', 0))
           return
         }
+      } else if (ticketDropdownVisible) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setSelectedTicketIndex((prev) =>
+            prev < mentionTickets.length - 1 ? prev + 1 : 0
+          )
+          return
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setSelectedTicketIndex((prev) =>
+            prev > 0 ? prev - 1 : mentionTickets.length - 1
+          )
+          return
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault()
+          const selected = mentionTickets[selectedTicketIndex]
+          if (selected) handleTicketMentionSelect(selected)
+          return
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          setMentionContext(getMentionContext('', 0))
+          return
+        }
       }
 
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -172,7 +233,7 @@ function ChatInput({
         handleSubmit()
       }
     },
-    [mentionVisible, mentionProfiles, selectedMentionIndex, handleMentionSelect, handleSubmit]
+    [profileDropdownVisible, ticketDropdownVisible, mentionProfiles, mentionTickets, selectedMentionIndex, selectedTicketIndex, handleMentionSelect, handleTicketMentionSelect, handleSubmit]
   )
 
   const handleChange = useCallback(
@@ -184,6 +245,7 @@ function ChatInput({
       const ctx = getMentionContext(value, cursorPos)
       setMentionContext(ctx)
       setSelectedMentionIndex(0)
+      setSelectedTicketIndex(0)
 
       if (ctx.isActive && textareaRef.current) {
         setCaretPosition(getCaretCoordinates(textareaRef.current, cursorPos))
@@ -316,7 +378,15 @@ function ChatInput({
         caretOffset={caretPosition}
         textareaRef={textareaRef}
         onSelect={handleMentionSelect}
-        visible={mentionVisible}
+        visible={profileDropdownVisible}
+      />
+      <TicketMentionAutocomplete
+        tickets={mentionTickets}
+        selectedIndex={selectedTicketIndex}
+        caretOffset={caretPosition}
+        textareaRef={textareaRef}
+        onSelect={handleTicketMentionSelect}
+        visible={ticketDropdownVisible}
       />
       <input
         ref={fileInputRef}

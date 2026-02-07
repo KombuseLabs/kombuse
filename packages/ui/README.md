@@ -70,10 +70,13 @@ const { registry, context } = useCommandContext()
 ```
 
 ```typescript
-import { useProfileSearch } from '@kombuse/ui/hooks'
+import { useProfileSearch, useTicketSearch } from '@kombuse/ui/hooks'
 
 // Debounced profile search (agents only) for @mention autocomplete
 const { data: profiles, isLoading } = useProfileSearch('clau', { enabled: true })
+
+// Debounced ticket search for #ticket autocomplete
+const { data: tickets } = useTicketSearch('fix', { enabled: true })
 ```
 
 ### Providers
@@ -318,6 +321,7 @@ Props for `ChatInput`:
 - `onCancelReply`: Callback to dismiss reply mode
 - Supports file attachments via paperclip button and drag-and-drop (images only, max 10 MB)
 - Supports `@mention` autocomplete — typing `@` triggers a dropdown of agent profiles with keyboard navigation (Arrow keys, Enter/Tab to select, Escape to dismiss)
+- Supports `#ticket` autocomplete — typing `#` triggers a dropdown of matching tickets (by title or ID) with the same keyboard navigation
 
 ### Attachment Hooks
 

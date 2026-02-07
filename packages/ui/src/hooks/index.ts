@@ -68,3 +68,4 @@ export {
   useDeleteAttachment,
 } from './use-attachments'
 export { useProfileSearch } from './use-profile-search'
+export { useTicketSearch } from './use-ticket-search'
