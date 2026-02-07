@@ -226,17 +226,23 @@ export function computeTicketAgentStatus(ticketId: number): {
     ? failedSessions.filter((s) => s.completed_at && s.completed_at > lastCompletedAt)
     : failedSessions
 
+  // Cross-reference against in-memory activeBackends map.
+  // A 'running' session with no live backend is orphaned.
+  const trulyActiveSessions = activeSessions.filter(
+    (s) => s.kombuse_session_id != null && activeBackends.has(s.kombuse_session_id)
+  )
+
   // Aggregate status: pending > running > error > idle
   // Note: pending is determined client-side from pendingPermissions
   let status: AgentActivityStatus = 'idle'
   if (recentFailures.length > 0) {
     status = 'error'
   }
-  if (activeSessions.length > 0) {
+  if (trulyActiveSessions.length > 0) {
     status = 'running'
   }
 
-  return { status, sessionCount: activeSessions.length }
+  return { status, sessionCount: trulyActiveSessions.length }
 }
 
 /**

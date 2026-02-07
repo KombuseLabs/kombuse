@@ -9,6 +9,7 @@ import {
   initializeDatabase,
   seedDatabase,
   onEventCreated,
+  sessionsRepository,
   type DatabaseType,
 } from "@kombuse/persistence";
 import { registerTicketTools } from "@kombuse/mcp";
@@ -42,6 +43,16 @@ export interface ServerOptions {
  */
 export async function createServer({ port, db }: ServerOptions) {
   setDatabase(db);
+
+  // Clean up orphaned sessions from any previous server run.
+  // After a restart, no in-process backend can be alive, so all
+  // 'running' sessions are stale and must be marked 'aborted'.
+  const abortedCount = sessionsRepository.abortAllRunningSessions();
+  if (abortedCount > 0) {
+    console.log(
+      `[Server] Aborted ${abortedCount} orphaned session(s) from previous run`
+    );
+  }
 
   const fastify = Fastify({
     logger: false,

@@ -183,4 +183,48 @@ describe('sessionsRepository', () => {
       expect(sessions).toHaveLength(2)
     })
   })
+
+  /*
+   * ABORT ALL RUNNING SESSIONS TESTS
+   * Verify bulk cleanup of orphaned running sessions
+   */
+  describe('abortAllRunningSessions', () => {
+    it('should abort all running sessions', () => {
+      sessionsRepository.create({ ticket_id: testTicketId })
+      sessionsRepository.create({ ticket_id: testTicketId })
+      sessionsRepository.create() // no ticket
+
+      const abortedCount = sessionsRepository.abortAllRunningSessions()
+
+      expect(abortedCount).toBe(3)
+
+      const running = sessionsRepository.list({ status: 'running' })
+      expect(running).toHaveLength(0)
+
+      const aborted = sessionsRepository.list({ status: 'aborted' })
+      expect(aborted).toHaveLength(3)
+    })
+
+    it('should not affect completed or failed sessions', () => {
+      const s1 = sessionsRepository.create({ ticket_id: testTicketId })
+      const s2 = sessionsRepository.create({ ticket_id: testTicketId })
+      sessionsRepository.update(s1.id, { status: 'completed' })
+      sessionsRepository.update(s2.id, { status: 'failed' })
+
+      const abortedCount = sessionsRepository.abortAllRunningSessions()
+
+      expect(abortedCount).toBe(0)
+
+      const completed = sessionsRepository.list({ status: 'completed' })
+      expect(completed).toHaveLength(1)
+
+      const failed = sessionsRepository.list({ status: 'failed' })
+      expect(failed).toHaveLength(1)
+    })
+
+    it('should return 0 when no running sessions exist', () => {
+      const abortedCount = sessionsRepository.abortAllRunningSessions()
+      expect(abortedCount).toBe(0)
+    })
+  })
 })

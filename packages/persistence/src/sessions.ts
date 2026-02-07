@@ -181,4 +181,19 @@ export const sessionsRepository = {
 
     return stmt.all(...params) as Session[]
   },
+
+  /**
+   * Abort all sessions currently in 'running' status.
+   * Used at server startup to clean up orphaned sessions from prior runs.
+   * Returns the number of sessions aborted.
+   */
+  abortAllRunningSessions(): number {
+    const db = getDatabase()
+    const result = db
+      .prepare(
+        "UPDATE sessions SET status = 'aborted', updated_at = datetime('now') WHERE status = 'running'"
+      )
+      .run()
+    return result.changes
+  },
 }
