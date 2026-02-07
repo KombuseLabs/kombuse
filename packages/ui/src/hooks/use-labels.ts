@@ -25,6 +25,7 @@ export function useAddLabelToTicket(ticketId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['labels', 'ticket', ticketId] })
       queryClient.invalidateQueries({ queryKey: ['tickets', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
   })
 }
@@ -36,6 +37,7 @@ export function useRemoveLabelFromTicket(ticketId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['labels', 'ticket', ticketId] })
       queryClient.invalidateQueries({ queryKey: ['tickets', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
   })
 }

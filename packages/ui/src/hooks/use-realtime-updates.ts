@@ -82,7 +82,12 @@ export function useRealtimeUpdates({
           // Invalidate ticket labels
           if (event.ticket_id) {
             queryClient.invalidateQueries({
-              queryKey: ['ticketLabels', event.ticket_id],
+              queryKey: ['labels', 'ticket', event.ticket_id],
+            })
+            // Invalidate ticket list queries (with any filters) so label badges refresh
+            queryClient.invalidateQueries({
+              queryKey: ['tickets'],
+              exact: false,
             })
             // Also refresh the ticket itself and timeline since labels might be shown inline
             queryClient.invalidateQueries({
