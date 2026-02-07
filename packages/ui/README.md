@@ -79,6 +79,13 @@ import { CommandProvider, ThemeProvider } from '@kombuse/ui/providers'
 
 ```typescript
 import { CommandPalette, Header, ModeToggle } from '@kombuse/ui/components'
+
+// CommandPalette supports #N ticket navigation
+<CommandPalette
+  open={paletteOpen}
+  onOpenChange={setPaletteOpen}
+  onNavigate={navigate}  // from useNavigate() — enables #55 → go to ticket 55
+/>
 import { TicketList, TicketDetail } from '@kombuse/ui/components'
 import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/components'
 import { Sidebar, SidebarItem } from '@kombuse/ui/components'

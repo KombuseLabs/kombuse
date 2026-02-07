@@ -12,6 +12,7 @@ export interface CommandContext {
   currentSession?: { id: string } | null
   isGenerating?: boolean
   view?: string | null
+  currentProjectId?: string | null
 }
 
 /**

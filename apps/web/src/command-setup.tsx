@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
 import { createCommandRegistry } from "@kombuse/core";
@@ -14,9 +15,11 @@ interface CommandSetupProps {
 
 export function CommandSetup({ children }: CommandSetupProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const navigate = useNavigate();
   const { setTheme, resolvedTheme } = useTheme();
   const queryClient = useQueryClient();
-  const { currentTicket, currentSession, isGenerating, view } = useAppContext();
+  const { currentTicket, currentSession, isGenerating, view, currentProjectId } =
+    useAppContext();
 
   const registry = useMemo(() => createCommandRegistry(), []);
 
@@ -83,14 +86,15 @@ export function CommandSetup({ children }: CommandSetupProps) {
       currentSession,
       isGenerating,
       view,
+      currentProjectId,
     }),
-    [currentTicket, currentSession, isGenerating, view]
+    [currentTicket, currentSession, isGenerating, view, currentProjectId]
   );
 
   return (
     <CommandProvider registry={registry} context={context}>
       {children}
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNavigate={navigate} />
     </CommandProvider>
   );
 }
