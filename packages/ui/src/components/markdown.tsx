@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm'
 import { Link } from 'react-router-dom'
 import { remarkTicketLinks } from './remark-ticket-links'
 import { remarkProfileMentions } from './remark-profile-mentions'
+import { TicketMentionChip } from './ticket-mention-chip'
 import { cn } from '../lib/utils'
 import type { PluggableList } from 'unified'
 
@@ -12,6 +13,8 @@ interface MarkdownProps {
   className?: string
   projectId?: string | null
 }
+
+const TICKET_LINK_REGEX = /\/projects\/[^/]+\/tickets\/(\d+)$/
 
 const components: Components = {
   a: ({ href, children: linkChildren, ...props }) => {
@@ -23,6 +26,10 @@ const components: Components = {
       )
     }
     if (href?.startsWith('/projects/')) {
+      const ticketMatch = href.match(TICKET_LINK_REGEX)
+      if (ticketMatch) {
+        return <TicketMentionChip ticketId={Number(ticketMatch[1])} href={href} />
+      }
       return (
         <Link to={href} className={props.className}>
           {linkChildren}
