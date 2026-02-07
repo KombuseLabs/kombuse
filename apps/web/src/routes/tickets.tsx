@@ -36,8 +36,8 @@ import {
   useTextareaAutocomplete,
 } from "@kombuse/ui/hooks";
 import { LabelBadge } from "@kombuse/ui/components";
-import { Plus, X, Save } from "lucide-react";
-import type { Ticket, TicketStatus, CommentWithAuthor } from "@kombuse/types";
+import { Plus, X, Save, ArrowUp, ArrowDown } from "lucide-react";
+import type { Ticket, TicketStatus, TicketFilters, CommentWithAuthor } from "@kombuse/types";
 
 const TICKETS_PANEL_LAYOUT_KEY = "tickets-panel-layout";
 
@@ -68,6 +68,19 @@ export function Tickets() {
 
   const { data: projectLabels } = useProjectLabels(projectId ?? "");
 
+  const validSortByValues = new Set<TicketFilters["sort_by"]>(["created_at", "updated_at", "closed_at", "opened_at"]);
+  const showClosedSort = statusFilter === "all" || statusFilter === "closed";
+  const rawSortBy = searchParams.get("sort_by");
+  const parsedSortBy = rawSortBy && validSortByValues.has(rawSortBy as TicketFilters["sort_by"])
+    ? (rawSortBy as NonNullable<TicketFilters["sort_by"]>)
+    : "created_at";
+  const sortBy: NonNullable<TicketFilters["sort_by"]> = parsedSortBy === "closed_at" && !showClosedSort
+    ? "created_at"
+    : parsedSortBy;
+
+  const rawSortOrder = searchParams.get("sort_order");
+  const sortOrder: NonNullable<TicketFilters["sort_order"]> = rawSortOrder === "asc" ? "asc" : "desc";
+
   const selectedLabelIds: number[] = useMemo(() => {
     const raw = searchParams.get("labels");
     if (!raw || !projectLabels) return [];
@@ -96,6 +109,8 @@ export function Tickets() {
     project_id: projectId,
     status: statusFilter === "all" ? undefined : statusFilter,
     label_ids: selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
+    sort_by: sortBy,
+    sort_order: sortOrder,
   });
 
   const {
@@ -375,6 +390,30 @@ export function Tickets() {
                 <SelectItem value="blocked">Blocked</SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={sortBy}
+              onValueChange={(value) => updateSearchParams({ sort_by: value === "created_at" ? null : value })}
+            >
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at">Created</SelectItem>
+                <SelectItem value="updated_at">Updated</SelectItem>
+                <SelectItem value="opened_at">Opened</SelectItem>
+                {showClosedSort && (
+                  <SelectItem value="closed_at">Closed</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => updateSearchParams({ sort_order: sortOrder === "desc" ? "asc" : null })}
+              title={sortOrder === "asc" ? "Ascending" : "Descending"}
+            >
+              {sortOrder === "asc" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
+            </Button>
           </div>
           <Button onClick={handleStartCreate} disabled={isCreating}>
             <Plus className="size-4" />
