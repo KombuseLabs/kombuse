@@ -605,6 +605,16 @@ export async function processEventAndRunAgents(
   console.log(
     `[Server] Processing event #${event.id} (${event.event_type}) for agent triggers...`
   )
+
+  // Skip agent-originated events to prevent agents from triggering
+  // other agents (or themselves) via their comments/mentions
+  if (event.actor_type === 'agent') {
+    console.log(
+      `[Server] Skipping agent-originated event #${event.id} (${event.event_type})`
+    )
+    return
+  }
+
   const invocations = dependencies.processEvent(event)
 
   if (invocations.length === 0) {

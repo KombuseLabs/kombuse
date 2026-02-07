@@ -163,6 +163,13 @@ export class AgentService implements IAgentService {
       throw new Error(`Agent ${input.agent_id} not found`)
     }
 
+    // mention.created triggers require explicit conditions (e.g. mention_type)
+    if (input.event_type === 'mention.created' && !input.conditions) {
+      throw new Error(
+        'mention.created triggers require explicit conditions (e.g. { mention_type: "profile" })'
+      )
+    }
+
     return agentTriggersRepository.create(input)
   }
 
@@ -170,6 +177,16 @@ export class AgentService implements IAgentService {
     const existing = agentTriggersRepository.get(id)
     if (!existing) {
       throw new Error(`Trigger ${id} not found`)
+    }
+
+    // mention.created triggers require explicit conditions
+    const effectiveEventType = input.event_type ?? existing.event_type
+    const effectiveConditions =
+      input.conditions !== undefined ? input.conditions : existing.conditions
+    if (effectiveEventType === 'mention.created' && !effectiveConditions) {
+      throw new Error(
+        'mention.created triggers require explicit conditions (e.g. { mention_type: "profile" })'
+      )
     }
 
     const updated = agentTriggersRepository.update(id, input)
@@ -218,6 +235,12 @@ export class AgentService implements IAgentService {
     )
 
     for (const trigger of triggers) {
+      // mention.created triggers without conditions are skipped —
+      // they must specify mention_type to avoid matching all mention kinds
+      if (event.event_type === 'mention.created' && !trigger.conditions) {
+        continue
+      }
+
       const eventPayload =
         typeof event.payload === 'string'
           ? JSON.parse(event.payload)

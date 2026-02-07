@@ -1,4 +1,5 @@
 import type {
+  ActorType,
   Comment,
   CommentWithAuthor,
   CommentFilters,
@@ -207,6 +208,10 @@ export const commentsRepository = {
       )
       const commentId = result.lastInsertRowid as number
 
+      // Determine actor type from author profile for event logging
+      const authorProfile = profilesRepository.get(payload.author_id)
+      const actorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
+
       // 2. Parse profile/ticket mentions from body
       const mentions = parseMentions(payload.body)
 
@@ -228,7 +233,7 @@ export const commentsRepository = {
             ticket_id: payload.ticket_id,
             comment_id: commentId,
             actor_id: payload.author_id,
-            actor_type: 'user',
+            actor_type: actorType,
             payload: {
               mention_type: 'profile',
               mentioned_profile_id: profile.id,
@@ -261,7 +266,7 @@ export const commentsRepository = {
           ticket_id: payload.ticket_id,
           comment_id: commentId,
           actor_id: payload.author_id,
-          actor_type: 'user',
+          actor_type: actorType,
           payload: {
             mention_type: 'ticket',
             mentioned_ticket_id: mentionedTicketId,
@@ -277,7 +282,7 @@ export const commentsRepository = {
         ticket_id: payload.ticket_id,
         comment_id: commentId,
         actor_id: payload.author_id,
-        actor_type: 'user',
+        actor_type: actorType,
         payload: {
           comment_id: commentId,
           ticket_id: payload.ticket_id,
@@ -373,13 +378,16 @@ export const commentsRepository = {
 
         // Create comment.edited event
         if (comment && ticket) {
+          const authorProfile = profilesRepository.get(existingRow.author_id)
+          const editActorType: ActorType =
+            authorProfile?.type === 'agent' ? 'agent' : 'user'
           eventsRepository.create({
             event_type: 'comment.edited',
             project_id: ticket.project_id,
             ticket_id: comment.ticket_id,
             comment_id: id,
             actor_id: existingRow.author_id,
-            actor_type: 'user',
+            actor_type: editActorType,
             payload: { comment_id: id },
           })
         }

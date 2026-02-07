@@ -279,6 +279,10 @@ describe('commentsRepository', () => {
 
       expect(events).toHaveLength(2)
       expect(events.every((event) => event.comment_id === comment.id)).toBe(true)
+      expect(
+        events.every((event) => event.actor_type === 'user'),
+        'User-authored mention events should have actor_type "user"'
+      ).toBe(true)
     })
 
     it('should create comment.added event', () => {
@@ -296,6 +300,55 @@ describe('commentsRepository', () => {
       expect(events).toHaveLength(1)
       expect(events[0]?.comment_id).toBe(comment.id)
       expect(events[0]?.ticket_id).toBe(testTicketId)
+    })
+
+    it('should set actor_type to "agent" for agent-authored comments', () => {
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_AGENT_ID,
+        body: 'Agent analysis complete',
+      })
+
+      const events = eventsRepository.list({ event_type: 'comment.added' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Agent-authored comment should have actor_type "agent"').toBe('agent')
+      expect(events[0]?.actor_id).toBe(TEST_AGENT_ID)
+    })
+
+    it('should set actor_type to "user" for user-authored comments', () => {
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'User comment here',
+      })
+
+      const events = eventsRepository.list({ event_type: 'comment.added' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'User-authored comment should have actor_type "user"').toBe('user')
+    })
+
+    it('should set actor_type to "agent" on mention.created events for agent-authored @mentions', () => {
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('user-target', 'user', 'target')
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_AGENT_ID,
+        body: '@target here is my analysis',
+      })
+
+      const events = eventsRepository.list({ event_type: 'mention.created' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Agent-authored mention should have actor_type "agent"').toBe('agent')
     })
   })
 
