@@ -835,6 +835,13 @@ export function startAgentChatSession(
 
   dependencies.sessionPersistence.markSessionRunning(persistentSessionId)
 
+  const backend = dependencies.createBackend()
+
+  // Register backend before emitting 'started' so that
+  // broadcastTicketAgentStatus (triggered by the emit callback)
+  // finds this session in activeBackends and reports 'running'.
+  registerBackend(appSessionId, backend)
+
   emit({
     type: 'started',
     kombuseSessionId: appSessionId,
@@ -850,11 +857,6 @@ export function startAgentChatSession(
     content: userMessage,
   }
   dependencies.sessionPersistence.persistEvent(persistentSessionId, userMessageEvent)
-
-  const backend = dependencies.createBackend()
-
-  // Register backend for permission response routing
-  registerBackend(appSessionId, backend)
 
   const projectPathOverride =
     options?.projectPath ??
