@@ -165,6 +165,29 @@ import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/c
 />
 ```
 
+### Trigger Components
+
+```typescript
+import { TriggerEditor, TriggerForm, TriggerList, TriggerItem } from '@kombuse/ui/components'
+import { MentionTypePicker, getMentionTypeLabel } from '@kombuse/ui/components'
+
+// Mention type picker for trigger conditions (select between @profile and #ticket)
+<MentionTypePicker
+  value={selectedMentionType}
+  onValueChange={(type) => setSelectedMentionType(type)}
+  disabled={false}
+/>
+
+// Get human-readable label for a mention type
+getMentionTypeLabel('profile') // => "Profile mention (@)"
+getMentionTypeLabel('ticket')  // => "Ticket mention (#)"
+```
+
+Props for `MentionTypePicker`:
+- `value`: `MentionType | null` — current selection
+- `onValueChange`: `(value: MentionType) => void` — selection callback
+- `disabled`: Optional boolean
+
 ### Markdown
 
 ```typescript

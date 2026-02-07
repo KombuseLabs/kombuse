@@ -25,6 +25,7 @@ interface TriggerEditorProps {
 type EditorMode = 'list' | 'create' | 'edit'
 
 function TriggerEditor({
+  agentId,
   triggers,
   onCreateTrigger,
   onUpdateTrigger,
@@ -106,6 +107,7 @@ function TriggerEditor({
           />
         ) : (
           <TriggerForm
+            agentId={agentId}
             trigger={editingTrigger ?? undefined}
             onSubmit={handleFormSubmit}
             onCancel={handleCancel}

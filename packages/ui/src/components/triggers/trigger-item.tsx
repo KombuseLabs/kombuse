@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { Switch } from '../../base/switch'
 import { getEventTypeOption } from './event-type-constants'
+import { getMentionTypeLabel } from './mention-type-picker'
 
 interface TriggerItemProps {
   trigger: AgentTrigger
@@ -25,7 +26,17 @@ function TriggerItem({
   isToggling,
 }: TriggerItemProps) {
   const eventOption = getEventTypeOption(trigger.event_type)
-  const conditionCount = trigger.conditions ? Object.keys(trigger.conditions).length : 0
+
+  const conditionSummary = (() => {
+    if (!trigger.conditions) return null
+    const conditions = trigger.conditions
+    if (conditions.mention_type) {
+      return getMentionTypeLabel(String(conditions.mention_type))
+    }
+    const count = Object.keys(conditions).length
+    if (count === 0) return null
+    return `${count} condition${count > 1 ? 's' : ''}`
+  })()
 
   return (
     <div
@@ -46,11 +57,7 @@ function TriggerItem({
           {eventOption?.label ?? trigger.event_type}
         </div>
         <div className="text-xs text-muted-foreground flex items-center gap-2">
-          {conditionCount > 0 && (
-            <span>
-              {conditionCount} condition{conditionCount > 1 ? 's' : ''}
-            </span>
-          )}
+          {conditionSummary && <span>{conditionSummary}</span>}
           {trigger.priority > 0 && <span>Priority: {trigger.priority}</span>}
         </div>
       </div>

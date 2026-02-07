@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { AgentTrigger } from '@kombuse/types'
+import type { AgentTrigger, MentionType } from '@kombuse/types'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Label } from '../../base/label'
@@ -18,6 +18,7 @@ import {
 import { ConditionEditor } from './condition-editor'
 import { EVENT_TYPE_OPTIONS, EVENT_TYPE_CATEGORIES } from './event-type-constants'
 import { LabelPicker } from '../labels/label-picker'
+import { MentionTypePicker } from './mention-type-picker'
 import { useProjectLabels, useCreateLabel } from '../../hooks/use-labels'
 import { useAppContext } from '../../hooks/use-app-context'
 
@@ -29,13 +30,14 @@ export interface TriggerFormData {
 }
 
 interface TriggerFormProps {
+  agentId: string
   trigger?: AgentTrigger
   onSubmit: (data: TriggerFormData) => void
   onCancel: () => void
   isLoading?: boolean
 }
 
-function TriggerForm({ trigger, onSubmit, onCancel, isLoading }: TriggerFormProps) {
+function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: TriggerFormProps) {
   const [eventType, setEventType] = useState(trigger?.event_type ?? '')
   const [conditions, setConditions] = useState<Record<string, unknown> | null>(
     trigger?.conditions ?? null
@@ -45,6 +47,9 @@ function TriggerForm({ trigger, onSubmit, onCancel, isLoading }: TriggerFormProp
   const [selectedLabelId, setSelectedLabelId] = useState<number | null>(
     (trigger?.conditions?.label_id as number) ?? null
   )
+  const [selectedMentionType, setSelectedMentionType] = useState<MentionType | null>(
+    (trigger?.conditions?.mention_type as MentionType) ?? null
+  )
 
   // Get project context for label operations
   const { currentProjectId } = useAppContext()
@@ -53,16 +58,23 @@ function TriggerForm({ trigger, onSubmit, onCancel, isLoading }: TriggerFormProp
   )
   const createLabelMutation = useCreateLabel(currentProjectId ?? '')
 
-  // Check if this is a label-based event type
+  // Check if this is a label-based or mention-based event type
   const isLabelEvent = eventType === 'label.added' || eventType === 'label.removed'
+  const isMentionEvent = eventType === 'mention.created'
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (eventType.trim()) {
-      // For label events, include the selected label_id in conditions
-      const finalConditions = isLabelEvent && selectedLabelId
-        ? { ...conditions, label_id: selectedLabelId }
-        : conditions
+      // For label/mention events, include the specialized condition
+      let finalConditions = conditions
+      if (isLabelEvent && selectedLabelId) {
+        finalConditions = { ...finalConditions, label_id: selectedLabelId }
+      } else if (isMentionEvent && selectedMentionType) {
+        finalConditions = { ...finalConditions, mention_type: selectedMentionType }
+        if (selectedMentionType === 'profile') {
+          finalConditions = { ...finalConditions, mentioned_profile_id: agentId }
+        }
+      }
 
       onSubmit({
         event_type: eventType,
@@ -73,7 +85,7 @@ function TriggerForm({ trigger, onSubmit, onCancel, isLoading }: TriggerFormProp
     }
   }
 
-  const isValid = eventType.trim().length > 0
+  const isValid = eventType.trim().length > 0 && (!isMentionEvent || selectedMentionType !== null)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-muted/30">
@@ -101,7 +113,7 @@ function TriggerForm({ trigger, onSubmit, onCancel, isLoading }: TriggerFormProp
       </div>
 
       <div className="space-y-2">
-        <Label>Conditions (Optional)</Label>
+        <Label>Conditions {isMentionEvent ? '(Required)' : '(Optional)'}</Label>
         <p className="text-xs text-muted-foreground">
           Filter when this trigger fires based on event data
         </p>
@@ -115,6 +127,19 @@ function TriggerForm({ trigger, onSubmit, onCancel, isLoading }: TriggerFormProp
             isCreating={createLabelMutation.isPending}
             placeholder="Select a label to trigger on..."
           />
+        ) : isMentionEvent ? (
+          <>
+            <MentionTypePicker
+              value={selectedMentionType}
+              onValueChange={setSelectedMentionType}
+              disabled={isLoading}
+            />
+            {selectedMentionType === 'profile' && (
+              <p className="text-xs text-muted-foreground">
+                Triggers only when this agent is @mentioned
+              </p>
+            )}
+          </>
         ) : (
           <ConditionEditor conditions={conditions} onChange={setConditions} disabled={isLoading} />
         )}

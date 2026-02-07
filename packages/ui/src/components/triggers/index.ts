@@ -13,5 +13,8 @@ export type { TriggerItemProps } from './trigger-item'
 export { ConditionEditor } from './condition-editor'
 export type { ConditionEditorProps } from './condition-editor'
 
+export { MentionTypePicker, getMentionTypeLabel } from './mention-type-picker'
+export type { MentionTypePickerProps } from './mention-type-picker'
+
 export { EVENT_TYPE_OPTIONS, EVENT_TYPE_CATEGORIES, getEventTypeOption } from './event-type-constants'
 export type { EventTypeOption } from './event-type-constants'

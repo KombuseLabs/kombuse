@@ -61,7 +61,7 @@ export const EVENT_TYPE_OPTIONS: EventTypeOption[] = [
   {
     value: 'mention.created',
     label: 'Mention Created',
-    description: 'When someone is mentioned',
+    description: 'When a @profile or #ticket mention is created',
     category: 'mention',
   },
 ]
