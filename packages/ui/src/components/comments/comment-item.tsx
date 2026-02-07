@@ -11,6 +11,7 @@ import { cn } from '../../lib/utils'
 import { attachmentsApi } from '../../lib/api'
 import { useSessionByKombuseId } from '../../hooks/use-sessions'
 import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare } from 'lucide-react'
+import { getAvatarIcon } from '../agents/avatar-picker'
 
 interface CommentItemProps {
   comment: CommentWithAuthor
@@ -65,6 +66,10 @@ function CommentItem({
     <div className={cn('p-3 rounded-lg bg-muted/50', className)}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
+          {comment.author.type === 'agent' && (() => {
+            const Icon = getAvatarIcon(comment.author.avatar_url)
+            return <Icon className="size-4 text-muted-foreground" />
+          })()}
           <span className="text-sm font-medium">{comment.author.name}</span>
           {sessionUrl && linkedSession && (
             <Tooltip>
