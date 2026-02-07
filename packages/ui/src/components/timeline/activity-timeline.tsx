@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { TimelineItem, CommentWithAuthor, EventWithActor, Attachment } from '@kombuse/types'
 import { CommentItem } from '../comments/comment-item'
 import { TimelineEventItem } from './timeline-event-item'
@@ -38,6 +39,17 @@ function ActivityTimeline({
   isDeletingComment = false,
   className,
 }: ActivityTimelineProps) {
+  const commentById = useMemo(() => {
+    const map = new Map<number, CommentWithAuthor>()
+    for (const item of items) {
+      if (item.type === 'comment') {
+        const comment = item.data as CommentWithAuthor
+        map.set(comment.id, comment)
+      }
+    }
+    return map
+  }, [items])
+
   if (items.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">No activity yet</p>
@@ -53,6 +65,7 @@ function ActivityTimeline({
             <CommentItem
               key={`comment-${comment.id}`}
               comment={comment}
+              parentComment={comment.parent_id ? commentById.get(comment.parent_id) : undefined}
               projectId={projectId}
               attachments={attachmentsByCommentId?.[comment.id]}
               isEditing={editingCommentId === comment.id}

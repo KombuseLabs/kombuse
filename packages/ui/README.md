@@ -445,6 +445,7 @@ Props for `ActivityTimeline`:
 
 Props for `CommentItem`:
 - `comment`: `CommentWithAuthor` object
+- `parentComment`: Optional `CommentWithAuthor` — when provided, renders a "Replying to {name}" indicator between the header and body
 - `projectId`: Optional project ID — enables `#<number>` ticket link rendering in comment body and builds correct route for session links on agent comments
 - `attachments`: Optional `Attachment[]` to display as inline image thumbnails below the comment body — clicking a thumbnail opens the image lightbox
 
