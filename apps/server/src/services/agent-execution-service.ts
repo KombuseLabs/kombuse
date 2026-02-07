@@ -138,6 +138,25 @@ async function runAgentChat(
 const activeBackends = new Map<string, AgentBackend>()
 
 /**
+ * Server-side tracking of pending (unresolved) permission requests.
+ * Keyed by requestId. Populated when a permission is broadcast to clients,
+ * removed when resolved or when the backend is unregistered.
+ */
+interface ServerPendingPermission {
+  sessionId: string
+  requestId: string
+  toolName: string
+  input: Record<string, unknown>
+  description: string
+  ticketId?: number
+}
+const serverPendingPermissions = new Map<string, ServerPendingPermission>()
+
+export function getPendingPermissions(): ServerPendingPermission[] {
+  return [...serverPendingPermissions.values()]
+}
+
+/**
  * Register a backend for permission response routing.
  */
 function registerBackend(sessionId: string, backend: AgentBackend): void {
@@ -149,6 +168,12 @@ function registerBackend(sessionId: string, backend: AgentBackend): void {
  */
 function unregisterBackend(sessionId: string): void {
   activeBackends.delete(sessionId)
+  // Clear any pending permissions for this session since the backend is gone
+  for (const [requestId, perm] of serverPendingPermissions) {
+    if (perm.sessionId === sessionId) {
+      serverPendingPermissions.delete(requestId)
+    }
+  }
 }
 
 /**
@@ -161,6 +186,14 @@ function broadcastPermissionPending(
 ): void {
   const description = generatePermissionDescription(event.toolName, event.input)
   console.log('[server] permission_request:', event.requestId, event.toolName, '-', description)
+  serverPendingPermissions.set(event.requestId, {
+    sessionId,
+    requestId: event.requestId,
+    toolName: event.toolName,
+    input: event.input,
+    description,
+    ticketId,
+  })
   wsHub.broadcastToTopic('*', {
     type: 'agent.permission_pending',
     sessionId,
@@ -173,12 +206,15 @@ function broadcastPermissionPending(
 }
 
 /**
- * Broadcast aggregated agent status for a ticket.
+ * Compute aggregated agent status for a ticket.
  * Queries all sessions for the ticket and aggregates their status.
  * Only considers failures more recent than the last completed session
  * to avoid permanent error indicators from old historical failures.
  */
-export function broadcastTicketAgentStatus(ticketId: number): void {
+export function computeTicketAgentStatus(ticketId: number): {
+  status: AgentActivityStatus
+  sessionCount: number
+} {
   const activeSessions = sessionsRepository.listByTicket(ticketId, { status: 'running' })
   const failedSessions = sessionsRepository.listByTicket(ticketId, { status: 'failed' })
 
@@ -200,11 +236,19 @@ export function broadcastTicketAgentStatus(ticketId: number): void {
     status = 'running'
   }
 
+  return { status, sessionCount: activeSessions.length }
+}
+
+/**
+ * Broadcast aggregated agent status for a ticket to all connected clients.
+ */
+export function broadcastTicketAgentStatus(ticketId: number): void {
+  const { status, sessionCount } = computeTicketAgentStatus(ticketId)
   wsHub.broadcastToTopic('*', {
     type: 'ticket.agent_status',
     ticketId,
     status,
-    sessionCount: activeSessions.length,
+    sessionCount,
   })
 }
 
@@ -989,6 +1033,7 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
     sessionId: kombuseSessionId,
     requestId,
   })
+  serverPendingPermissions.delete(requestId)
 
   return true
 }

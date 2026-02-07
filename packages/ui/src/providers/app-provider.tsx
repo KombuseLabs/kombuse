@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, type ReactNode } from 'react'
+import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
 import type {
   Ticket,
   AppView,
@@ -12,6 +12,7 @@ import type {
 } from '@kombuse/types'
 import { AppCtx } from './app-context'
 import { useWebSocket } from '../hooks/use-websocket'
+import { syncApi } from '../lib/api'
 
 interface AppProviderProps {
   children: ReactNode
@@ -151,6 +152,26 @@ export function AppProvider({
   )
 
   useWebSocket({ topics: ['*'], onMessage: handleMessage })
+
+  // Fetch current state on mount to recover from page reload
+  useEffect(() => {
+    let cancelled = false
+    syncApi.getState().then((state) => {
+      if (cancelled) return
+      for (const perm of state.pendingPermissions) {
+        addPendingPermission(perm)
+      }
+      for (const tas of state.ticketAgentStatuses) {
+        updateTicketAgentStatus(tas.ticketId, {
+          status: tas.status,
+          sessionCount: tas.sessionCount,
+        })
+      }
+    }).catch((err) => {
+      console.error('[app-provider] Failed to fetch sync state:', err)
+    })
+    return () => { cancelled = true }
+  }, [addPendingPermission, updateTicketAgentStatus])
 
   const value = useMemo<AppContextValue>(
     () => ({

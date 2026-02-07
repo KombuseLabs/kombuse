@@ -29,6 +29,8 @@ import type {
   SessionEvent,
   TicketTimeline,
   Attachment,
+  PendingPermission,
+  AgentActivityStatus,
 } from '@kombuse/types'
 
 const API_BASE = 'http://localhost:3331/api'
@@ -435,5 +437,21 @@ export const attachmentsApi = {
 
   downloadUrl(id: number): string {
     return `${API_BASE}/attachments/${id}/download`
+  },
+}
+
+export interface SyncState {
+  pendingPermissions: PendingPermission[]
+  ticketAgentStatuses: Array<{
+    ticketId: number
+    status: AgentActivityStatus
+    sessionCount: number
+  }>
+}
+
+export const syncApi = {
+  async getState(): Promise<SyncState> {
+    const response = await fetch(`${API_BASE}/sync/state`)
+    return handleResponse<SyncState>(response)
   },
 }
