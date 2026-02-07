@@ -37,6 +37,7 @@ src/
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
     ├── api.ts                 - API client (tickets, comments, labels, attachments)
+    ├── ticket-utils.ts        - Shared ticket display utilities (statusColors)
     └── utils.ts               - cn() class merging
 ```
 
@@ -121,11 +122,12 @@ import { CommandProvider, ThemeProvider } from '@kombuse/ui/providers'
 ```typescript
 import { CommandPalette, Header, ModeToggle } from '@kombuse/ui/components'
 
-// CommandPalette supports #N ticket navigation
+// CommandPalette supports #ticket search and navigation
+// Type # followed by a number or search term to find tickets
 <CommandPalette
   open={paletteOpen}
   onOpenChange={setPaletteOpen}
-  onNavigate={navigate}  // from useNavigate() — enables #55 → go to ticket 55
+  onNavigate={navigate}  // from useNavigate() — enables #55 → go to ticket, #bug → search
 />
 import { TicketList, TicketDetail } from '@kombuse/ui/components'
 import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/components'
@@ -479,6 +481,14 @@ import { cn } from '@kombuse/ui/lib/utils'
 
 // Merge class names with tailwind-merge
 cn('px-4 py-2', conditional && 'bg-primary', className)
+```
+
+```typescript
+import { statusColors } from '@kombuse/ui/lib/ticket-utils'
+
+// Tailwind class map for ticket status badges (supports dark mode)
+// Keys: 'open', 'in_progress', 'blocked', 'closed'
+cn('rounded-full px-1.5 text-[10px] font-medium', statusColors[ticket.status])
 ```
 
 ```typescript

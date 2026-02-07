@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState, useCallback } from 'react'
-import { Ticket } from 'lucide-react'
+import { Loader2, Ticket } from 'lucide-react'
+import type { TicketWithLabels } from '@kombuse/types'
 import {
   CommandDialog,
   CommandInput,
@@ -11,8 +12,10 @@ import {
   CommandEmpty,
   CommandShortcut,
 } from '../../base/command'
-import { useCommands, useCommandContext } from '../../hooks'
+import { useCommands, useCommandContext, useTicketSearch } from '../../hooks'
 import { formatKeybinding } from '@kombuse/core'
+import { cn } from '../../lib/utils'
+import { statusColors } from '../../lib/ticket-utils'
 
 interface CommandPaletteProps {
   open: boolean
@@ -30,6 +33,20 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
   const commands = useCommands()
   const { registry, context } = useCommandContext()
 
+  const hasProjectId = context.currentProjectId != null
+
+  // Search tickets when query is non-trivial (2+ chars, with or without # prefix)
+  const ticketSearchTerm = useMemo(() => {
+    if (query.startsWith('#')) return query.slice(1)
+    return query
+  }, [query])
+
+  const { data: ticketResults = [], isLoading: isSearching } = useTicketSearch(
+    ticketSearchTerm,
+    { enabled: ticketSearchTerm.length >= 2 && hasProjectId }
+  )
+
+  // Exact #N match for direct "go to ticket" navigation
   const ticketMatch = useMemo(() => {
     const match = query.match(/^#(\d+)$/)
     if (!match?.[1]) return null
@@ -38,7 +55,8 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
     return num
   }, [query])
 
-  const canGoToTicket = ticketMatch !== null && context.currentProjectId != null
+  const canGoToTicket = ticketMatch !== null && hasProjectId
+  const showTicketSection = canGoToTicket || (ticketResults.length > 0 && hasProjectId) || (isSearching && hasProjectId)
 
   const grouped = useMemo(() => {
     const filtered = commands.filter(
@@ -81,21 +99,10 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
       <CommandInput
         value={query}
         onValueChange={setQuery}
-        placeholder="Type a command or #ticket number..."
+        placeholder="Type a command or search tickets..."
       />
       <CommandList>
-        <CommandEmpty>No commands found.</CommandEmpty>
-        {canGoToTicket && (
-          <CommandGroup heading="Navigation">
-            <CommandItem
-              value={`go-to-ticket-${ticketMatch}`}
-              onSelect={() => handleGoToTicket(ticketMatch)}
-            >
-              <Ticket className="size-4" />
-              <span>Go to Ticket #{ticketMatch}</span>
-            </CommandItem>
-          </CommandGroup>
-        )}
+        <CommandEmpty>No results found.</CommandEmpty>
         {Object.entries(grouped).map(([category, cmds]) => (
           <CommandGroup key={category} heading={category}>
             {cmds.map((cmd) => (
@@ -114,6 +121,44 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
             ))}
           </CommandGroup>
         ))}
+        {showTicketSection && (
+          <CommandGroup heading="Tickets">
+            {canGoToTicket && (
+              <CommandItem
+                value={`go-to-ticket-${ticketMatch}`}
+                onSelect={() => handleGoToTicket(ticketMatch)}
+              >
+                <Ticket className="size-4" />
+                <span>Go to Ticket #{ticketMatch}</span>
+              </CommandItem>
+            )}
+            {isSearching && (
+              <CommandItem value="ticket-search-loading" disabled>
+                <Loader2 className="size-4 animate-spin" />
+                <span className="text-muted-foreground">Searching tickets...</span>
+              </CommandItem>
+            )}
+            {ticketResults.map((ticket: TicketWithLabels) => (
+              <CommandItem
+                key={`ticket-${ticket.id}`}
+                value={`ticket-${ticket.id}-${ticket.title}`}
+                onSelect={() => handleGoToTicket(ticket.id)}
+              >
+                <Ticket className="size-4" />
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">#{ticket.id}</span>
+                <span className="truncate">{ticket.title}</span>
+                <span
+                  className={cn(
+                    'ml-auto shrink-0 rounded-full px-1.5 py-0 text-[10px] font-medium',
+                    statusColors[ticket.status]
+                  )}
+                >
+                  {ticket.status.replace('_', ' ')}
+                </span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
       </CommandList>
     </CommandDialog>
   )
