@@ -115,14 +115,38 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                 <div className="flex items-center gap-2 mb-1">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 text-xs rounded-full font-medium',
-                      statusColors[ticket.status]
-                    )}
-                  >
-                    {ticket.status.replace('_', ' ')}
-                  </span>
+                  {isEditable ? (
+                    <Select
+                      value={ticket.status}
+                      onValueChange={(v) => updateCurrentTicket({ status: v as TicketStatus })}
+                      disabled={isUpdating}
+                    >
+                      <SelectTrigger
+                        className={cn(
+                          'h-6 w-auto gap-1 rounded-full border-none px-2 py-0.5 text-xs font-medium shadow-none',
+                          statusColors[ticket.status]
+                        )}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span
+                      className={cn(
+                        'px-2 py-0.5 text-xs rounded-full font-medium',
+                        statusColors[ticket.status]
+                      )}
+                    >
+                      {ticket.status.replace('_', ' ')}
+                    </span>
+                  )}
                   {ticket.priority !== null && (
                     <>
                       <span className="text-muted-foreground">·</span>
