@@ -28,8 +28,13 @@ export function useCommentOperations(filters?: CommentFilters) {
 
   // Wrapped operations
   const createComment = useCallback(
-    (body: string, authorId: string, parentId?: number) => {
-      return createMutation.mutateAsync({ body, author_id: authorId, parent_id: parentId })
+    (body: string, authorId: string, parentId?: number, kombuseSessionId?: string) => {
+      return createMutation.mutateAsync({
+        body,
+        author_id: authorId,
+        parent_id: parentId,
+        kombuse_session_id: kombuseSessionId,
+      })
     },
     [createMutation]
   )

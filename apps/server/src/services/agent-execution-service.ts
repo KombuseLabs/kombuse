@@ -27,7 +27,7 @@ import {
   type ISessionPersistenceService,
 } from '@kombuse/services'
 import { agentInvocationsRepository, eventsRepository, sessionsRepository } from '@kombuse/persistence'
-import { EVENT_TYPES, createSessionId } from '@kombuse/types'
+import { EVENT_TYPES, createSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
@@ -623,6 +623,15 @@ export async function processEventAndRunAgents(
     return
   }
 
+  // Skip events that already have an active session (e.g. user reply to
+  // an agent comment handled via the WebSocket agent.invoke path)
+  if (event.kombuse_session_id) {
+    console.log(
+      `[Server] Skipping event #${event.id} — session ${event.kombuse_session_id} already active`
+    )
+    return
+  }
+
   const invocations = dependencies.processEvent(event)
 
   if (invocations.length === 0) {
@@ -657,8 +666,11 @@ export async function processEventAndRunAgents(
       continue
     }
 
-    // Generate session ID for triggered invocation
-    const kombuseSessionId = createSessionId('trigger')
+    // Reuse existing session ID from the event when available,
+    // otherwise generate a new one for this triggered invocation
+    const kombuseSessionId = event.kombuse_session_id
+      ? (event.kombuse_session_id as KombuseSessionId)
+      : createSessionId('trigger')
 
     // Update invocation with session ID
     agentInvocationsRepository.update(invocation.id, {
@@ -721,11 +733,13 @@ export async function processEventAndRunAgents(
       (evt) => {
         // Broadcast to all clients (triggered sessions don't have a specific client)
         if (evt.type === 'started') {
-          wsHub.broadcastToTopic('*', {
+          const msg: ServerMessage = {
             type: 'agent.started',
             kombuseSessionId: evt.kombuseSessionId,
             ticketId: evt.ticketId,
-          })
+          }
+          wsHub.broadcastToTopic('*', msg)
+          wsHub.broadcastToTopic(`session:${evt.kombuseSessionId}`, msg)
           // Broadcast updated ticket agent status
           if (evt.ticketId) {
             broadcastTicketAgentStatus(evt.ticketId)
@@ -736,11 +750,13 @@ export async function processEventAndRunAgents(
           }
           const serialized = serializeAgentStreamEvent(evt.event)
           if (serialized) {
-            wsHub.broadcastToTopic('*', {
+            const msg: ServerMessage = {
               type: 'agent.event',
               kombuseSessionId: evt.kombuseSessionId,
               event: serialized,
-            })
+            }
+            wsHub.broadcastToTopic('*', msg)
+            wsHub.broadcastToTopic(`session:${evt.kombuseSessionId}`, msg)
           }
         } else if (evt.type === 'complete') {
           if (!invocationFailed) {
@@ -758,12 +774,14 @@ export async function processEventAndRunAgents(
               kombuseSessionId
             )
           }
-          wsHub.broadcastToTopic('*', {
+          const msg: ServerMessage = {
             type: 'agent.complete',
             kombuseSessionId: evt.kombuseSessionId,
             backendSessionId: evt.backendSessionId,
             ticketId: evt.ticketId,
-          })
+          }
+          wsHub.broadcastToTopic('*', msg)
+          wsHub.broadcastToTopic(`session:${evt.kombuseSessionId}`, msg)
           // Broadcast updated ticket agent status
           if (evt.ticketId) {
             broadcastTicketAgentStatus(evt.ticketId)

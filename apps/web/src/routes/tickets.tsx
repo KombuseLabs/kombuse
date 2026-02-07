@@ -199,7 +199,7 @@ export function Tickets() {
 
       if (targetComment?.kombuse_session_id) {
         // Create the reply comment so it appears in timeline immediately
-        newComment = await createComment(body, "user-1", replyTarget.commentId); // TODO: Get from auth context
+        newComment = await createComment(body, "user-1", replyTarget.commentId, targetComment.kombuse_session_id); // TODO: Get from auth context
         // Also invoke the agent session
         wsSend({
           type: "agent.invoke",
