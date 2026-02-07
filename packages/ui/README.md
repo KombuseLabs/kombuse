@@ -69,6 +69,13 @@ const commands = useCommands()
 const { registry, context } = useCommandContext()
 ```
 
+```typescript
+import { useProfileSearch } from '@kombuse/ui/hooks'
+
+// Debounced profile search (agents only) for @mention autocomplete
+const { data: profiles, isLoading } = useProfileSearch('clau', { enabled: true })
+```
+
 ### Providers
 
 ```typescript
@@ -168,6 +175,9 @@ import { Markdown } from '@kombuse/ui/components'
 
 // With ticket link support (#22 → clickable link to /projects/:id/tickets/22)
 <Markdown projectId="my-project">{'See #22 for details'}</Markdown>
+
+// @mentions are automatically styled (e.g., @AgentName renders as highlighted text)
+<Markdown>{'Ask @CodingAgent to implement this'}</Markdown>
 ```
 
 Props:
@@ -284,6 +294,7 @@ Props for `ChatInput`:
 - `replyTarget`: Optional `ReplyTarget` object (`{ commentId, authorId, isAgentSession }`) — shows reply indicator when set
 - `onCancelReply`: Callback to dismiss reply mode
 - Supports file attachments via paperclip button and drag-and-drop (images only, max 10 MB)
+- Supports `@mention` autocomplete — typing `@` triggers a dropdown of agent profiles with keyboard navigation (Arrow keys, Enter/Tab to select, Escape to dismiss)
 
 ### Attachment Hooks
 

@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, type FormEvent, type KeyboardEvent, type DragEvent, type ClipboardEvent } from 'react'
+import { useState, useCallback, useRef, useEffect, type FormEvent, type KeyboardEvent, type DragEvent, type ClipboardEvent, type ChangeEvent } from 'react'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { cn } from '../../lib/utils'
+import { getMentionContext, getCaretCoordinates, insertMention } from '../../lib/mention-utils'
+import { useProfileSearch } from '../../hooks/use-profile-search'
+import { MentionAutocomplete } from './mention-autocomplete'
 import { Send, Loader2, X, Paperclip } from 'lucide-react'
+import type { Profile } from '@kombuse/types'
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
@@ -45,6 +49,18 @@ function ChatInput({
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Mention autocomplete state
+  const [mentionContext, setMentionContext] = useState(() => getMentionContext('', 0))
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
+  const [caretPosition, setCaretPosition] = useState({ top: 0, left: 0, height: 0 })
+
+  const { data: mentionProfiles = [] } = useProfileSearch(mentionContext.query, {
+    enabled: mentionContext.isActive,
+  })
+
+  const mentionVisible = mentionContext.isActive && mentionProfiles.length > 0
 
   // Clean up preview URLs on unmount or when files change
   useEffect(() => {
@@ -87,6 +103,7 @@ function ChatInput({
       const filesToSend = stagedFiles.length > 0 ? [...stagedFiles] : undefined
       await onSubmit(trimmed, filesToSend)
       setMessage('')
+      setMentionContext(getMentionContext('', 0))
       setStagedFiles([])
       setPreviewUrls((prev) => {
         prev.forEach((url) => URL.revokeObjectURL(url))
@@ -96,14 +113,83 @@ function ChatInput({
     [message, stagedFiles, isLoading, disabled, onSubmit]
   )
 
+  const handleMentionSelect = useCallback(
+    (profile: Profile) => {
+      const cursorPos = textareaRef.current?.selectionStart ?? message.length
+      const { newValue, newCursorPosition } = insertMention(
+        message,
+        mentionContext.triggerIndex,
+        cursorPos,
+        profile.name
+      )
+      setMessage(newValue)
+      setMentionContext(getMentionContext('', 0))
+      setSelectedMentionIndex(0)
+
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = newCursorPosition
+          textareaRef.current.selectionEnd = newCursorPosition
+          textareaRef.current.focus()
+        }
+      })
+    },
+    [message, mentionContext.triggerIndex]
+  )
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (mentionVisible) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setSelectedMentionIndex((prev) =>
+            prev < mentionProfiles.length - 1 ? prev + 1 : 0
+          )
+          return
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setSelectedMentionIndex((prev) =>
+            prev > 0 ? prev - 1 : mentionProfiles.length - 1
+          )
+          return
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault()
+          const selected = mentionProfiles[selectedMentionIndex]
+          if (selected) handleMentionSelect(selected)
+          return
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          setMentionContext(getMentionContext('', 0))
+          return
+        }
+      }
+
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         handleSubmit()
       }
     },
-    [handleSubmit]
+    [mentionVisible, mentionProfiles, selectedMentionIndex, handleMentionSelect, handleSubmit]
+  )
+
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value
+      const cursorPos = e.target.selectionStart ?? value.length
+      setMessage(value)
+
+      const ctx = getMentionContext(value, cursorPos)
+      setMentionContext(ctx)
+      setSelectedMentionIndex(0)
+
+      if (ctx.isActive && textareaRef.current) {
+        setCaretPosition(getCaretCoordinates(textareaRef.current, cursorPos))
+      }
+    },
+    []
   )
 
   const handleDragOver = useCallback((e: DragEvent) => {
@@ -198,8 +284,9 @@ function ChatInput({
       )}
       <form onSubmit={handleSubmit} className="flex gap-2 items-end">
         <Textarea
+          ref={textareaRef}
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder={effectivePlaceholder}
@@ -223,6 +310,14 @@ function ChatInput({
           </Button>
         </div>
       </form>
+      <MentionAutocomplete
+        profiles={mentionProfiles}
+        selectedIndex={selectedMentionIndex}
+        caretOffset={caretPosition}
+        textareaRef={textareaRef}
+        onSelect={handleMentionSelect}
+        visible={mentionVisible}
+      />
       <input
         ref={fileInputRef}
         type="file"

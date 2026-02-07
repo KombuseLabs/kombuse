@@ -67,3 +67,4 @@ export {
   useUploadAttachment,
   useDeleteAttachment,
 } from './use-attachments'
+export { useProfileSearch } from './use-profile-search'
