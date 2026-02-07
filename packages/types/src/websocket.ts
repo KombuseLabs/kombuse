@@ -92,6 +92,7 @@ export type ServerMessage =
  * Topic format examples:
  * - `project:{id}` - All events for a project
  * - `ticket:{id}` - All events for a specific ticket
+ * - `session:{kombuseSessionId}` - All events for a specific session
  * - `*` - All events (admin/debug use)
  */
-export type TopicPattern = `project:${string}` | `ticket:${number}` | '*'
+export type TopicPattern = `project:${string}` | `ticket:${number}` | `session:${string}` | '*'

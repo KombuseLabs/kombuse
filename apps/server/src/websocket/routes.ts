@@ -94,33 +94,41 @@ function handleAgentInvoke(
 ) {
   startAgentChatSession(message, (event) => {
     switch (event.type) {
-      case 'started':
-        sendServerMessage(socket, {
+      case 'started': {
+        const msg: ServerMessage = {
           type: 'agent.started',
           kombuseSessionId: event.kombuseSessionId,
           ticketId: event.ticketId,
-        })
+        }
+        sendServerMessage(socket, msg)
+        wsHub.broadcastToSession(event.kombuseSessionId, msg, socket)
         break
+      }
       case 'event': {
         const wsEvent = serializeAgentStreamEvent(event.event)
         if (!wsEvent) {
           return
         }
-        sendServerMessage(socket, {
+        const msg: ServerMessage = {
           type: 'agent.event',
           kombuseSessionId: event.kombuseSessionId,
           event: wsEvent,
-        })
+        }
+        sendServerMessage(socket, msg)
+        wsHub.broadcastToSession(event.kombuseSessionId, msg, socket)
         break
       }
-      case 'complete':
-        sendServerMessage(socket, {
+      case 'complete': {
+        const msg: ServerMessage = {
           type: 'agent.complete',
           kombuseSessionId: event.kombuseSessionId,
           backendSessionId: event.backendSessionId,
           ticketId: event.ticketId,
-        })
+        }
+        sendServerMessage(socket, msg)
+        wsHub.broadcastToSession(event.kombuseSessionId, msg, socket)
         break
+      }
       case 'error':
         sendServerMessage(socket, {
           type: 'error',

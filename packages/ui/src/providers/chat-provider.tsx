@@ -11,7 +11,7 @@ import type {
   Session,
 } from '@kombuse/types'
 import { useWebSocket } from '../hooks/use-websocket'
-import { useSessionEvents } from '../hooks/use-sessions'
+import { useSession, useSessionEvents } from '../hooks/use-sessions'
 import { ChatCtx } from './chat-context'
 
 interface ChatProviderProps {
@@ -47,8 +47,15 @@ export function ChatProvider({
   const [pendingPermission, setPendingPermission] =
     useState<SerializedAgentPermissionRequestEvent | null>(null)
 
+  // Fetch session metadata to get kombuse_session_id for topic subscription
+  const { data: sessionData } = useSession(sessionId ?? null)
+
   // Historical mode: fetch session events
   const { data: sessionEventsData } = useSessionEvents(sessionId ?? null)
+
+  // The effective kombuse session ID — either from the loaded session record,
+  // or from state set when the user started a new session
+  const effectiveKombuseSessionId = sessionData?.kombuse_session_id ?? kombuseSessionId
 
   // Load historical events when sessionId is provided
   useEffect(() => {
@@ -101,7 +108,7 @@ export function ChatProvider({
   const handleMessage = useCallback((message: ServerMessage) => {
     switch (message.type) {
       case 'agent.started': {
-        if (sessionId && message.kombuseSessionId !== sessionId) {
+        if (effectiveKombuseSessionId && message.kombuseSessionId !== effectiveKombuseSessionId) {
           break
         }
         setKombuseSessionId(message.kombuseSessionId)
@@ -112,11 +119,10 @@ export function ChatProvider({
       }
 
       case 'agent.event': {
-        const expectedSessionId = sessionId ?? kombuseSessionId
-        if (!expectedSessionId) {
+        if (!effectiveKombuseSessionId) {
           break
         }
-        if (message.kombuseSessionId !== expectedSessionId) {
+        if (message.kombuseSessionId !== effectiveKombuseSessionId) {
           break
         }
         const event = message.event
@@ -129,16 +135,11 @@ export function ChatProvider({
         break
       }
 
-      case 'agent.complete':
-        if (!sessionId && !kombuseSessionId) {
+      case 'agent.complete': {
+        if (!effectiveKombuseSessionId) {
           break
         }
-        if (
-          (sessionId && message.kombuseSessionId !== sessionId) ||
-          (!sessionId &&
-            kombuseSessionId &&
-            message.kombuseSessionId !== kombuseSessionId)
-        ) {
+        if (message.kombuseSessionId !== effectiveKombuseSessionId) {
           break
         }
         setIsLoading(false)
@@ -146,8 +147,9 @@ export function ChatProvider({
         updateSessionStatus(message.kombuseSessionId, 'completed')
         refreshSessions()
         break
+      }
 
-      case 'error':
+      case 'error': {
         setIsLoading(false)
         refreshSessions()
         // Create an error event for server-level errors
@@ -159,11 +161,19 @@ export function ChatProvider({
         }
         setEvents((prev) => [...prev, errorEvent])
         break
+      }
     }
-  }, [kombuseSessionId, sessionId, refreshSessions, updateSessionStatus])
+  }, [effectiveKombuseSessionId, refreshSessions, updateSessionStatus])
+
+  const sessionTopics = useMemo(() => {
+    if (effectiveKombuseSessionId) {
+      return [`session:${effectiveKombuseSessionId}`]
+    }
+    return []
+  }, [effectiveKombuseSessionId])
 
   const { isConnected, send: wsSend } = useWebSocket({
-    topics: [],
+    topics: sessionTopics,
     onMessage: handleMessage,
   })
 
@@ -182,7 +192,7 @@ export function ChatProvider({
       }
 
       setIsLoading(true)
-      let targetSessionId = sessionId ?? kombuseSessionId ?? undefined
+      let targetSessionId = effectiveKombuseSessionId ?? undefined
 
       if (!targetSessionId) {
         if (!onEnsureSession) {
@@ -237,9 +247,8 @@ export function ChatProvider({
     },
     [
       agentId,
-      sessionId,
+      effectiveKombuseSessionId,
       projectId,
-      kombuseSessionId,
       isConnected,
       isLoading,
       wsSend,
@@ -249,12 +258,11 @@ export function ChatProvider({
 
   const respondToPermission = useCallback(
     (requestId: string, behavior: 'allow' | 'deny', message?: string) => {
-      const targetSessionId = sessionId ?? kombuseSessionId
-      if (!targetSessionId || !pendingPermission) return
+      if (!effectiveKombuseSessionId || !pendingPermission) return
 
       wsSend({
         type: 'permission.response',
-        kombuseSessionId: targetSessionId,
+        kombuseSessionId: effectiveKombuseSessionId,
         requestId,
         behavior,
         updatedInput: behavior === 'allow' ? pendingPermission.input : undefined,
@@ -263,7 +271,7 @@ export function ChatProvider({
 
       setPendingPermission(null)
     },
-    [sessionId, kombuseSessionId, pendingPermission, wsSend]
+    [effectiveKombuseSessionId, pendingPermission, wsSend]
   )
 
   const reset = useCallback(() => {

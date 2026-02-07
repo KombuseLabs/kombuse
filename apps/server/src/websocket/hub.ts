@@ -123,6 +123,22 @@ class WebSocketHub {
   }
 
   /**
+   * Broadcast a message to all subscribers of a session topic,
+   * optionally excluding a specific WebSocket (to prevent double-delivery
+   * to the originating client).
+   */
+  broadcastToSession(kombuseSessionId: string, message: ServerMessage, exclude?: WebSocket): void {
+    const topic = `session:${kombuseSessionId}`
+    const subscribers = this.topicSubscribers.get(topic)
+    if (!subscribers) return
+
+    for (const ws of subscribers) {
+      if (ws === exclude) continue
+      this.send(ws, message)
+    }
+  }
+
+  /**
    * Derive topics from event properties
    */
   private getTopicsForEvent(event: WebSocketEvent): string[] {
