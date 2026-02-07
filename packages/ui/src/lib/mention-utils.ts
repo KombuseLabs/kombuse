@@ -67,11 +67,15 @@ export function insertMention(
   triggerIndex: number,
   cursorPosition: number,
   replacement: string,
-  triggerChar: MentionTrigger = '@'
+  triggerChar: MentionTrigger = '@',
+  id?: string
 ): { newValue: string; newCursorPosition: number } {
   const before = value.substring(0, triggerIndex)
   const after = value.substring(cursorPosition)
-  const mention = `${triggerChar}${replacement} `
+  const mention =
+    triggerChar === '@' && id
+      ? `@[${replacement}](${id}) `
+      : `${triggerChar}${replacement} `
   return {
     newValue: before + mention + after,
     newCursorPosition: before.length + mention.length,

@@ -81,20 +81,39 @@ function mapCommentWithAuthor(row: RawCommentWithAuthor): CommentWithAuthor {
 }
 
 interface ParsedMentions {
-  profileNames: string[]
+  /** Profile IDs from new @[name](id) format */
+  profileIds: string[]
+  /** Profile names from legacy @name format (backward compat) */
+  legacyProfileNames: string[]
   ticketIds: number[]
 }
 
 /**
  * Extract profile and ticket mentions from comment body.
- * Supports `@profile-name` and `#123` ticket references.
+ * Supports new `@[Display Name](profile-id)` format and legacy `@name` format,
+ * plus `#123` ticket references.
  */
 function parseMentions(body: string): ParsedMentions {
-  const profileMentionRegex = /@([a-zA-Z0-9_-]+)/g
+  // New format: @[Display Name](profile-id)
+  const newProfileMentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g
+  // Legacy format: @single-word-name
+  const legacyProfileMentionRegex = /@([a-zA-Z0-9_-]+)/g
   const ticketMentionRegex = /#(\d+)\b/g
 
-  const profileNames = [
-    ...new Set([...body.matchAll(profileMentionRegex)].map((match) => match[1]!)),
+  const profileIds = [
+    ...new Set(
+      [...body.matchAll(newProfileMentionRegex)].map((match) => match[2]!)
+    ),
+  ]
+
+  // Strip new-format mentions before running legacy regex to prevent double-matching
+  const bodyWithoutNewMentions = body.replace(newProfileMentionRegex, '')
+  const legacyProfileNames = [
+    ...new Set(
+      [...bodyWithoutNewMentions.matchAll(legacyProfileMentionRegex)].map(
+        (match) => match[1]!
+      )
+    ),
   ]
 
   const ticketIds = [
@@ -105,7 +124,7 @@ function parseMentions(body: string): ParsedMentions {
     ),
   ]
 
-  return { profileNames, ticketIds }
+  return { profileIds, legacyProfileNames, ticketIds }
 }
 
 /**
@@ -215,8 +234,35 @@ export const commentsRepository = {
       // 2. Parse profile/ticket mentions from body
       const mentions = parseMentions(payload.body)
 
-      // 3. Resolve profile mentions
-      for (const name of mentions.profileNames) {
+      // 3a. Resolve new-format profile mentions (by ID)
+      for (const profileId of mentions.profileIds) {
+        const profile = profilesRepository.get(profileId)
+        if (profile) {
+          mentionsRepository.create({
+            comment_id: commentId,
+            mention_type: 'profile',
+            mentioned_profile_id: profile.id,
+            mention_text: `@${profile.name}`,
+          })
+
+          eventsRepository.create({
+            event_type: 'mention.created',
+            project_id: ticket?.project_id,
+            ticket_id: payload.ticket_id,
+            comment_id: commentId,
+            actor_id: payload.author_id,
+            actor_type: actorType,
+            payload: {
+              mention_type: 'profile',
+              mentioned_profile_id: profile.id,
+              mention_text: `@${profile.name}`,
+            },
+          })
+        }
+      }
+
+      // 3b. Resolve legacy-format profile mentions (by name, backward compat)
+      for (const name of mentions.legacyProfileNames) {
         const profile = profilesRepository.getByName(name)
         if (profile) {
           mentionsRepository.create({
@@ -226,7 +272,6 @@ export const commentsRepository = {
             mention_text: `@${name}`,
           })
 
-          // Create mention.created event
           eventsRepository.create({
             event_type: 'mention.created',
             project_id: ticket?.project_id,
@@ -345,8 +390,21 @@ export const commentsRepository = {
               .get(comment.ticket_id) as { project_id: string } | undefined)
           : undefined
 
-        // Create new mention records
-        for (const name of mentions.profileNames) {
+        // Create new mention records (new format, by ID)
+        for (const profileId of mentions.profileIds) {
+          const profile = profilesRepository.get(profileId)
+          if (profile) {
+            mentionsRepository.create({
+              comment_id: id,
+              mention_type: 'profile',
+              mentioned_profile_id: profile.id,
+              mention_text: `@${profile.name}`,
+            })
+          }
+        }
+
+        // Create new mention records (legacy format, by name)
+        for (const name of mentions.legacyProfileNames) {
           const profile = profilesRepository.getByName(name)
           if (profile) {
             mentionsRepository.create({

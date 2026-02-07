@@ -130,7 +130,9 @@ function ChatInput({
         message,
         mentionContext.triggerIndex,
         cursorPos,
-        profile.name
+        profile.name,
+        '@',
+        profile.id
       )
       setMessage(newValue)
       setMentionContext(getMentionContext('', 0))

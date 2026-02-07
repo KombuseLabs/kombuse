@@ -285,6 +285,96 @@ describe('commentsRepository', () => {
       ).toBe(true)
     })
 
+    it('should parse new-format @[name](id) mentions and create mention records', () => {
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('mentionable-user', 'user', 'Mentionable User')
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Hey @[Mentionable User](mentionable-user) can you look at this?',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+
+      expect(mentions).toHaveLength(1)
+      expect(mentions[0]?.mention_type).toBe('profile')
+      expect(mentions[0]?.mentioned_profile_id).toBe('mentionable-user')
+      expect(mentions[0]?.mention_text).toBe('@Mentionable User')
+    })
+
+    it('should handle multiple new-format mentions', () => {
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('user-alice', 'user', 'Alice Smith')
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('user-bob', 'user', 'Bob Jones')
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: '@[Alice Smith](user-alice) and @[Bob Jones](user-bob) please review this',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+
+      expect(mentions).toHaveLength(2)
+      expect(mentions.map((m) => m.mentioned_profile_id).sort()).toEqual([
+        'user-alice',
+        'user-bob',
+      ])
+    })
+
+    it('should deduplicate new-format mentions for same profile', () => {
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('user-claude', 'user', 'Claude')
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: '@[Claude](user-claude) please look. What do you think @[Claude](user-claude)?',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions, 'Should deduplicate new-format mentions').toHaveLength(1)
+    })
+
+    it('should handle mixed legacy and new-format mentions', () => {
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('user-alice', 'user', 'alice')
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('agent-coding', 'agent', 'Coding Agent')
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: '@alice and @[Coding Agent](agent-coding) please review this',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions).toHaveLength(2)
+      expect(mentions.map((m) => m.mentioned_profile_id).sort()).toEqual([
+        'agent-coding',
+        'user-alice',
+      ])
+    })
+
+    it('should ignore new-format mentions with non-existent profile ID', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Hey @[Ghost](non-existent-id) check this out',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions).toHaveLength(0)
+    })
+
     it('should create comment.added event', () => {
       // Clear existing events
       db.prepare('DELETE FROM events').run()
@@ -564,6 +654,31 @@ describe('commentsRepository', () => {
 
       // Update to mention different person
       commentsRepository.update(comment.id, { body: '@bob please review instead' })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions).toHaveLength(1)
+      expect(mentions[0]?.mentioned_profile_id).toBe('user-bob')
+    })
+
+    it('should re-parse new-format mentions when body is updated', () => {
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('user-alice', 'user', 'Alice Smith')
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('user-bob', 'user', 'Bob Jones')
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: '@[Alice Smith](user-alice) please review',
+      })
+
+      expect(mentionsRepository.getByComment(comment.id)).toHaveLength(1)
+
+      commentsRepository.update(comment.id, {
+        body: '@[Bob Jones](user-bob) please review instead',
+      })
 
       const mentions = mentionsRepository.getByComment(comment.id)
       expect(mentions).toHaveLength(1)
