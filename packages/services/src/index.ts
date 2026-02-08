@@ -41,6 +41,9 @@ export type { IAttachmentService, UploadParams } from './attachment-service'
 export { FileStorage, fileStorage, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from './file-storage'
 export type { IFileStorage } from './file-storage'
 
+export { ClaudeCodeScanner, claudeCodeScanner } from './claude-code-scanner'
+export type { IClaudeCodeScanner } from './claude-code-scanner'
+
 // Template rendering
 export {
   renderTemplate,

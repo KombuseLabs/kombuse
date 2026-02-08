@@ -26,6 +26,7 @@ import type {
   ProjectFilters,
   CreateProjectInput,
   UpdateProjectInput,
+  ClaudeCodeProjectWithStatus,
   EventWithActor,
   EventFilters,
   Session,
@@ -510,6 +511,30 @@ export interface SyncState {
     status: AgentActivityStatus
     sessionCount: number
   }>
+}
+
+export const debugApi = {
+  async getClaudeSession(projectDir: string, sessionId: string): Promise<{ items: Record<string, unknown>[]; count: number }> {
+    const params = new URLSearchParams({ projectDir, sessionId })
+    const response = await fetch(`${API_BASE}/debug/claude-session?${params}`)
+    return handleResponse<{ items: Record<string, unknown>[]; count: number }>(response)
+  },
+}
+
+export const claudeCodeApi = {
+  async scan(): Promise<ClaudeCodeProjectWithStatus[]> {
+    const response = await fetch(`${API_BASE}/claude-code/projects`)
+    return handleResponse<ClaudeCodeProjectWithStatus[]>(response)
+  },
+
+  async importProjects(paths: string[]): Promise<Project[]> {
+    const response = await fetch(`${API_BASE}/claude-code/projects/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths }),
+    })
+    return handleResponse<Project[]>(response)
+  },
 }
 
 export const syncApi = {

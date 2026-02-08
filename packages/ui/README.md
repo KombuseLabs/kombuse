@@ -30,6 +30,7 @@ src/
 │   ├── use-commands.ts        - Get all available commands
 │   ├── use-command-context.ts - Access command registry
 │   ├── use-attachments.ts      - Attachment CRUD hooks
+│   ├── use-claude-code.ts     - Claude Code project scanner hooks
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-projects.ts        - Project CRUD hooks
 │   └── use-tickets.ts         - Ticket CRUD hooks
@@ -534,6 +535,21 @@ updateProject.mutate({ id: 'project-id', input: { name: 'New Name' } })
 
 const deleteProject = useDeleteProject()
 deleteProject.mutate('project-id')
+```
+
+### Claude Code Hooks
+
+```typescript
+import { useClaudeCodeProjects, useImportClaudeCodeProjects } from '@kombuse/ui/hooks'
+
+// Scan ~/.claude/projects/ for discovered Claude Code projects
+const { data: projects, isLoading } = useClaudeCodeProjects()
+// Returns ClaudeCodeProjectWithStatus[] (name, path, totalSessions, totalMessages, isImported)
+
+// Import selected projects into the database
+const importProjects = useImportClaudeCodeProjects()
+importProjects.mutate(['/path/to/project-a', '/path/to/project-b'])
+// Invalidates both 'claude-code-projects' and 'projects' queries on success
 ```
 
 ### Label Hooks

@@ -76,6 +76,7 @@ export {
   useUploadAttachment,
   useDeleteAttachment,
 } from './use-attachments'
+export { useClaudeCodeProjects, useImportClaudeCodeProjects } from './use-claude-code'
 export { useProfileSearch } from './use-profile-search'
 export { useTicketSearch } from './use-ticket-search'
 export { useTextareaAutocomplete } from './use-textarea-autocomplete'
