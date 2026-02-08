@@ -1,3 +1,4 @@
+export { EventCard, type EventCardProps, formatEventTime } from './event-card'
 export { MessageRenderer, type MessageRendererProps } from './message-renderer'
 export { PermissionRequestRenderer, type PermissionRequestRendererProps } from './permission-request-renderer'
 export { RawRenderer, type RawRendererProps } from './raw-renderer'

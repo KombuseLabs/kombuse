@@ -5,7 +5,7 @@ import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse
 import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
-import { MessageRenderer, PermissionRequestRenderer, RawRenderer, ToolResultRenderer, ToolUseRenderer } from './renderers'
+import { EventCard, MessageRenderer, PermissionRequestRenderer, RawRenderer, ToolResultRenderer, ToolUseRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 const SCROLL_THRESHOLD = 100
@@ -78,15 +78,15 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
       <div ref={scrollRef} onScroll={checkIfAtBottom} className="h-full overflow-y-auto p-4 space-y-4">
       {visibleEvents.map((event) => {
         if (event.type === 'message') {
-          return <MessageRenderer key={`${event.type}-${event.timestamp}`} event={event} />
+          return <MessageRenderer key={event.eventId} event={event} />
         }
 
         if (event.type === 'raw') {
-          return <RawRenderer key={`${event.type}-${event.timestamp}`} event={event} />
+          return <RawRenderer key={event.eventId} event={event} />
         }
 
         if (event.type === 'permission_request') {
-          return <PermissionRequestRenderer key={`${event.type}-${event.timestamp}`} event={event} />
+          return <PermissionRequestRenderer key={event.eventId} event={event} />
         }
 
         // Render tool_use events - skip if they have results (rendered with result)
@@ -94,7 +94,7 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (toolUseIdsWithResults.has(event.id)) {
             return null
           }
-          return <ToolUseRenderer key={`tool-use-${event.id}`} event={event} />
+          return <ToolUseRenderer key={event.eventId} event={event} />
         }
 
         // Render tool_result with its matching tool_use
@@ -103,7 +103,7 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (toolUse) {
             return (
               <ToolResultRenderer
-                key={`tool-result-${event.toolUseId}`}
+                key={event.eventId}
                 toolUse={toolUse}
                 result={event}
               />
@@ -112,17 +112,18 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         }
 
         return (
-          <div
-            key={`${event.type}-${event.timestamp}`}
-            className="p-3 rounded-lg text-sm overflow-x-auto bg-muted"
+          <EventCard
+            key={event.eventId}
+            timestamp={event.timestamp}
+            className="bg-muted overflow-x-auto"
+            header={
+              <span className="text-xs font-medium uppercase text-muted-foreground">{event.type}</span>
+            }
           >
-            <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-              <span className="font-medium uppercase">{event.type}</span>
-            </div>
             <pre className="overflow-x-auto whitespace-pre-wrap">
               {JSON.stringify(event, null, 2)}
             </pre>
-          </div>
+          </EventCard>
         )
       })}
       {isLoading && (
