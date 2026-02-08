@@ -1,6 +1,7 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 import { ClaudeCodeBackend } from '@kombuse/agent'
+import { createSessionLogger } from '../logger'
 
 /**
  * Default tools that are auto-approved for all agents.
@@ -861,6 +862,11 @@ export function startAgentChatSession(
 
   const backend = dependencies.createBackend()
 
+  const logger = createSessionLogger({
+    kombuseSessionId: appSessionId,
+    getBackendSessionId: () => backend.getBackendSessionId(),
+  })
+
   // Register backend before emitting 'started' so that
   // broadcastTicketAgentStatus (triggered by the emit callback)
   // finds this session in activeBackends and reports 'running'.
@@ -894,40 +900,7 @@ export function startAgentChatSession(
     systemPrompt: agent?.system_prompt,
     onEvent: (event: AgentEvent) => {
 
-      console.log(`[Server] Agent event for session ${appSessionId}:`, event.type)
-      if (event.type === 'raw') {
-        if (event.data.type === 'system') {
-          console.log(`[Server] Raw system event:`, event.data.content)
-        }
-      }
-      else if (event.type === 'message') {
-        console.log(
-          `[Server] Message content:`,
-          event.role,
-          event.content.length > 100
-            ? event.content.slice(0, 100) + '...'
-            : event.content
-        )
-      }else if (event.type === 'error') {
-        console.error(
-          `[Server] Agent error:`,
-          event.message,
-          event.error ? event.error.stack || event.error : ''
-        )
-      }
-      else if (event.type === 'permission_request') {
-        console.log(
-          `[Server] Permission request for tool: ${event.toolName}, input: ${JSON.stringify(event.input)}`
-        )
-      }
-      else if (event.type === 'tool_use') {
-        console.log(
-          `[Server] Tool used: ${event.raw?.name}}`
-        )
-      }
-      else {
-        console.log(`[Server] Event data:`, event)
-      }
+      logger.logEvent(event)
 
       // Persist event to database
       dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
@@ -939,7 +912,7 @@ export function startAgentChatSession(
           'respondToPermission' in backend &&
           typeof backend.respondToPermission === 'function'
         ) {
-          console.log('[server] auto-approving:', event.requestId, event.toolName)
+          logger.info('auto-approving', { requestId: event.requestId, toolName: event.toolName })
           backend.respondToPermission(event.requestId, 'allow', { updatedInput: event.input })
           const resolvedMsg: ServerMessage = {
             type: 'agent.permission_resolved',
@@ -968,6 +941,7 @@ export function startAgentChatSession(
       })
     },
     onComplete: (context: ConversationContext) => {
+      logger.close()
       // Clean up backend registry
       unregisterBackend(appSessionId)
 
@@ -985,6 +959,7 @@ export function startAgentChatSession(
       })
     },
     onError: (error: Error) => {
+      logger.close()
       // Clean up backend registry
       unregisterBackend(appSessionId)
 
@@ -1022,6 +997,7 @@ export function startAgentChatSession(
       }
     },
   }).catch((error: unknown) => {
+      logger.close()
       // Clean up backend registry
       unregisterBackend(appSessionId)
 
