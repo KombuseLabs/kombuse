@@ -5,17 +5,6 @@ import type { SerializedAgentToolUseEvent, SerializedAgentToolResultEvent, JsonV
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../base/collapsible'
 import { formatEventTime } from './event-card'
-import { CodeViewer } from '../../code-viewer'
-
-function extractFilename(filePath: string): string {
-  const parts = filePath.split('/')
-  return parts[parts.length - 1] || filePath
-}
-
-/** Strip `cat -n` style line number prefixes (e.g. "     63→" or "     63\t") */
-function stripLineNumbers(text: string): string {
-  return text.replace(/^\s*\d+[→\t]/gm, '')
-}
 
 function formatResultContent(content: string | JsonValue[]): string {
   if (typeof content === 'string') return content
@@ -38,17 +27,31 @@ function formatResultContent(content: string | JsonValue[]): string {
   return JSON.stringify(content, null, 2)
 }
 
-export interface ReadRendererProps {
+function countOutputLines(text: string): number {
+  if (!text.trim()) return 0
+  return text.trimEnd().split('\n').length
+}
+
+/** Shorten an absolute path for display (last 3 segments). */
+function shortenPath(path: string): string {
+  const parts = path.split('/')
+  if (parts.length <= 3) return path
+  return '.../' + parts.slice(-3).join('/')
+}
+
+export interface GrepRendererProps {
   toolUse: SerializedAgentToolUseEvent
   result?: SerializedAgentToolResultEvent
 }
 
-export function ReadRenderer({ toolUse, result }: ReadRendererProps) {
+export function GrepRenderer({ toolUse, result }: GrepRendererProps) {
   const [open, setOpen] = useState(false)
   const { input, timestamp } = toolUse
-  const filePath = typeof input.file_path === 'string' ? input.file_path : ''
-  const filename = extractFilename(filePath)
+  const pattern = typeof input.pattern === 'string' ? input.pattern : ''
+  const path = typeof input.path === 'string' ? input.path : ''
   const outputContent = result ? formatResultContent(result.content) : null
+  const lineCount = outputContent ? countOutputLines(outputContent) : 0
+  const noMatches = outputContent !== null && lineCount === 0
   const isError = result?.isError ?? false
 
   return (
@@ -62,27 +65,30 @@ export function ReadRenderer({ toolUse, result }: ReadRendererProps) {
           )}
           <div className="flex flex-col">
             <span className="text-xs font-medium">
-              <span className="text-muted-foreground">Read</span>{' '}
-              {filename}
+              <span className="text-muted-foreground">Grep</span>{' '}
+              <span className="font-mono">&quot;{pattern}&quot;</span>
+              {path && (
+                <span className="text-muted-foreground"> (in {shortenPath(path)})</span>
+              )}
             </span>
-            {isError && (
-              <span className="text-[10px] text-red-600 dark:text-red-400">Read failed</span>
-            )}
+            {isError ? (
+              <span className="text-[10px] text-red-600 dark:text-red-400">Grep failed</span>
+            ) : outputContent !== null ? (
+              <span className="text-[10px] text-muted-foreground">
+                {noMatches ? 'No matches found' : `${lineCount} line${lineCount === 1 ? '' : 's'} of output`}
+              </span>
+            ) : null}
           </div>
           <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
             {formatEventTime(timestamp)}
           </span>
         </CollapsibleTrigger>
-        {outputContent && (
+        {outputContent && !noMatches && (
           <CollapsibleContent>
             <div className="border-t border-border/50 px-3 py-2">
-              {isError ? (
-                <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs text-red-600 dark:text-red-400">
-                  {outputContent}
-                </pre>
-              ) : (
-                <CodeViewer value={stripLineNumbers(outputContent)} filePath={filePath} maxHeight={300} />
-              )}
+              <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs text-muted-foreground">
+                {outputContent}
+              </pre>
             </div>
           </CollapsibleContent>
         )}

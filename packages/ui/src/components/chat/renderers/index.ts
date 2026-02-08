@@ -1,5 +1,7 @@
 export { EditRenderer, type EditRendererProps } from './edit-renderer'
+export { EnterPlanModeRenderer, type EnterPlanModeRendererProps } from './enter-plan-mode-renderer'
 export { EventCard, type EventCardProps, formatEventTime } from './event-card'
+export { GrepRenderer, type GrepRendererProps } from './grep-renderer'
 export { MessageRenderer, type MessageRendererProps } from './message-renderer'
 export { PermissionRequestRenderer, type PermissionRequestRendererProps } from './permission-request-renderer'
 export { PlanRenderer, type PlanRendererProps } from './plan-renderer'

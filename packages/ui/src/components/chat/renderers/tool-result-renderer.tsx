@@ -47,13 +47,18 @@ export function ToolResultRenderer({ toolUse, result }: ToolResultRendererProps)
   const inputDisplay = command ?? JSON.stringify(input, null, 2)
   const outputContent = formatResultContent(result.content)
 
+  const isError = result.isError ?? false
+
   return (
     <EventCard
       timestamp={timestamp}
-      className="bg-muted/40"
+      className={isError ? 'bg-red-500/5 ring-1 ring-red-500/20' : 'bg-muted/40'}
       header={
         <>
           <span className="font-mono text-xs font-medium">{formatToolName(name)}</span>
+          {isError && (
+            <span className="text-xs font-medium text-red-600 dark:text-red-400">Error</span>
+          )}
           {description && (
             <span className="text-xs text-muted-foreground">{description}</span>
           )}

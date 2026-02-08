@@ -42,7 +42,7 @@ export type ClaudeContentBlock =
   | { type: 'text'; text: string }
   | { type: 'thinking'; thinking: string }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
-  | { type: 'tool_result'; tool_use_id: string; content: string | unknown[] }
+  | { type: 'tool_result'; tool_use_id: string; content: string | unknown[]; is_error?: boolean }
 
 // =============================================================================
 // SDK Message Types

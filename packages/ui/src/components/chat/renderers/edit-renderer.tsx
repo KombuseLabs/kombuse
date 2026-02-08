@@ -17,7 +17,7 @@ export interface EditRendererProps {
   result?: SerializedAgentToolResultEvent
 }
 
-export function EditRenderer({ toolUse }: EditRendererProps) {
+export function EditRenderer({ toolUse, result }: EditRendererProps) {
   const [open, setOpen] = useState(false)
   const { input, timestamp } = toolUse
 
@@ -28,22 +28,28 @@ export function EditRenderer({ toolUse }: EditRendererProps) {
   const additions = newString ? newString.split('\n').length : 0
   const deletions = oldString ? oldString.split('\n').length : 0
   const hasDiff = oldString.length > 0 || newString.length > 0
+  const isError = result?.isError ?? false
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-lg bg-muted/30 text-sm">
+      <div className={`rounded-lg text-sm ${isError ? 'bg-red-500/5 ring-1 ring-red-500/20' : 'bg-muted/30'}`}>
         <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left">
           {open ? (
             <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
           ) : (
             <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
           )}
-          <span className="text-xs font-medium">
-            <span className="text-muted-foreground">Edited</span>{' '}
-            {filename}{' '}
-            <span className="text-green-600 dark:text-green-400">+{additions}</span>{' '}
-            <span className="text-red-600 dark:text-red-400">-{deletions}</span>
-          </span>
+          <div className="flex flex-col">
+            <span className="text-xs font-medium">
+              <span className="text-muted-foreground">Edited</span>{' '}
+              {filename}{' '}
+              <span className="text-green-600 dark:text-green-400">+{additions}</span>{' '}
+              <span className="text-red-600 dark:text-red-400">-{deletions}</span>
+            </span>
+            {isError && (
+              <span className="text-[10px] text-red-600 dark:text-red-400">Edit failed</span>
+            )}
+          </div>
           <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
             {formatEventTime(timestamp)}
           </span>

@@ -39,14 +39,15 @@ export function PlanRenderer({ toolUse, result }: PlanRendererProps) {
   const { timestamp } = toolUse
   const { currentProjectId } = useCurrentProject()
 
+  const isError = result?.isError ?? false
   const rawText = result ? extractTextContent(result.content) : ''
   const planContent = extractPlanContent(rawText)
 
   return (
-    <div className="rounded-lg border border-border bg-background p-4 text-sm">
+    <div className={`rounded-lg border bg-background p-4 text-sm ${isError ? 'border-red-500/30 bg-red-500/5' : 'border-border'}`}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Claude's Plan
+          {isError ? "Plan failed" : "Claude's Plan"}
         </span>
         <span className="font-mono text-[10px] text-muted-foreground">
           {formatEventTime(timestamp)}

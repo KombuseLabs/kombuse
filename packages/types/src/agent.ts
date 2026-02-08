@@ -81,6 +81,7 @@ export interface AgentToolResultEvent extends AgentEventBase {
   type: 'tool_result'
   toolUseId: string
   content: string | unknown[]
+  isError?: boolean
   raw?: unknown
 }
 

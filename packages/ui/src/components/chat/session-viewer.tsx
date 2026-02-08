@@ -5,7 +5,7 @@ import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse
 import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
-import { EditRenderer, EnterPlanModeRenderer, EventCard, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
+import { EditRenderer, EnterPlanModeRenderer, EventCard, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 const SCROLL_THRESHOLD = 100
@@ -121,6 +121,9 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (event.name === 'Edit') {
             return <EditRenderer key={event.eventId} toolUse={event} />
           }
+          if (event.name === 'Grep') {
+            return <GrepRenderer key={event.eventId} toolUse={event} />
+          }
           if (event.name === 'EnterPlanMode') {
             return <EnterPlanModeRenderer key={event.eventId} toolUse={event} />
           }
@@ -144,10 +147,13 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
               return <ReadRenderer key={event.eventId} toolUse={toolUse} result={event} />
             }
             if (toolUse.name === 'Write') {
-              return <WriteRenderer key={event.eventId} toolUse={toolUse} />
+              return <WriteRenderer key={event.eventId} toolUse={toolUse} result={event} />
             }
             if (toolUse.name === 'Edit') {
               return <EditRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
+            if (toolUse.name === 'Grep') {
+              return <GrepRenderer key={event.eventId} toolUse={toolUse} result={event} />
             }
             if (toolUse.name === 'EnterPlanMode') {
               return <EnterPlanModeRenderer key={event.eventId} toolUse={toolUse} result={event} />

@@ -327,6 +327,7 @@ export class ClaudeCodeBackend implements AgentBackend {
           timestamp,
           toolUseId: block.tool_use_id,
           content: block.content,
+          ...(block.is_error ? { isError: true } : {}),
           raw: block,
         }
 

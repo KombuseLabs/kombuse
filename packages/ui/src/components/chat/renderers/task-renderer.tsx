@@ -45,14 +45,19 @@ export function TaskRenderer({ toolUse, result }: TaskRendererProps) {
   const inputDisplay = prompt ?? JSON.stringify(input, null, 2)
   const outputContent = result ? formatResultContent(result.content) : null
 
+  const isError = result?.isError ?? false
+
   return (
     <EventCard
       timestamp={timestamp}
-      className="bg-muted/40"
+      className={isError ? 'bg-red-500/5 ring-1 ring-red-500/20' : 'bg-muted/40'}
       header={
         <span className="text-xs font-medium">
           <span className="text-muted-foreground">Task:</span>{' '}
           {description ?? 'Agent task'}
+          {isError && (
+            <span className="ml-2 text-red-600 dark:text-red-400">Failed</span>
+          )}
         </span>
       }
     >
