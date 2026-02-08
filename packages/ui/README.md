@@ -596,6 +596,58 @@ import { useTriggersByLabel } from '@kombuse/ui/hooks'
 const { data: triggers } = useTriggersByLabel(labelId)
 ```
 
+### Code Diff
+
+```typescript
+import { CodeDiff } from '@kombuse/ui/components'
+
+// Display a syntax-highlighted diff between two code strings
+<CodeDiff
+  original="const x = 1;"
+  modified="const x = 2;"
+  filePath="example.ts"    // Used for language auto-detection
+  maxHeight={400}           // Max height in px (default: 400)
+/>
+```
+
+Props:
+- `original`: Left-side (old) text
+- `modified`: Right-side (new) text
+- `filePath`: Optional file path for automatic language detection
+- `language`: Optional explicit Monaco language ID (overrides filePath detection)
+- `height`: Explicit height (string or number). Defaults to auto-computed from content
+- `maxHeight`: Maximum height in pixels when auto-computing (default: 400)
+- `readOnly`: Whether the diff is read-only (default: `true`)
+- `className`: Additional CSS class for the wrapper
+
+Theme: Automatically syncs with the app's dark/light mode via `next-themes`.
+Lazy loaded: Monaco only loads when the component first mounts.
+Includes an inline/side-by-side toggle button in the top-right corner.
+
+### Code Viewer
+
+```typescript
+import { CodeViewer } from '@kombuse/ui/components'
+
+// Display syntax-highlighted read-only code
+<CodeViewer
+  value={fileContent}
+  filePath="example.ts"    // Used for language auto-detection
+  maxHeight={300}           // Max height in px (default: 300)
+/>
+```
+
+Props:
+- `value`: The code string to display
+- `filePath`: Optional file path for automatic language detection
+- `language`: Optional explicit Monaco language ID (overrides filePath detection)
+- `maxHeight`: Maximum height in pixels (default: 300)
+- `className`: Additional CSS class for the wrapper
+
+Theme: Automatically syncs with the app's dark/light mode via `next-themes`.
+Lazy loaded: Monaco only loads when the component first mounts.
+Used internally by `ReadRenderer` and `WriteRenderer` for syntax-highlighted file content.
+
 ### Utilities
 
 ```typescript
@@ -611,6 +663,15 @@ import { statusColors } from '@kombuse/ui/lib/ticket-utils'
 // Tailwind class map for ticket status badges (supports dark mode)
 // Keys: 'open', 'in_progress', 'blocked', 'closed'
 cn('rounded-full px-1.5 text-[10px] font-medium', statusColors[ticket.status])
+```
+
+```typescript
+import { detectLanguage } from '@kombuse/ui/lib/language-map'
+
+// Detect Monaco language ID from a file path
+detectLanguage('/path/to/file.tsx')  // => 'typescriptreact'
+detectLanguage('Dockerfile')         // => 'dockerfile'
+detectLanguage('unknown.xyz')        // => 'plaintext'
 ```
 
 ```typescript

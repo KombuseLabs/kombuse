@@ -5,10 +5,16 @@ import type { SerializedAgentToolUseEvent, SerializedAgentToolResultEvent, JsonV
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../base/collapsible'
 import { formatEventTime } from './event-card'
+import { CodeViewer } from '../../code-viewer'
 
 function extractFilename(filePath: string): string {
   const parts = filePath.split('/')
   return parts[parts.length - 1] || filePath
+}
+
+/** Strip `cat -n` style line number prefixes (e.g. "     63→" or "     63\t") */
+function stripLineNumbers(text: string): string {
+  return text.replace(/^\s*\d+[→\t]/gm, '')
 }
 
 function formatResultContent(content: string | JsonValue[]): string {
@@ -64,9 +70,7 @@ export function ReadRenderer({ toolUse, result }: ReadRendererProps) {
         {outputContent && (
           <CollapsibleContent>
             <div className="border-t border-border/50 px-3 py-2">
-              <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs text-muted-foreground">
-                {outputContent}
-              </pre>
+              <CodeViewer value={stripLineNumbers(outputContent)} filePath={filePath} maxHeight={300} />
             </div>
           </CollapsibleContent>
         )}

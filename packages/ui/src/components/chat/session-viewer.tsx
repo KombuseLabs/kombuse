@@ -5,7 +5,7 @@ import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse
 import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
-import { EventCard, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
+import { EditRenderer, EventCard, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 const SCROLL_THRESHOLD = 100
@@ -60,10 +60,21 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
     return { toolUseMap: useMap, toolUseIdsWithResults: idsWithResults }
   }, [events])
 
-  const visibleEvents = useMemo(
-    () => viewMode === 'clean' ? events.filter((e) => e.type === 'message') : events,
-    [events, viewMode]
-  )
+  const visibleEvents = useMemo(() => {
+    if (viewMode !== 'clean') return events
+
+    const allowedToolNames = new Set(['ExitPlanMode', 'TodoWrite'])
+
+    return events.filter((e) => {
+      if (e.type === 'message') return true
+      if (e.type === 'tool_use' && allowedToolNames.has(e.name)) return true
+      if (e.type === 'tool_result') {
+        const toolUse = toolUseMap.get(e.toolUseId)
+        return toolUse != null && allowedToolNames.has(toolUse.name)
+      }
+      return false
+    })
+  }, [events, viewMode, toolUseMap])
 
   if (visibleEvents.length === 0 && !isLoading) {
     return (
@@ -107,6 +118,9 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (event.name === 'Write') {
             return <WriteRenderer key={event.eventId} toolUse={event} />
           }
+          if (event.name === 'Edit') {
+            return <EditRenderer key={event.eventId} toolUse={event} />
+          }
           if (event.name === 'ExitPlanMode') {
             return <PlanRenderer key={event.eventId} toolUse={event} />
           }
@@ -128,6 +142,9 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
             }
             if (toolUse.name === 'Write') {
               return <WriteRenderer key={event.eventId} toolUse={toolUse} />
+            }
+            if (toolUse.name === 'Edit') {
+              return <EditRenderer key={event.eventId} toolUse={toolUse} result={event} />
             }
             if (toolUse.name === 'ExitPlanMode') {
               return <PlanRenderer key={event.eventId} toolUse={toolUse} result={event} />

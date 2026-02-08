@@ -8,6 +8,7 @@
     "./hooks": "./src/hooks/index.ts",
     "./components": "./src/components/index.ts",
     "./base": "./src/base/index.ts",
+    "./lib/language-map": "./src/lib/language-map.ts",
     "./lib/utils": "./src/lib/utils.ts",
     "./lib/api": "./src/lib/api.ts",
     "./globals.css": "./src/globals.css",
@@ -37,6 +38,7 @@
   "dependencies": {
     "@kombuse/core": "*",
     "@kombuse/types": "*",
+    "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-checkbox": "^1.1.4",
     "@radix-ui/react-collapsible": "^1.1.3",
     "@radix-ui/react-dialog": "^1.1.6",
@@ -57,6 +59,7 @@
     "date-fns": "^4.1.0",
     "lucide-react": "^0.474.0",
     "mdast-util-find-and-replace": "^3.0.2",
+    "monaco-editor": "^0.55.1",
     "next-themes": "^0.4.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
