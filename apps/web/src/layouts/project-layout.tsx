@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { Outlet, useParams, Link } from "react-router-dom";
 import { Sidebar, SidebarItem } from "@kombuse/ui/components";
+import { useProject } from "@kombuse/ui/hooks";
 import { Ticket, Bot, Folder, MessageSquare, History, Tags } from "lucide-react";
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
 export function ProjectLayout() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { data: project } = useProject(projectId ?? "");
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
     return stored === "true";
@@ -35,7 +37,7 @@ export function ProjectLayout() {
             className="flex items-center gap-2 hover:text-foreground/80"
           >
             <Folder className="size-4 shrink-0" />
-            <span className="truncate">{projectId}</span>
+            <span className="truncate">{project?.name ?? projectId}</span>
           </Link>
         }
       >

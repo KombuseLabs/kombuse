@@ -22,6 +22,10 @@ import type {
   ProfileFilters,
   CreateProfileInput,
   UpdateProfileInput,
+  Project,
+  ProjectFilters,
+  CreateProjectInput,
+  UpdateProjectInput,
   EventWithActor,
   EventFilters,
   Session,
@@ -344,6 +348,51 @@ export const triggersApi = {
   async listByLabel(labelId: number): Promise<AgentTrigger[]> {
     const response = await fetch(`${API_BASE}/labels/${labelId}/triggers`)
     return handleResponse<AgentTrigger[]>(response)
+  },
+}
+
+export const projectsApi = {
+  async list(filters?: ProjectFilters): Promise<Project[]> {
+    const params = new URLSearchParams()
+    if (filters?.owner_id) params.set('owner_id', filters.owner_id)
+    if (filters?.repo_source) params.set('repo_source', filters.repo_source)
+    if (filters?.search) params.set('search', filters.search)
+    if (filters?.limit) params.set('limit', String(filters.limit))
+    if (filters?.offset) params.set('offset', String(filters.offset))
+
+    const url = `${API_BASE}/projects${params.toString() ? `?${params}` : ''}`
+    const response = await fetch(url)
+    return handleResponse<Project[]>(response)
+  },
+
+  async get(id: string): Promise<Project> {
+    const response = await fetch(`${API_BASE}/projects/${id}`)
+    return handleResponse<Project>(response)
+  },
+
+  async create(input: CreateProjectInput): Promise<Project> {
+    const response = await fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<Project>(response)
+  },
+
+  async update(id: string, input: UpdateProjectInput): Promise<Project> {
+    const response = await fetch(`${API_BASE}/projects/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<Project>(response)
+  },
+
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/projects/${id}`, {
+      method: 'DELETE',
+    })
+    await handleEmptyResponse(response)
   },
 }
 

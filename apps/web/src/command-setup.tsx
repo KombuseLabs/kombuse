@@ -75,6 +75,23 @@ export function CommandSetup({ children }: CommandSetupProps) {
           navigate(`/projects/${currentProjectId}/tickets/new`);
         },
       }),
+      registry.register({
+        id: "projects.browse",
+        title: "Browse Projects",
+        category: "Projects",
+        icon: "Folder",
+        handler: () => {
+          navigate("/projects");
+        },
+      }),
+      registry.register({
+        id: "projects.create",
+        title: "Create New Project",
+        category: "Projects",
+        handler: () => {
+          navigate("/projects/new");
+        },
+      }),
     ];
 
     return () => unregisterFns.forEach((fn) => fn());

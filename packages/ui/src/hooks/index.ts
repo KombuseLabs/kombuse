@@ -51,6 +51,13 @@ export {
   useToggleTrigger,
   useTriggersByLabel,
 } from './use-triggers'
+export {
+  useProjects,
+  useProject,
+  useCreateProject,
+  useUpdateProject,
+  useDeleteProject,
+} from './use-projects'
 export { useEvents } from './use-events'
 export { useTicketTimeline } from './use-ticket-timeline'
 export { useChat } from './use-chat'

@@ -31,6 +31,7 @@ src/
 │   ├── use-command-context.ts - Access command registry
 │   ├── use-attachments.ts      - Attachment CRUD hooks
 │   ├── use-labels.ts          - Label CRUD hooks
+│   ├── use-projects.ts        - Project CRUD hooks
 │   └── use-tickets.ts         - Ticket CRUD hooks
 ├── providers/      - Context providers
 │   ├── command-provider.tsx   - Command system provider
@@ -505,6 +506,34 @@ upload.mutateAsync({ commentId: 1, file: myFile, uploadedById: 'user-1' })
 // Delete an attachment
 const remove = useDeleteAttachment()
 remove.mutate({ id: attachmentId, commentId: 1 })
+```
+
+### Project Hooks
+
+```typescript
+import {
+  useProjects,
+  useProject,
+  useCreateProject,
+  useUpdateProject,
+  useDeleteProject,
+} from '@kombuse/ui/hooks'
+
+// Fetch all projects (with optional filters)
+const { data: projects, isLoading } = useProjects({ search: 'kombuse' })
+
+// Fetch a single project by ID
+const { data: project } = useProject('project-id')
+
+// CRUD mutations
+const createProject = useCreateProject()
+createProject.mutate({ name: 'My Project', owner_id: 'user-1' })
+
+const updateProject = useUpdateProject()
+updateProject.mutate({ id: 'project-id', input: { name: 'New Name' } })
+
+const deleteProject = useDeleteProject()
+deleteProject.mutate('project-id')
 ```
 
 ### Label Hooks
