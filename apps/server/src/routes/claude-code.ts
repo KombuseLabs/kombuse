@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { basename } from 'node:path'
 import { claudeCodeScanner, projectService } from '@kombuse/services'
+import { validateJsonlItem, transformJsonlToAgentEvents } from '@kombuse/agent'
 import { importClaudeCodeProjectsSchema } from '../schemas/claude-code'
 
 export async function claudeCodeRoutes(fastify: FastifyInstance) {
@@ -93,7 +94,47 @@ export async function claudeCodeRoutes(fastify: FastifyInstance) {
 
       try {
         const items = claudeCodeScanner.getSessionContent(path, sessionId)
-        return { items, count: items.length }
+
+        // Validate each item against Claude Code JSONL schemas
+        const byType: Record<string, { valid: number; invalid: number }> = {}
+        const errors: { index: number; type: string; issues: unknown[] }[] = []
+        let valid = 0
+        let invalid = 0
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i]!
+          const itemType = typeof item.type === 'string' ? item.type : 'unknown'
+          if (!byType[itemType]) {
+            byType[itemType] = { valid: 0, invalid: 0 }
+          }
+
+          const result = validateJsonlItem(item)
+          if (result.success) {
+            valid++
+            byType[itemType].valid++
+          } else {
+            invalid++
+            byType[itemType].invalid++
+            errors.push({
+              index: i,
+              type: itemType,
+              issues: result.error.issues.map((issue) => ({
+                path: issue.path.join('.'),
+                message: issue.message,
+                code: issue.code,
+              })),
+            })
+          }
+        }
+
+        const events = transformJsonlToAgentEvents(items)
+
+        return {
+          items,
+          count: items.length,
+          events,
+          validation: { valid, invalid, byType, errors },
+        }
       } catch (error) {
         const message = (error as Error).message
         if (message.includes('not found')) {

@@ -36,6 +36,7 @@ import type {
   Attachment,
   PendingPermission,
   AgentActivityStatus,
+  SerializedAgentEvent,
 } from '@kombuse/types'
 
 const API_BASE = 'http://localhost:3331/api'
@@ -524,6 +525,20 @@ export interface ClaudeCodeSessionEntry {
   summary?: string
 }
 
+export interface ClaudeCodeValidationResult {
+  valid: number
+  invalid: number
+  byType: Record<string, { valid: number; invalid: number }>
+  errors: { index: number; type: string; issues: { path: string; message: string; code: string }[] }[]
+}
+
+export interface ClaudeCodeSessionContent {
+  items: Record<string, unknown>[]
+  count: number
+  events: SerializedAgentEvent[]
+  validation: ClaudeCodeValidationResult
+}
+
 export const claudeCodeApi = {
   async scanProjects(): Promise<ClaudeCodeProjectWithStatus[]> {
     const response = await fetch(`${API_BASE}/claude-code/projects`)
@@ -545,10 +560,10 @@ export const claudeCodeApi = {
     return handleResponse<{ sessions: ClaudeCodeSessionEntry[] }>(response)
   },
 
-  async getSessionContent(projectPath: string, sessionId: string): Promise<{ items: Record<string, unknown>[]; count: number }> {
+  async getSessionContent(projectPath: string, sessionId: string): Promise<ClaudeCodeSessionContent> {
     const params = new URLSearchParams({ path: projectPath })
     const response = await fetch(`${API_BASE}/claude-code/sessions/${sessionId}?${params}`)
-    return handleResponse<{ items: Record<string, unknown>[]; count: number }>(response)
+    return handleResponse<ClaudeCodeSessionContent>(response)
   },
 }
 
