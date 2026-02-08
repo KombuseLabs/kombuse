@@ -669,7 +669,7 @@ cn('rounded-full px-1.5 text-[10px] font-medium', statusColors[ticket.status])
 import { detectLanguage } from '@kombuse/ui/lib/language-map'
 
 // Detect Monaco language ID from a file path
-detectLanguage('/path/to/file.tsx')  // => 'typescriptreact'
+detectLanguage('/path/to/file.tsx')  // => 'typescript'
 detectLanguage('Dockerfile')         // => 'dockerfile'
 detectLanguage('unknown.xyz')        // => 'plaintext'
 ```
