@@ -33,7 +33,8 @@ export function useAddLabelToTicket(ticketId: number) {
 export function useRemoveLabelFromTicket(ticketId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (labelId: number) => labelsApi.removeFromTicket(ticketId, labelId),
+    mutationFn: ({ labelId, removedById }: { labelId: number; removedById?: string }) =>
+      labelsApi.removeFromTicket(ticketId, labelId, removedById),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['labels', 'ticket', ticketId] })
       queryClient.invalidateQueries({ queryKey: ['tickets', ticketId] })

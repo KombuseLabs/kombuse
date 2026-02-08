@@ -147,13 +147,15 @@ export const labelsRepository = {
         .prepare('SELECT project_id FROM tickets WHERE id = ?')
         .get(ticketId) as { project_id: string } | undefined
 
+      const label = this.get(labelId)
+
       eventsRepository.create({
         event_type: EVENT_TYPES.LABEL_ADDED,
         project_id: ticket?.project_id,
         ticket_id: ticketId,
         actor_id: addedById,
         actor_type: 'user',
-        payload: { label_id: labelId },
+        payload: { label_id: labelId, label_name: label?.name },
       })
     }
   },
@@ -163,6 +165,10 @@ export const labelsRepository = {
    */
   removeFromTicket(ticketId: number, labelId: number, removedById?: string): boolean {
     const db = getDatabase()
+
+    // Look up label name before deletion for the event payload
+    const label = this.get(labelId)
+
     const result = db
       .prepare('DELETE FROM ticket_labels WHERE ticket_id = ? AND label_id = ?')
       .run(ticketId, labelId)
@@ -179,7 +185,7 @@ export const labelsRepository = {
         ticket_id: ticketId,
         actor_id: removedById,
         actor_type: 'user',
-        payload: { label_id: labelId },
+        payload: { label_id: labelId, label_name: label?.name },
       })
     }
 

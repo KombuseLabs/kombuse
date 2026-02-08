@@ -55,6 +55,20 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
 
   const actorLabel = event.actor?.name || event.actor_id || event.actor_type
 
+  // Parse label name from payload for label events
+  let eventLabel = config.label
+  if (event.event_type === 'label.added' || event.event_type === 'label.removed') {
+    try {
+      const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
+      if (payload?.label_name) {
+        const action = event.event_type === 'label.added' ? 'added' : 'removed'
+        eventLabel = `${action} label ${payload.label_name}`
+      }
+    } catch {
+      // Fall back to default label
+    }
+  }
+
   const { data: linkedSession } = useSessionByKombuseId(event.kombuse_session_id)
 
   const sessionUrl = linkedSession
@@ -108,7 +122,7 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
             <TooltipContent>View session</TooltipContent>
           </Tooltip>
         )}
-        {' '}{config.label}
+        {' '}{eventLabel}
       </span>
       <span className="text-xs">
         {new Date(event.created_at).toLocaleString()}

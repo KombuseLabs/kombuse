@@ -118,6 +118,7 @@ export async function labelRoutes(fastify: FastifyInstance) {
   // Remove label from ticket
   fastify.delete<{
     Params: { ticketId: string; labelId: string }
+    Body: { removed_by_id?: string }
   }>('/tickets/:ticketId/labels/:labelId', async (request, reply) => {
     const ticketId = parseInt(request.params.ticketId, 10)
     const labelId = parseInt(request.params.labelId, 10)
@@ -125,8 +126,9 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket or label ID' })
     }
 
+    const removedById = (request.body as { removed_by_id?: string })?.removed_by_id
     try {
-      labelService.removeFromTicket(ticketId, labelId)
+      labelService.removeFromTicket(ticketId, labelId, removedById)
       return reply.status(204).send()
     } catch (error) {
       if (error instanceof Error && error.message.includes('not attached')) {

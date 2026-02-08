@@ -44,8 +44,8 @@ export function useLabelOperations() {
   )
 
   const removeLabel = useCallback(
-    (labelId: number) => {
-      return removeMutation.mutateAsync(labelId)
+    (labelId: number, removedById?: string) => {
+      return removeMutation.mutateAsync({ labelId, removedById })
     },
     [removeMutation]
   )

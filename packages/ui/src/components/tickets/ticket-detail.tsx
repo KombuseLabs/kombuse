@@ -201,7 +201,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                     label={label}
                     size="sm"
                     onRemove={
-                      isEditable ? () => removeLabel(label.id) : undefined
+                      isEditable ? () => removeLabel(label.id, 'user-1') : undefined
                     }
                   />
                 ))}
@@ -279,8 +279,8 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
             <LabelSelector
               availableLabels={projectLabels}
               selectedLabelIds={ticketLabels.map((l) => l.id)}
-              onLabelAdd={(labelId) => addLabel(labelId)}
-              onLabelRemove={(labelId) => removeLabel(labelId)}
+              onLabelAdd={(labelId) => addLabel(labelId, 'user-1')}
+              onLabelRemove={(labelId) => removeLabel(labelId, 'user-1')}
               onLabelCreate={(data) => createLabel(data)}
               onLabelUpdate={(id, data) => updateLabel(id, data)}
               onLabelDelete={(id) => deleteLabel(id)}

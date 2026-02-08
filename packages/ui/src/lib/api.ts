@@ -178,11 +178,13 @@ export const labelsApi = {
     await handleEmptyResponse(response)
   },
 
-  async removeFromTicket(ticketId: number, labelId: number): Promise<void> {
+  async removeFromTicket(ticketId: number, labelId: number, removedById?: string): Promise<void> {
     const response = await fetch(
       `${API_BASE}/tickets/${ticketId}/labels/${labelId}`,
       {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removed_by_id: removedById }),
       }
     )
     await handleEmptyResponse(response)
