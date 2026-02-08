@@ -513,16 +513,19 @@ export interface SyncState {
   }>
 }
 
-export const debugApi = {
-  async getClaudeSession(projectDir: string, sessionId: string): Promise<{ items: Record<string, unknown>[]; count: number }> {
-    const params = new URLSearchParams({ projectDir, sessionId })
-    const response = await fetch(`${API_BASE}/debug/claude-session?${params}`)
-    return handleResponse<{ items: Record<string, unknown>[]; count: number }>(response)
-  },
+export interface ClaudeCodeSessionEntry {
+  sessionId: string
+  messageCount: number
+  created: string
+  modified: string
+  gitBranch: string
+  projectPath: string
+  firstPrompt?: string
+  summary?: string
 }
 
 export const claudeCodeApi = {
-  async scan(): Promise<ClaudeCodeProjectWithStatus[]> {
+  async scanProjects(): Promise<ClaudeCodeProjectWithStatus[]> {
     const response = await fetch(`${API_BASE}/claude-code/projects`)
     return handleResponse<ClaudeCodeProjectWithStatus[]>(response)
   },
@@ -534,6 +537,18 @@ export const claudeCodeApi = {
       body: JSON.stringify({ paths }),
     })
     return handleResponse<Project[]>(response)
+  },
+
+  async listSessions(projectPath: string): Promise<{ sessions: ClaudeCodeSessionEntry[] }> {
+    const params = new URLSearchParams({ path: projectPath })
+    const response = await fetch(`${API_BASE}/claude-code/sessions?${params}`)
+    return handleResponse<{ sessions: ClaudeCodeSessionEntry[] }>(response)
+  },
+
+  async getSessionContent(projectPath: string, sessionId: string): Promise<{ items: Record<string, unknown>[]; count: number }> {
+    const params = new URLSearchParams({ path: projectPath })
+    const response = await fetch(`${API_BASE}/claude-code/sessions/${sessionId}?${params}`)
+    return handleResponse<{ items: Record<string, unknown>[]; count: number }>(response)
   },
 }
 

@@ -11,6 +11,7 @@ import { Tickets } from "./routes/tickets";
 import { Agents } from "./routes/agents";
 import { Events } from "./routes/events";
 import { Labels } from "./routes/labels";
+import { ClaudeCodeSessionViewer } from "./routes/claude-code-session";
 import { ProjectLayout } from "./layouts/project-layout";
 
 const queryClient = new QueryClient({
@@ -56,6 +57,11 @@ function AppContent() {
         {/* Global agents (outside project context) */}
         <Route path="/agents" element={<Agents />} />
         <Route path="/agents/:agentId" element={<Agents />} />
+
+        {/* Claude Code session viewer */}
+        <Route path="/claude-code" element={<ClaudeCodeSessionViewer />} />
+        <Route path="/claude-code/:projectPath" element={<ClaudeCodeSessionViewer />} />
+        <Route path="/claude-code/:projectPath/sessions/:sessionId" element={<ClaudeCodeSessionViewer />} />
       </Routes>
     </div>
   );

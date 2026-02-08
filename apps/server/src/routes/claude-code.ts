@@ -55,4 +55,52 @@ export async function claudeCodeRoutes(fastify: FastifyInstance) {
 
     return reply.status(201).send(created)
   })
+
+  /**
+   * GET /claude-code/sessions
+   * List sessions for a Claude Code project by its filesystem path
+   */
+  fastify.get<{ Querystring: { path: string } }>(
+    '/claude-code/sessions',
+    async (request, reply) => {
+      const { path } = request.query
+      if (!path) {
+        return reply.status(400).send({ error: 'Missing required query param: path' })
+      }
+
+      try {
+        const sessions = claudeCodeScanner.listSessions(path)
+        return { sessions }
+      } catch (error) {
+        return reply.status(500).send({ error: (error as Error).message })
+      }
+    }
+  )
+
+  /**
+   * GET /claude-code/sessions/:sessionId
+   * Get raw JSONL content for a Claude Code session
+   */
+  fastify.get<{ Params: { sessionId: string }; Querystring: { path: string } }>(
+    '/claude-code/sessions/:sessionId',
+    async (request, reply) => {
+      const { path } = request.query
+      const { sessionId } = request.params
+
+      if (!path) {
+        return reply.status(400).send({ error: 'Missing required query param: path' })
+      }
+
+      try {
+        const items = claudeCodeScanner.getSessionContent(path, sessionId)
+        return { items, count: items.length }
+      } catch (error) {
+        const message = (error as Error).message
+        if (message.includes('not found')) {
+          return reply.status(404).send({ error: message })
+        }
+        return reply.status(500).send({ error: message })
+      }
+    }
+  )
 }

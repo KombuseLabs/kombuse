@@ -42,7 +42,7 @@ export { FileStorage, fileStorage, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } fro
 export type { IFileStorage } from './file-storage'
 
 export { ClaudeCodeScanner, claudeCodeScanner } from './claude-code-scanner'
-export type { IClaudeCodeScanner } from './claude-code-scanner'
+export type { IClaudeCodeScanner, SessionEntry } from './claude-code-scanner'
 
 // Template rendering
 export {
