@@ -12,7 +12,7 @@ function formatEventTime(timestamp: number): string {
 
 interface EventCardProps {
   timestamp: number
-  header: ReactNode
+  header?: ReactNode
   children: ReactNode
   className?: string
 }
@@ -20,12 +20,20 @@ interface EventCardProps {
 function EventCard({ timestamp, header, children, className }: EventCardProps) {
   return (
     <div className={cn('rounded-lg p-3 text-sm', className)}>
-      <div className="mb-2 flex items-center gap-2">
-        {header}
-        <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
-          {formatEventTime(timestamp)}
-        </span>
-      </div>
+      {header ? (
+        <div className="mb-2 flex items-center gap-2">
+          {header}
+          <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
+            {formatEventTime(timestamp)}
+          </span>
+        </div>
+      ) : (
+        <div className="mb-1 flex justify-end">
+          <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+            {formatEventTime(timestamp)}
+          </span>
+        </div>
+      )}
       {children}
     </div>
   )

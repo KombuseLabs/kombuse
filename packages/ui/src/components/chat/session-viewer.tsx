@@ -5,7 +5,7 @@ import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse
 import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
-import { EventCard, MessageRenderer, PermissionRequestRenderer, RawRenderer, ToolResultRenderer, ToolUseRenderer } from './renderers'
+import { EventCard, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 const SCROLL_THRESHOLD = 100
@@ -81,6 +81,10 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           return <MessageRenderer key={event.eventId} event={event} />
         }
 
+        if (event.type === 'raw' && event.sourceType === 'thinking') {
+          return <ThinkingRenderer key={event.eventId} event={event} />
+        }
+
         if (event.type === 'raw') {
           return <RawRenderer key={event.eventId} event={event} />
         }
@@ -94,6 +98,21 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (toolUseIdsWithResults.has(event.id)) {
             return null
           }
+          if (event.name === 'Task') {
+            return <TaskRenderer key={event.eventId} toolUse={event} />
+          }
+          if (event.name === 'Read') {
+            return <ReadRenderer key={event.eventId} toolUse={event} />
+          }
+          if (event.name === 'Write') {
+            return <WriteRenderer key={event.eventId} toolUse={event} />
+          }
+          if (event.name === 'ExitPlanMode') {
+            return <PlanRenderer key={event.eventId} toolUse={event} />
+          }
+          if (event.name === 'TodoWrite') {
+            return <TodoRenderer key={event.eventId} toolUse={event} />
+          }
           return <ToolUseRenderer key={event.eventId} event={event} />
         }
 
@@ -101,6 +120,21 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         if (event.type === 'tool_result') {
           const toolUse = toolUseMap.get(event.toolUseId)
           if (toolUse) {
+            if (toolUse.name === 'Task') {
+              return <TaskRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
+            if (toolUse.name === 'Read') {
+              return <ReadRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
+            if (toolUse.name === 'Write') {
+              return <WriteRenderer key={event.eventId} toolUse={toolUse} />
+            }
+            if (toolUse.name === 'ExitPlanMode') {
+              return <PlanRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
+            if (toolUse.name === 'TodoWrite') {
+              return <TodoRenderer key={event.eventId} toolUse={toolUse} />
+            }
             return (
               <ToolResultRenderer
                 key={event.eventId}
