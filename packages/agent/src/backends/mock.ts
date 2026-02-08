@@ -50,6 +50,7 @@ export class MockAgentClient implements AgentBackend {
     this.running = false
     this.emit({
       type: 'complete',
+      eventId: crypto.randomUUID(),
       backend: this.name,
       timestamp: Date.now(),
       reason: 'mock_complete',
@@ -67,6 +68,7 @@ export class MockAgentClient implements AgentBackend {
       if (this.running) {
         this.emit({
           type: 'message',
+          eventId: crypto.randomUUID(),
           backend: this.name,
           timestamp: Date.now(),
           role: 'assistant',
@@ -109,6 +111,7 @@ export class MockAgentClient implements AgentBackend {
       if (options.initialMessage) {
         this.emit({
           type: 'message',
+          eventId: crypto.randomUUID(),
           backend: this.name,
           timestamp: Date.now(),
           role: 'assistant',
@@ -126,6 +129,7 @@ export class MockAgentClient implements AgentBackend {
 
         this.emit({
           type: 'message',
+          eventId: crypto.randomUUID(),
           backend: this.name,
           timestamp: Date.now(),
           role: 'assistant',
@@ -138,6 +142,7 @@ export class MockAgentClient implements AgentBackend {
         this.running = false
         this.emit({
           type: 'complete',
+          eventId: crypto.randomUUID(),
           backend: this.name,
           timestamp: Date.now(),
           reason: 'mock_complete',
@@ -150,6 +155,7 @@ export class MockAgentClient implements AgentBackend {
         const err = error instanceof Error ? error : new Error(String(error))
         this.emit({
           type: 'error',
+          eventId: crypto.randomUUID(),
           backend: this.name,
           timestamp: Date.now(),
           message: err.message,

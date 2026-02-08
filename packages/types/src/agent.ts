@@ -53,6 +53,7 @@ export type AgentMessageRole = 'assistant' | 'user' | 'system'
 
 /** Common metadata for all agent events */
 export interface AgentEventBase {
+  eventId: string
   type: string
   backend: BackendType
   timestamp: number

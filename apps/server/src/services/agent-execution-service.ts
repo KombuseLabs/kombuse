@@ -881,6 +881,7 @@ export function startAgentChatSession(
   // Persist user message before running agent
   const userMessageEvent: AgentEvent = {
     type: 'message',
+    eventId: crypto.randomUUID(),
     backend: 'claude-code',
     timestamp: Date.now(),
     role: 'user',
@@ -966,6 +967,7 @@ export function startAgentChatSession(
       // Persist error event
       const errorEvent: AgentEvent = {
         type: 'error',
+        eventId: crypto.randomUUID(),
         backend: backend.name,
         timestamp: Date.now(),
         message: error.message,

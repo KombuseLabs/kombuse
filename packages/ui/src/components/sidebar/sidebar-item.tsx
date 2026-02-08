@@ -24,9 +24,7 @@ function SidebarItem({ icon, label, to, isCollapsed }: SidebarItemProps) {
         cn(
           "flex items-center rounded-md text-sm font-medium transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
-          isActive
-            ? "bg-primary/10 text-foreground font-semibold border-l-2 border-primary"
-            : "border-l-2 border-transparent",
+          isActive && "bg-muted text-foreground font-semibold",
           isCollapsed
             ? "w-10 py-2 justify-center"
             : "gap-3 px-3 py-2"

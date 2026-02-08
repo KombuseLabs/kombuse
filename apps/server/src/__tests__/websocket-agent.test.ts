@@ -7,6 +7,7 @@ describe('WebSocket Agent Serialization', () => {
     it('should serialize message events directly', () => {
       const agentEvent: AgentEvent = {
         type: 'message',
+        eventId: 'test-event-1',
         backend: 'mock',
         timestamp: 12345,
         role: 'assistant',
@@ -25,6 +26,7 @@ describe('WebSocket Agent Serialization', () => {
     it('should serialize tool use input as JSON-safe object', () => {
       const agentEvent: AgentEvent = {
         type: 'tool_use',
+        eventId: 'test-event-2',
         backend: 'claude-code',
         timestamp: Date.now(),
         id: 'tool_1',
@@ -44,6 +46,7 @@ describe('WebSocket Agent Serialization', () => {
     it('should serialize errors into plain objects', () => {
       const agentEvent: AgentEvent = {
         type: 'error',
+        eventId: 'test-event-3',
         backend: 'claude-code',
         timestamp: Date.now(),
         message: 'Something went wrong',
@@ -66,6 +69,7 @@ describe('WebSocket Agent Serialization', () => {
 
       const agentEvent: AgentEvent = {
         type: 'raw',
+        eventId: 'test-event-4',
         backend: 'claude-code',
         timestamp: Date.now(),
         data: circular,
@@ -85,6 +89,7 @@ describe('WebSocket Agent Serialization', () => {
     it('should skip complete events for agent.event stream', () => {
       const agentEvent: AgentEvent = {
         type: 'complete',
+        eventId: 'test-event-5',
         backend: 'mock',
         timestamp: Date.now(),
         reason: 'mock_complete',
@@ -100,6 +105,7 @@ describe('WebSocket Agent Serialization', () => {
     it('should create valid agent.event ServerMessage', () => {
       const agentEvent: AgentEvent = {
         type: 'message',
+        eventId: 'test-event-6',
         backend: 'mock',
         timestamp: 999,
         role: 'assistant',

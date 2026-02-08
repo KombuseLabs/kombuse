@@ -37,6 +37,7 @@ function parseClaudeEvent(json: string): AgentEvent | null {
       if (!textBlock?.text) return null
       return {
         type: 'message',
+        eventId: crypto.randomUUID(),
         backend: 'claude-code',
         timestamp: Date.now(),
         role: 'assistant',
@@ -48,6 +49,7 @@ function parseClaudeEvent(json: string): AgentEvent | null {
     case 'result':
       return {
         type: 'complete',
+        eventId: crypto.randomUUID(),
         backend: 'claude-code',
         timestamp: Date.now(),
         reason: 'result',

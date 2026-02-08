@@ -162,6 +162,7 @@ export function ChatProvider({
         // Create an error event for server-level errors
         const errorEvent: SerializedAgentErrorEvent = {
           type: 'error',
+          eventId: crypto.randomUUID(),
           message: message.message,
           backend: 'mock',
           timestamp: Date.now(),
@@ -190,6 +191,7 @@ export function ChatProvider({
       if (!isConnected) {
         const errorEvent: SerializedAgentErrorEvent = {
           type: 'error',
+          eventId: crypto.randomUUID(),
           message: 'WebSocket is not connected',
           backend: 'mock',
           timestamp: Date.now(),
@@ -206,6 +208,7 @@ export function ChatProvider({
           setIsLoading(false)
           const errorEvent: SerializedAgentErrorEvent = {
             type: 'error',
+            eventId: crypto.randomUUID(),
             message: 'Unable to create a chat session',
             backend: 'mock',
             timestamp: Date.now(),
@@ -221,6 +224,7 @@ export function ChatProvider({
           setIsLoading(false)
           const errorEvent: SerializedAgentErrorEvent = {
             type: 'error',
+            eventId: crypto.randomUUID(),
             message:
               error instanceof Error
                 ? error.message
@@ -236,6 +240,7 @@ export function ChatProvider({
       // Add user message as a proper event
       const userEvent: SerializedAgentMessageEvent = {
         type: 'message',
+        eventId: crypto.randomUUID(),
         role: 'user',
         content: message,
         backend: 'mock',

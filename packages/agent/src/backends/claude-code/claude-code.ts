@@ -63,7 +63,7 @@ export class ClaudeCodeBackend implements AgentBackend {
     const jsonLineBehavior = createJsonLineBehavior({
       onMessage: (msg) => this.handleMessage(msg),
     })
-
+    console.log('[claude-code] spawning with args:', args.join(' '))
     this.process = new Process(
       {
         command: this.options.cliPath,
@@ -193,6 +193,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       typeof options.resumeSessionId === 'string' &&
       options.resumeSessionId.trim().length > 0
     ) {
+      console.log('[claude-code] Resuming session with ID:', options.resumeSessionId)
       args.push('--resume', options.resumeSessionId.trim())
     }
 
@@ -230,6 +231,7 @@ export class ClaudeCodeBackend implements AgentBackend {
         return [
           {
             type: 'permission_request',
+            eventId: crypto.randomUUID(),
             backend: this.name,
             timestamp: Date.now(),
             requestId: event.request_id,
@@ -248,6 +250,7 @@ export class ClaudeCodeBackend implements AgentBackend {
         return [
           {
             type: 'complete',
+            eventId: crypto.randomUUID(),
             backend: this.name,
             timestamp: Date.now(),
             reason: 'process_exit',
@@ -296,6 +299,7 @@ export class ClaudeCodeBackend implements AgentBackend {
         }
         return {
           type: 'message',
+          eventId: crypto.randomUUID(),
           backend: this.name,
           timestamp,
           role: 'assistant',
@@ -306,6 +310,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       case 'tool_use':
         return {
           type: 'tool_use',
+          eventId: crypto.randomUUID(),
           backend: this.name,
           timestamp,
           id: block.id,
@@ -317,6 +322,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       case 'tool_result':
         return {
           type: 'tool_result',
+          eventId: crypto.randomUUID(),
           backend: this.name,
           timestamp,
           toolUseId: block.tool_use_id,
@@ -340,6 +346,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
     events.push({
       type: 'complete',
+      eventId: crypto.randomUUID(),
       backend: this.name,
       timestamp: Date.now(),
       reason: 'result',
@@ -371,6 +378,7 @@ export class ClaudeCodeBackend implements AgentBackend {
   private createRawEvent(data: unknown, sourceType?: string): AgentEvent {
     return {
       type: 'raw',
+      eventId: crypto.randomUUID(),
       backend: this.name,
       timestamp: Date.now(),
       sourceType,
@@ -381,6 +389,7 @@ export class ClaudeCodeBackend implements AgentBackend {
   private createErrorEvent(message: string, error?: Error, raw?: unknown): AgentEvent {
     return {
       type: 'error',
+      eventId: crypto.randomUUID(),
       backend: this.name,
       timestamp: Date.now(),
       message,
