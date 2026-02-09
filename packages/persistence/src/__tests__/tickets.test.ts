@@ -297,6 +297,23 @@ describe('ticketsRepository', () => {
       expect(results).toHaveLength(0)
     })
 
+    it('should handle FTS5 special characters without crashing', () => {
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Special chars test ticket',
+      })
+
+      // These inputs contain FTS5 syntax characters that would crash without sanitization
+      const inputs = ['test"', '"unbalanced', 'bug* OR fix(', '()', '""']
+      for (const input of inputs) {
+        expect(() => ticketsRepository.list({ search: input })).not.toThrow()
+      }
+
+      // A query with only special chars / keywords should return all tickets (no FTS filter)
+      const results = ticketsRepository.list({ search: 'OR AND NOT' })
+      expect(results.length).toBeGreaterThan(0)
+    })
+
     it('should limit number of returned tickets', () => {
       const tickets = ticketsRepository.list({ limit: 2 })
 

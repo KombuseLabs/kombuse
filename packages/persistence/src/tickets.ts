@@ -12,6 +12,17 @@ import { getDatabase } from './database'
 import { eventsRepository } from './events'
 import { labelsRepository } from './labels'
 
+const FTS5_KEYWORDS = new Set(['AND', 'OR', 'NOT', 'NEAR'])
+
+function sanitizeFtsQuery(input: string): string | null {
+  const stripped = input.replace(/["()*^{}]/g, '')
+  const tokens = stripped
+    .split(/\s+/)
+    .filter((t) => t.length > 0 && !FTS5_KEYWORDS.has(t.toUpperCase()))
+  if (tokens.length === 0) return null
+  return tokens.map((t) => `"${t}"`).join(' ')
+}
+
 /**
  * Data access layer for tickets
  */
@@ -41,47 +52,50 @@ export const ticketsRepository = {
     }
 
     if (filters?.project_id) {
-      conditions.push('project_id = ?')
+      conditions.push('tickets.project_id = ?')
       params.push(filters.project_id)
     }
     if (filters?.status) {
-      conditions.push('status = ?')
+      conditions.push('tickets.status = ?')
       params.push(filters.status)
     }
     if (filters?.priority !== undefined) {
-      conditions.push('priority = ?')
+      conditions.push('tickets.priority = ?')
       params.push(filters.priority)
     }
     if (filters?.author_id) {
-      conditions.push('author_id = ?')
+      conditions.push('tickets.author_id = ?')
       params.push(filters.author_id)
     }
     if (filters?.assignee_id) {
-      conditions.push('assignee_id = ?')
+      conditions.push('tickets.assignee_id = ?')
       params.push(filters.assignee_id)
     }
     if (filters?.claimed_by_id) {
-      conditions.push('claimed_by_id = ?')
+      conditions.push('tickets.claimed_by_id = ?')
       params.push(filters.claimed_by_id)
     }
     if (filters?.unclaimed) {
-      conditions.push('claimed_by_id IS NULL')
+      conditions.push('tickets.claimed_by_id IS NULL')
     }
     if (filters?.expired_claims) {
       conditions.push(
-        "claim_expires_at IS NOT NULL AND claim_expires_at < datetime('now') AND claimed_by_id IS NOT NULL"
+        "tickets.claim_expires_at IS NOT NULL AND tickets.claim_expires_at < datetime('now') AND tickets.claimed_by_id IS NOT NULL"
       )
     }
     if (filters?.search) {
-      joinClause += ' JOIN tickets_fts ON tickets.id = tickets_fts.rowid'
-      conditions.push('tickets_fts MATCH ?')
-      params.push(filters.search)
-      useRelevanceSort = true
+      const ftsQuery = sanitizeFtsQuery(filters.search)
+      if (ftsQuery) {
+        joinClause += ' JOIN tickets_fts ON tickets.id = tickets_fts.rowid'
+        conditions.push('tickets_fts MATCH ?')
+        params.push(ftsQuery)
+        useRelevanceSort = true
+      }
     }
     if (filters?.label_ids && filters.label_ids.length > 0) {
       const placeholders = filters.label_ids.map(() => '?').join(', ')
       conditions.push(
-        `id IN (SELECT ticket_id FROM ticket_labels WHERE label_id IN (${placeholders}) GROUP BY ticket_id HAVING COUNT(DISTINCT label_id) = ?)`
+        `tickets.id IN (SELECT ticket_id FROM ticket_labels WHERE label_id IN (${placeholders}) GROUP BY ticket_id HAVING COUNT(DISTINCT label_id) = ?)`
       )
       params.push(...filters.label_ids, filters.label_ids.length)
     }
