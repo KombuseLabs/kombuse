@@ -35,6 +35,12 @@ const READ_TOOLS: string[] = ['Grep', 'Glob', 'Read']
  */
 const SHARED_PREAMBLE_SECTION = `You are working on ticket #{{ ticket_id }}{% if ticket %}: "{{ ticket.title }}"{% endif %}.
 
+## Tool Usage
+- Use Glob (not \`find\`) for file pattern matching
+- Use Grep (not \`grep\` or \`rg\`) for searching file contents
+- Use Read (not \`cat\`, \`head\`, or \`tail\`) for reading files
+- Reserve Bash for commands that have no dedicated tool equivalent
+
 ## Kombuse Tools
 You have these MCP tools for ticket communication:
 - get_ticket — read a ticket and its comments
