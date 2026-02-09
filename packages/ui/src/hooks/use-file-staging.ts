@@ -50,13 +50,15 @@ export function useFileStaging(options?: UseFileStagingOptions): UseFileStagingR
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewUrlsRef = useRef<string[]>([])
+  previewUrlsRef.current = previewUrls
 
-  // Clean up preview URLs on unmount or when files change
+  // Clean up preview URLs on unmount only
   useEffect(() => {
     return () => {
-      previewUrls.forEach((url) => URL.revokeObjectURL(url))
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
     }
-  }, [previewUrls])
+  }, [])
 
   const addFiles = useCallback(
     (fileList: FileList | File[]) => {

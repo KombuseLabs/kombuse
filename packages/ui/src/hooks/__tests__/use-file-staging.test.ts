@@ -256,6 +256,34 @@ describe('useFileStaging', () => {
     })
   })
 
+  describe('handleFileInputChange', () => {
+    it('adds files from the file input and resets its value', () => {
+      const { result } = renderHook(() => useFileStaging())
+      const file = createFile('selected.png', 300, 'image/png')
+
+      // Mock the file input ref
+      const mockInput = { files: [file] as unknown as FileList & { length: number }, value: 'C:\\fakepath\\selected.png' }
+      Object.defineProperty(result.current.fileInputRef, 'current', { value: mockInput, writable: true })
+
+      act(() => result.current.handleFileInputChange())
+
+      expect(result.current.stagedFiles).toHaveLength(1)
+      expect(result.current.stagedFiles[0]?.name).toBe('selected.png')
+      expect(mockInput.value).toBe('')
+    })
+
+    it('does nothing when file input has no files', () => {
+      const { result } = renderHook(() => useFileStaging())
+
+      const mockInput = { files: [] as unknown as FileList & { length: number }, value: '' }
+      Object.defineProperty(result.current.fileInputRef, 'current', { value: mockInput, writable: true })
+
+      act(() => result.current.handleFileInputChange())
+
+      expect(result.current.stagedFiles).toHaveLength(0)
+    })
+  })
+
   describe('cleanup on unmount', () => {
     it('revokes all preview URLs when unmounted', () => {
       const { result, unmount } = renderHook(() => useFileStaging())
