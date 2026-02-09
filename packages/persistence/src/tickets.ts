@@ -38,6 +38,7 @@ export const ticketsRepository = {
     let joinClause = ''
     let selectColumns = 'tickets.*'
     let useRelevanceSort = false
+    let idBoostParam: number | null = null
 
     // Viewer-based unread computation (JOIN param must precede WHERE params)
     if (filters?.viewer_id) {
@@ -85,11 +86,28 @@ export const ticketsRepository = {
     }
     if (filters?.search) {
       const ftsQuery = sanitizeFtsQuery(filters.search)
-      if (ftsQuery) {
+      const trimmed = filters.search.trim()
+      const numericId = /^\d+$/.test(trimmed) ? Number(trimmed) : null
+
+      if (ftsQuery && numericId !== null) {
+        // Numeric query: match by FTS OR exact ticket ID, boost ID match to top
+        joinClause +=
+          ' LEFT JOIN tickets_fts ON tickets.id = tickets_fts.rowid AND tickets_fts MATCH ?'
+        joinParams.push(ftsQuery)
+        conditions.push('(tickets_fts.rowid IS NOT NULL OR tickets.id = ?)')
+        params.push(numericId)
+        useRelevanceSort = true
+        idBoostParam = numericId
+      } else if (ftsQuery) {
+        // Text query: FTS only (existing behavior)
         joinClause += ' JOIN tickets_fts ON tickets.id = tickets_fts.rowid'
         conditions.push('tickets_fts MATCH ?')
         params.push(ftsQuery)
         useRelevanceSort = true
+      } else if (numericId !== null) {
+        // Pure numeric but sanitized to empty FTS: just match by ID
+        conditions.push('tickets.id = ?')
+        params.push(numericId)
       }
     }
     if (filters?.label_ids && filters.label_ids.length > 0) {
@@ -105,8 +123,14 @@ export const ticketsRepository = {
 
     const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'closed_at', 'opened_at', 'last_activity_at'] as const
     let orderByClause: string
+    const orderByParams: unknown[] = []
     if (useRelevanceSort && !filters?.sort_by) {
-      orderByClause = 'ORDER BY rank'
+      if (idBoostParam !== null) {
+        orderByClause = 'ORDER BY CASE WHEN tickets.id = ? THEN 0 ELSE 1 END, rank'
+        orderByParams.push(idBoostParam)
+      } else {
+        orderByClause = 'ORDER BY rank'
+      }
     } else {
       const sortBy = filters?.sort_by && ALLOWED_SORT_COLUMNS.includes(filters.sort_by)
         ? filters.sort_by
@@ -126,7 +150,7 @@ export const ticketsRepository = {
       LIMIT ? OFFSET ?
     `)
 
-    return stmt.all(...joinParams, ...params, limit, offset) as Ticket[]
+    return stmt.all(...joinParams, ...params, ...orderByParams, limit, offset) as Ticket[]
   },
 
   /**

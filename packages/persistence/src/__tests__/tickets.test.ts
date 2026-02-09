@@ -314,6 +314,55 @@ describe('ticketsRepository', () => {
       expect(results.length).toBeGreaterThan(0)
     })
 
+    it('should find ticket by exact ID when search is numeric', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Unique findable title',
+      })
+
+      const results = ticketsRepository.list({ search: String(ticket.id) })
+
+      expect(results.length, 'Should find at least the exact ID match').toBeGreaterThanOrEqual(1)
+      expect(
+        results.some((t) => t.id === ticket.id),
+        'Results should include the ticket with matching ID'
+      ).toBe(true)
+    })
+
+    it('should prioritize exact ID match over FTS results for numeric search', () => {
+      // Create a ticket whose title contains the number of another ticket's ID
+      const target = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Target ticket without number in title',
+      })
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: `Issue ${target.id} is related`,
+      })
+
+      const results = ticketsRepository.list({ search: String(target.id) })
+
+      expect(results.length, 'Should return both ID match and FTS match').toBeGreaterThanOrEqual(1)
+      expect(results[0]?.id, 'Exact ID match should be first result').toBe(target.id)
+    })
+
+    it('should return FTS results alongside ID match for numeric query', () => {
+      const target = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Specific ticket',
+      })
+      const related = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: `Ticket ${target.id} followup`,
+      })
+
+      const results = ticketsRepository.list({ search: String(target.id) })
+
+      const ids = results.map((r) => r.id)
+      expect(ids, 'Should include the exact ID match').toContain(target.id)
+      expect(ids, 'Should include the FTS text match').toContain(related.id)
+    })
+
     it('should limit number of returned tickets', () => {
       const tickets = ticketsRepository.list({ limit: 2 })
 
