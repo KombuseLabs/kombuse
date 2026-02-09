@@ -368,4 +368,57 @@ describe('update_ticket', () => {
     expect(data.labels).toHaveLength(1)
     expect(data.labels[0]!.name).toBe('Feature')
   })
+
+  it('should handle idempotent label add', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Bug' })
+    labelsRepository.addToTicket(ticket.id, label.id)
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, add_label_ids: [label.id] },
+    })
+    const data = parseContent(result) as { labels: { name: string }[] }
+
+    expect(result.isError).toBeFalsy()
+    expect(data.labels).toHaveLength(1)
+    expect(data.labels[0]!.name).toBe('Bug')
+  })
+
+  it('should update priority', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, priority: 3 },
+    })
+    const data = parseContent(result) as { ticket: { priority: number } }
+
+    expect(data.ticket.priority).toBe(3)
+  })
+
+  it('should unassign via assignee_id null', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    ticketsRepository.update(ticket.id, { assignee_id: TEST_USER_ID })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, assignee_id: null },
+    })
+    const data = parseContent(result) as { ticket: { assignee_id: string | null } }
+
+    expect(data.ticket.assignee_id).toBeNull()
+  })
 })

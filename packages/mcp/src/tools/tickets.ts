@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository } from '@kombuse/persistence'
-import type { Ticket, Project, Label, CommentWithAuthorAndAttachments } from '@kombuse/types'
+import type { Ticket, Project, Label, CommentWithAuthorAndAttachments, UpdateTicketInput } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import { z } from 'zod'
 
@@ -513,21 +513,20 @@ export function registerTicketTools(server: McpServer): void {
         }
       }
 
-      // Resolve actor from session
+      // Resolve actor from session — fall back to ANONYMOUS_AGENT_ID when session
+      // is provided but doesn't resolve (we know it's an agent, just not which one)
       let actorId: string | undefined
       if (kombuse_session_id) {
         const invocations = agentInvocationsRepository.list({ kombuse_session_id })
-        if (invocations.length > 0) {
-          actorId = invocations[0]!.agent_id
-        }
+        actorId = invocations.length > 0 ? invocations[0]!.agent_id : ANONYMOUS_AGENT_ID
       }
 
       // Update scalar fields if any provided
-      const updateInput: Record<string, unknown> = {}
+      const updateInput: UpdateTicketInput = {}
       if (title !== undefined) updateInput.title = title
       if (body !== undefined) updateInput.body = body
       if (status !== undefined) updateInput.status = status
-      if (priority !== undefined) updateInput.priority = priority
+      if (priority !== undefined) updateInput.priority = priority as UpdateTicketInput['priority']
       if (assignee_id !== undefined) updateInput.assignee_id = assignee_id
 
       if (Object.keys(updateInput).length > 0) {
