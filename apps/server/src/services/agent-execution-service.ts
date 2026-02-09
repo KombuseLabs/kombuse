@@ -982,7 +982,7 @@ export function startAgentChatSession(
     typeof agentId === 'string' && agentId.trim().length > 0
       ? agentId.trim()
       : undefined
-  const agent = normalizedAgentId
+  let agent = normalizedAgentId
     ? dependencies.getAgent(normalizedAgentId)
     : undefined
 
@@ -1000,6 +1000,26 @@ export function startAgentChatSession(
       message: `Agent ${agent.id} is disabled`,
     })
     return
+  }
+
+  // For resumed sessions without explicit agentId, resolve from invocation records.
+  // This handles user replies to agent comments — the UI sends kombuseSessionId
+  // but not agentId (see tickets.tsx agent.invoke path).
+  if (!agent && kombuseSessionId) {
+    const invocations = agentInvocationsRepository.list({
+      kombuse_session_id: kombuseSessionId,
+      limit: 1,
+    })
+    const firstInvocation = invocations[0]
+    if (firstInvocation) {
+      const resolvedAgent = dependencies.getAgent(firstInvocation.agent_id)
+      if (resolvedAgent?.is_enabled) {
+        agent = resolvedAgent
+        console.log(
+          `[Server] Resolved agent ${resolvedAgent.id} from session ${kombuseSessionId}`
+        )
+      }
+    }
   }
 
   // Use client-provided session ID or generate a new one
