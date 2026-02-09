@@ -296,8 +296,8 @@ export const commentsRepository = {
       // 4. Resolve ticket mentions
       for (const mentionedTicketId of mentions.ticketIds) {
         const mentionedTicket = db
-          .prepare('SELECT id FROM tickets WHERE id = ?')
-          .get(mentionedTicketId) as { id: number } | undefined
+          .prepare('SELECT id, project_id FROM tickets WHERE id = ?')
+          .get(mentionedTicketId) as { id: number; project_id: string } | undefined
 
         if (!mentionedTicket) {
           continue
@@ -327,13 +327,9 @@ export const commentsRepository = {
 
         // Cross-reference event on the MENTIONED ticket's timeline
         if (mentionedTicketId !== payload.ticket_id) {
-          const mentionedTicketInfo = db
-            .prepare('SELECT project_id FROM tickets WHERE id = ?')
-            .get(mentionedTicketId) as { project_id: string } | undefined
-
           eventsRepository.create({
             event_type: 'mention.created',
-            project_id: mentionedTicketInfo?.project_id,
+            project_id: mentionedTicket.project_id,
             ticket_id: mentionedTicketId,
             comment_id: commentId,
             actor_id: payload.author_id,
@@ -475,12 +471,12 @@ export const commentsRepository = {
           })
         }
 
+        const authorProfile = profilesRepository.get(existingRow.author_id)
+        const editActorType: ActorType =
+          authorProfile?.type === 'agent' ? 'agent' : 'user'
+
         // Cross-reference events for newly added ticket mentions
         if (comment) {
-          const authorProfile = profilesRepository.get(existingRow.author_id)
-          const editActorType: ActorType =
-            authorProfile?.type === 'agent' ? 'agent' : 'user'
-
           for (const mentionedTicketId of mentions.ticketIds) {
             if (oldTicketMentionIds.has(mentionedTicketId)) continue
             if (mentionedTicketId === comment.ticket_id) continue
@@ -511,8 +507,6 @@ export const commentsRepository = {
 
         // Create comment.edited event
         if (comment && ticket) {
-          const editActorType: ActorType =
-            (profilesRepository.get(existingRow.author_id))?.type === 'agent' ? 'agent' : 'user'
           eventsRepository.create({
             event_type: 'comment.edited',
             project_id: ticket.project_id,

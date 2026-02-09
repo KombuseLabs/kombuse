@@ -561,6 +561,25 @@ describe('commentsRepository', () => {
         })
         expect(target2CrossRefs, 'Newly added mention should create cross-reference').toHaveLength(1)
       })
+
+      it('should NOT create a cross-reference event for non-existent ticket mentions', () => {
+        db.prepare('DELETE FROM events').run()
+
+        commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: 'See #99999 for details',
+        })
+
+        const events = eventsRepository.list({ event_type: 'mention.created' })
+        expect(events, 'No mention events for non-existent ticket').toHaveLength(0)
+
+        const mentions = mentionsRepository.getByComment(
+          commentsRepository.list({ ticket_id: testTicketId }).at(-1)!.id
+        )
+        const ticketMentions = mentions.filter((m) => m.mention_type === 'ticket')
+        expect(ticketMentions, 'No mention records for non-existent ticket').toHaveLength(0)
+      })
     })
   })
 
