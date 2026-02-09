@@ -68,6 +68,13 @@ export function ChatProvider({
     }
   }, [sessionId, sessionEventsData])
 
+  // Sync isLoading from persisted session status on load
+  useEffect(() => {
+    if (sessionData?.status === 'running') {
+      setIsLoading(true)
+    }
+  }, [sessionData?.status])
+
   // Reset events when switching modes
   useEffect(() => {
     if (agentId && !sessionId) {
