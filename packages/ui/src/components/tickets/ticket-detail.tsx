@@ -5,13 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Textarea } from '../../base/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../base/select'
+import { Tabs, TabsList, TabsTrigger } from '../../base/tabs'
 import { X, Trash2, Pencil, Paperclip } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
@@ -21,7 +15,8 @@ import { ImageLightbox } from '../image-lightbox'
 import { attachmentsApi } from '../../lib/api'
 import { useTicketOperations, useLabelOperations, useTicketAgentStatus, useCurrentProject, useTicketAttachments, useUploadTicketAttachment } from '../../hooks'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
-import { useFileStaging, formatFileSize } from '../../hooks/use-file-staging'
+import { useFileStaging } from '../../hooks/use-file-staging'
+import { StagedFilePreviews } from '../staged-file-previews'
 
 interface TicketDetailProps {
   className?: string
@@ -123,7 +118,9 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
           await uploadTicketAttachment.mutateAsync({
             ticketId: ticket.id, file, uploadedById: 'user-1',
           })
-        } catch { /* silent */ }
+        } catch {
+          // Individual upload failures don't block remaining uploads
+        }
       }
     }
     clearFiles()
@@ -146,27 +143,26 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   {isEditable ? (
-                    <Select
+                    <Tabs
                       value={ticket.status}
                       onValueChange={(v) => updateCurrentTicket({ status: v as TicketStatus })}
-                      disabled={isUpdating}
                     >
-                      <SelectTrigger
-                        className={cn(
-                          'h-6 w-auto gap-1 rounded-full border-none px-2 py-0.5 text-xs font-medium shadow-none',
-                          statusColors[ticket.status]
-                        )}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
+                      <TabsList className="h-6 p-0.5">
                         {STATUS_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
+                          <TabsTrigger
+                            key={opt.value}
+                            value={opt.value}
+                            disabled={isUpdating}
+                            className={cn(
+                              'h-5 px-2 py-0 text-xs',
+                              ticket.status === opt.value && statusColors[opt.value]
+                            )}
+                          >
                             {opt.label}
-                          </SelectItem>
+                          </TabsTrigger>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </TabsList>
+                    </Tabs>
                   ) : (
                     <span
                       className={cn(
@@ -195,18 +191,25 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                 <div className="flex items-center gap-2 mb-1">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
-                  <Select value={editStatus} onValueChange={(v) => setEditStatus(v as TicketStatus)}>
-                    <SelectTrigger className="w-[140px] h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
+                  <Tabs
+                    value={editStatus}
+                    onValueChange={(v) => setEditStatus(v as TicketStatus)}
+                  >
+                    <TabsList className="h-7 p-0.5">
                       {STATUS_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
+                        <TabsTrigger
+                          key={opt.value}
+                          value={opt.value}
+                          className={cn(
+                            'h-6 px-2 py-0 text-xs',
+                            editStatus === opt.value && statusColors[opt.value]
+                          )}
+                        >
                           {opt.label}
-                        </SelectItem>
+                        </TabsTrigger>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </TabsList>
+                  </Tabs>
                 </div>
                 <Input
                   value={editTitle}
@@ -320,29 +323,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
               className="min-h-[100px]"
             />
             <AutocompletePortal />
-            {stagedFiles.length > 0 && (
-              <div className="flex gap-2 px-1 py-1 mt-1 overflow-x-auto">
-                {stagedFiles.map((file, index) => (
-                  <div key={`${file.name}-${index}`} className="relative shrink-0 group">
-                    <img
-                      src={previewUrls[index]}
-                      alt={file.name}
-                      className="size-16 rounded object-cover border"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="absolute -top-1 -right-1 size-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="size-2.5" />
-                    </button>
-                    <div className="text-[10px] text-muted-foreground truncate max-w-16 mt-0.5">
-                      {formatFileSize(file.size)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <StagedFilePreviews stagedFiles={stagedFiles} previewUrls={previewUrls} onRemove={removeFile} className="mt-1" />
             <input
               ref={fileInputRef}
               type="file"
