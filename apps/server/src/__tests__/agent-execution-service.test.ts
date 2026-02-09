@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   getTypePreset,
   shouldAutoApprove,
+  presetToAllowedTools,
   type AgentTypePreset,
 } from '../services/agent-execution-service'
 
@@ -179,5 +180,56 @@ describe('preset contents', () => {
     const preset = getTypePreset('coder')
     expect(preset.preambleTemplate).toContain('## Tool Usage')
     expect(preset.preambleTemplate).toContain('Use Glob')
+  })
+})
+
+describe('presetToAllowedTools', () => {
+  it('converts kombuse preset to allowed tools list', () => {
+    const preset = getTypePreset('kombuse')
+    const tools = presetToAllowedTools(preset)
+
+    expect(tools).toContain('mcp__kombuse__get_ticket')
+    expect(tools).toContain('Grep')
+    expect(tools).toContain('Glob')
+    expect(tools).toContain('Read')
+    // kombuse has no Bash access
+    expect(tools).not.toContain('Bash')
+    expect(tools.some(t => t.startsWith('Bash('))).toBe(false)
+  })
+
+  it('converts coder preset - Bash in autoApprovedTools covers all commands', () => {
+    const preset = getTypePreset('coder')
+    const tools = presetToAllowedTools(preset)
+
+    expect(tools).toContain('Bash')
+    expect(tools).toContain('Edit')
+    expect(tools).toContain('Write')
+    expect(tools).toContain('Task')
+    // No Bash(prefix *) patterns since Bash covers everything
+    expect(tools.filter(t => t.startsWith('Bash(')).length).toBe(0)
+  })
+
+  it('converts custom preset with bash commands but no Bash tool', () => {
+    const customPreset: AgentTypePreset = {
+      autoApprovedTools: ['Read', 'Grep'],
+      autoApprovedBashCommands: ['npm', 'git status'],
+      preambleTemplate: '',
+    }
+    const tools = presetToAllowedTools(customPreset)
+
+    expect(tools).toContain('Read')
+    expect(tools).toContain('Grep')
+    expect(tools).toContain('Bash(npm *)')
+    expect(tools).toContain('Bash(git status *)')
+    expect(tools).not.toContain('Bash')
+  })
+
+  it('returns empty array for empty preset', () => {
+    const emptyPreset: AgentTypePreset = {
+      autoApprovedTools: [],
+      autoApprovedBashCommands: [],
+      preambleTemplate: '',
+    }
+    expect(presetToAllowedTools(emptyPreset)).toEqual([])
   })
 })

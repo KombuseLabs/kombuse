@@ -180,7 +180,6 @@ export class ClaudeCodeBackend implements AgentBackend {
   }
 
   private buildArgs(options: StartOptions): string[] {
-    // TODO support more args
     const args: string[] = [
       '--output-format',
       'stream-json', // Stream JSON events as they occur
@@ -192,6 +191,11 @@ export class ClaudeCodeBackend implements AgentBackend {
       '--max-turns',
       String(options.maxTurns ?? 50),
     ]
+
+    // Pre-approve tools at the subprocess level to avoid permission round-trips
+    if (options.allowedTools && options.allowedTools.length > 0) {
+      args.push('--allowedTools', ...options.allowedTools)
+    }
 
     if (
       typeof options.resumeSessionId === 'string' &&

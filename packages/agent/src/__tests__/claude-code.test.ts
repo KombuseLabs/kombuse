@@ -58,6 +58,63 @@ describe('ClaudeCodeBackend', () => {
 
       expect(args).not.toContain('--append-system-prompt')
     })
+
+    it('includes --allowedTools when allowedTools is provided', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        allowedTools: ['Read', 'Grep', 'Glob', 'mcp__kombuse__get_ticket'],
+      })
+
+      expect(args).toContain('--allowedTools')
+      expect(args).toContain('Read')
+      expect(args).toContain('Grep')
+      expect(args).toContain('Glob')
+      expect(args).toContain('mcp__kombuse__get_ticket')
+    })
+
+    it('includes Bash patterns in --allowedTools', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        allowedTools: ['Read', 'Bash(npm *)'],
+      })
+
+      expect(args).toContain('--allowedTools')
+      expect(args).toContain('Read')
+      expect(args).toContain('Bash(npm *)')
+    })
+
+    it('omits --allowedTools when allowedTools is undefined', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+      })
+
+      expect(args).not.toContain('--allowedTools')
+    })
+
+    it('omits --allowedTools when allowedTools is empty array', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        allowedTools: [],
+      })
+
+      expect(args).not.toContain('--allowedTools')
+    })
   })
 
   describe('handleMessage', () => {

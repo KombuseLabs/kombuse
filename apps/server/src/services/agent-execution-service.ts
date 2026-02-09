@@ -115,6 +115,25 @@ export function getTypePreset(agentType?: string): AgentTypePreset {
   }
   return AGENT_TYPE_PRESETS[DEFAULT_AGENT_TYPE]!
 }
+
+/**
+ * Convert an AgentTypePreset into CLI-compatible --allowedTools strings.
+ *
+ * - Tools in autoApprovedTools pass through as-is (e.g., 'Read', 'mcp__kombuse__get_ticket')
+ * - If 'Bash' is NOT in autoApprovedTools but autoApprovedBashCommands has entries,
+ *   each command prefix is converted to 'Bash(prefix *)' pattern
+ */
+export function presetToAllowedTools(preset: AgentTypePreset): string[] {
+  const tools: string[] = [...preset.autoApprovedTools]
+
+  if (!preset.autoApprovedTools.includes('Bash') && preset.autoApprovedBashCommands.length > 0) {
+    for (const cmd of preset.autoApprovedBashCommands) {
+      tools.push(`Bash(${cmd} *)`)
+    }
+  }
+
+  return tools
+}
 import {
   agentService,
   projectService,
@@ -150,6 +169,8 @@ interface ChatRunnerOptions {
   resumeSessionId?: string
   /** System prompt override */
   systemPrompt?: string
+  /** Tools to pre-approve at the subprocess level via --allowedTools */
+  allowedTools?: string[]
   /** Callback for each agent event */
   onEvent: (event: AgentEvent) => void
   /** Callback when complete, receives backend session context if available */
@@ -220,6 +241,7 @@ async function runAgentChat(
     resumeSessionId: options.resumeSessionId,
     projectPath: options.projectPath,
     systemPrompt: options.systemPrompt,
+    allowedTools: options.allowedTools,
     initialMessage: message,
   })
 
@@ -1060,10 +1082,14 @@ export function startAgentChatSession(
     resolvedSystemPrompt = renderTemplate(preset.preambleTemplate, preambleContext)
   }
 
+  // Compute allowed tools for subprocess-level pre-approval
+  const allowedTools = presetToAllowedTools(preset)
+
   runAgentChat(backend, userMessage, appSessionId, {
     projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
     resumeSessionId,
     systemPrompt: resolvedSystemPrompt,
+    allowedTools,
     onEvent: (event: AgentEvent) => {
 
       logger.logEvent(event)

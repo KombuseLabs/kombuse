@@ -19,6 +19,8 @@ export interface StartOptions {
   initialMessage?: string
   /** Maximum number of agentic turns before stopping (default: 1) */
   maxTurns?: number
+  /** Tools pre-approved at the subprocess level via --allowedTools. */
+  allowedTools?: string[]
 }
 
 /**
