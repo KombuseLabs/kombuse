@@ -838,4 +838,49 @@ describe('listPermissions', () => {
     expect(results).toHaveLength(1)
     expect(results[0]!.input).toEqual({ command: 'git status', timeout: 5000 })
   })
+
+  it('should return empty input for malformed input JSON in payload', () => {
+    // Insert directly via raw SQL to bypass the repository's JSON.stringify
+    const db = getDatabase()
+    const seq = sessionEventsRepository.getNextSeq(testSessionId)
+    db.prepare(
+      `INSERT INTO session_events (session_id, seq, event_type, payload)
+       VALUES (?, ?, 'permission_request', ?)`
+    ).run(
+      testSessionId,
+      seq,
+      JSON.stringify({
+        requestId: 'req-bad-input',
+        toolName: 'Bash',
+        description: 'Bad input',
+        input: 'not-valid-json{{{',
+      })
+    )
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.input).toEqual({})
+  })
+
+  it('should exclude permission requests from sessions without a ticket', () => {
+    // Create a session with no ticket
+    const ticketlessSession = sessionsRepository.create({
+      kombuse_session_id: createSessionId('chat'),
+      backend_type: 'mock',
+    })
+
+    createPermissionRequest(ticketlessSession.id, 1, {
+      requestId: 'req-no-ticket',
+      toolName: 'Bash',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(0)
+  })
 })
