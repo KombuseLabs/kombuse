@@ -464,7 +464,7 @@ Props for `ActivityTimeline`:
 - `editBody`: Current edit text value
 - `onEditBodyChange`: Callback when edit text changes
 - `onStartEditComment`: Callback when edit button clicked
-- `onSaveEditComment`: Callback to save edited comment
+- `onSaveEditComment`: Callback `(stagedFiles?: File[]) => void` — receives optional staged files to upload after saving
 - `onCancelEditComment`: Callback to cancel editing
 - `onDeleteComment`: Callback to delete a comment
 - `onReplyComment`: Callback when reply button clicked on a comment
@@ -475,6 +475,7 @@ Props for `CommentItem`:
 - `parentComment`: Optional `CommentWithAuthor` — when provided, renders a "Replying to {name}" indicator between the header and body
 - `projectId`: Optional project ID — enables `#<number>` ticket link rendering in comment body and builds correct route for session links on agent comments
 - `attachments`: Optional `Attachment[]` to display as inline image thumbnails below the comment body — clicking a thumbnail opens the image lightbox
+- Edit mode supports image attachments via paperclip button, drag-and-drop, and clipboard paste. Staged files are passed to `onSaveEdit(stagedFiles?)` on save
 
 ### Image Lightbox
 

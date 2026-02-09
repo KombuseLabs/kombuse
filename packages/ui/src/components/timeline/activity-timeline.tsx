@@ -12,7 +12,7 @@ interface ActivityTimelineProps {
   editBody?: string
   onEditBodyChange?: (body: string) => void
   onStartEditComment?: (comment: CommentWithAuthor) => void
-  onSaveEditComment?: () => void
+  onSaveEditComment?: (stagedFiles?: File[]) => void
   onCancelEditComment?: () => void
   onDeleteComment?: (id: number) => void
   onReplyComment?: (comment: CommentWithAuthor) => void

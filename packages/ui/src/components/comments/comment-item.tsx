@@ -11,7 +11,8 @@ import { cn } from '../../lib/utils'
 import { attachmentsApi } from '../../lib/api'
 import { useSessionByKombuseId } from '../../hooks/use-sessions'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
-import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare } from 'lucide-react'
+import { useFileStaging, formatFileSize } from '../../hooks/use-file-staging'
+import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare, Paperclip } from 'lucide-react'
 import { getAvatarIcon } from '../agents/avatar-picker'
 
 interface CommentItemProps {
@@ -23,7 +24,7 @@ interface CommentItemProps {
   editBody?: string
   onEditBodyChange?: (body: string) => void
   onStartEdit?: () => void
-  onSaveEdit?: () => void
+  onSaveEdit?: (stagedFiles?: File[]) => void
   onCancelEdit?: () => void
   onDelete?: () => void
   onReply?: () => void
@@ -64,6 +65,22 @@ function CommentItem({
     onValueChange: handleEditBodyChange,
     textareaRef: editTextareaRef,
   })
+  const {
+    stagedFiles, previewUrls, isDragOver, hasFiles,
+    removeFile, clearFiles, dragHandlers,
+    handlePaste, fileInputRef, handleFileInputChange,
+  } = useFileStaging()
+
+  const handleSaveEdit = useCallback(() => {
+    const files = hasFiles ? [...stagedFiles] : undefined
+    clearFiles()
+    onSaveEdit?.(files)
+  }, [hasFiles, stagedFiles, clearFiles, onSaveEdit])
+
+  const handleCancelEdit = useCallback(() => {
+    clearFiles()
+    onCancelEdit?.()
+  }, [clearFiles, onCancelEdit])
 
   const sessionUrl = linkedSession
     ? projectId
@@ -127,8 +144,17 @@ function CommentItem({
             <Button
               variant="ghost"
               size="icon"
+              className="size-6 text-muted-foreground hover:text-foreground"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUpdating}
+            >
+              <Paperclip className="size-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               className="size-6 text-muted-foreground hover:text-primary"
-              onClick={onSaveEdit}
+              onClick={handleSaveEdit}
               disabled={isUpdating || !editBody.trim()}
             >
               <Check className="size-3" />
@@ -137,7 +163,7 @@ function CommentItem({
               variant="ghost"
               size="icon"
               className="size-6 text-muted-foreground hover:text-destructive"
-              onClick={onCancelEdit}
+              onClick={handleCancelEdit}
             >
               <X className="size-3" />
             </Button>
@@ -181,54 +207,90 @@ function CommentItem({
         </div>
       )}
       {isEditing ? (
-        <>
+        <div
+          className={cn(
+            'rounded transition-colors',
+            isDragOver && 'ring-2 ring-primary/50 bg-primary/5',
+          )}
+          {...dragHandlers}
+        >
           <Textarea
             ref={editTextareaRef}
             value={editBody}
             onChange={autocompleteProps.onChange}
             onKeyDown={autocompleteProps.onKeyDown}
+            onPaste={handlePaste}
             className="min-h-15 text-sm"
             autoFocus
           />
           <AutocompletePortal />
-        </>
-      ) : (
-        <>
-          <div className="text-sm">
-            <Markdown projectId={projectId}>{comment.body}</Markdown>
-          </div>
-          {attachments && attachments.length > 0 && (
-            <>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {attachments.map((attachment, index) => (
+          {stagedFiles.length > 0 && (
+            <div className="flex gap-2 px-1 py-1 mt-1 overflow-x-auto">
+              {stagedFiles.map((file, index) => (
+                <div key={`${file.name}-${index}`} className="relative shrink-0 group">
+                  <img
+                    src={previewUrls[index]}
+                    alt={file.name}
+                    className="size-16 rounded object-cover border"
+                  />
                   <button
-                    key={attachment.id}
                     type="button"
-                    onClick={() => {
-                      setLightboxIndex(index)
-                      setLightboxOpen(true)
-                    }}
-                    className="group block text-left cursor-pointer"
+                    onClick={() => removeFile(index)}
+                    className="absolute -top-1 -right-1 size-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <img
-                      src={attachmentsApi.downloadUrl(attachment.id)}
-                      alt={attachment.filename}
-                      className="max-h-48 rounded border object-cover transition-opacity group-hover:opacity-90"
-                    />
-                    <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-48">
-                      {attachment.filename}
-                    </div>
+                    <X className="size-2.5" />
                   </button>
-                ))}
-              </div>
-              <ImageLightbox
-                attachments={attachments}
-                initialIndex={lightboxIndex}
-                open={lightboxOpen}
-                onOpenChange={setLightboxOpen}
-              />
-            </>
+                  <div className="text-[10px] text-muted-foreground truncate max-w-16 mt-0.5">
+                    {formatFileSize(file.size)}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleFileInputChange}
+          />
+        </div>
+      ) : (
+        <div className="text-sm">
+          <Markdown projectId={projectId}>{comment.body}</Markdown>
+        </div>
+      )}
+      {attachments && attachments.length > 0 && (
+        <>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {attachments.map((attachment, index) => (
+              <button
+                key={attachment.id}
+                type="button"
+                onClick={() => {
+                  setLightboxIndex(index)
+                  setLightboxOpen(true)
+                }}
+                className="group block text-left cursor-pointer"
+              >
+                <img
+                  src={attachmentsApi.downloadUrl(attachment.id)}
+                  alt={attachment.filename}
+                  className="max-h-48 rounded border object-cover transition-opacity group-hover:opacity-90"
+                />
+                <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-48">
+                  {attachment.filename}
+                </div>
+              </button>
+            ))}
+          </div>
+          <ImageLightbox
+            attachments={attachments}
+            initialIndex={lightboxIndex}
+            open={lightboxOpen}
+            onOpenChange={setLightboxOpen}
+          />
         </>
       )}
     </div>

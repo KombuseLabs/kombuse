@@ -575,9 +575,22 @@ export function Tickets() {
                                 setEditingCommentId(comment.id);
                                 setEditBody(comment.body);
                               }}
-                              onSaveEditComment={async () => {
+                              onSaveEditComment={async (stagedFiles?: File[]) => {
                                 if (editingCommentId) {
                                   await updateComment(editingCommentId, editBody);
+                                  if (stagedFiles?.length) {
+                                    for (const file of stagedFiles) {
+                                      try {
+                                        await uploadAttachment.mutateAsync({
+                                          commentId: editingCommentId,
+                                          file,
+                                          uploadedById: "user-1", // TODO: Get from auth context
+                                        });
+                                      } catch {
+                                        // Individual upload failures don't block remaining uploads
+                                      }
+                                    }
+                                  }
                                   setEditingCommentId(null);
                                   setEditBody("");
                                 }
