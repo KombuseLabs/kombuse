@@ -23,6 +23,8 @@ export const ticketsRepository = {
     const db = getDatabase()
     const conditions: string[] = []
     const params: unknown[] = []
+    let joinClause = ''
+    let useRelevanceSort = false
 
     if (filters?.project_id) {
       conditions.push('project_id = ?')
@@ -57,8 +59,10 @@ export const ticketsRepository = {
       )
     }
     if (filters?.search) {
-      conditions.push('(title LIKE ? OR body LIKE ?)')
-      params.push(`%${filters.search}%`, `%${filters.search}%`)
+      joinClause = 'JOIN tickets_fts ON tickets.id = tickets_fts.rowid'
+      conditions.push('tickets_fts MATCH ?')
+      params.push(filters.search)
+      useRelevanceSort = true
     }
     if (filters?.label_ids && filters.label_ids.length > 0) {
       const placeholders = filters.label_ids.map(() => '?').join(', ')
@@ -72,18 +76,25 @@ export const ticketsRepository = {
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'closed_at', 'opened_at', 'last_activity_at'] as const
-    const sortBy = filters?.sort_by && ALLOWED_SORT_COLUMNS.includes(filters.sort_by)
-      ? filters.sort_by
-      : 'created_at'
-    const sortOrder = filters?.sort_order === 'asc' ? 'ASC' : 'DESC'
+    let orderByClause: string
+    if (useRelevanceSort && !filters?.sort_by) {
+      orderByClause = 'ORDER BY rank'
+    } else {
+      const sortBy = filters?.sort_by && ALLOWED_SORT_COLUMNS.includes(filters.sort_by)
+        ? filters.sort_by
+        : 'created_at'
+      const sortOrder = filters?.sort_order === 'asc' ? 'ASC' : 'DESC'
+      orderByClause = `ORDER BY ${sortBy} ${sortOrder}`
+    }
 
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
 
     const stmt = db.prepare(`
-      SELECT * FROM tickets
+      SELECT tickets.* FROM tickets
+      ${joinClause}
       ${whereClause}
-      ORDER BY ${sortBy} ${sortOrder}
+      ${orderByClause}
       LIMIT ? OFFSET ?
     `)
 

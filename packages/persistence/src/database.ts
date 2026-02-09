@@ -429,6 +429,44 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_tickets_last_activity ON tickets(project_id, last_activity_at DESC);
     `,
   },
+  {
+    name: '008_fts_search',
+    sql: `
+      CREATE VIRTUAL TABLE IF NOT EXISTS tickets_fts USING fts5(
+        title,
+        body,
+        content=tickets,
+        content_rowid=id,
+        tokenize='porter unicode61'
+      );
+
+      CREATE TRIGGER IF NOT EXISTS tickets_fts_insert
+      AFTER INSERT ON tickets
+      BEGIN
+        INSERT INTO tickets_fts(rowid, title, body)
+        VALUES (new.id, new.title, COALESCE(new.body, ''));
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS tickets_fts_delete
+      AFTER DELETE ON tickets
+      BEGIN
+        INSERT INTO tickets_fts(tickets_fts, rowid, title, body)
+        VALUES ('delete', old.id, old.title, COALESCE(old.body, ''));
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS tickets_fts_update
+      AFTER UPDATE ON tickets
+      BEGIN
+        INSERT INTO tickets_fts(tickets_fts, rowid, title, body)
+        VALUES ('delete', old.id, old.title, COALESCE(old.body, ''));
+        INSERT INTO tickets_fts(rowid, title, body)
+        VALUES (new.id, new.title, COALESCE(new.body, ''));
+      END;
+
+      INSERT INTO tickets_fts(rowid, title, body)
+      SELECT id, title, COALESCE(body, '') FROM tickets;
+    `,
+  },
 ]
 
 /**

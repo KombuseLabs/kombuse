@@ -160,7 +160,7 @@ describe('ticketsRepository', () => {
       ).toBe(true)
     })
 
-    it('should search tickets by title (case-insensitive LIKE)', () => {
+    it('should search tickets by title', () => {
       const results = ticketsRepository.list({ search: 'Closed' })
 
       expect(results).toHaveLength(1)
@@ -178,6 +178,123 @@ describe('ticketsRepository', () => {
 
       expect(results, 'Should find ticket by body content').toHaveLength(1)
       expect(results[0]?.title).toBe('Bug report')
+    })
+
+    it('should match stemmed variants (FTS5 porter stemming)', () => {
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Application is running slowly',
+      })
+
+      const results = ticketsRepository.list({ search: 'run' })
+
+      expect(results, 'Porter stemmer should match "running" from "run"').toHaveLength(1)
+      expect(results[0]?.title).toBe('Application is running slowly')
+    })
+
+    it('should match multiple search terms (AND semantics)', () => {
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Fix the login bug',
+        body: 'Users cannot log in on mobile',
+      })
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Add new feature',
+        body: 'Implement dark mode',
+      })
+
+      const results = ticketsRepository.list({ search: 'login bug' })
+
+      expect(results, 'Should match ticket containing both terms').toHaveLength(1)
+      expect(results[0]?.title).toBe('Fix the login bug')
+    })
+
+    it('should return empty results for non-matching search', () => {
+      const results = ticketsRepository.list({ search: 'nonexistentxyz' })
+
+      expect(results).toHaveLength(0)
+    })
+
+    it('should combine FTS search with status filter', () => {
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Open bug report',
+        status: 'open',
+      })
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Closed bug report',
+        status: 'closed',
+      })
+
+      const results = ticketsRepository.list({ search: 'bug report', status: 'open' })
+
+      expect(results).toHaveLength(1)
+      expect(results[0]?.status).toBe('open')
+    })
+
+    it('should sort by relevance when searching without explicit sort_by', () => {
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Unrelated title',
+        body: 'The database migration failed',
+      })
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Database migration error',
+        body: 'See logs for details',
+      })
+
+      const results = ticketsRepository.list({ search: 'database migration' })
+
+      expect(results.length).toBeGreaterThanOrEqual(2)
+      const titles = results.map((r) => r.title)
+      expect(titles).toContain('Database migration error')
+      expect(titles).toContain('Unrelated title')
+    })
+
+    it('should use explicit sort_by even when searching', () => {
+      ticketsRepository.create({ ...TEST_TICKET, title: 'First bug' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Second bug' })
+
+      const results = ticketsRepository.list({
+        search: 'bug',
+        sort_by: 'created_at',
+        sort_order: 'asc',
+      })
+
+      expect(results.length).toBe(2)
+      const t1 = new Date(results[0]!.created_at).getTime()
+      const t2 = new Date(results[1]!.created_at).getTime()
+      expect(t1).toBeLessThanOrEqual(t2)
+    })
+
+    it('should find tickets after title update (FTS trigger sync)', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Original uniquetitle',
+      })
+
+      ticketsRepository.update(ticket.id, { title: 'Updated searchableword' })
+
+      const byNewTitle = ticketsRepository.list({ search: 'searchableword' })
+      expect(byNewTitle).toHaveLength(1)
+
+      const byOldTitle = ticketsRepository.list({ search: 'uniquetitle' })
+      expect(byOldTitle).toHaveLength(0)
+    })
+
+    it('should not find deleted tickets in search (FTS trigger sync)', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Deletable searchtarget',
+      })
+
+      ticketsRepository.delete(ticket.id)
+
+      const results = ticketsRepository.list({ search: 'searchtarget' })
+      expect(results).toHaveLength(0)
     })
 
     it('should limit number of returned tickets', () => {
