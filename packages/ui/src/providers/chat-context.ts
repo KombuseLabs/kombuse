@@ -18,7 +18,8 @@ export interface ChatContextValue {
   respondToPermission: (
     requestId: string,
     behavior: 'allow' | 'deny',
-    message?: string
+    message?: string,
+    updatedInput?: Record<string, unknown>
   ) => void
   /** Clear events and reset conversation */
   reset: () => void

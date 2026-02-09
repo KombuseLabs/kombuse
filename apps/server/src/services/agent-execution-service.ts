@@ -405,6 +405,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'WebSearch': 'Search the web',
   'Task': 'Launch a subagent',
   'TodoWrite': 'Update task list',
+  'AskUserQuestion': 'Ask the user a question',
 }
 
 /**

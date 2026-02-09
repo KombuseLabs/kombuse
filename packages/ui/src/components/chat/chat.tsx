@@ -5,6 +5,7 @@ import type { SerializedAgentEvent } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { ChatCtx } from '../../providers/chat-context'
 import { ChatInput } from '../chat-input'
+import { AskUserBar } from './ask-user-bar'
 import { PermissionBar } from './permission-bar'
 import { SessionHeader, type ViewMode } from './session-header'
 import { SessionViewer } from './session-viewer'
@@ -58,12 +59,21 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
       />
       <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} viewMode={viewMode} className="flex-1" />
       {pendingPermission && respondToPermission && (
-        <PermissionBar
-          permission={pendingPermission}
-          onRespond={(behavior, message) =>
-            respondToPermission(pendingPermission.requestId, behavior, message)
-          }
-        />
+        pendingPermission.toolName === 'AskUserQuestion' ? (
+          <AskUserBar
+            permission={pendingPermission}
+            onRespond={(updatedInput) =>
+              respondToPermission(pendingPermission.requestId, 'allow', undefined, updatedInput)
+            }
+          />
+        ) : (
+          <PermissionBar
+            permission={pendingPermission}
+            onRespond={(behavior, message) =>
+              respondToPermission(pendingPermission.requestId, behavior, message)
+            }
+          />
+        )
       )}
       <div className="border-t p-4">
         <ChatInput onSubmit={onSubmit} isLoading={isLoading} />

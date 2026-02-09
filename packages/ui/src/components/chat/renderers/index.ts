@@ -1,3 +1,4 @@
+export { AskUserRenderer, type AskUserRendererProps } from './ask-user-renderer'
 export { EditRenderer, type EditRendererProps } from './edit-renderer'
 export { EnterPlanModeRenderer, type EnterPlanModeRendererProps } from './enter-plan-mode-renderer'
 export { EventCard, type EventCardProps, formatEventTime } from './event-card'

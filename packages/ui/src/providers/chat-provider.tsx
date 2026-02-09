@@ -269,7 +269,7 @@ export function ChatProvider({
   )
 
   const respondToPermission = useCallback(
-    (requestId: string, behavior: 'allow' | 'deny', message?: string) => {
+    (requestId: string, behavior: 'allow' | 'deny', message?: string, updatedInput?: Record<string, unknown>) => {
       if (!effectiveKombuseSessionId || !pendingPermission) return
 
       wsSend({
@@ -277,7 +277,7 @@ export function ChatProvider({
         kombuseSessionId: effectiveKombuseSessionId,
         requestId,
         behavior,
-        updatedInput: behavior === 'allow' ? pendingPermission.input : undefined,
+        updatedInput: behavior === 'allow' ? (updatedInput ?? pendingPermission.input) : undefined,
         message: behavior === 'deny' ? (message ?? 'User rejected this action') : undefined,
       })
 
