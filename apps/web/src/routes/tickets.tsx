@@ -37,9 +37,8 @@ import {
   useTextareaAutocomplete,
   useMarkTicketViewed,
   useFileStaging,
-  formatFileSize,
 } from "@kombuse/ui/hooks";
-import { LabelBadge } from "@kombuse/ui/components";
+import { LabelBadge, StagedFilePreviews } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip } from "lucide-react";
 import type { Ticket, TicketStatus, TicketFilters, CommentWithAuthor } from "@kombuse/types";
 
@@ -97,11 +96,13 @@ export function Tickets() {
   // Unfiltered query for counting tickets by status
   const { data: allTickets } = useTickets({ project_id: projectId });
 
-  const { openCount, closedCount } = useMemo(() => {
-    if (!allTickets) return { openCount: 0, closedCount: 0 };
+  const { openCount, closedCount, inProgressCount, blockedCount } = useMemo(() => {
+    if (!allTickets) return { openCount: 0, closedCount: 0, inProgressCount: 0, blockedCount: 0 };
     return {
       openCount: allTickets.filter((t) => t.status === "open").length,
       closedCount: allTickets.filter((t) => t.status === "closed").length,
+      inProgressCount: allTickets.filter((t) => t.status === "in_progress").length,
+      blockedCount: allTickets.filter((t) => t.status === "blocked").length,
     };
   }, [allTickets]);
 
@@ -305,7 +306,9 @@ export function Tickets() {
                 await uploadTicketAttachment.mutateAsync({
                   ticketId: newTicket.id, file, uploadedById: "user-1",
                 });
-              } catch { /* silent */ }
+              } catch {
+                // Individual upload failures don't block remaining uploads
+              }
             }
           }
           createClearFiles();
@@ -394,10 +397,34 @@ export function Tickets() {
               <span className="text-sm text-muted-foreground">
                 <button
                   type="button"
+                  onClick={() => updateSearchParams({ status: statusFilter === "all" ? null : "all" })}
+                  className={`hover:text-foreground transition-colors ${statusFilter === "all" ? "text-foreground font-medium" : ""}`}
+                >
+                  All
+                </button>
+                {" · "}
+                <button
+                  type="button"
                   onClick={() => updateSearchParams({ status: statusFilter === "open" ? "all" : null })}
                   className={`hover:text-foreground transition-colors ${statusFilter === "open" ? "text-foreground font-medium" : ""}`}
                 >
                   {openCount} Open
+                </button>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => updateSearchParams({ status: statusFilter === "in_progress" ? "all" : "in_progress" })}
+                  className={`hover:text-foreground transition-colors ${statusFilter === "in_progress" ? "text-foreground font-medium" : ""}`}
+                >
+                  {inProgressCount} In Progress
+                </button>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => updateSearchParams({ status: statusFilter === "blocked" ? "all" : "blocked" })}
+                  className={`hover:text-foreground transition-colors ${statusFilter === "blocked" ? "text-foreground font-medium" : ""}`}
+                >
+                  {blockedCount} Blocked
                 </button>
                 {" · "}
                 <button
@@ -409,21 +436,6 @@ export function Tickets() {
                 </button>
               </span>
             )}
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => updateSearchParams({ status: value === "open" ? null : value })}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="blocked">Blocked</SelectItem>
-              </SelectContent>
-            </Select>
             <Select
               value={sortBy}
               onValueChange={(value) => updateSearchParams({ sort_by: value === "created_at" ? null : value })}
@@ -550,29 +562,7 @@ export function Tickets() {
                             className="min-h-32"
                           />
                           <NewTicketAutocomplete />
-                          {createStagedFiles.length > 0 && (
-                            <div className="flex gap-2 px-1 py-1 mt-1 overflow-x-auto">
-                              {createStagedFiles.map((file, index) => (
-                                <div key={`${file.name}-${index}`} className="relative shrink-0 group">
-                                  <img
-                                    src={createPreviewUrls[index]}
-                                    alt={file.name}
-                                    className="size-16 rounded object-cover border"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => createRemoveFile(index)}
-                                    className="absolute -top-1 -right-1 size-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <X className="size-2.5" />
-                                  </button>
-                                  <div className="text-[10px] text-muted-foreground truncate max-w-16 mt-0.5">
-                                    {formatFileSize(file.size)}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                          <StagedFilePreviews stagedFiles={createStagedFiles} previewUrls={createPreviewUrls} onRemove={createRemoveFile} className="mt-1" />
                           <input
                             ref={createFileInputRef}
                             type="file"
