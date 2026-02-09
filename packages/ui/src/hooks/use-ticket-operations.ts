@@ -26,7 +26,7 @@ export function useTicketOperations() {
       if (!currentTicket) return
       const updated = await updateMutation.mutateAsync({
         id: currentTicket.id,
-        input,
+        input: { ...input, updated_by_id: 'user-1' },
       })
       setCurrentTicket(updated)
       return updated

@@ -28,6 +28,7 @@ export const updateTicketSchema = z.object({
   status: z.enum(['open', 'closed', 'in_progress', 'blocked']).optional(),
   priority: prioritySchema.optional(),
   assignee_id: z.string().nullable().optional(),
+  updated_by_id: z.string().min(1).optional(),
   external_source: z.string().optional(),
   external_id: z.string().optional(),
   external_url: z.string().url().optional(),

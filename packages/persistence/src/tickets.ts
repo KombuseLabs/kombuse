@@ -197,7 +197,7 @@ export const ticketsRepository = {
   /**
    * Update an existing ticket
    */
-  update(id: number, input: UpdateTicketInput): Ticket | null {
+  update(id: number, input: UpdateTicketInput, updatedById?: string): Ticket | null {
     const db = getDatabase()
 
     // Get current ticket to detect status changes
@@ -275,6 +275,7 @@ export const ticketsRepository = {
       event_type: eventType,
       project_id: currentTicket.project_id,
       ticket_id: id,
+      actor_id: updatedById,
       actor_type: 'user',
       payload: { changes: Object.keys(input) },
     })

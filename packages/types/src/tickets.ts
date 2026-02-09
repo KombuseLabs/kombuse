@@ -107,6 +107,7 @@ export interface UpdateTicketInput {
   status?: TicketStatus
   priority?: TicketPriority
   assignee_id?: string | null
+  updated_by_id?: string
   external_source?: string
   external_id?: string
   external_url?: string

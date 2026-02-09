@@ -46,13 +46,13 @@ export class TicketService implements ITicketService {
     return ticket
   }
 
-  update(id: number, input: UpdateTicketInput): Ticket {
+  update(id: number, input: UpdateTicketInput, updatedById?: string): Ticket {
     const existing = ticketsRepository.get(id)
     if (!existing) {
       throw new Error(`Ticket ${id} not found`)
     }
 
-    const updated = ticketsRepository.update(id, input)
+    const updated = ticketsRepository.update(id, input, updatedById)
     if (!updated) {
       throw new Error(`Failed to update ticket ${id}`)
     }

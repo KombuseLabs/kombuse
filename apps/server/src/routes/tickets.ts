@@ -64,7 +64,8 @@ export async function ticketRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const ticket = ticketService.update(id, parseResult.data)
+      const { updated_by_id, ...input } = parseResult.data
+      const ticket = ticketService.update(id, input, updated_by_id)
       return ticket
     } catch (error) {
       return reply.status(404).send({ error: (error as Error).message })
