@@ -504,6 +504,22 @@ export const attachmentsApi = {
     return handleResponse<Attachment>(response)
   },
 
+  async listByTicket(ticketId: number): Promise<Attachment[]> {
+    const response = await fetch(`${API_BASE}/tickets/${ticketId}/attachments`)
+    return handleResponse<Attachment[]>(response)
+  },
+
+  async uploadToTicket(ticketId: number, file: File, uploadedById: string): Promise<Attachment> {
+    const formData = new FormData()
+    formData.append('uploaded_by_id', uploadedById)
+    formData.append('file', file)
+    const response = await fetch(`${API_BASE}/tickets/${ticketId}/attachments`, {
+      method: 'POST',
+      body: formData,
+    })
+    return handleResponse<Attachment>(response)
+  },
+
   async delete(id: number): Promise<void> {
     const response = await fetch(`${API_BASE}/attachments/${id}`, {
       method: 'DELETE',

@@ -76,6 +76,8 @@ export {
   useCommentsAttachments,
   useUploadAttachment,
   useDeleteAttachment,
+  useTicketAttachments,
+  useUploadTicketAttachment,
 } from './use-attachments'
 export { useClaudeCodeProjects, useImportClaudeCodeProjects, useClaudeCodeSessions, useClaudeCodeSessionContent } from './use-claude-code'
 export { useProfileSearch } from './use-profile-search'

@@ -57,3 +57,25 @@ export function useDeleteAttachment() {
     },
   })
 }
+
+export function useTicketAttachments(ticketId: number) {
+  return useQuery({
+    queryKey: ['ticket-attachments', ticketId],
+    queryFn: () => attachmentsApi.listByTicket(ticketId),
+    enabled: ticketId > 0,
+  })
+}
+
+export function useUploadTicketAttachment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, file, uploadedById }: {
+      ticketId: number
+      file: File
+      uploadedById: string
+    }) => attachmentsApi.uploadToTicket(ticketId, file, uploadedById),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket-attachments', variables.ticketId] })
+    },
+  })
+}

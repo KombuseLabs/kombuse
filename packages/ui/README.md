@@ -356,6 +356,8 @@ Props:
   - Edit button to toggle edit mode (title, description, status)
   - Delete button
   - Label management
+- Edit mode supports image attachments via paperclip button, drag-and-drop, and clipboard paste. Staged files are uploaded on save
+- View mode displays ticket attachments as clickable thumbnails with lightbox
 
 ### Session Components
 
@@ -517,6 +519,8 @@ import {
   useCommentsAttachments,
   useUploadAttachment,
   useDeleteAttachment,
+  useTicketAttachments,
+  useUploadTicketAttachment,
 } from '@kombuse/ui/hooks'
 
 // Fetch attachments for a single comment
@@ -533,6 +537,13 @@ upload.mutateAsync({ commentId: 1, file: myFile, uploadedById: 'user-1' })
 // Delete an attachment
 const remove = useDeleteAttachment()
 remove.mutate({ id: attachmentId, commentId: 1 })
+
+// Fetch attachments for a ticket
+const { data: ticketAttachments } = useTicketAttachments(ticketId)
+
+// Upload a file to a ticket
+const uploadToTicket = useUploadTicketAttachment()
+uploadToTicket.mutateAsync({ ticketId: 1, file: myFile, uploadedById: 'user-1' })
 ```
 
 ### Project Hooks

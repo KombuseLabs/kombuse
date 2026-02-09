@@ -33,11 +33,14 @@ import {
   useWebSocket,
   useCommentsAttachments,
   useUploadAttachment,
+  useUploadTicketAttachment,
   useTextareaAutocomplete,
   useMarkTicketViewed,
+  useFileStaging,
+  formatFileSize,
 } from "@kombuse/ui/hooks";
 import { LabelBadge } from "@kombuse/ui/components";
-import { Plus, X, Save, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip } from "lucide-react";
 import type { Ticket, TicketStatus, TicketFilters, CommentWithAuthor } from "@kombuse/types";
 
 const TICKETS_PANEL_LAYOUT_KEY = "tickets-panel-layout";
@@ -158,6 +161,15 @@ export function Tickets() {
     onValueChange: setNewTicketBody,
     textareaRef: newTicketBodyRef,
   });
+  const {
+    stagedFiles: createStagedFiles, previewUrls: createPreviewUrls,
+    isDragOver: createIsDragOver, hasFiles: createHasFiles,
+    removeFile: createRemoveFile, clearFiles: createClearFiles,
+    dragHandlers: createDragHandlers,
+    handlePaste: createHandlePaste, fileInputRef: createFileInputRef,
+    handleFileInputChange: createHandleFileInputChange,
+  } = useFileStaging();
+  const uploadTicketAttachment = useUploadTicketAttachment();
 
   // Reply state
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
@@ -286,7 +298,17 @@ export function Tickets() {
         author_id: "user-1", // TODO: Get from auth context
       },
       {
-        onSuccess: (newTicket) => {
+        onSuccess: async (newTicket) => {
+          if (createHasFiles) {
+            for (const file of createStagedFiles) {
+              try {
+                await uploadTicketAttachment.mutateAsync({
+                  ticketId: newTicket.id, file, uploadedById: "user-1",
+                });
+              } catch { /* silent */ }
+            }
+          }
+          createClearFiles();
           setNewTicketTitle("");
           setNewTicketBody("");
           navigate({ pathname: `/projects/${projectId}/tickets/${newTicket.id}`, search: searchParams.toString() });
@@ -513,20 +535,60 @@ export function Tickets() {
                       {/* Description */}
                       <div className="space-y-2">
                         <Label htmlFor="new-ticket-body">Description</Label>
-                        <Textarea
-                          id="new-ticket-body"
-                          ref={newTicketBodyRef}
-                          value={newTicketBody}
-                          onChange={newTicketAutocomplete.onChange}
-                          onKeyDown={newTicketAutocomplete.onKeyDown}
-                          placeholder="Describe the ticket..."
-                          className="min-h-32"
-                        />
-                        <NewTicketAutocomplete />
+                        <div
+                          className={`rounded transition-colors ${createIsDragOver ? "ring-2 ring-primary/50 bg-primary/5" : ""}`}
+                          {...createDragHandlers}
+                        >
+                          <Textarea
+                            id="new-ticket-body"
+                            ref={newTicketBodyRef}
+                            value={newTicketBody}
+                            onChange={newTicketAutocomplete.onChange}
+                            onKeyDown={newTicketAutocomplete.onKeyDown}
+                            onPaste={createHandlePaste}
+                            placeholder="Describe the ticket..."
+                            className="min-h-32"
+                          />
+                          <NewTicketAutocomplete />
+                          {createStagedFiles.length > 0 && (
+                            <div className="flex gap-2 px-1 py-1 mt-1 overflow-x-auto">
+                              {createStagedFiles.map((file, index) => (
+                                <div key={`${file.name}-${index}`} className="relative shrink-0 group">
+                                  <img
+                                    src={createPreviewUrls[index]}
+                                    alt={file.name}
+                                    className="size-16 rounded object-cover border"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => createRemoveFile(index)}
+                                    className="absolute -top-1 -right-1 size-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="size-2.5" />
+                                  </button>
+                                  <div className="text-[10px] text-muted-foreground truncate max-w-16 mt-0.5">
+                                    {formatFileSize(file.size)}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <input
+                            ref={createFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={createHandleFileInputChange}
+                          />
+                        </div>
                       </div>
 
                       {/* Create Button */}
                       <div className="flex justify-end gap-2 pt-4 border-t">
+                        <Button variant="ghost" size="icon" onClick={() => createFileInputRef.current?.click()} disabled={createTicket.isPending}>
+                          <Paperclip className="size-4" />
+                        </Button>
                         <Button variant="outline" onClick={handleCloseDetail}>
                           Cancel
                         </Button>

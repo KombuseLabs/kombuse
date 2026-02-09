@@ -12,13 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../base/select'
-import { X, Trash2, Pencil } from 'lucide-react'
+import { X, Trash2, Pencil, Paperclip } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
 import { StatusIndicator } from '../status-indicator'
 import { Markdown } from '../markdown'
-import { useTicketOperations, useLabelOperations, useTicketAgentStatus, useCurrentProject } from '../../hooks'
+import { ImageLightbox } from '../image-lightbox'
+import { attachmentsApi } from '../../lib/api'
+import { useTicketOperations, useLabelOperations, useTicketAgentStatus, useCurrentProject, useTicketAttachments, useUploadTicketAttachment } from '../../hooks'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
+import { useFileStaging, formatFileSize } from '../../hooks/use-file-staging'
 
 interface TicketDetailProps {
   className?: string
@@ -79,6 +82,15 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
 
   const { currentProjectId } = useCurrentProject()
   const agentStatus = useTicketAgentStatus(currentTicket?.id)
+  const { data: ticketAttachments } = useTicketAttachments(currentTicket?.id ?? 0)
+  const uploadTicketAttachment = useUploadTicketAttachment()
+  const {
+    stagedFiles, previewUrls, isDragOver, hasFiles,
+    removeFile, clearFiles, dragHandlers,
+    handlePaste, fileInputRef, handleFileInputChange,
+  } = useFileStaging()
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
 
   if (!currentTicket) {
     return null
@@ -105,10 +117,21 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
       body: editBody.trim() || undefined,
       status: editStatus,
     })
+    if (hasFiles) {
+      for (const file of stagedFiles) {
+        try {
+          await uploadTicketAttachment.mutateAsync({
+            ticketId: ticket.id, file, uploadedById: 'user-1',
+          })
+        } catch { /* silent */ }
+      }
+    }
+    clearFiles()
     setMode('view')
   }
 
   const handleCancel = () => {
+    clearFiles()
     setMode('view')
   }
 
@@ -240,23 +263,95 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         {mode === 'view' ? (
-          ticket.body && (
-            <div className="text-sm text-muted-foreground">
-              <Markdown projectId={currentProjectId}>{ticket.body}</Markdown>
-            </div>
-          )
-        ) : (
           <>
+            {ticket.body && (
+              <div className="text-sm text-muted-foreground">
+                <Markdown projectId={currentProjectId}>{ticket.body}</Markdown>
+              </div>
+            )}
+            {ticketAttachments && ticketAttachments.length > 0 && (
+              <>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {ticketAttachments.map((attachment, index) => (
+                    <button
+                      key={attachment.id}
+                      type="button"
+                      onClick={() => {
+                        setLightboxIndex(index)
+                        setLightboxOpen(true)
+                      }}
+                      className="group block text-left cursor-pointer"
+                    >
+                      <img
+                        src={attachmentsApi.downloadUrl(attachment.id)}
+                        alt={attachment.filename}
+                        className="max-h-48 rounded border object-cover transition-opacity group-hover:opacity-90"
+                      />
+                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-48">
+                        {attachment.filename}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <ImageLightbox
+                  attachments={ticketAttachments}
+                  initialIndex={lightboxIndex}
+                  open={lightboxOpen}
+                  onOpenChange={setLightboxOpen}
+                />
+              </>
+            )}
+          </>
+        ) : (
+          <div
+            className={cn(
+              'rounded transition-colors',
+              isDragOver && 'ring-2 ring-primary/50 bg-primary/5',
+            )}
+            {...dragHandlers}
+          >
             <Textarea
               ref={editBodyRef}
               value={editBody}
               onChange={autocompleteProps.onChange}
               onKeyDown={autocompleteProps.onKeyDown}
+              onPaste={handlePaste}
               placeholder="Add a description..."
               className="min-h-[100px]"
             />
             <AutocompletePortal />
-          </>
+            {stagedFiles.length > 0 && (
+              <div className="flex gap-2 px-1 py-1 mt-1 overflow-x-auto">
+                {stagedFiles.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className="relative shrink-0 group">
+                    <img
+                      src={previewUrls[index]}
+                      alt={file.name}
+                      className="size-16 rounded object-cover border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="absolute -top-1 -right-1 size-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="size-2.5" />
+                    </button>
+                    <div className="text-[10px] text-muted-foreground truncate max-w-16 mt-0.5">
+                      {formatFileSize(file.size)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileInputChange}
+            />
+          </div>
         )}
 
         {ticket.external_url && (
@@ -293,6 +388,9 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
 
         {mode === 'edit' && (
           <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUpdating}>
+              <Paperclip className="size-4" />
+            </Button>
             <Button variant="ghost" onClick={handleCancel} disabled={isUpdating}>
               Cancel
             </Button>
