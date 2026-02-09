@@ -3,6 +3,7 @@ import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
 import { ticketViewsRepository } from '../ticket-views'
 import { ticketsRepository } from '../tickets'
+import { labelsRepository } from '../labels'
 
 const TEST_TICKET = {
   title: 'Test ticket',
@@ -183,6 +184,18 @@ describe('tickets list with viewer_id (has_unread)', () => {
       search: 'Searchable',
     })
     expect(tickets.length).toBeGreaterThan(0)
+    expect((tickets[0] as any).has_unread).toBe(1)
+  })
+
+  it('should work with label_ids filter and viewer_id together', () => {
+    const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'bug' })
+    const ticket = ticketsRepository.create({ ...TEST_TICKET, title: 'Bug ticket' })
+    labelsRepository.addToTicket(ticket.id, label.id)
+
+    const tickets = ticketsRepository.list({ label_ids: [label.id], viewer_id: TEST_USER_ID })
+
+    expect(tickets).toHaveLength(1)
+    expect(tickets[0]?.id).toBe(ticket.id)
     expect((tickets[0] as any).has_unread).toBe(1)
   })
 })
