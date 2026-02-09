@@ -105,7 +105,7 @@ export const ticketsRepository = {
         params.push(ftsQuery)
         useRelevanceSort = true
       } else if (numericId !== null) {
-        // Pure numeric but sanitized to empty FTS: just match by ID
+        // Defensive: unreachable while sanitizeFtsQuery passes digit-only strings, but guards against future changes
         conditions.push('tickets.id = ?')
         params.push(numericId)
       }

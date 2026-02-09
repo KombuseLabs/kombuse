@@ -187,6 +187,22 @@ describe('tickets list with viewer_id (has_unread)', () => {
     expect((tickets[0] as any).has_unread).toBe(1)
   })
 
+  it('should work with numeric ID search and viewer_id together', () => {
+    const ticket = ticketsRepository.create({
+      title: 'Numeric search with viewer',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const tickets = ticketsRepository.list({
+      viewer_id: TEST_USER_ID,
+      search: String(ticket.id),
+    })
+    expect(tickets.length, 'Should find the ticket by numeric ID').toBeGreaterThanOrEqual(1)
+    const found = tickets.find((t) => t.id === ticket.id)
+    expect(found, 'Should include exact ID match').toBeDefined()
+    expect((found as any).has_unread, 'Should compute unread status').toBe(1)
+  })
+
   it('should work with label_ids filter and viewer_id together', () => {
     const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'bug' })
     const ticket = ticketsRepository.create({ ...TEST_TICKET, title: 'Bug ticket' })

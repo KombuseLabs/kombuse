@@ -363,6 +363,12 @@ describe('ticketsRepository', () => {
       expect(ids, 'Should include the FTS text match').toContain(related.id)
     })
 
+    it('should return empty results for non-existent numeric ID', () => {
+      const results = ticketsRepository.list({ search: '999999' })
+
+      expect(results).toHaveLength(0)
+    })
+
     it('should limit number of returned tickets', () => {
       const tickets = ticketsRepository.list({ limit: 2 })
 
