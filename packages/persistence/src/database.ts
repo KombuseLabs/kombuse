@@ -467,6 +467,21 @@ const migrations = [
       SELECT id, title, COALESCE(body, '') FROM tickets;
     `,
   },
+  {
+    name: '009_ticket_views',
+    sql: `
+      CREATE TABLE IF NOT EXISTS ticket_views (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        last_viewed_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(ticket_id, profile_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ticket_views_profile
+        ON ticket_views(profile_id, ticket_id);
+    `,
+  },
 ]
 
 /**

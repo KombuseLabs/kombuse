@@ -8,6 +8,7 @@ import {
   updateTicketSchema,
   ticketFiltersSchema,
   unclaimTicketSchema,
+  markTicketViewedSchema,
 } from '../schemas/tickets'
 
 export async function ticketRoutes(fastify: FastifyInstance) {
@@ -152,6 +153,24 @@ export async function ticketRoutes(fastify: FastifyInstance) {
     }
 
     return reply.send(result.ticket)
+  })
+
+  // Mark ticket as viewed by user
+  fastify.post<{
+    Params: { id: string }
+  }>('/tickets/:id/view', async (request, reply) => {
+    const id = parseInt(request.params.id, 10)
+    if (isNaN(id)) {
+      return reply.status(400).send({ error: 'Invalid ticket ID' })
+    }
+
+    const parseResult = markTicketViewedSchema.safeParse(request.body)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    const view = ticketService.markViewed(id, parseResult.data.profile_id)
+    return reply.send(view)
   })
 
   // Delete ticket

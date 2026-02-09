@@ -34,6 +34,7 @@ import {
   useCommentsAttachments,
   useUploadAttachment,
   useTextareaAutocomplete,
+  useMarkTicketViewed,
 } from "@kombuse/ui/hooks";
 import { LabelBadge } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown } from "lucide-react";
@@ -111,6 +112,7 @@ export function Tickets() {
     label_ids: selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
+    viewer_id: "user-1", // TODO: Get from auth context
   });
 
   const {
@@ -119,6 +121,7 @@ export function Tickets() {
   } = useTicket(ticketId ? Number(ticketId) : 0);
 
   const createTicket = useCreateTicket();
+  const markViewed = useMarkTicketViewed();
 
   // Comment operations from context-aware hook
   const {
@@ -190,11 +193,15 @@ export function Tickets() {
     setView("tickets");
   }, [projectId, setCurrentProjectId, setView]);
 
-  // Sync selected ticket to context
+  // Sync selected ticket to context and mark as viewed
   useEffect(() => {
     setCurrentTicket(selectedTicket ?? null);
     setReplyTarget(null);
     setChatSessionId(null);
+
+    if (selectedTicket && selectedTicket.id > 0) {
+      markViewed.mutate({ id: selectedTicket.id, profileId: "user-1" }); // TODO: Get from auth context
+    }
   }, [selectedTicket, setCurrentTicket]);
 
   const handleReplyToComment = useCallback((comment: CommentWithAuthor) => {

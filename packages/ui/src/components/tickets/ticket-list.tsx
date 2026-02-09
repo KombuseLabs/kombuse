@@ -27,6 +27,7 @@ interface TicketItemProps {
 
 function TicketItem({ ticket, isSelected, onTicketClick }: TicketItemProps) {
   const agentStatus = useTicketAgentStatus(ticket.id)
+  const hasUnread = 'has_unread' in ticket && (ticket as Record<string, unknown>).has_unread === 1
 
   return (
     <div
@@ -42,11 +43,18 @@ function TicketItem({ ticket, isSelected, onTicketClick }: TicketItemProps) {
       <div className="min-w-0 flex-1">
         {/* Title row */}
         <div className="flex items-center gap-2">
+          {hasUnread && (
+            <span
+              className="size-2 rounded-full bg-primary shrink-0"
+              role="status"
+              aria-label="Unread activity"
+            />
+          )}
           {agentStatus !== 'idle' && (
             <StatusIndicator status={agentStatus} />
           )}
           <span className="text-xs text-muted-foreground font-mono">#{ticket.id}</span>
-          <span className="text-sm font-medium truncate">{ticket.title}</span>
+          <span className={cn("text-sm truncate", hasUnread ? "font-semibold" : "font-medium")}>{ticket.title}</span>
         </div>
 
         {/* Meta row */}

@@ -63,6 +63,7 @@ export const ticketFiltersSchema = z.object({
   claimed_by_id: z.string().optional(),
   unclaimed: z.coerce.boolean().optional(),
   expired_claims: z.coerce.boolean().optional(),
+  viewer_id: z.string().optional(),
   search: z.string().optional(),
   sort_by: z.enum(['created_at', 'updated_at', 'closed_at', 'opened_at', 'last_activity_at']).optional(),
   sort_order: z.enum(['asc', 'desc']).optional(),
@@ -75,6 +76,11 @@ export const ticketFiltersSchema = z.object({
   offset: z.coerce.number().int().nonnegative().optional(),
 })
 
+export const markTicketViewedSchema = z.object({
+  profile_id: z.string().min(1),
+})
+
+export type MarkTicketViewedBody = z.infer<typeof markTicketViewedSchema>
 export type CreateTicketBody = z.infer<typeof createTicketSchema>
 export type UpdateTicketBody = z.infer<typeof updateTicketSchema>
 export type ClaimTicketBody = z.infer<typeof claimTicketSchema>

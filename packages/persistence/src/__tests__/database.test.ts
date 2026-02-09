@@ -70,6 +70,7 @@ const EXPECTED_MIGRATIONS = [
   '006_ticket_opened_closed_at',
   '007_ticket_last_activity_at',
   '008_fts_search',
+  '009_ticket_views',
 ]
 
 describe('database', () => {

@@ -80,6 +80,7 @@ export const ticketsApi = {
       params.set('label_ids', filters.label_ids.join(','))
     if (filters?.sort_by) params.set('sort_by', filters.sort_by)
     if (filters?.sort_order) params.set('sort_order', filters.sort_order)
+    if (filters?.viewer_id) params.set('viewer_id', filters.viewer_id)
 
     const url = `${API_BASE}/tickets${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
@@ -89,6 +90,15 @@ export const ticketsApi = {
   async get(id: number): Promise<Ticket> {
     const response = await fetch(`${API_BASE}/tickets/${id}`)
     return handleResponse<Ticket>(response)
+  },
+
+  async markViewed(id: number, profileId: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/tickets/${id}/view`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: profileId }),
+    })
+    await handleResponse(response)
   },
 
   async create(input: CreateTicketInput): Promise<Ticket> {

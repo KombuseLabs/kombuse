@@ -47,3 +47,14 @@ export function useDeleteTicket() {
     },
   })
 }
+
+export function useMarkTicketViewed() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, profileId }: { id: number; profileId: string }) =>
+      ticketsApi.markViewed(id, profileId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+    },
+  })
+}

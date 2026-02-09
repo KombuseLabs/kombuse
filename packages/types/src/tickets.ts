@@ -73,6 +73,8 @@ export interface TicketFilters {
   unclaimed?: boolean
   /** Filter for tickets with expired claims */
   expired_claims?: boolean
+  /** Profile ID of the current viewer - used to compute has_unread */
+  viewer_id?: string
   label_ids?: number[]
   search?: string
   sort_by?: 'created_at' | 'updated_at' | 'closed_at' | 'opened_at' | 'last_activity_at'

@@ -14,6 +14,7 @@ export {
   useCreateTicket,
   useUpdateTicket,
   useDeleteTicket,
+  useMarkTicketViewed,
 } from './use-tickets'
 export { useComments, useCreateComment, useUpdateComment, useDeleteComment } from './use-comments'
 export {

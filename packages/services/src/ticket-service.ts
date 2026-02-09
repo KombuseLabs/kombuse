@@ -1,5 +1,6 @@
 import type {
   Ticket,
+  TicketView,
   TicketWithLabels,
   TicketFilters,
   CreateTicketInput,
@@ -7,7 +8,7 @@ import type {
   ClaimTicketInput,
   ClaimResult,
 } from '@kombuse/types'
-import { ticketsRepository } from '@kombuse/persistence'
+import { ticketsRepository, ticketViewsRepository } from '@kombuse/persistence'
 
 /**
  * Service interface for ticket operations
@@ -22,6 +23,7 @@ export interface ITicketService {
   claim(input: ClaimTicketInput): ClaimResult
   unclaim(ticketId: number, requesterId?: string, force?: boolean): ClaimResult
   extendClaim(ticketId: number, additionalMinutes: number): ClaimResult
+  markViewed(ticketId: number, profileId: string): TicketView
 }
 
 /**
@@ -78,6 +80,13 @@ export class TicketService implements ITicketService {
 
   extendClaim(ticketId: number, additionalMinutes: number): ClaimResult {
     return ticketsRepository.extendClaim(ticketId, additionalMinutes)
+  }
+
+  markViewed(ticketId: number, profileId: string): TicketView {
+    return ticketViewsRepository.upsert({
+      ticket_id: ticketId,
+      profile_id: profileId,
+    })
   }
 }
 

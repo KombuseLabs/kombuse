@@ -22,9 +22,21 @@ export const ticketsRepository = {
   list(filters?: TicketFilters): Ticket[] {
     const db = getDatabase()
     const conditions: string[] = []
+    const joinParams: unknown[] = []
     const params: unknown[] = []
     let joinClause = ''
+    let selectColumns = 'tickets.*'
     let useRelevanceSort = false
+
+    // Viewer-based unread computation (JOIN param must precede WHERE params)
+    if (filters?.viewer_id) {
+      joinClause += ` LEFT JOIN ticket_views tv
+        ON tv.ticket_id = tickets.id AND tv.profile_id = ?`
+      joinParams.push(filters.viewer_id)
+      selectColumns += `,
+        CASE WHEN tickets.last_activity_at > COALESCE(tv.last_viewed_at, '1970-01-01')
+          THEN 1 ELSE 0 END AS has_unread`
+    }
 
     if (filters?.project_id) {
       conditions.push('project_id = ?')
@@ -59,7 +71,7 @@ export const ticketsRepository = {
       )
     }
     if (filters?.search) {
-      joinClause = 'JOIN tickets_fts ON tickets.id = tickets_fts.rowid'
+      joinClause += ' JOIN tickets_fts ON tickets.id = tickets_fts.rowid'
       conditions.push('tickets_fts MATCH ?')
       params.push(filters.search)
       useRelevanceSort = true
@@ -91,14 +103,14 @@ export const ticketsRepository = {
     const offset = filters?.offset || 0
 
     const stmt = db.prepare(`
-      SELECT tickets.* FROM tickets
+      SELECT ${selectColumns} FROM tickets
       ${joinClause}
       ${whereClause}
       ${orderByClause}
       LIMIT ? OFFSET ?
     `)
 
-    return stmt.all(...params, limit, offset) as Ticket[]
+    return stmt.all(...joinParams, ...params, limit, offset) as Ticket[]
   },
 
   /**
