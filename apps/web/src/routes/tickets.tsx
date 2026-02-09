@@ -68,7 +68,7 @@ export function Tickets() {
 
   const { data: projectLabels } = useProjectLabels(projectId ?? "");
 
-  const validSortByValues = new Set<TicketFilters["sort_by"]>(["created_at", "updated_at", "closed_at", "opened_at"]);
+  const validSortByValues = new Set<TicketFilters["sort_by"]>(["created_at", "updated_at", "closed_at", "opened_at", "last_activity_at"]);
   const showClosedSort = statusFilter === "all" || statusFilter === "closed";
   const rawSortBy = searchParams.get("sort_by");
   const parsedSortBy = rawSortBy && validSortByValues.has(rawSortBy as TicketFilters["sort_by"])
@@ -401,6 +401,7 @@ export function Tickets() {
                 <SelectItem value="created_at">Created</SelectItem>
                 <SelectItem value="updated_at">Updated</SelectItem>
                 <SelectItem value="opened_at">Opened</SelectItem>
+                <SelectItem value="last_activity_at">Activity</SelectItem>
                 {showClosedSort && (
                   <SelectItem value="closed_at">Closed</SelectItem>
                 )}
