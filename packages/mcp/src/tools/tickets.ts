@@ -343,6 +343,21 @@ export function registerTicketTools(server: McpServer): void {
       },
     },
     async ({ query, project_id, status, limit, offset }) => {
+      // Guard: if query contains only special characters, FTS sanitization
+      // returns null and the repository silently skips the search filter.
+      // Return empty results instead of an unfiltered list.
+      const stripped = query.replace(/["()*^{}\s]/g, '')
+      if (stripped.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({ tickets: [], count: 0 }, null, 2),
+            },
+          ],
+        }
+      }
+
       const tickets = ticketsRepository.list({
         search: query,
         project_id,
