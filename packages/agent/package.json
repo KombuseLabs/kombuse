@@ -28,6 +28,6 @@
     "better-sqlite3": "^11.8.1",
     "eslint": "^9.39.1",
     "typescript": "5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.0.0"
   }
 }
