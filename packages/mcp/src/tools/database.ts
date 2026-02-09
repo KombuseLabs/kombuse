@@ -125,9 +125,9 @@ export function registerDatabaseTools(server: McpServer): void {
         return errorResponse(`Table '${table_name}' not found`)
       }
 
-      const columns = db.pragma(`table_info(${table_name})`)
-      const foreignKeys = db.pragma(`foreign_key_list(${table_name})`)
-      const indexes = db.pragma(`index_list(${table_name})`)
+      const columns = db.pragma(`table_info("${table_name}")`)
+      const foreignKeys = db.pragma(`foreign_key_list("${table_name}")`)
+      const indexes = db.pragma(`index_list("${table_name}")`)
 
       return successResponse({
         table: table_name,
