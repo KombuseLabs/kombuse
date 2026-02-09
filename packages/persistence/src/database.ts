@@ -484,6 +484,30 @@ const migrations = [
         ON ticket_views(profile_id, ticket_id);
     `,
   },
+  {
+    name: '010_agent_permissions',
+    sql: `
+      -- Code Reviewer: can close tickets, add/remove labels, update fields, comment
+      UPDATE agents SET permissions = '[{"type":"resource","resource":"ticket","actions":["read","update"],"scope":"global"},{"type":"resource","resource":"ticket.status","actions":["update"],"scope":"global"},{"type":"resource","resource":"ticket.labels","actions":["update","delete"],"scope":"global"},{"type":"resource","resource":"comment","actions":["read","create"],"scope":"global"}]'
+        WHERE id = '00e3f633-2389-4a19-a426-7a283df09344' AND permissions = '[]';
+
+      -- Coding Agent: can update fields, add labels, create tickets, comment (NO status change, NO label removal)
+      UPDATE agents SET permissions = '[{"type":"resource","resource":"ticket","actions":["read","update","create"],"scope":"global"},{"type":"resource","resource":"ticket.labels","actions":["update"],"scope":"global"},{"type":"resource","resource":"comment","actions":["read","create"],"scope":"global"}]'
+        WHERE id = '67f50aa1-7598-43f6-ae72-448c28acc411' AND permissions = '[]';
+
+      -- Ticket Analyzer: can update fields, add labels, comment
+      UPDATE agents SET permissions = '[{"type":"resource","resource":"ticket","actions":["read","update"],"scope":"global"},{"type":"resource","resource":"ticket.labels","actions":["update"],"scope":"global"},{"type":"resource","resource":"comment","actions":["read","create"],"scope":"global"}]'
+        WHERE id = '156c702f-217a-4a26-8f4b-7123b8373354' AND permissions = '[]';
+
+      -- Planning Agent: can create/update tickets, add labels, comment
+      UPDATE agents SET permissions = '[{"type":"resource","resource":"ticket","actions":["read","create","update"],"scope":"global"},{"type":"resource","resource":"ticket.labels","actions":["update"],"scope":"global"},{"type":"resource","resource":"comment","actions":["read","create"],"scope":"global"}]'
+        WHERE id = '79710145-6527-4cdb-8a05-c301484f9e95' AND permissions = '[]';
+
+      -- Summarizer: read-only tickets, can comment
+      UPDATE agents SET permissions = '[{"type":"resource","resource":"ticket","actions":["read"],"scope":"global"},{"type":"resource","resource":"comment","actions":["read","create"],"scope":"global"}]'
+        WHERE id = 'd2786543-5336-4989-b292-03f2ba264f79' AND permissions = '[]';
+    `,
+  },
 ]
 
 /**

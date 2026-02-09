@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository } from '@kombuse/persistence'
-import type { Ticket, Project, Label, CommentWithAuthorAndAttachments, UpdateTicketInput } from '@kombuse/types'
+import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository, agentsRepository } from '@kombuse/persistence'
+import type { Ticket, Project, Label, CommentWithAuthorAndAttachments, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
+import { agentService } from '@kombuse/services'
 import { z } from 'zod'
 
 /**
@@ -10,6 +11,57 @@ import { z } from 'zod'
 interface TicketWithComments {
   ticket: Ticket
   comments: CommentWithAuthorAndAttachments[]
+}
+
+/**
+ * Resolve the agent and invocation context from a kombuse_session_id.
+ * Returns null if no session ID provided (non-agent callers pass through).
+ */
+function resolveAgentContext(kombuse_session_id?: string): {
+  agent: Agent
+  invocation: AgentInvocation
+} | null {
+  if (!kombuse_session_id) return null
+
+  const invocations = agentInvocationsRepository.list({ kombuse_session_id })
+  if (invocations.length === 0) return null
+
+  const invocation = invocations[0]!
+  const agent = agentsRepository.get(invocation.agent_id)
+  if (!agent) return null
+
+  return { agent, invocation }
+}
+
+/**
+ * Check if the resolved agent has permission for a given request.
+ * If no agent context (non-agent caller), allows by default.
+ */
+function checkAgentPermission(
+  agentContext: { agent: Agent; invocation: AgentInvocation } | null,
+  request: PermissionCheckRequest
+): PermissionCheckResult {
+  if (!agentContext) {
+    return { allowed: true }
+  }
+
+  const permissionContext: PermissionContext = {
+    invocation: agentContext.invocation,
+  }
+
+  return agentService.checkPermission(agentContext.agent, request, permissionContext)
+}
+
+function permissionDeniedResponse(reason: string) {
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({ error: `Permission denied: ${reason}` }),
+      },
+    ],
+    isError: true,
+  }
 }
 
 /**
@@ -126,6 +178,21 @@ export function registerTicketTools(server: McpServer): void {
         }
       }
 
+      // Enforce permissions for agent callers
+      const agentContext = resolveAgentContext(kombuse_session_id)
+      if (agentContext) {
+        const result = checkAgentPermission(agentContext, {
+          type: 'resource',
+          resource: 'comment',
+          action: 'create',
+          resourceId: ticket_id,
+          projectId: ticket.project_id,
+        })
+        if (!result.allowed) {
+          return permissionDeniedResponse(result.reason ?? 'Cannot add comments')
+        }
+      }
+
       const comment = commentsRepository.create({
         ticket_id,
         author_id: authorId,
@@ -177,6 +244,20 @@ export function registerTicketTools(server: McpServer): void {
         const invocations = agentInvocationsRepository.list({ kombuse_session_id })
         if (invocations.length > 0) {
           authorId = invocations[0]!.agent_id
+        }
+      }
+
+      // Enforce permissions for agent callers
+      const agentContext = resolveAgentContext(kombuse_session_id)
+      if (agentContext) {
+        const result = checkAgentPermission(agentContext, {
+          type: 'resource',
+          resource: 'ticket',
+          action: 'create',
+          projectId: project_id,
+        })
+        if (!result.allowed) {
+          return permissionDeniedResponse(result.reason ?? 'Cannot create tickets')
         }
       }
 
@@ -519,6 +600,62 @@ export function registerTicketTools(server: McpServer): void {
       if (kombuse_session_id) {
         const invocations = agentInvocationsRepository.list({ kombuse_session_id })
         actorId = invocations.length > 0 ? invocations[0]!.agent_id : ANONYMOUS_AGENT_ID
+      }
+
+      // Enforce permissions for agent callers — check all sub-operations before mutating
+      const agentContext = resolveAgentContext(kombuse_session_id)
+      if (agentContext) {
+        if (status !== undefined) {
+          const result = checkAgentPermission(agentContext, {
+            type: 'resource',
+            resource: 'ticket.status',
+            action: 'update',
+            resourceId: ticket_id,
+            projectId: ticket.project_id,
+          })
+          if (!result.allowed) {
+            return permissionDeniedResponse(result.reason ?? 'Cannot update ticket status')
+          }
+        }
+
+        if (remove_label_ids && remove_label_ids.length > 0) {
+          const result = checkAgentPermission(agentContext, {
+            type: 'resource',
+            resource: 'ticket.labels',
+            action: 'delete',
+            resourceId: ticket_id,
+            projectId: ticket.project_id,
+          })
+          if (!result.allowed) {
+            return permissionDeniedResponse(result.reason ?? 'Cannot remove ticket labels')
+          }
+        }
+
+        if (add_label_ids && add_label_ids.length > 0) {
+          const result = checkAgentPermission(agentContext, {
+            type: 'resource',
+            resource: 'ticket.labels',
+            action: 'update',
+            resourceId: ticket_id,
+            projectId: ticket.project_id,
+          })
+          if (!result.allowed) {
+            return permissionDeniedResponse(result.reason ?? 'Cannot add ticket labels')
+          }
+        }
+
+        if (title !== undefined || body !== undefined || priority !== undefined || assignee_id !== undefined) {
+          const result = checkAgentPermission(agentContext, {
+            type: 'resource',
+            resource: 'ticket',
+            action: 'update',
+            resourceId: ticket_id,
+            projectId: ticket.project_id,
+          })
+          if (!result.allowed) {
+            return permissionDeniedResponse(result.reason ?? 'Cannot update ticket fields')
+          }
+        }
       }
 
       // Update scalar fields if any provided

@@ -71,6 +71,7 @@ const EXPECTED_MIGRATIONS = [
   '007_ticket_last_activity_at',
   '008_fts_search',
   '009_ticket_views',
+  '010_agent_permissions',
 ]
 
 describe('database', () => {

@@ -3,7 +3,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '@kombuse/persistence/test-utils'
-import { ticketsRepository, projectsRepository, labelsRepository } from '@kombuse/persistence'
+import { ticketsRepository, projectsRepository, labelsRepository, profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository } from '@kombuse/persistence'
+import type { Permission } from '@kombuse/types'
 import { registerTicketTools } from '../index'
 
 let cleanup: () => void
@@ -420,5 +421,284 @@ describe('update_ticket', () => {
     const data = parseContent(result) as { ticket: { assignee_id: string | null } }
 
     expect(data.ticket.assignee_id).toBeNull()
+  })
+})
+
+describe('permission enforcement', () => {
+  let agentCounter = 0
+
+  /**
+   * Create a test agent with the given permissions and return its kombuse_session_id.
+   */
+  function createTestAgentSession(permissions: Permission[]): string {
+    const id = `test-agent-${++agentCounter}-${Date.now()}`
+    const sessionId = `session-${id}`
+
+    profilesRepository.create({ id, type: 'agent', name: `Agent ${agentCounter}` })
+    agentsRepository.create({ id, system_prompt: 'Test agent', permissions })
+
+    const trigger = agentTriggersRepository.create({
+      agent_id: id,
+      event_type: 'ticket.created',
+    })
+    const invocation = agentInvocationsRepository.create({
+      agent_id: id,
+      trigger_id: trigger.id,
+      context: {},
+    })
+    agentInvocationsRepository.update(invocation.id, { kombuse_session_id: sessionId })
+
+    return sessionId
+  }
+
+  // -- update_ticket --
+
+  it('should allow non-agent callers (no kombuse_session_id) to update freely', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, status: 'closed' },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { ticket: { status: string } }
+    expect(data.ticket.status).toBe('closed')
+  })
+
+  it('should deny agents with empty permissions from updating tickets', async () => {
+    const sessionId = createTestAgentSession([])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, title: 'New title', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should allow Code Reviewer to close a ticket', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket.status', actions: ['update'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, status: 'closed', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { ticket: { status: string } }
+    expect(data.ticket.status).toBe('closed')
+  })
+
+  it('should deny Coding Agent from closing a ticket (no ticket.status permission)', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['read', 'update'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, status: 'closed', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should allow Code Reviewer to remove labels', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket.labels', actions: ['delete'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Requires review' })
+    labelsRepository.addToTicket(ticket.id, label.id)
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, remove_label_ids: [label.id], kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { labels: unknown[] }
+    expect(data.labels).toHaveLength(0)
+  })
+
+  it('should deny Coding Agent from removing labels (no ticket.labels delete)', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket.labels', actions: ['update'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Requires review' })
+    labelsRepository.addToTicket(ticket.id, label.id)
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, remove_label_ids: [label.id], kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should deny mixed update when agent lacks status permission', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['update'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        title: 'New title',
+        status: 'closed',
+        kombuse_session_id: sessionId,
+      },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+    // Verify no partial mutation occurred
+    const unchanged = ticketsRepository.get(ticket.id)!
+    expect(unchanged.title).toBe('Test ticket')
+    expect(unchanged.status).toBe('open')
+  })
+
+  it('should allow agent with full permissions to update fields and status', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['update'], scope: 'global' },
+      { type: 'resource', resource: 'ticket.status', actions: ['update'], scope: 'global' },
+      { type: 'resource', resource: 'ticket.labels', actions: ['update', 'delete'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Bug' })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        title: 'Updated',
+        status: 'closed',
+        add_label_ids: [label.id],
+        kombuse_session_id: sessionId,
+      },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { ticket: { title: string; status: string }; labels: { name: string }[] }
+    expect(data.ticket.title).toBe('Updated')
+    expect(data.ticket.status).toBe('closed')
+    expect(data.labels).toHaveLength(1)
+  })
+
+  // -- add_comment --
+
+  it('should deny agent without comment.create permission from adding comments', async () => {
+    const sessionId = createTestAgentSession([])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'add_comment',
+      arguments: { ticket_id: ticket.id, body: 'Hello', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should allow agent with comment.create permission to add comments', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'comment', actions: ['create'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'add_comment',
+      arguments: { ticket_id: ticket.id, body: 'Review complete', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+  })
+
+  // -- create_ticket --
+
+  it('should deny agent without ticket.create permission from creating tickets', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['read'], scope: 'global' },
+    ])
+
+    const result = await client.callTool({
+      name: 'create_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, title: 'New ticket', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should allow agent with ticket.create permission to create tickets', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['create'], scope: 'global' },
+    ])
+
+    const result = await client.callTool({
+      name: 'create_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, title: 'New ticket', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { title: string }
+    expect(data.title).toBe('New ticket')
   })
 })
