@@ -79,11 +79,15 @@ export class ClaudeCodeBackend implements AgentBackend {
         onSpawn: (pid) => {
           console.log('[claude-code] spawned pid:', pid)
         },
-        onStderr: () => {},
-        onExit: (code) => {
+        onStderr: (data) => {
+          console.error('[claude-code] stderr:', data)
+        },
+        onExit: (code, signal) => {
+          console.log('[claude-code] process exited', { code, signal })
           this.running = false
         },
         onError: (error) => {
+          console.error('[claude-code] process error:', error.message)
           this.running = false
           this.emit(this.createErrorEvent(error.message, error))
         },
