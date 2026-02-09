@@ -122,6 +122,7 @@ export function Tickets() {
 
   const createTicket = useCreateTicket();
   const markViewed = useMarkTicketViewed();
+  const markViewedMutate = markViewed.mutate;
 
   // Comment operations from context-aware hook
   const {
@@ -204,9 +205,9 @@ export function Tickets() {
 
     if (selectedTicket && selectedTicket.id > 0 && selectedTicket.id !== lastViewedTicketIdRef.current) {
       lastViewedTicketIdRef.current = selectedTicket.id;
-      markViewed.mutate({ id: selectedTicket.id, profileId: "user-1" }); // TODO: Get from auth context
+      markViewedMutate({ id: selectedTicket.id, profileId: "user-1" }); // TODO: Get from auth context
     }
-  }, [selectedTicket, setCurrentTicket, markViewed]);
+  }, [selectedTicket, setCurrentTicket, markViewedMutate]);
 
   const handleReplyToComment = useCallback((comment: CommentWithAuthor) => {
     setReplyTarget({
