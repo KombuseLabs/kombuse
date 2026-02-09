@@ -25,10 +25,14 @@ interface RawSessionEvent {
 interface RawPermissionLogEntry {
   id: number
   session_id: string
+  kombuse_session_id: string | null
+  ticket_id: number | null
+  ticket_title: string | null
   requested_at: string
   request_id: string
   tool_name: string
   description: string | null
+  input: string | null
   auto_approved: number | null
   resolved_at: string | null
   behavior: string | null
@@ -36,13 +40,29 @@ interface RawPermissionLogEntry {
 }
 
 function mapPermissionLogEntry(row: RawPermissionLogEntry): PermissionLogEntry {
+  let input: Record<string, unknown> = {}
+  if (row.input) {
+    try {
+      const parsed = JSON.parse(row.input)
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        input = parsed
+      }
+    } catch {
+      // ignore malformed JSON
+    }
+  }
+
   return {
     id: row.id,
     session_id: row.session_id,
+    kombuse_session_id: row.kombuse_session_id,
+    ticket_id: row.ticket_id,
+    ticket_title: row.ticket_title,
     requested_at: row.requested_at,
     request_id: row.request_id,
     tool_name: row.tool_name,
     description: row.description,
+    input,
     auto_approved: row.auto_approved === 1,
     behavior: row.auto_approved === 1
       ? 'allow'
@@ -266,10 +286,14 @@ export const sessionEventsRepository = {
         SELECT
           req.id,
           req.session_id,
+          s.kombuse_session_id,
+          s.ticket_id,
+          t.title as ticket_title,
           req.created_at as requested_at,
           json_extract(req.payload, '$.requestId') as request_id,
           json_extract(req.payload, '$.toolName') as tool_name,
           json_extract(req.payload, '$.description') as description,
+          json_extract(req.payload, '$.input') as input,
           json_extract(req.payload, '$.autoApproved') as auto_approved,
           res.created_at as resolved_at,
           json_extract(res.payload, '$.behavior') as behavior,

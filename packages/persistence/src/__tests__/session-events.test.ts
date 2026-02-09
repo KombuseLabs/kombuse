@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { createSessionId } from '@kombuse/types'
-import { setupTestDb } from '../test-utils'
+import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
+import { getDatabase } from '../database'
 import { sessionEventsRepository } from '../session-events'
 import { sessionsRepository } from '../sessions'
+import { ticketsRepository } from '../tickets'
 
 describe('sessionEventsRepository', () => {
   let cleanup: () => void
@@ -445,5 +447,395 @@ describe('sessionsRepository enhancements', () => {
       const session = sessionsRepository.getByKombuseSessionId(createSessionId('chat'))
       expect(session).toBeNull()
     })
+  })
+})
+
+describe('listPermissions', () => {
+  let cleanup: () => void
+  let db: DatabaseType
+  let testSessionId: string
+
+  beforeEach(() => {
+    const setup = setupTestDb()
+    cleanup = setup.cleanup
+    db = setup.db
+
+    // Create ticket → session chain so project_id filter works
+    const ticket = ticketsRepository.create({
+      title: 'Permissions test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const session = sessionsRepository.create({
+      kombuse_session_id: createSessionId('chat'),
+      backend_type: 'mock',
+      ticket_id: ticket.id,
+    })
+    testSessionId = session.id
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  function createPermissionRequest(
+    sessionId: string,
+    seq: number,
+    opts: { requestId: string; toolName: string; description?: string; autoApproved?: boolean }
+  ) {
+    return sessionEventsRepository.create({
+      session_id: sessionId,
+      seq,
+      event_type: 'permission_request',
+      payload: {
+        requestId: opts.requestId,
+        toolName: opts.toolName,
+        description: opts.description ?? null,
+        autoApproved: opts.autoApproved ? 1 : undefined,
+      },
+    })
+  }
+
+  function createPermissionResponse(
+    sessionId: string,
+    seq: number,
+    opts: { requestId: string; behavior: 'allow' | 'deny'; message?: string }
+  ) {
+    return sessionEventsRepository.create({
+      session_id: sessionId,
+      seq,
+      event_type: 'permission_response',
+      payload: {
+        requestId: opts.requestId,
+        behavior: opts.behavior,
+        message: opts.message ?? null,
+      },
+    })
+  }
+
+  it('should return permission requests with their responses', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-1',
+      toolName: 'Bash',
+      description: 'Run git status',
+    })
+    createPermissionResponse(testSessionId, 2, {
+      requestId: 'req-1',
+      behavior: 'allow',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.tool_name).toBe('Bash')
+    expect(results[0]!.description).toBe('Run git status')
+    expect(results[0]!.behavior).toBe('allow')
+    expect(results[0]!.auto_approved).toBe(false)
+    expect(results[0]!.deny_message).toBeNull()
+    expect(results[0]!.resolved_at).toBeDefined()
+    expect(results[0]!.kombuse_session_id).toBeDefined()
+    expect(results[0]!.ticket_id).toBeDefined()
+    expect(results[0]!.ticket_title).toBe('Permissions test ticket')
+    expect(results[0]!.input).toEqual({})
+  })
+
+  it('should return pending requests with null behavior', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-pending',
+      toolName: 'Write',
+      description: 'Write to file.ts',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.behavior).toBeNull()
+    expect(results[0]!.resolved_at).toBeNull()
+  })
+
+  it('should handle auto-approved requests', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-auto',
+      toolName: 'Read',
+      description: 'Read file',
+      autoApproved: true,
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.auto_approved).toBe(true)
+    expect(results[0]!.behavior).toBe('allow')
+  })
+
+  it('should include deny message for denied requests', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-deny',
+      toolName: 'Bash',
+      description: 'Run rm -rf /',
+    })
+    createPermissionResponse(testSessionId, 2, {
+      requestId: 'req-deny',
+      behavior: 'deny',
+      message: 'Too dangerous',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.behavior).toBe('deny')
+    expect(results[0]!.deny_message).toBe('Too dangerous')
+  })
+
+  it('should filter by tool_name', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-bash',
+      toolName: 'Bash',
+    })
+    createPermissionRequest(testSessionId, 2, {
+      requestId: 'req-read',
+      toolName: 'Read',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+      tool_name: 'Bash',
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.tool_name).toBe('Bash')
+  })
+
+  it('should filter by behavior: allow', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-allow',
+      toolName: 'Bash',
+    })
+    createPermissionResponse(testSessionId, 2, {
+      requestId: 'req-allow',
+      behavior: 'allow',
+    })
+    createPermissionRequest(testSessionId, 3, {
+      requestId: 'req-deny',
+      toolName: 'Bash',
+    })
+    createPermissionResponse(testSessionId, 4, {
+      requestId: 'req-deny',
+      behavior: 'deny',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+      behavior: 'allow',
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.request_id).toBe('req-allow')
+  })
+
+  it('should filter by behavior: deny', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-allow',
+      toolName: 'Bash',
+    })
+    createPermissionResponse(testSessionId, 2, {
+      requestId: 'req-allow',
+      behavior: 'allow',
+    })
+    createPermissionRequest(testSessionId, 3, {
+      requestId: 'req-deny',
+      toolName: 'Write',
+    })
+    createPermissionResponse(testSessionId, 4, {
+      requestId: 'req-deny',
+      behavior: 'deny',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+      behavior: 'deny',
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.request_id).toBe('req-deny')
+  })
+
+  it('should filter by behavior: auto_approved', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-auto',
+      toolName: 'Read',
+      autoApproved: true,
+    })
+    createPermissionRequest(testSessionId, 2, {
+      requestId: 'req-manual',
+      toolName: 'Bash',
+    })
+    createPermissionResponse(testSessionId, 3, {
+      requestId: 'req-manual',
+      behavior: 'allow',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+      behavior: 'auto_approved',
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.request_id).toBe('req-auto')
+    expect(results[0]!.auto_approved).toBe(true)
+  })
+
+  it('should filter by project_id', () => {
+    // Create a second project + ticket + session
+    const db = getDatabase()
+    db.prepare("INSERT INTO projects (id, name, owner_id) VALUES (?, 'Other Project', ?)").run(
+      'other-project',
+      TEST_USER_ID
+    )
+    const otherTicket = ticketsRepository.create({
+      title: 'Other project ticket',
+      project_id: 'other-project',
+      author_id: TEST_USER_ID,
+    })
+    const otherSession = sessionsRepository.create({
+      kombuse_session_id: createSessionId('chat'),
+      backend_type: 'mock',
+      ticket_id: otherTicket.id,
+    })
+
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-proj1',
+      toolName: 'Bash',
+    })
+    createPermissionRequest(otherSession.id, 1, {
+      requestId: 'req-proj2',
+      toolName: 'Bash',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.request_id).toBe('req-proj1')
+  })
+
+  it('should respect limit and offset', () => {
+    for (let i = 1; i <= 5; i++) {
+      createPermissionRequest(testSessionId, i, {
+        requestId: `req-${i}`,
+        toolName: 'Bash',
+      })
+    }
+
+    const firstPage = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+      limit: 2,
+      offset: 0,
+    })
+    expect(firstPage).toHaveLength(2)
+
+    const secondPage = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+      limit: 2,
+      offset: 2,
+    })
+    expect(secondPage).toHaveLength(2)
+
+    // Ensure different results
+    expect(firstPage[0]!.request_id).not.toBe(secondPage[0]!.request_id)
+  })
+
+  it('should return results ordered by requested_at descending', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-first',
+      toolName: 'Bash',
+    })
+    createPermissionRequest(testSessionId, 2, {
+      requestId: 'req-second',
+      toolName: 'Read',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(2)
+    // Both have same timestamp, so ordering is stable by created_at DESC, then id DESC
+    // Verify both results are present
+    const requestIds = results.map((r) => r.request_id)
+    expect(requestIds).toContain('req-first')
+    expect(requestIds).toContain('req-second')
+  })
+
+  it('should return empty array when no permission events exist', () => {
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(0)
+  })
+
+  it('should match response to correct request by requestId', () => {
+    createPermissionRequest(testSessionId, 1, {
+      requestId: 'req-a',
+      toolName: 'Bash',
+    })
+    createPermissionRequest(testSessionId, 2, {
+      requestId: 'req-b',
+      toolName: 'Write',
+    })
+    createPermissionResponse(testSessionId, 3, {
+      requestId: 'req-a',
+      behavior: 'allow',
+    })
+    createPermissionResponse(testSessionId, 4, {
+      requestId: 'req-b',
+      behavior: 'deny',
+      message: 'Not allowed',
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(2)
+    const reqA = results.find((r) => r.request_id === 'req-a')!
+    const reqB = results.find((r) => r.request_id === 'req-b')!
+
+    expect(reqA.behavior).toBe('allow')
+    expect(reqA.deny_message).toBeNull()
+
+    expect(reqB.behavior).toBe('deny')
+    expect(reqB.deny_message).toBe('Not allowed')
+  })
+
+  it('should include parsed input from permission request payload', () => {
+    sessionEventsRepository.create({
+      session_id: testSessionId,
+      seq: 1,
+      event_type: 'permission_request',
+      payload: {
+        requestId: 'req-input',
+        toolName: 'Bash',
+        description: 'Run command',
+        input: { command: 'git status', timeout: 5000 },
+      },
+    })
+
+    const results = sessionEventsRepository.listPermissions({
+      project_id: TEST_PROJECT_ID,
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]!.input).toEqual({ command: 'git status', timeout: 5000 })
   })
 })

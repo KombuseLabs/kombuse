@@ -90,10 +90,14 @@ export interface SessionEventFilters {
 export interface PermissionLogEntry {
   id: number
   session_id: string
+  kombuse_session_id: string | null
+  ticket_id: number | null
+  ticket_title: string | null
   requested_at: string
   request_id: string
   tool_name: string
   description: string | null
+  input: Record<string, unknown>
   auto_approved: boolean
   behavior: 'allow' | 'deny' | null
   deny_message: string | null

@@ -1,4 +1,5 @@
 import type { PermissionLogEntry } from '@kombuse/types'
+import { Link } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import { extractPermissionDetail } from '../../lib/permission-utils'
 import { Badge } from '../../base/badge'
@@ -12,10 +13,13 @@ import {
   ShieldX,
   ShieldAlert,
   Zap,
+  MessageSquare,
+  Ticket,
 } from 'lucide-react'
 
 interface PermissionItemProps {
   entry: PermissionLogEntry
+  projectId?: string
   className?: string
 }
 
@@ -78,10 +82,20 @@ function getBehaviorConfig(entry: PermissionLogEntry) {
   }
 }
 
-function PermissionItem({ entry, className }: PermissionItemProps) {
+function PermissionItem({ entry, projectId, className }: PermissionItemProps) {
   const behaviorConfig = getBehaviorConfig(entry)
   const ToolIcon = toolIconMap[entry.tool_name] || Shield
-  const detail = extractPermissionDetail(entry.tool_name, {}, entry.description)
+  const detail = extractPermissionDetail(entry.tool_name, entry.input, entry.description)
+
+  const sessionUrl =
+    projectId && entry.kombuse_session_id
+      ? `/projects/${projectId}/chats/${entry.kombuse_session_id}`
+      : null
+
+  const ticketUrl =
+    projectId && entry.ticket_id
+      ? `/projects/${projectId}/tickets/${entry.ticket_id}`
+      : null
 
   return (
     <div
@@ -119,11 +133,40 @@ function PermissionItem({ entry, className }: PermissionItemProps) {
           </p>
         )}
 
+        {entry.description && detail && (
+          <p className="text-xs text-muted-foreground mt-0.5 truncate font-mono">
+            {detail.value}
+          </p>
+        )}
+
         {entry.deny_message && (
           <p className="text-xs text-red-600 dark:text-red-400 mt-1 truncate">
             {entry.deny_message}
           </p>
         )}
+
+        <div className="flex items-center gap-3 mt-1.5">
+          {ticketUrl && (
+            <Link
+              to={ticketUrl}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Ticket className="size-3" />
+              <span className="truncate max-w-[200px]">
+                #{entry.ticket_id}{entry.ticket_title ? ` ${entry.ticket_title}` : ''}
+              </span>
+            </Link>
+          )}
+          {sessionUrl && (
+            <Link
+              to={sessionUrl}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <MessageSquare className="size-3" />
+              <span>Session</span>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="text-xs text-muted-foreground shrink-0 text-right">

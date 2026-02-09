@@ -58,7 +58,7 @@ export function Permissions() {
           </div>
         )}
 
-        {!isLoading && !error && entries && <PermissionList entries={entries} />}
+        {!isLoading && !error && entries && <PermissionList entries={entries} projectId={projectId} />}
       </div>
 
       {entries && entries.length >= (filters.limit || 50) && (

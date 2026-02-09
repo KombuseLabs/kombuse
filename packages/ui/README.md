@@ -21,6 +21,7 @@ src/
 │   ├── command-palette/  - Command palette UI
 │   ├── labels/           - Label management components
 │   ├── sidebar/          - Collapsible sidebar navigation
+│   ├── permissions/      - Permission decision log components
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components
 │   ├── header.tsx
@@ -33,13 +34,14 @@ src/
 │   ├── use-file-staging.ts     - File staging with validation, previews, drag-and-drop
 │   ├── use-claude-code.ts     - Claude Code project scanner hooks
 │   ├── use-labels.ts          - Label CRUD hooks
+│   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-projects.ts        - Project CRUD hooks
 │   └── use-tickets.ts         - Ticket CRUD hooks
 ├── providers/      - Context providers
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
-    ├── api.ts                 - API client (tickets, comments, labels, attachments)
+    ├── api.ts                 - API client (tickets, comments, labels, attachments, permissions)
     ├── ticket-utils.ts        - Shared ticket display utilities (statusColors)
     └── utils.ts               - cn() class merging
 ```
@@ -392,6 +394,43 @@ import { SessionItem, SessionList } from '@kombuse/ui/components'
 - `isLoading`: Shows loading state
 - `emptyMessage`: Custom empty state text (default: "No sessions yet")
 
+### Permission Components
+
+```typescript
+import { PermissionList, PermissionItem, PermissionFilters } from '@kombuse/ui/components'
+
+// Render a list of permission log entries with links to tickets/sessions
+<PermissionList
+  entries={permissions}
+  projectId="my-project"
+  emptyMessage="No permission decisions found"
+/>
+
+// Render a single permission entry with ticket/session context
+<PermissionItem entry={entry} projectId="my-project" />
+
+// Filter bar with tool and behavior dropdowns
+<PermissionFilters
+  filters={{ tool_name: 'Bash', behavior: 'allow' }}
+  onChange={(newFilters) => setFilters(newFilters)}
+/>
+```
+
+`PermissionList` props:
+- `entries`: `PermissionLogEntry[]` to render
+- `projectId`: Optional project ID for building ticket/session links
+- `className`: Optional class name
+- `emptyMessage`: Custom empty state text (default: "No permission decisions found")
+
+`PermissionItem` props:
+- `entry`: `PermissionLogEntry` object
+- `projectId`: Optional project ID for building ticket/session links
+- `className`: Optional class name
+
+`PermissionFilters` props:
+- `filters`: `Omit<PermissionLogFilters, 'project_id'>` — current filter state
+- `onChange`: `(filters: Omit<PermissionLogFilters, 'project_id'>) => void` — filter change callback
+
 ### Chat Components
 
 ```typescript
@@ -587,6 +626,20 @@ const { data: projects, isLoading } = useClaudeCodeProjects()
 const importProjects = useImportClaudeCodeProjects()
 importProjects.mutate(['/path/to/project-a', '/path/to/project-b'])
 // Invalidates both 'claude-code-projects' and 'projects' queries on success
+```
+
+### Permission Hooks
+
+```typescript
+import { usePermissions } from '@kombuse/ui/hooks'
+
+// Fetch permission log entries for a project (with optional filters)
+const { data: permissions, isLoading } = usePermissions('project-id', {
+  tool_name: 'Bash',
+  behavior: 'allow',
+  limit: 50,
+  offset: 0,
+})
 ```
 
 ### Label Hooks
