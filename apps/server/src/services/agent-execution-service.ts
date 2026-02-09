@@ -6,7 +6,7 @@ import { createSessionLogger } from '../logger'
 /**
  * Agent type preset — determines auto-approved tools and system preamble for an agent class.
  */
-interface AgentTypePreset {
+export interface AgentTypePreset {
   /** Tools auto-approved without permission prompt */
   autoApprovedTools: string[]
   /** Bash command prefixes auto-approved (empty = none) */
@@ -28,9 +28,10 @@ const KOMBUSE_TOOLS: string[] = [
 const READ_TOOLS: string[] = ['Grep', 'Glob', 'Read']
 
 /**
- * Preamble template for 'kombuse' type agents (read-only, ticket-aware).
+ * Shared preamble section for ticket-aware agents (kombuse tools, communication model, ticket context).
+ * Composed into type-specific preamble templates below.
  */
-const KOMBUSE_PREAMBLE_TEMPLATE = `You are working on ticket #{{ ticket_id }}{% if ticket %}: "{{ ticket.title }}"{% endif %}.
+const SHARED_PREAMBLE_SECTION = `You are working on ticket #{{ ticket_id }}{% if ticket %}: "{{ ticket.title }}"{% endif %}.
 
 ## Kombuse Tools
 You have these MCP tools for ticket communication:
@@ -52,35 +53,18 @@ You have these MCP tools for ticket communication:
 {% if ticket.body %}{{ ticket.body }}{% endif %}
 {% if ticket.labels and ticket.labels | length > 0 %}Labels: {% for label in ticket.labels %}{{ label.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
 {% if ticket.assignee %}Assignee: {{ ticket.assignee.name }}{% endif %}
-{% endif %}
-Do not modify any files. This is a read-only analysis task.`
+{% endif %}`
+
+/**
+ * Preamble template for 'kombuse' type agents (ticket-aware).
+ * Read-only enforcement is per-agent (in role prompts), not per-type.
+ */
+const KOMBUSE_PREAMBLE_TEMPLATE = SHARED_PREAMBLE_SECTION
 
 /**
  * Preamble template for 'coder' type agents (extends kombuse + write access).
  */
-const CODER_PREAMBLE_TEMPLATE = `You are working on ticket #{{ ticket_id }}{% if ticket %}: "{{ ticket.title }}"{% endif %}.
-
-## Kombuse Tools
-You have these MCP tools for ticket communication:
-- get_ticket — read a ticket and its comments
-- add_comment — post a comment (always include kombuse_session_id: "{{ kombuse_session_id }}")
-- create_ticket — create a new ticket for separate issues
-- update_comment — edit a previous comment
-- query_db — run read-only SQL for broader context (e.g. find related tickets)
-- list_tables / describe_table — explore the database schema
-
-## Communication
-- Tickets are the primary coordination channel. Read the ticket and all comments before acting.
-- Post your results as a comment on #{{ ticket_id }} using add_comment.
-- If you discover unrelated issues, use create_ticket rather than scope-creeping.
-- If the ticket cross-references other tickets (#NNN), read them for context.
-{% if ticket %}
-## Ticket Context
-**{{ ticket.title }}**
-{% if ticket.body %}{{ ticket.body }}{% endif %}
-{% if ticket.labels and ticket.labels | length > 0 %}Labels: {% for label in ticket.labels %}{{ label.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
-{% if ticket.assignee %}Assignee: {{ ticket.assignee.name }}{% endif %}
-{% endif %}
+const CODER_PREAMBLE_TEMPLATE = `${SHARED_PREAMBLE_SECTION}
 ## Implementation Rules
 - Read existing code before modifying. Follow existing patterns and conventions.
 - Run tests after changes: \`bun run --filter <package> test\`
@@ -114,7 +98,7 @@ const DEFAULT_AGENT_TYPE = 'kombuse'
 /**
  * Resolve the type preset for an agent. Falls back to 'kombuse' if type is unknown.
  */
-function getTypePreset(agentType?: string): AgentTypePreset {
+export function getTypePreset(agentType?: string): AgentTypePreset {
   if (agentType && agentType in AGENT_TYPE_PRESETS) {
     return AGENT_TYPE_PRESETS[agentType]!
   }
@@ -365,7 +349,7 @@ export function broadcastTicketAgentStatus(ticketId: number): void {
 /**
  * Check if a tool should be auto-approved based on the agent's type preset.
  */
-function shouldAutoApprove(
+export function shouldAutoApprove(
   toolName: string,
   input: Record<string, unknown> | undefined,
   preset: AgentTypePreset
@@ -392,6 +376,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   // MCP Kombuse tools
   'mcp__kombuse__get_ticket': 'Read ticket details',
   'mcp__kombuse__add_comment': 'Add a comment to a ticket',
+  'mcp__kombuse__create_ticket': 'Create a new ticket',
   'mcp__kombuse__update_comment': 'Update a comment',
   'mcp__kombuse__query_db': 'Query the database (read-only)',
   'mcp__kombuse__list_tables': 'List database tables',
