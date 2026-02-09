@@ -72,6 +72,8 @@ export function ChatProvider({
   useEffect(() => {
     if (sessionData?.status === 'running') {
       setIsLoading(true)
+    } else if (sessionData?.status) {
+      setIsLoading(false)
     }
   }, [sessionData?.status])
 
