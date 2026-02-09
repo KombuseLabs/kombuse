@@ -32,6 +32,8 @@ export interface TemplateContext {
   comment?: CommentEnrichedContext | null
   /** Actor profile if actor_id is set */
   actor?: Profile | null
+  /** Kombuse session ID for linking agent actions */
+  kombuse_session_id?: string
 }
 
 /**

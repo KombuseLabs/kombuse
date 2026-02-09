@@ -19,6 +19,45 @@ describe('ClaudeCodeBackend', () => {
       expect(args).toContain('--resume')
       expect(args).toContain('resume-session-id')
     })
+
+    it('includes --append-system-prompt when systemPrompt is provided', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        systemPrompt: 'You are a helpful agent.',
+      })
+
+      expect(args).toContain('--append-system-prompt')
+      expect(args).toContain('You are a helpful agent.')
+    })
+
+    it('omits --append-system-prompt when systemPrompt is whitespace-only', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        systemPrompt: '  ',
+      })
+
+      expect(args).not.toContain('--append-system-prompt')
+    })
+
+    it('omits --append-system-prompt when systemPrompt is undefined', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+      })
+
+      expect(args).not.toContain('--append-system-prompt')
+    })
   })
 
   describe('handleMessage', () => {

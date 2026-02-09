@@ -4,24 +4,122 @@ import { ClaudeCodeBackend } from '@kombuse/agent'
 import { createSessionLogger } from '../logger'
 
 /**
- * Default tools that are auto-approved for all agents.
- * These are safe operations that don't require human review.
+ * Agent type preset — determines auto-approved tools and system preamble for an agent class.
  */
-const DEFAULT_ALLOWED_TOOLS: string[] = [
+interface AgentTypePreset {
+  /** Tools auto-approved without permission prompt */
+  autoApprovedTools: string[]
+  /** Bash command prefixes auto-approved (empty = none) */
+  autoApprovedBashCommands: string[]
+  /** Nunjucks template for the type preamble (injected via --append-system-prompt) */
+  preambleTemplate: string
+}
+
+const KOMBUSE_TOOLS: string[] = [
   'mcp__kombuse__get_ticket',
   'mcp__kombuse__add_comment',
+  'mcp__kombuse__create_ticket',
+  'mcp__kombuse__update_comment',
   'mcp__kombuse__query_db',
   'mcp__kombuse__list_tables',
   'mcp__kombuse__describe_table',
-  'Grep',
-  'Read',
-  'Glob',
 ]
 
+const READ_TOOLS: string[] = ['Grep', 'Glob', 'Read']
+
 /**
- * Bash commands that are auto-approved (read-only operations).
+ * Preamble template for 'kombuse' type agents (read-only, ticket-aware).
  */
-const AUTO_APPROVED_BASH_COMMANDS: string[] = ['find', 'grep', 'ls']
+const KOMBUSE_PREAMBLE_TEMPLATE = `You are working on ticket #{{ ticket_id }}{% if ticket %}: "{{ ticket.title }}"{% endif %}.
+
+## Kombuse Tools
+You have these MCP tools for ticket communication:
+- get_ticket — read a ticket and its comments
+- add_comment — post a comment (always include kombuse_session_id: "{{ kombuse_session_id }}")
+- create_ticket — create a new ticket for separate issues
+- update_comment — edit a previous comment
+- query_db — run read-only SQL for broader context (e.g. find related tickets)
+- list_tables / describe_table — explore the database schema
+
+## Communication
+- Tickets are the primary coordination channel. Read the ticket and all comments before acting.
+- Post your results as a comment on #{{ ticket_id }} using add_comment.
+- If you discover unrelated issues, use create_ticket rather than scope-creeping.
+- If the ticket cross-references other tickets (#NNN), read them for context.
+{% if ticket %}
+## Ticket Context
+**{{ ticket.title }}**
+{% if ticket.body %}{{ ticket.body }}{% endif %}
+{% if ticket.labels and ticket.labels | length > 0 %}Labels: {% for label in ticket.labels %}{{ label.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+{% if ticket.assignee %}Assignee: {{ ticket.assignee.name }}{% endif %}
+{% endif %}
+Do not modify any files. This is a read-only analysis task.`
+
+/**
+ * Preamble template for 'coder' type agents (extends kombuse + write access).
+ */
+const CODER_PREAMBLE_TEMPLATE = `You are working on ticket #{{ ticket_id }}{% if ticket %}: "{{ ticket.title }}"{% endif %}.
+
+## Kombuse Tools
+You have these MCP tools for ticket communication:
+- get_ticket — read a ticket and its comments
+- add_comment — post a comment (always include kombuse_session_id: "{{ kombuse_session_id }}")
+- create_ticket — create a new ticket for separate issues
+- update_comment — edit a previous comment
+- query_db — run read-only SQL for broader context (e.g. find related tickets)
+- list_tables / describe_table — explore the database schema
+
+## Communication
+- Tickets are the primary coordination channel. Read the ticket and all comments before acting.
+- Post your results as a comment on #{{ ticket_id }} using add_comment.
+- If you discover unrelated issues, use create_ticket rather than scope-creeping.
+- If the ticket cross-references other tickets (#NNN), read them for context.
+{% if ticket %}
+## Ticket Context
+**{{ ticket.title }}**
+{% if ticket.body %}{{ ticket.body }}{% endif %}
+{% if ticket.labels and ticket.labels | length > 0 %}Labels: {% for label in ticket.labels %}{{ label.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+{% if ticket.assignee %}Assignee: {{ ticket.assignee.name }}{% endif %}
+{% endif %}
+## Implementation Rules
+- Read existing code before modifying. Follow existing patterns and conventions.
+- Run tests after changes: \`bun run --filter <package> test\`
+- Keep changes scoped to the ticket. Do not refactor unrelated code.`
+
+const AGENT_TYPE_PRESETS: Record<string, AgentTypePreset> = {
+  kombuse: {
+    autoApprovedTools: [...KOMBUSE_TOOLS, ...READ_TOOLS],
+    autoApprovedBashCommands: [],
+    preambleTemplate: KOMBUSE_PREAMBLE_TEMPLATE,
+  },
+  coder: {
+    autoApprovedTools: [
+      ...KOMBUSE_TOOLS,
+      ...READ_TOOLS,
+      'Edit', 'Write', 'Bash', 'Task', 'TodoWrite',
+    ],
+    autoApprovedBashCommands: ['bun', 'npm', 'git status', 'git diff', 'git log'],
+    preambleTemplate: CODER_PREAMBLE_TEMPLATE,
+  },
+  generic: {
+    autoApprovedTools: [...READ_TOOLS],
+    autoApprovedBashCommands: [],
+    preambleTemplate: '',
+  },
+}
+
+/** Default preset when agent has no type configured */
+const DEFAULT_AGENT_TYPE = 'kombuse'
+
+/**
+ * Resolve the type preset for an agent. Falls back to 'kombuse' if type is unknown.
+ */
+function getTypePreset(agentType?: string): AgentTypePreset {
+  if (agentType && agentType in AGENT_TYPE_PRESETS) {
+    return AGENT_TYPE_PRESETS[agentType]!
+  }
+  return AGENT_TYPE_PRESETS[DEFAULT_AGENT_TYPE]!
+}
 import {
   agentService,
   projectService,
@@ -265,17 +363,21 @@ export function broadcastTicketAgentStatus(ticketId: number): void {
 }
 
 /**
- * Check if a tool should be auto-approved based on default permissions.
+ * Check if a tool should be auto-approved based on the agent's type preset.
  */
-function shouldAutoApprove(toolName: string, input?: Record<string, unknown>): boolean {
-  if (DEFAULT_ALLOWED_TOOLS.includes(toolName)) {
+function shouldAutoApprove(
+  toolName: string,
+  input: Record<string, unknown> | undefined,
+  preset: AgentTypePreset
+): boolean {
+  if (preset.autoApprovedTools.includes(toolName)) {
     return true
   }
 
-  // Special handling for Bash - only approve specific commands
+  // Special handling for Bash - only approve specific command prefixes
   if (toolName === 'Bash' && input?.command) {
     const command = String(input.command).trim()
-    return AUTO_APPROVED_BASH_COMMANDS.some(cmd =>
+    return preset.autoApprovedBashCommands.some((cmd: string) =>
       command === cmd || command.startsWith(`${cmd} `)
     )
   }
@@ -546,23 +648,47 @@ function emitAgentEvent(
 }
 
 /**
- * Build an initial message for a triggered agent from the event context.
- * Interpolates template variables in the agent's system prompt using Nunjucks.
+ * Result of building a trigger prompt — separates system prompt from user message.
+ */
+interface TriggerPrompt {
+  /** Type preamble, rendered. Goes to --append-system-prompt. */
+  systemPrompt: string
+  /** Role-specific prompt + event context. Goes to initial user message. */
+  userMessage: string
+}
+
+/**
+ * Build a trigger prompt for a triggered agent invocation.
+ * Separates type preamble (system prompt) from role instructions + event context (user message).
  *
  * Template variables available:
- * - {{ event_type }}, {{ ticket_id }}, {{ project_id }}, etc.
+ * - {{ event_type }}, {{ ticket_id }}, {{ project_id }}, {{ kombuse_session_id }}
  * - {{ payload.field }} for event payload fields
  * - {{ ticket.title }}, {{ ticket.author.name }}, etc. for enriched context
  * - {{ project.name }}, {{ actor.name }}, etc.
  */
-function buildTriggerMessage(event: EventWithActor, systemPrompt?: string): string {
-  const lines: string[] = []
+function buildTriggerPrompt(
+  event: EventWithActor,
+  agent: { system_prompt: string; config: { type?: string; [key: string]: unknown } },
+  kombuseSessionId: string
+): TriggerPrompt {
+  // Build enriched context from event + session ID
+  const templateContext = {
+    ...buildTemplateContext(event),
+    kombuse_session_id: kombuseSessionId,
+  }
 
-  if (systemPrompt) {
-    // Build enriched context and render template
-    const context = buildTemplateContext(event)
-    const renderedPrompt = renderTemplate(systemPrompt, context)
-    lines.push(renderedPrompt, '')
+  // Layer 3: Type preamble → system prompt (via --append-system-prompt)
+  const preset = getTypePreset(agent.config.type as string | undefined)
+  const systemPrompt = preset.preambleTemplate
+    ? renderTemplate(preset.preambleTemplate, templateContext)
+    : ''
+
+  // Layer 4+5: Role-specific prompt + event context → user message
+  const lines: string[] = []
+  if (agent.system_prompt) {
+    const renderedRolePrompt = renderTemplate(agent.system_prompt, templateContext)
+    lines.push(renderedRolePrompt, '')
   }
 
   // Append raw event context for reference
@@ -574,15 +700,18 @@ function buildTriggerMessage(event: EventWithActor, systemPrompt?: string): stri
     'Payload:',
     JSON.stringify(event.payload, null, 2),
   )
-  const triggerMessage = lines.join('\n')
-  console.log('[Server] Built trigger message for event:', {
+
+  const userMessage = lines.join('\n')
+  console.log('[Server] Built trigger prompt for event:', {
     eventId: event.id,
     eventType: event.event_type,
     ticketId: event.ticket_id,
     projectId: event.project_id,
-    message: triggerMessage,
+    systemPromptLength: systemPrompt.length,
+    userMessage,
   })
-  return triggerMessage
+
+  return { systemPrompt, userMessage }
 }
 
 /**
@@ -706,9 +835,8 @@ export async function processEventAndRunAgents(
       kombuseSessionId
     )
 
-    // Build initial message from event with agent's prompt
-    const initialMessage = buildTriggerMessage(event, agent.system_prompt)
-      + `\n\nWhen using add_comment, always include kombuse_session_id: "${kombuseSessionId}" to link your comments to this session.`
+    // Build trigger prompt: separates system preamble from user message
+    const triggerPrompt = buildTriggerPrompt(event, agent, kombuseSessionId)
     const projectPathOverride =
       resolveProjectPathForProject(event.project_id ?? null) ??
       dependencies.resolveProjectPath()
@@ -744,7 +872,7 @@ export async function processEventAndRunAgents(
       {
         type: 'agent.invoke',
         agentId: agent.id,
-        message: initialMessage,
+        message: triggerPrompt.userMessage,
         kombuseSessionId,
       },
       (evt) => {
@@ -805,7 +933,7 @@ export async function processEventAndRunAgents(
         }
       },
       dependencies,
-      { projectPath: projectPathOverride, ticketId: ticketIdFromContext }
+      { projectPath: projectPathOverride, ticketId: ticketIdFromContext, systemPromptOverride: triggerPrompt.systemPrompt }
     )
   }
 }
@@ -817,7 +945,7 @@ export function startAgentChatSession(
   message: AgentInvokeMessage,
   emit: (event: AgentExecutionEvent) => void,
   dependencies: AgentExecutionDependencies = defaultDependencies,
-  options?: { projectPath?: string; ticketId?: number }
+  options?: { projectPath?: string; ticketId?: number; systemPromptOverride?: string }
 ): void {
   const { agentId, message: userMessage, kombuseSessionId, projectId } = message
 
@@ -909,10 +1037,34 @@ export function startAgentChatSession(
       ? resolveProjectPathForProject(projectId.trim())
       : undefined)
 
+  // Resolve agent type preset for auto-approve decisions
+  const agentType = (agent?.config as { type?: string } | undefined)?.type
+  const preset = getTypePreset(agentType)
+
+  // Determine system prompt:
+  // - Triggered path: use pre-rendered systemPromptOverride (already template-rendered with event context)
+  // - User-initiated path: render type preamble fresh with minimal context
+  let resolvedSystemPrompt: string | undefined
+  if (options?.systemPromptOverride) {
+    resolvedSystemPrompt = options.systemPromptOverride
+  } else if (agent && preset.preambleTemplate) {
+    const preambleContext = {
+      event_type: '',
+      ticket_id: ticketId ?? null,
+      project_id: projectId ?? null,
+      comment_id: null,
+      actor_id: null,
+      actor_type: 'user' as const,
+      payload: {} as Record<string, unknown>,
+      kombuse_session_id: appSessionId,
+    }
+    resolvedSystemPrompt = renderTemplate(preset.preambleTemplate, preambleContext)
+  }
+
   runAgentChat(backend, userMessage, appSessionId, {
     projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
     resumeSessionId,
-    systemPrompt: agent?.system_prompt,
+    systemPrompt: resolvedSystemPrompt,
     onEvent: (event: AgentEvent) => {
 
       logger.logEvent(event)
@@ -923,7 +1075,7 @@ export function startAgentChatSession(
       // Handle permission requests - check auto-approve BEFORE emitting
       if (event.type === 'permission_request') {
         if (
-          shouldAutoApprove(event.toolName, event.input) &&
+          shouldAutoApprove(event.toolName, event.input, preset) &&
           'respondToPermission' in backend &&
           typeof backend.respondToPermission === 'function'
         ) {

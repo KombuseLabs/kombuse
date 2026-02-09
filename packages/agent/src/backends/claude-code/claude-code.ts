@@ -201,6 +201,11 @@ export class ClaudeCodeBackend implements AgentBackend {
       args.push('--resume', options.resumeSessionId.trim())
     }
 
+    // Append to Claude Code's built-in system prompt (does NOT replace it)
+    if (typeof options.systemPrompt === 'string' && options.systemPrompt.trim().length > 0) {
+      args.push('--append-system-prompt', options.systemPrompt.trim())
+    }
+
     args.push(...this.options.extraArgs)
 
     return args
