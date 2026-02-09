@@ -12,7 +12,12 @@ import {
   sessionsRepository,
   type DatabaseType,
 } from "@kombuse/persistence";
-import { registerTicketTools, registerDatabaseTools } from "@kombuse/mcp";
+import {
+  registerTicketTools,
+  registerDatabaseTools,
+  registerApiTools,
+  type ApiRouteInfo,
+} from "@kombuse/mcp";
 import {
   ticketRoutes,
   profileRoutes,
@@ -86,6 +91,18 @@ export async function createServer({ port, db }: ServerOptions) {
     await processEventAndRunAgents(event);
   });
 
+  // Collect API route metadata for MCP discovery tool
+  const apiRoutes: ApiRouteInfo[] = [];
+  fastify.addHook("onRoute", (routeOptions) => {
+    if (!routeOptions.path.startsWith("/api/")) return;
+    const methods = Array.isArray(routeOptions.method)
+      ? routeOptions.method
+      : [routeOptions.method];
+    for (const method of methods) {
+      apiRoutes.push({ method, path: routeOptions.path });
+    }
+  });
+
   // API routes
   fastify.register(ticketRoutes, { prefix: "/api" });
   fastify.register(profileRoutes, { prefix: "/api" });
@@ -117,6 +134,7 @@ fastify.register(claudeCodeRoutes, { prefix: "/api" });
     const mcpServer = new McpServer({ name: "kombuse", version: "0.1.0" });
     registerTicketTools(mcpServer);
     registerDatabaseTools(mcpServer);
+    registerApiTools(mcpServer, fastify, apiRoutes);
     await mcpServer.server.connect(transport);
 
     await transport.handleRequest(request.raw, reply.raw, request.body);

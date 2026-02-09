@@ -23,6 +23,8 @@ const KOMBUSE_TOOLS: string[] = [
   'mcp__kombuse__query_db',
   'mcp__kombuse__list_tables',
   'mcp__kombuse__describe_table',
+  'mcp__kombuse__list_api_endpoints',
+  'mcp__kombuse__call_api',
 ]
 
 const READ_TOOLS: string[] = ['Grep', 'Glob', 'Read']
@@ -41,6 +43,8 @@ You have these MCP tools for ticket communication:
 - update_comment — edit a previous comment
 - query_db — run read-only SQL for broader context (e.g. find related tickets)
 - list_tables / describe_table — explore the database schema
+- list_api_endpoints — discover available REST API endpoints (method + path)
+- call_api — call a GET endpoint on the Kombuse API (in-process, no curl needed)
 
 ## Communication
 - Tickets are the primary coordination channel. Read the ticket and all comments before acting.
@@ -381,6 +385,8 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'mcp__kombuse__query_db': 'Query the database (read-only)',
   'mcp__kombuse__list_tables': 'List database tables',
   'mcp__kombuse__describe_table': 'Describe a database table',
+  'mcp__kombuse__list_api_endpoints': 'List available API endpoints',
+  'mcp__kombuse__call_api': 'Call a Kombuse API endpoint (GET)',
   // Common Claude Code tools
   'Bash': 'Run a shell command',
   'Read': 'Read a file',
