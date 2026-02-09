@@ -20,6 +20,8 @@ const KOMBUSE_TOOLS: string[] = [
   'mcp__kombuse__add_comment',
   'mcp__kombuse__create_ticket',
   'mcp__kombuse__update_comment',
+  'mcp__kombuse__update_ticket',
+  'mcp__kombuse__list_labels',
   'mcp__kombuse__query_db',
   'mcp__kombuse__list_tables',
   'mcp__kombuse__describe_table',
@@ -48,6 +50,8 @@ You have these MCP tools for ticket communication:
 - add_comment — post a comment (always include kombuse_session_id: "{{ kombuse_session_id }}")
 - create_ticket — create a new ticket for separate issues
 - update_comment — edit a previous comment
+- update_ticket — update ticket fields (status, title, labels, assignee, etc.)
+- list_labels — list available labels for a project
 - query_db — run read-only SQL for broader context (e.g. find related tickets)
 - list_tables / describe_table — explore the database schema
 - list_api_endpoints — discover available REST API endpoints (method + path)
@@ -411,6 +415,8 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'mcp__kombuse__add_comment': 'Add a comment to a ticket',
   'mcp__kombuse__create_ticket': 'Create a new ticket',
   'mcp__kombuse__update_comment': 'Update a comment',
+  'mcp__kombuse__update_ticket': 'Update a ticket (status, labels, fields)',
+  'mcp__kombuse__list_labels': 'List labels for a project',
   'mcp__kombuse__query_db': 'Query the database (read-only)',
   'mcp__kombuse__list_tables': 'List database tables',
   'mcp__kombuse__describe_table': 'Describe a database table',

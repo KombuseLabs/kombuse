@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository } from '@kombuse/persistence'
-import type { Ticket, Project, CommentWithAuthorAndAttachments } from '@kombuse/types'
+import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository } from '@kombuse/persistence'
+import type { Ticket, Project, Label, CommentWithAuthorAndAttachments } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import { z } from 'zod'
 
@@ -415,6 +415,148 @@ export function registerTicketTools(server: McpServer): void {
           {
             type: 'text' as const,
             text: JSON.stringify({ projects, count: projects.length }, null, 2),
+          },
+        ],
+      }
+    }
+  )
+
+  // Tool 8: list_labels
+  server.registerTool(
+    'list_labels',
+    {
+      description:
+        'List all labels for a project. Use this to discover available labels before adding them to tickets via update_ticket.',
+      inputSchema: {
+        project_id: z
+          .string()
+          .min(1)
+          .describe('The project ID to list labels for'),
+      },
+    },
+    async ({ project_id }) => {
+      const labels = labelsRepository.getByProject(project_id)
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ labels }, null, 2),
+          },
+        ],
+      }
+    }
+  )
+
+  // Tool 9: update_ticket
+  server.registerTool(
+    'update_ticket',
+    {
+      description:
+        'Update a ticket. Can change title, body, status, priority, assignee, and add/remove labels — all in a single call. Returns the updated ticket with its current labels.',
+      inputSchema: {
+        ticket_id: z
+          .number()
+          .int()
+          .positive()
+          .describe('The ID of the ticket to update'),
+        title: z
+          .string()
+          .min(1)
+          .optional()
+          .describe('New title for the ticket'),
+        body: z
+          .string()
+          .optional()
+          .describe('New body/description for the ticket'),
+        status: z
+          .enum(['open', 'closed', 'in_progress', 'blocked'])
+          .optional()
+          .describe('New status for the ticket'),
+        priority: z
+          .number()
+          .int()
+          .min(0)
+          .max(4)
+          .optional()
+          .describe('New priority (0=lowest, 4=highest)'),
+        assignee_id: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('New assignee profile ID (null to unassign)'),
+        add_label_ids: z
+          .array(z.number().int().positive())
+          .optional()
+          .describe('Label IDs to add to the ticket'),
+        remove_label_ids: z
+          .array(z.number().int().positive())
+          .optional()
+          .describe('Label IDs to remove from the ticket'),
+        kombuse_session_id: z
+          .string()
+          .optional()
+          .describe('Optional session ID for actor resolution'),
+      },
+    },
+    async ({ ticket_id, title, body, status, priority, assignee_id, add_label_ids, remove_label_ids, kombuse_session_id }) => {
+      const ticket = ticketsRepository.get(ticket_id)
+      if (!ticket) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({ error: `Ticket ${ticket_id} not found` }),
+            },
+          ],
+          isError: true,
+        }
+      }
+
+      // Resolve actor from session
+      let actorId: string | undefined
+      if (kombuse_session_id) {
+        const invocations = agentInvocationsRepository.list({ kombuse_session_id })
+        if (invocations.length > 0) {
+          actorId = invocations[0]!.agent_id
+        }
+      }
+
+      // Update scalar fields if any provided
+      const updateInput: Record<string, unknown> = {}
+      if (title !== undefined) updateInput.title = title
+      if (body !== undefined) updateInput.body = body
+      if (status !== undefined) updateInput.status = status
+      if (priority !== undefined) updateInput.priority = priority
+      if (assignee_id !== undefined) updateInput.assignee_id = assignee_id
+
+      if (Object.keys(updateInput).length > 0) {
+        ticketsRepository.update(ticket_id, updateInput, actorId)
+      }
+
+      // Add labels
+      if (add_label_ids) {
+        for (const labelId of add_label_ids) {
+          labelsRepository.addToTicket(ticket_id, labelId, actorId)
+        }
+      }
+
+      // Remove labels
+      if (remove_label_ids) {
+        for (const labelId of remove_label_ids) {
+          labelsRepository.removeFromTicket(ticket_id, labelId, actorId)
+        }
+      }
+
+      // Return updated state
+      const updatedTicket = ticketsRepository.get(ticket_id)!
+      const labels = labelsRepository.getTicketLabels(ticket_id)
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ ticket: updatedTicket, labels }, null, 2),
           },
         ],
       }

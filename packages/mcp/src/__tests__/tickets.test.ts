@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '@kombuse/persistence/test-utils'
-import { ticketsRepository, projectsRepository } from '@kombuse/persistence'
+import { ticketsRepository, projectsRepository, labelsRepository } from '@kombuse/persistence'
 import { registerTicketTools } from '../index'
 
 let cleanup: () => void
@@ -243,5 +243,129 @@ describe('list_projects', () => {
     const data = parseContent(result) as { projects: unknown[]; count: number }
 
     expect(data.count).toBe(2)
+  })
+})
+
+describe('list_labels', () => {
+  it('should return labels for a project', async () => {
+    labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Bug', color: '#ef4444' })
+    labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Feature', color: '#3b82f6' })
+
+    const result = await client.callTool({
+      name: 'list_labels',
+      arguments: { project_id: TEST_PROJECT_ID },
+    })
+    const data = parseContent(result) as { labels: { name: string }[] }
+
+    expect(data.labels).toHaveLength(2)
+    expect(data.labels.map((l) => l.name)).toContain('Bug')
+    expect(data.labels.map((l) => l.name)).toContain('Feature')
+  })
+
+  it('should return empty array for project with no labels', async () => {
+    const result = await client.callTool({
+      name: 'list_labels',
+      arguments: { project_id: TEST_PROJECT_ID },
+    })
+    const data = parseContent(result) as { labels: unknown[] }
+
+    expect(data.labels).toEqual([])
+  })
+})
+
+describe('update_ticket', () => {
+  it('should return error for non-existent ticket', async () => {
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: 9999, status: 'closed' },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('9999')
+  })
+
+  it('should update ticket status', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, status: 'in_progress' },
+    })
+    const data = parseContent(result) as { ticket: { id: number; status: string }; labels: unknown[] }
+
+    expect(data.ticket.id).toBe(ticket.id)
+    expect(data.ticket.status).toBe('in_progress')
+  })
+
+  it('should add labels to a ticket', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Bug' })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, add_label_ids: [label.id] },
+    })
+    const data = parseContent(result) as { ticket: { id: number }; labels: { id: number; name: string }[] }
+
+    expect(data.labels).toHaveLength(1)
+    expect(data.labels[0]!.name).toBe('Bug')
+  })
+
+  it('should remove labels from a ticket', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Bug' })
+    labelsRepository.addToTicket(ticket.id, label.id)
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, remove_label_ids: [label.id] },
+    })
+    const data = parseContent(result) as { ticket: { id: number }; labels: unknown[] }
+
+    expect(data.labels).toHaveLength(0)
+  })
+
+  it('should update multiple fields and labels in one call', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Original title',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const labelBug = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Bug' })
+    const labelFeature = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'Feature' })
+    labelsRepository.addToTicket(ticket.id, labelBug.id)
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        title: 'Updated title',
+        status: 'closed',
+        add_label_ids: [labelFeature.id],
+        remove_label_ids: [labelBug.id],
+      },
+    })
+    const data = parseContent(result) as {
+      ticket: { title: string; status: string }
+      labels: { name: string }[]
+    }
+
+    expect(data.ticket.title).toBe('Updated title')
+    expect(data.ticket.status).toBe('closed')
+    expect(data.labels).toHaveLength(1)
+    expect(data.labels[0]!.name).toBe('Feature')
   })
 })

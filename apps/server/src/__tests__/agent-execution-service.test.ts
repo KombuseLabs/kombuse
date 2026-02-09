@@ -119,6 +119,8 @@ describe('preset contents', () => {
       'mcp__kombuse__add_comment',
       'mcp__kombuse__create_ticket',
       'mcp__kombuse__update_comment',
+      'mcp__kombuse__update_ticket',
+      'mcp__kombuse__list_labels',
       'mcp__kombuse__query_db',
       'mcp__kombuse__list_tables',
       'mcp__kombuse__describe_table',
