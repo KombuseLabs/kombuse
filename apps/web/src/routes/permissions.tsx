@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { usePermissions } from '@kombuse/ui/hooks'
+import { usePermissions, useAppContext } from '@kombuse/ui/hooks'
 import { PermissionList, PermissionFilters } from '@kombuse/ui/components'
 import { Button } from '@kombuse/ui/base'
 import { Shield, RefreshCw } from 'lucide-react'
@@ -11,7 +11,12 @@ type Filters = Omit<PermissionLogFilters, 'project_id'>
 
 export function Permissions() {
   const { projectId } = useParams<{ projectId: string }>()
+  const { setCurrentProjectId } = useAppContext()
   const [filters, setFilters] = useState<Filters>({ limit: 50 })
+
+  useEffect(() => {
+    setCurrentProjectId(projectId ?? null)
+  }, [projectId, setCurrentProjectId])
   const { data: entries, isLoading, error, refetch, isFetching } = usePermissions(
     projectId ?? '',
     filters
