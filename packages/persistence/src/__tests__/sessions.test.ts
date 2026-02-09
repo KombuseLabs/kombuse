@@ -13,8 +13,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { createSessionId } from '@kombuse/types'
-import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
+import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
 import { sessionsRepository } from '../sessions'
+import { sessionEventsRepository } from '../session-events'
 import { ticketsRepository } from '../tickets'
 
 describe('sessionsRepository', () => {
@@ -230,6 +231,119 @@ describe('sessionsRepository', () => {
 
       expect(sessions[0]!.id, 'most recently touched session should be first').toBe(s1.id)
       expect(sessions[1]!.id).toBe(s2.id)
+    })
+  })
+
+  /*
+   * METADATA TESTS
+   * Verify agent_name and prompt_preview in list() and listByTicket()
+   */
+  describe('list metadata (agent_name, prompt_preview)', () => {
+    function seedAgentInvocation(kombuseSessionId: string) {
+      // Ensure agent record exists for TEST_AGENT_ID
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt')
+      `).run(TEST_AGENT_ID)
+
+      // Create a trigger for the agent
+      const trigger = db.prepare(`
+        INSERT INTO agent_triggers (agent_id, event_type)
+        VALUES (?, 'ticket.created')
+      `).run(TEST_AGENT_ID)
+
+      // Create an invocation linking to the session via kombuse_session_id
+      db.prepare(`
+        INSERT INTO agent_invocations (agent_id, trigger_id, context, kombuse_session_id)
+        VALUES (?, ?, '{}', ?)
+      `).run(TEST_AGENT_ID, trigger.lastInsertRowid, kombuseSessionId)
+    }
+
+    it('should return agent_name when session is linked to an agent', () => {
+      const kombuseSessionId = createSessionId('trigger')
+      sessionsRepository.create({ kombuse_session_id: kombuseSessionId })
+      seedAgentInvocation(kombuseSessionId)
+
+      const sessions = sessionsRepository.list()
+
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0]!.agent_name).toBe('Test Agent')
+    })
+
+    it('should return prompt_preview from first message event', () => {
+      const kombuseSessionId = createSessionId('chat')
+      const session = sessionsRepository.create({ kombuse_session_id: kombuseSessionId })
+
+      sessionEventsRepository.create({
+        session_id: session.id,
+        seq: 1,
+        event_type: 'message',
+        payload: { content: 'Help me fix the login bug in auth.ts' },
+      })
+
+      const sessions = sessionsRepository.list()
+
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0]!.prompt_preview).toBe('Help me fix the login bug in auth.ts')
+    })
+
+    it('should return null for both fields when no agent or events exist', () => {
+      sessionsRepository.create()
+
+      const sessions = sessionsRepository.list()
+
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0]!.agent_name).toBeNull()
+      expect(sessions[0]!.prompt_preview).toBeNull()
+    })
+
+    it('should prefer agent_name over prompt_preview when both exist', () => {
+      const kombuseSessionId = createSessionId('trigger')
+      const session = sessionsRepository.create({ kombuse_session_id: kombuseSessionId })
+      seedAgentInvocation(kombuseSessionId)
+
+      sessionEventsRepository.create({
+        session_id: session.id,
+        seq: 1,
+        event_type: 'message',
+        payload: { content: 'You are helping with ticket #1' },
+      })
+
+      const sessions = sessionsRepository.list()
+
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0]!.agent_name).toBe('Test Agent')
+      expect(sessions[0]!.prompt_preview).toBe('You are helping with ticket #1')
+    })
+
+    it('should truncate prompt_preview to 80 characters', () => {
+      const longContent = 'A'.repeat(200)
+      const session = sessionsRepository.create()
+
+      sessionEventsRepository.create({
+        session_id: session.id,
+        seq: 1,
+        event_type: 'message',
+        payload: { content: longContent },
+      })
+
+      const sessions = sessionsRepository.list()
+
+      expect(sessions[0]!.prompt_preview).toHaveLength(80)
+    })
+
+    it('should return metadata in listByTicket()', () => {
+      const kombuseSessionId = createSessionId('trigger')
+      sessionsRepository.create({
+        kombuse_session_id: kombuseSessionId,
+        ticket_id: testTicketId,
+      })
+      seedAgentInvocation(kombuseSessionId)
+
+      const sessions = sessionsRepository.listByTicket(testTicketId)
+
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0]!.agent_name).toBe('Test Agent')
     })
   })
 

@@ -16,6 +16,8 @@ export interface Session {
   last_event_seq: number
   created_at: string
   updated_at: string
+  agent_name?: string | null
+  prompt_preview?: string | null
 }
 
 /**

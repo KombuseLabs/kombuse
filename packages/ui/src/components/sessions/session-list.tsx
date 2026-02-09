@@ -26,14 +26,22 @@ function getIndicatorStatus(
   return 'idle'
 }
 
-function getSessionLabel(session: Session): { origin: 'chat' | 'trigger' | null; shortId: string } {
-  if (session.kombuse_session_id) {
-    const parsed = parseSessionId(session.kombuse_session_id)
-    if (parsed) {
-      return { origin: parsed.origin, shortId: parsed.uuid.slice(0, 8) }
-    }
+function getSessionLabel(session: Session): { origin: 'chat' | 'trigger' | null; label: string } {
+  const origin = session.kombuse_session_id
+    ? (parseSessionId(session.kombuse_session_id)?.origin ?? null)
+    : null
+
+  if (session.agent_name) {
+    return { origin, label: session.agent_name }
   }
-  return { origin: null, shortId: session.id.slice(0, 8) }
+  if (session.prompt_preview) {
+    return { origin, label: session.prompt_preview }
+  }
+
+  const shortId = session.kombuse_session_id
+    ? (parseSessionId(session.kombuse_session_id)?.uuid.slice(0, 8) ?? session.id.slice(0, 8))
+    : session.id.slice(0, 8)
+  return { origin, label: shortId }
 }
 
 function shortTimeAgo(date: Date): string {
@@ -85,7 +93,7 @@ function SessionItem({
 }: SessionItemProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const indicatorStatus = getIndicatorStatus(session, hasPendingPermission)
-  const { origin, shortId } = getSessionLabel(session)
+  const { origin, label } = getSessionLabel(session)
   const statusText = getStatusText(session, hasPendingPermission)
 
   return (
@@ -104,7 +112,7 @@ function SessionItem({
           <div className="flex items-center gap-2">
             <StatusIndicator status={indicatorStatus} size="sm" />
             <OriginIcon origin={origin} />
-            <span className="text-sm font-medium truncate">{shortId}</span>
+            <span className="text-sm font-medium truncate">{label}</span>
           </div>
 
           {/* Meta row */}

@@ -20,11 +20,11 @@ export const sessionsRepository = {
     const params: unknown[] = []
 
     if (filters?.ticket_id !== undefined) {
-      conditions.push('ticket_id = ?')
+      conditions.push('s.ticket_id = ?')
       params.push(filters.ticket_id)
     }
     if (filters?.status) {
-      conditions.push('status = ?')
+      conditions.push('s.status = ?')
       params.push(filters.status)
     }
 
@@ -36,9 +36,17 @@ export const sessionsRepository = {
     const sortColumn = filters?.sort_by === 'created_at' ? 'created_at' : 'updated_at'
 
     const stmt = db.prepare(`
-      SELECT * FROM sessions
+      SELECT s.*,
+        p.name AS agent_name,
+        (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
+         FROM session_events se
+         WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
+        ) AS prompt_preview
+      FROM sessions s
+      LEFT JOIN agent_invocations ai ON ai.kombuse_session_id = s.kombuse_session_id
+      LEFT JOIN profiles p ON p.id = ai.agent_id
       ${whereClause}
-      ORDER BY ${sortColumn} DESC
+      ORDER BY s.${sortColumn} DESC
       LIMIT ? OFFSET ?
     `)
 
@@ -161,11 +169,11 @@ export const sessionsRepository = {
   listByTicket(ticketId: number, filters?: SessionFilters): Session[] {
     const db = getDatabase()
 
-    const conditions: string[] = ['ticket_id = ?']
+    const conditions: string[] = ['s.ticket_id = ?']
     const params: unknown[] = [ticketId]
 
     if (filters?.status) {
-      conditions.push('status = ?')
+      conditions.push('s.status = ?')
       params.push(filters.status)
     }
 
@@ -176,9 +184,17 @@ export const sessionsRepository = {
     const sortColumn = filters?.sort_by === 'created_at' ? 'created_at' : 'updated_at'
 
     const stmt = db.prepare(`
-      SELECT * FROM sessions
+      SELECT s.*,
+        p.name AS agent_name,
+        (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
+         FROM session_events se
+         WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
+        ) AS prompt_preview
+      FROM sessions s
+      LEFT JOIN agent_invocations ai ON ai.kombuse_session_id = s.kombuse_session_id
+      LEFT JOIN profiles p ON p.id = ai.agent_id
       WHERE ${conditions.join(' AND ')}
-      ORDER BY ${sortColumn} DESC
+      ORDER BY s.${sortColumn} DESC
       LIMIT ? OFFSET ?
     `)
 
