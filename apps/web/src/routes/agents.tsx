@@ -37,7 +37,7 @@ import {
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
 import { Plus, Bot, X, Save } from "lucide-react";
-import type { Agent, Profile } from "@kombuse/types";
+import type { Agent, Permission, Profile } from "@kombuse/types";
 
 const AGENTS_PANEL_LAYOUT_KEY = "agents-panel-layout";
 
@@ -149,7 +149,7 @@ export function Agents() {
 
   const handleSaveAgent = async (updates: {
     profile: { name?: string; description?: string; avatar_url?: string };
-    agent: { system_prompt?: string };
+    agent: { system_prompt?: string; permissions?: Permission[] };
   }) => {
     if (!agentId || isCreating) return;
     setIsSaving(true);

@@ -431,6 +431,60 @@ import { PermissionList, PermissionItem, PermissionFilters } from '@kombuse/ui/c
 - `filters`: `Omit<PermissionLogFilters, 'project_id'>` — current filter state
 - `onChange`: `(filters: Omit<PermissionLogFilters, 'project_id'>) => void` — filter change callback
 
+### Permission Editor Components
+
+```typescript
+import { PermissionEditor, PermissionRuleForm, PermissionRuleList, PermissionRuleItem } from '@kombuse/ui/components'
+
+// Collapsible editor for an agent's permission rules
+<PermissionEditor
+  permissions={permissions}
+  onChange={(updated) => setPermissions(updated)}
+/>
+
+// Standalone form for creating or editing a permission
+<PermissionRuleForm
+  permission={existingPermission}  // omit for create mode
+  onSubmit={(p) => handleAdd(p)}
+  onCancel={() => setMode('list')}
+/>
+
+// List of permission rules with edit/delete actions
+<PermissionRuleList
+  permissions={permissions}
+  onEdit={(index) => handleEdit(index)}
+  onDelete={(index) => handleDelete(index)}
+/>
+
+// Single permission rule display
+<PermissionRuleItem
+  permission={permission}
+  onEdit={() => handleEdit()}
+  onDelete={() => handleDelete()}
+/>
+```
+
+`PermissionEditor` props:
+- `permissions`: `Permission[]` — current permission rules
+- `onChange`: `(permissions: Permission[]) => void` — called when permissions are added, edited, or deleted
+- `className`: Optional class name
+
+`PermissionRuleForm` props:
+- `permission`: Optional `Permission` — if provided, form is in edit mode
+- `onSubmit`: `(permission: Permission) => void` — called with the constructed permission
+- `onCancel`: `() => void` — called when user cancels
+
+`PermissionRuleList` props:
+- `permissions`: `Permission[]` — permissions to display
+- `onEdit`: `(index: number) => void` — called with the index of the permission to edit
+- `onDelete`: `(index: number) => void` — called with the index of the permission to delete
+
+`PermissionRuleItem` props:
+- `permission`: `Permission` — the permission to display
+- `onEdit`: `() => void` — edit callback
+- `onDelete`: `() => void` — delete callback
+- `className`: Optional class name
+
 ### Chat Components
 
 ```typescript

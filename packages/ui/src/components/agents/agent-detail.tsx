@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { Agent, AgentTrigger, Profile, UpdateAgentInput, UpdateProfileInput } from '@kombuse/types'
+import type { Agent, AgentTrigger, Permission, Profile, UpdateAgentInput, UpdateProfileInput } from '@kombuse/types'
 import { X, Trash2, Save } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
@@ -12,6 +12,7 @@ import { Textarea } from '../../base/textarea'
 import { PromptEditor } from '../prompt-editor'
 import { AvatarPicker, getAvatarIcon } from './avatar-picker'
 import { TriggerEditor, type TriggerFormData } from '../triggers'
+import { PermissionEditor } from '../permission-editor'
 
 interface AgentDetailProps {
   agent: Agent
@@ -57,12 +58,14 @@ function AgentDetail({
   const [description, setDescription] = useState(profile.description || '')
   const [avatar, setAvatar] = useState(profile.avatar_url || 'bot')
   const [systemPrompt, setSystemPrompt] = useState(agent.system_prompt)
+  const [permissions, setPermissions] = useState<Permission[]>(agent.permissions)
 
   const hasChanges =
     name !== profile.name ||
     description !== (profile.description || '') ||
     avatar !== (profile.avatar_url || 'bot') ||
-    systemPrompt !== agent.system_prompt
+    systemPrompt !== agent.system_prompt ||
+    JSON.stringify(permissions) !== JSON.stringify(agent.permissions)
 
   // Reset form when agent changes
   useEffect(() => {
@@ -70,13 +73,14 @@ function AgentDetail({
     setDescription(profile.description || '')
     setAvatar(profile.avatar_url || 'bot')
     setSystemPrompt(agent.system_prompt)
+    setPermissions(agent.permissions)
   }, [agent, profile])
 
   const handleSave = async () => {
     if (!onSave) return
     await onSave({
       profile: { name, description: description || undefined, avatar_url: avatar },
-      agent: { system_prompt: systemPrompt },
+      agent: { system_prompt: systemPrompt, permissions },
     })
   }
 
@@ -163,6 +167,11 @@ function AgentDetail({
             onChange={setSystemPrompt}
             placeholder="Enter the agent's system prompt..."
           />
+        </div>
+
+        {/* Permissions */}
+        <div className="pt-4 border-t">
+          <PermissionEditor permissions={permissions} onChange={setPermissions} />
         </div>
 
         {/* Triggers */}
