@@ -397,7 +397,7 @@ export function Tickets() {
               <span className="text-sm text-muted-foreground">
                 <button
                   type="button"
-                  onClick={() => updateSearchParams({ status: statusFilter === "all" ? null : "all" })}
+                  onClick={() => updateSearchParams({ status: "all" })}
                   className={`hover:text-foreground transition-colors ${statusFilter === "all" ? "text-foreground font-medium" : ""}`}
                 >
                   All
@@ -405,7 +405,7 @@ export function Tickets() {
                 {" · "}
                 <button
                   type="button"
-                  onClick={() => updateSearchParams({ status: statusFilter === "open" ? "all" : null })}
+                  onClick={() => updateSearchParams({ status: statusFilter === "open" ? "all" : "open" })}
                   className={`hover:text-foreground transition-colors ${statusFilter === "open" ? "text-foreground font-medium" : ""}`}
                 >
                   {openCount} Open
