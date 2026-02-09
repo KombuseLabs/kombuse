@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { Loader2, Ticket } from 'lucide-react'
-import type { TicketWithLabels } from '@kombuse/types'
+import type { Command as CommandType, TicketWithLabels } from '@kombuse/types'
 import {
   Command,
   CommandInput,
@@ -18,6 +18,29 @@ import { formatKeybinding } from '@kombuse/core'
 import { cn } from '../../lib/utils'
 import { statusColors } from '../../lib/ticket-utils'
 import { SearchBar } from './search-bar'
+
+export function filterAndGroupCommands(
+  commands: CommandType[],
+  query: string
+): Record<string, CommandType[]> {
+  const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean)
+  const filtered = commands.filter((cmd) => {
+    const searchable = [cmd.title, cmd.category, cmd.description]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return queryWords.every((word) => searchable.includes(word))
+  })
+
+  return filtered.reduce(
+    (acc, cmd) => {
+      const cat = cmd.category ?? 'General'
+      ;(acc[cat] ??= []).push(cmd)
+      return acc
+    },
+    {} as Record<string, CommandType[]>
+  )
+}
 
 interface CommandPaletteProps {
   open: boolean
@@ -67,25 +90,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
   const canGoToTicket = ticketMatch !== null && hasProjectId
   const showTicketSection = canGoToTicket || (ticketResults.length > 0 && hasProjectId) || (isSearching && hasProjectId)
 
-  const grouped = useMemo(() => {
-    const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean)
-    const filtered = commands.filter((cmd) => {
-      const searchable = [cmd.title, cmd.category, cmd.description]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return queryWords.every((word) => searchable.includes(word))
-    })
-
-    return filtered.reduce(
-      (acc, cmd) => {
-        const cat = cmd.category ?? 'General'
-        ;(acc[cat] ??= []).push(cmd)
-        return acc
-      },
-      {} as Record<string, typeof commands>
-    )
-  }, [commands, query])
+  const grouped = useMemo(() => filterAndGroupCommands(commands, query), [commands, query])
 
   const handleSelect = useCallback(
     async (commandId: string) => {
