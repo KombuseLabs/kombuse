@@ -39,6 +39,8 @@ export interface Ticket {
   opened_at: string
   /** Timestamp when the ticket was closed (null if open) */
   closed_at: string | null
+  /** Timestamp of the most recent activity on the ticket */
+  last_activity_at: string
 }
 
 /**
@@ -73,7 +75,7 @@ export interface TicketFilters {
   expired_claims?: boolean
   label_ids?: number[]
   search?: string
-  sort_by?: 'created_at' | 'updated_at' | 'closed_at' | 'opened_at'
+  sort_by?: 'created_at' | 'updated_at' | 'closed_at' | 'opened_at' | 'last_activity_at'
   sort_order?: 'asc' | 'desc'
   limit?: number
   offset?: number

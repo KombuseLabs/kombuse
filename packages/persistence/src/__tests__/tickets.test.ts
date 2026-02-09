@@ -15,8 +15,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
+import { getDatabase } from '../database'
 import { ticketsRepository } from '../tickets'
 import { labelsRepository } from '../labels'
+import { commentsRepository } from '../comments'
 
 // Test data constants - using the seeded project and user
 const TEST_TICKET = {
@@ -639,6 +641,104 @@ describe('ticketsRepository', () => {
       const ticketsNoFilter = ticketsRepository.list()
 
       expect(ticketsWithFilter.length).toBe(ticketsNoFilter.length)
+    })
+  })
+
+  /*
+   * LAST_ACTIVITY_AT COLUMN TESTS
+   * Verify last_activity_at is maintained across all activity types
+   */
+  describe('last_activity_at', () => {
+    it('should set last_activity_at on ticket creation', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+
+      expect(ticket.last_activity_at, 'last_activity_at should be set').toBeDefined()
+      expect(() => new Date(ticket.last_activity_at)).not.toThrow()
+    })
+
+    it('should update last_activity_at when ticket is updated', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      const originalActivityAt = ticket.last_activity_at
+
+      const updated = ticketsRepository.update(ticket.id, { title: 'Updated title' })
+
+      expect(updated?.last_activity_at).toBeDefined()
+      expect(updated!.last_activity_at >= originalActivityAt).toBe(true)
+    })
+
+    it('should update last_activity_at when ticket is claimed', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      const originalActivityAt = ticket.last_activity_at
+
+      const result = ticketsRepository.claim({
+        ticket_id: ticket.id,
+        claimer_id: TEST_USER_ID,
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.ticket!.last_activity_at >= originalActivityAt).toBe(true)
+    })
+
+    it('should update last_activity_at when ticket is unclaimed', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      ticketsRepository.claim({
+        ticket_id: ticket.id,
+        claimer_id: TEST_USER_ID,
+      })
+      const claimedTicket = ticketsRepository.get(ticket.id)!
+      const activityAfterClaim = claimedTicket.last_activity_at
+
+      const result = ticketsRepository.unclaim(ticket.id, TEST_USER_ID)
+
+      expect(result.success).toBe(true)
+      expect(result.ticket!.last_activity_at >= activityAfterClaim).toBe(true)
+    })
+
+    it('should update last_activity_at when a comment is added', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      const originalActivityAt = ticket.last_activity_at
+
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'A comment',
+      })
+
+      const updatedTicket = ticketsRepository.get(ticket.id)!
+      expect(updatedTicket.last_activity_at >= originalActivityAt).toBe(true)
+    })
+
+    it('should sort by last_activity_at DESC', () => {
+      const t1 = ticketsRepository.create({ ...TEST_TICKET, title: 'First' })
+      const t2 = ticketsRepository.create({ ...TEST_TICKET, title: 'Second' })
+      // Add a comment to t1 to make its last_activity_at newer
+      commentsRepository.create({
+        ticket_id: t1.id,
+        author_id: TEST_USER_ID,
+        body: 'Activity on first ticket',
+      })
+
+      const tickets = ticketsRepository.list({ sort_by: 'last_activity_at' })
+
+      expect(tickets[0]?.title, 'Ticket with recent comment should sort first').toBe('First')
+    })
+
+    it('should sort by last_activity_at ASC', () => {
+      const t1 = ticketsRepository.create({ ...TEST_TICKET, title: 'First' })
+      const t2 = ticketsRepository.create({ ...TEST_TICKET, title: 'Second' })
+
+      // Manually set different last_activity_at values to avoid same-second timing issues
+      const db = getDatabase()
+      db.prepare("UPDATE tickets SET last_activity_at = '2025-01-01 00:00:00' WHERE id = ?").run(t1.id)
+      db.prepare("UPDATE tickets SET last_activity_at = '2025-01-02 00:00:00' WHERE id = ?").run(t2.id)
+
+      const tickets = ticketsRepository.list({
+        sort_by: 'last_activity_at',
+        sort_order: 'asc',
+      })
+
+      expect(tickets[0]?.title, 'Ticket with earlier last_activity_at should sort first').toBe('First')
+      expect(tickets[1]?.title).toBe('Second')
     })
   })
 })

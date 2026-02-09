@@ -71,7 +71,7 @@ export const ticketsRepository = {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
-    const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'closed_at', 'opened_at'] as const
+    const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'closed_at', 'opened_at', 'last_activity_at'] as const
     const sortBy = filters?.sort_by && ALLOWED_SORT_COLUMNS.includes(filters.sort_by)
       ? filters.sort_by
       : 'created_at'
@@ -126,9 +126,9 @@ export const ticketsRepository = {
       INSERT INTO tickets (
         project_id, author_id, assignee_id, title, body, status, priority,
         external_source, external_id, external_url,
-        opened_at, closed_at
+        opened_at, closed_at, last_activity_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
     `)
 
     const insertTicketLabels = db.prepare(`
@@ -252,6 +252,7 @@ export const ticketsRepository = {
     if (fields.length === 0) return currentTicket
 
     fields.push("updated_at = datetime('now')")
+    fields.push("last_activity_at = datetime('now')")
     params.push(id)
 
     db.prepare(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ?`).run(
@@ -310,7 +311,8 @@ export const ticketsRepository = {
             ELSE datetime('now', ?)
           END,
           assignee_id = COALESCE(assignee_id, ?),
-          updated_at = datetime('now')
+          updated_at = datetime('now'),
+          last_activity_at = datetime('now')
       WHERE id = ?
         AND (assignee_id IS NULL OR assignee_id = ?)
         AND (
@@ -402,7 +404,8 @@ export const ticketsRepository = {
       SET claimed_by_id = NULL,
           claimed_at = NULL,
           claim_expires_at = NULL,
-          updated_at = datetime('now')
+          updated_at = datetime('now'),
+          last_activity_at = datetime('now')
       WHERE id = ?
     `)
 
@@ -441,7 +444,8 @@ export const ticketsRepository = {
     const stmt = db.prepare(`
       UPDATE tickets
       SET claim_expires_at = datetime(COALESCE(claim_expires_at, datetime('now')), ?),
-          updated_at = datetime('now')
+          updated_at = datetime('now'),
+          last_activity_at = datetime('now')
       WHERE id = ?
     `)
 

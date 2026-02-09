@@ -227,6 +227,9 @@ export const commentsRepository = {
       )
       const commentId = result.lastInsertRowid as number
 
+      // Update ticket's last_activity_at
+      db.prepare("UPDATE tickets SET last_activity_at = datetime('now') WHERE id = ?").run(payload.ticket_id)
+
       // Determine actor type from author profile for event logging
       const authorProfile = profilesRepository.get(payload.author_id)
       const actorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
@@ -375,6 +378,9 @@ export const commentsRepository = {
       db.prepare(`UPDATE comments SET ${fields.join(', ')} WHERE id = ?`).run(
         ...params
       )
+
+      // Update ticket's last_activity_at
+      db.prepare("UPDATE tickets SET last_activity_at = datetime('now') WHERE id = ?").run(existingRow.ticket_id)
 
       // If body changed, re-parse mentions
       if (input.body !== undefined) {

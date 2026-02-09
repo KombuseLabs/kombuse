@@ -68,6 +68,7 @@ const EXPECTED_MIGRATIONS = [
   '004_comment_kombuse_session_id',
   '005_event_kombuse_session_id',
   '006_ticket_opened_closed_at',
+  '007_ticket_last_activity_at',
 ]
 
 describe('database', () => {

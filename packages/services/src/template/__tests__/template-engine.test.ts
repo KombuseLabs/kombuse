@@ -79,6 +79,7 @@ describe('renderTemplate', () => {
         updated_at: '2024-01-01',
         opened_at: '2024-01-01',
         closed_at: null,
+        last_activity_at: '2024-01-01',
         labels: [
           { id: 1, project_id: 'proj-abc', name: 'bug', color: 'red', description: null, created_at: '2024-01-01' },
           { id: 2, project_id: 'proj-abc', name: 'urgent', color: 'orange', description: null, created_at: '2024-01-01' },
@@ -119,6 +120,7 @@ describe('renderTemplate', () => {
         updated_at: '2024-01-01',
         opened_at: '2024-01-01',
         closed_at: null,
+        last_activity_at: '2024-01-01',
         author: {
           id: 'user-alice',
           type: 'user',

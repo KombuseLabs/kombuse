@@ -416,6 +416,19 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_tickets_closed_at ON tickets(closed_at DESC) WHERE closed_at IS NOT NULL;
     `,
   },
+  {
+    name: '007_ticket_last_activity_at',
+    sql: `
+      ALTER TABLE tickets ADD COLUMN last_activity_at TEXT;
+
+      UPDATE tickets SET last_activity_at = COALESCE(
+        (SELECT MAX(e.created_at) FROM events e WHERE e.ticket_id = tickets.id),
+        tickets.updated_at
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tickets_last_activity ON tickets(project_id, last_activity_at DESC);
+    `,
+  },
 ]
 
 /**
