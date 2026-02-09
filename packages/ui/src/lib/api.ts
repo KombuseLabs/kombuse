@@ -427,6 +427,7 @@ export const sessionsApi = {
   async list(filters?: SessionFilters): Promise<Session[]> {
     const params = new URLSearchParams()
     if (filters?.status) params.set('status', filters.status)
+    if (filters?.sort_by) params.set('sort_by', filters.sort_by)
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 

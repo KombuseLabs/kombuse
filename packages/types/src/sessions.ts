@@ -35,6 +35,7 @@ export interface CreateSessionInput {
 export interface SessionFilters {
   ticket_id?: number
   status?: 'running' | 'completed' | 'failed' | 'aborted'
+  sort_by?: 'created_at' | 'updated_at'
   limit?: number
   offset?: number
 }

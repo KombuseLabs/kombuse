@@ -14,7 +14,7 @@ export function Chats() {
   const isProjectContext = Boolean(projectId);
   const selectedSessionId = sessionId ?? null;
 
-  const { data: sessions, isLoading: sessionsLoading } = useSessions();
+  const { data: sessions, isLoading: sessionsLoading } = useSessions({ sort_by: 'updated_at' });
   const createSession = useCreateSession();
   const deleteSession = useDeleteSession();
   const { pendingPermissions } = useAppContext();

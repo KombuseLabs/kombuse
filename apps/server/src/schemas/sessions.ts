@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const sessionFiltersSchema = z.object({
   status: z.enum(['running', 'completed', 'failed', 'aborted']).optional(),
+  sort_by: z.enum(['created_at', 'updated_at']).optional(),
   limit: z.coerce.number().int().positive().max(100).default(50),
   offset: z.coerce.number().int().nonnegative().default(0),
 })

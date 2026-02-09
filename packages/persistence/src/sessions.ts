@@ -33,11 +33,12 @@ export const sessionsRepository = {
     params.push(limit, offset)
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+    const sortColumn = filters?.sort_by === 'updated_at' ? 'updated_at' : 'created_at'
 
     const stmt = db.prepare(`
       SELECT * FROM sessions
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY ${sortColumn} DESC
       LIMIT ? OFFSET ?
     `)
 
@@ -172,10 +173,12 @@ export const sessionsRepository = {
     const offset = filters?.offset || 0
     params.push(limit, offset)
 
+    const sortColumn = filters?.sort_by === 'updated_at' ? 'updated_at' : 'created_at'
+
     const stmt = db.prepare(`
       SELECT * FROM sessions
       WHERE ${conditions.join(' AND ')}
-      ORDER BY created_at DESC
+      ORDER BY ${sortColumn} DESC
       LIMIT ? OFFSET ?
     `)
 
