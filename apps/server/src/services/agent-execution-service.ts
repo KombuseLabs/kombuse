@@ -146,7 +146,7 @@ import {
   buildTemplateContext,
   type ISessionPersistenceService,
 } from '@kombuse/services'
-import { agentInvocationsRepository, eventsRepository, sessionsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, commentsRepository, eventsRepository, sessionsRepository } from '@kombuse/persistence'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
@@ -1113,6 +1113,12 @@ export function startAgentChatSession(
   // Compute allowed tools for subprocess-level pre-approval
   const allowedTools = presetToAllowedTools(preset)
 
+  // Track whether the agent posted a comment via add_comment during this session.
+  // Used for fallback: if the agent produces text but never calls add_comment,
+  // we auto-post its last assistant message as a comment on the ticket.
+  let didCallAddComment = false
+  let lastAssistantMessage = ''
+
   runAgentChat(backend, userMessage, appSessionId, {
     projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
     resumeSessionId,
@@ -1124,6 +1130,14 @@ export function startAgentChatSession(
 
       // Persist event to database
       dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
+
+      // Track add_comment tool calls and assistant messages for fallback
+      if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
+        didCallAddComment = true
+      }
+      if (event.type === 'message' && event.role === 'assistant' && event.content) {
+        lastAssistantMessage = event.content
+      }
 
       // Handle permission requests - check auto-approve BEFORE emitting
       if (event.type === 'permission_request') {
@@ -1170,6 +1184,29 @@ export function startAgentChatSession(
         persistentSessionId,
         context.backendSessionId
       )
+
+      // Fallback: if the agent produced text but never called add_comment,
+      // auto-post the last assistant message as a comment on the ticket.
+      // This handles cases where --append-system-prompt doesn't propagate on --resume.
+      if (ticketId && !didCallAddComment && lastAssistantMessage.trim()) {
+        const authorId = agent?.id ?? 'anonymous-agent'
+        try {
+          commentsRepository.create({
+            ticket_id: ticketId,
+            author_id: authorId,
+            body: lastAssistantMessage.trim(),
+            kombuse_session_id: appSessionId,
+          })
+          console.log(
+            `[Server] Fallback: posted agent text as comment on ticket #${ticketId} (session ${appSessionId})`
+          )
+        } catch (fallbackError) {
+          console.error(
+            `[Server] Fallback comment failed for ticket #${ticketId}:`,
+            fallbackError
+          )
+        }
+      }
 
       emit({
         type: 'complete',

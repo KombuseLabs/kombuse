@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   Button,
@@ -178,8 +179,36 @@ export function Tickets() {
   // Chat panel state — session ID to display inline
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
-  // WebSocket for sending agent.invoke messages
-  const { send: wsSend } = useWebSocket({ topics: [] });
+  // Agent reply state — tracks active agent session for loading indicator
+  const [agentReplySessionId, setAgentReplySessionId] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+  const numericTicketId = ticketId ? Number(ticketId) : 0;
+
+  // Subscribe to the agent session topic while a reply is in-flight
+  const wsTopics = useMemo(
+    () => (agentReplySessionId ? [`session:${agentReplySessionId}`] : []),
+    [agentReplySessionId]
+  );
+
+  const handleAgentMessage = useCallback(
+    (message: import("@kombuse/types").ServerMessage) => {
+      if (message.type === "agent.complete") {
+        if (!agentReplySessionId || message.kombuseSessionId === agentReplySessionId) {
+          setAgentReplySessionId(null);
+          // Safety-net invalidation in case the realtime event was missed
+          if (numericTicketId > 0) {
+            queryClient.invalidateQueries({ queryKey: ["ticket-timeline", numericTicketId] });
+            queryClient.invalidateQueries({ queryKey: ["comments", numericTicketId], exact: false });
+          }
+        }
+      }
+    },
+    [agentReplySessionId, numericTicketId, queryClient]
+  );
+
+  // WebSocket for sending agent.invoke messages and receiving completions
+  const { send: wsSend } = useWebSocket({ topics: wsTopics, onMessage: handleAgentMessage });
 
   // Determine if we're in create mode
   const isCreating = ticketId === "new";
@@ -215,6 +244,7 @@ export function Tickets() {
     setCurrentTicket(selectedTicket ?? null);
     setReplyTarget(null);
     setChatSessionId(null);
+    setAgentReplySessionId(null);
 
     if (selectedTicket && selectedTicket.id > 0 && selectedTicket.id !== lastViewedTicketIdRef.current) {
       lastViewedTicketIdRef.current = selectedTicket.id;
@@ -247,9 +277,11 @@ export function Tickets() {
       if (targetComment?.kombuse_session_id) {
         // Create the reply comment so it appears in timeline immediately
         newComment = await createComment(body, "user-1", replyTarget.commentId, targetComment.kombuse_session_id); // TODO: Get from auth context
-        // Also invoke the agent session
+        // Track loading state and invoke the agent session
+        setAgentReplySessionId(targetComment.kombuse_session_id);
         wsSend({
           type: "agent.invoke",
+          agentId: targetComment.author_id,
           message: body,
           kombuseSessionId: targetComment.kombuse_session_id,
         });
@@ -662,6 +694,12 @@ export function Tickets() {
 
                         {/* Fixed ChatInput at bottom */}
                         <div className="border-t p-4">
+                          {agentReplySessionId && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 animate-pulse">
+                              <span className="inline-block size-2 rounded-full bg-primary" />
+                              Agent is thinking...
+                            </div>
+                          )}
                           <ChatInput
                             onSubmit={handleAddComment}
                             isLoading={isCreatingComment}
