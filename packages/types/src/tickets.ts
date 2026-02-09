@@ -57,6 +57,8 @@ export interface TicketWithRelations extends Ticket {
  */
 export interface TicketWithLabels extends Ticket {
   labels: Label[]
+  /** 1 if ticket has activity since the viewer last viewed it, 0 otherwise. Only present when viewer_id is provided. */
+  has_unread?: number
 }
 
 /**

@@ -8,17 +8,20 @@ export const ticketViewsRepository = {
    */
   upsert(input: UpsertTicketViewInput): TicketView {
     const db = getDatabase()
-    db.prepare(`
-      INSERT INTO ticket_views (ticket_id, profile_id, last_viewed_at)
-      VALUES (?, ?, datetime('now'))
-      ON CONFLICT(ticket_id, profile_id) DO UPDATE SET
-        last_viewed_at = datetime('now')
-    `).run(input.ticket_id, input.profile_id)
+    const run = db.transaction((inp: UpsertTicketViewInput) => {
+      db.prepare(`
+        INSERT INTO ticket_views (ticket_id, profile_id, last_viewed_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(ticket_id, profile_id) DO UPDATE SET
+          last_viewed_at = datetime('now')
+      `).run(inp.ticket_id, inp.profile_id)
 
-    return db.prepare(`
-      SELECT * FROM ticket_views
-      WHERE ticket_id = ? AND profile_id = ?
-    `).get(input.ticket_id, input.profile_id) as TicketView
+      return db.prepare(`
+        SELECT * FROM ticket_views
+        WHERE ticket_id = ? AND profile_id = ?
+      `).get(inp.ticket_id, inp.profile_id) as TicketView
+    })
+    return run(input)
   },
 
   /**

@@ -27,7 +27,7 @@ interface TicketItemProps {
 
 function TicketItem({ ticket, isSelected, onTicketClick }: TicketItemProps) {
   const agentStatus = useTicketAgentStatus(ticket.id)
-  const hasUnread = 'has_unread' in ticket && (ticket as Record<string, unknown>).has_unread === 1
+  const hasUnread = ticket.has_unread === 1
 
   return (
     <div

@@ -120,7 +120,7 @@ describe('tickets list with viewer_id (has_unread)', () => {
     })
     const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
     expect(tickets.length).toBeGreaterThan(0)
-    expect((tickets[0] as unknown as Record<string, unknown>).has_unread, 'never-viewed ticket should be unread').toBe(1)
+    expect((tickets[0] as any).has_unread, 'never-viewed ticket should be unread').toBe(1)
   })
 
   it('should return has_unread=0 after viewing the ticket', () => {
@@ -135,7 +135,7 @@ describe('tickets list with viewer_id (has_unread)', () => {
     })
     const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
     const found = tickets.find((t) => t.id === ticket.id)
-    expect((found as unknown as Record<string, unknown>).has_unread, 'viewed ticket should not be unread').toBe(0)
+    expect((found as any).has_unread, 'viewed ticket should not be unread').toBe(0)
   })
 
   it('should return has_unread=1 after new activity since last view', () => {
@@ -159,7 +159,7 @@ describe('tickets list with viewer_id (has_unread)', () => {
 
     const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
     const found = tickets.find((t) => t.id === ticket.id)
-    expect((found as unknown as Record<string, unknown>).has_unread, 'ticket with new activity should be unread').toBe(1)
+    expect((found as any).has_unread, 'ticket with new activity should be unread').toBe(1)
   })
 
   it('should not include has_unread when viewer_id is not provided', () => {
@@ -169,7 +169,7 @@ describe('tickets list with viewer_id (has_unread)', () => {
       author_id: TEST_USER_ID,
     })
     const tickets = ticketsRepository.list()
-    expect((tickets[0] as unknown as Record<string, unknown>).has_unread, 'should not have has_unread field').toBeUndefined()
+    expect((tickets[0] as any).has_unread, 'should not have has_unread field').toBeUndefined()
   })
 
   it('should work with search filter and viewer_id together', () => {
@@ -183,6 +183,6 @@ describe('tickets list with viewer_id (has_unread)', () => {
       search: 'Searchable',
     })
     expect(tickets.length).toBeGreaterThan(0)
-    expect((tickets[0] as unknown as Record<string, unknown>).has_unread).toBe(1)
+    expect((tickets[0] as any).has_unread).toBe(1)
   })
 })

@@ -164,6 +164,11 @@ export async function ticketRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket ID' })
     }
 
+    const ticket = ticketService.get(id)
+    if (!ticket) {
+      return reply.status(404).send({ error: 'Ticket not found' })
+    }
+
     const parseResult = markTicketViewedSchema.safeParse(request.body)
     if (!parseResult.success) {
       return reply.status(400).send({ error: parseResult.error.issues })

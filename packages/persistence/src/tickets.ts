@@ -33,6 +33,8 @@ export const ticketsRepository = {
       joinClause += ` LEFT JOIN ticket_views tv
         ON tv.ticket_id = tickets.id AND tv.profile_id = ?`
       joinParams.push(filters.viewer_id)
+      // '1970-01-01' sentinel: tickets with no view record (tv.last_viewed_at IS NULL)
+      // are always treated as unread
       selectColumns += `,
         CASE WHEN tickets.last_activity_at > COALESCE(tv.last_viewed_at, '1970-01-01')
           THEN 1 ELSE 0 END AS has_unread`

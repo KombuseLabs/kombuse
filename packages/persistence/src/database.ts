@@ -478,6 +478,8 @@ const migrations = [
         UNIQUE(ticket_id, profile_id)
       );
 
+      -- For querying views by profile (e.g. "all tickets viewed by user X").
+      -- The UNIQUE(ticket_id, profile_id) constraint covers the LEFT JOIN lookup in ticket list queries.
       CREATE INDEX IF NOT EXISTS idx_ticket_views_profile
         ON ticket_views(profile_id, ticket_id);
     `,
