@@ -296,6 +296,8 @@ Props:
 - `className`: Optional class name
 - `projectId`: Optional project ID — when provided, `#<number>` patterns render as rich inline chips showing the ticket ID, title, and a status dot (fetched automatically via React Query)
 
+Code blocks use [Shiki](https://shiki.style) for syntax highlighting with dual-theme support (`github-light` / `github-dark`). Language detection is automatic from fenced code block language hints (e.g., `` ```typescript ``). Inline code retains simple muted styling.
+
 ### TicketMentionChip
 
 Used internally by `Markdown` to render rich ticket references. Can also be used standalone:

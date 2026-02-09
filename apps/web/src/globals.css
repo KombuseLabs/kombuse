@@ -117,3 +117,26 @@
     color: var(--foreground);
   }
 }
+
+/* Shiki syntax highlighting — outside @layer so it beats typography plugin */
+.dark pre.shiki,
+.dark pre.shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+pre.shiki {
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  border-radius: var(--radius);
+}
+
+pre.shiki code {
+  font-size: 0.8125rem;
+  line-height: 1.625;
+  background-color: transparent !important;
+  padding: 0;
+}
