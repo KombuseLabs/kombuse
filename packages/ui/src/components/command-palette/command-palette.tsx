@@ -68,12 +68,14 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
   const showTicketSection = canGoToTicket || (ticketResults.length > 0 && hasProjectId) || (isSearching && hasProjectId)
 
   const grouped = useMemo(() => {
-    const filtered = commands.filter(
-      (cmd) =>
-        cmd.title.toLowerCase().includes(query.toLowerCase()) ||
-        cmd.category?.toLowerCase().includes(query.toLowerCase()) ||
-        cmd.description?.toLowerCase().includes(query.toLowerCase())
-    )
+    const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean)
+    const filtered = commands.filter((cmd) => {
+      const searchable = [cmd.title, cmd.category, cmd.description]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return queryWords.every((word) => searchable.includes(word))
+    })
 
     return filtered.reduce(
       (acc, cmd) => {
