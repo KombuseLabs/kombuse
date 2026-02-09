@@ -12,7 +12,7 @@ import {
   sessionsRepository,
   type DatabaseType,
 } from "@kombuse/persistence";
-import { registerTicketTools } from "@kombuse/mcp";
+import { registerTicketTools, registerDatabaseTools } from "@kombuse/mcp";
 import {
   ticketRoutes,
   profileRoutes,
@@ -116,6 +116,7 @@ fastify.register(claudeCodeRoutes, { prefix: "/api" });
 
     const mcpServer = new McpServer({ name: "kombuse", version: "0.1.0" });
     registerTicketTools(mcpServer);
+    registerDatabaseTools(mcpServer);
     await mcpServer.server.connect(transport);
 
     await transport.handleRequest(request.raw, reply.raw, request.body);

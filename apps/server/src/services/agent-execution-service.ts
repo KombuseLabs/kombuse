@@ -10,6 +10,9 @@ import { createSessionLogger } from '../logger'
 const DEFAULT_ALLOWED_TOOLS: string[] = [
   'mcp__kombuse__get_ticket',
   'mcp__kombuse__add_comment',
+  'mcp__kombuse__query_db',
+  'mcp__kombuse__list_tables',
+  'mcp__kombuse__describe_table',
   'Grep',
   'Read',
   'Glob',
@@ -288,6 +291,9 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'mcp__kombuse__get_ticket': 'Read ticket details',
   'mcp__kombuse__add_comment': 'Add a comment to a ticket',
   'mcp__kombuse__update_comment': 'Update a comment',
+  'mcp__kombuse__query_db': 'Query the database (read-only)',
+  'mcp__kombuse__list_tables': 'List database tables',
+  'mcp__kombuse__describe_table': 'Describe a database table',
   // Common Claude Code tools
   'Bash': 'Run a shell command',
   'Read': 'Read a file',
@@ -568,7 +574,15 @@ function buildTriggerMessage(event: EventWithActor, systemPrompt?: string): stri
     'Payload:',
     JSON.stringify(event.payload, null, 2),
   )
-  return lines.join('\n')
+  const triggerMessage = lines.join('\n')
+  console.log('[Server] Built trigger message for event:', {
+    eventId: event.id,
+    eventType: event.event_type,
+    ticketId: event.ticket_id,
+    projectId: event.project_id,
+    message: triggerMessage,
+  })
+  return triggerMessage
 }
 
 /**
