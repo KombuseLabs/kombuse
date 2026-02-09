@@ -166,4 +166,18 @@ describe('preset contents', () => {
     expect(preset.preambleTemplate).toContain('Implementation Rules')
     expect(preset.preambleTemplate).toContain('Run tests after changes')
   })
+
+  it('kombuse preamble contains tool usage guidance', () => {
+    const preset = getTypePreset('kombuse')
+    expect(preset.preambleTemplate).toContain('## Tool Usage')
+    expect(preset.preambleTemplate).toContain('Use Glob')
+    expect(preset.preambleTemplate).toContain('Use Grep')
+    expect(preset.preambleTemplate).toContain('Use Read')
+  })
+
+  it('coder preamble inherits tool usage from shared section', () => {
+    const preset = getTypePreset('coder')
+    expect(preset.preambleTemplate).toContain('## Tool Usage')
+    expect(preset.preambleTemplate).toContain('Use Glob')
+  })
 })

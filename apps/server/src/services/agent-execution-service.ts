@@ -39,6 +39,7 @@ const SHARED_PREAMBLE_SECTION = `You are working on ticket #{{ ticket_id }}{% if
 - Use Glob (not \`find\`) for file pattern matching
 - Use Grep (not \`grep\` or \`rg\`) for searching file contents
 - Use Read (not \`cat\`, \`head\`, or \`tail\`) for reading files
+- Use Edit/Write (not \`echo >\` or \`sed\`) for file modifications
 - Reserve Bash for commands that have no dedicated tool equivalent
 
 ## Kombuse Tools
