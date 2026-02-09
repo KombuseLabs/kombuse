@@ -81,14 +81,16 @@ export function registerApiTools(
       },
     },
     async ({ path, query }) => {
-      if (!path.startsWith('/api/')) {
+      // Normalize to resolve '..' segments before checking prefix (prevents traversal bypass)
+      const normalized = new URL(path, 'http://n').pathname
+      if (!normalized.startsWith('/api/')) {
         return errorResponse(
           'Path must start with /api/. Use list_api_endpoints to discover available paths.'
         )
       }
 
       const queryString = query ? '?' + new URLSearchParams(query).toString() : ''
-      const url = path + queryString
+      const url = normalized + queryString
 
       try {
         const response = await injectable.inject({ method: 'GET', url })
