@@ -80,3 +80,11 @@ export { useClaudeCodeProjects, useImportClaudeCodeProjects, useClaudeCodeSessio
 export { useProfileSearch } from './use-profile-search'
 export { useTicketSearch } from './use-ticket-search'
 export { useTextareaAutocomplete } from './use-textarea-autocomplete'
+export {
+  useFileStaging,
+  ALLOWED_TYPES,
+  MAX_SIZE,
+  formatFileSize,
+  type UseFileStagingOptions,
+  type UseFileStagingReturn,
+} from './use-file-staging'

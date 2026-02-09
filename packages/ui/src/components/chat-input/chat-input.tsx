@@ -1,14 +1,12 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, type FormEvent, type KeyboardEvent, type DragEvent, type ClipboardEvent } from 'react'
+import { useState, useCallback, useRef, type FormEvent, type KeyboardEvent } from 'react'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { cn } from '../../lib/utils'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
+import { useFileStaging, formatFileSize } from '../../hooks/use-file-staging'
 import { Send, Loader2, X, Paperclip } from 'lucide-react'
-
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
-const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
 
 export interface ReplyTarget {
   commentId: number
@@ -26,12 +24,6 @@ interface ChatInputProps {
   className?: string
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 function ChatInput({
   onSubmit,
   placeholder = 'Type a message...',
@@ -42,11 +34,20 @@ function ChatInput({
   className,
 }: ChatInputProps) {
   const [message, setMessage] = useState('')
-  const [stagedFiles, setStagedFiles] = useState<File[]>([])
-  const [previewUrls, setPreviewUrls] = useState<string[]>([])
-  const [isDragOver, setIsDragOver] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const {
+    stagedFiles,
+    previewUrls,
+    isDragOver,
+    hasFiles,
+    removeFile,
+    clearFiles,
+    dragHandlers,
+    handlePaste,
+    fileInputRef,
+    handleFileInputChange,
+  } = useFileStaging()
 
   const { textareaProps: autocompleteProps, AutocompletePortal } = useTextareaAutocomplete({
     value: message,
@@ -54,54 +55,18 @@ function ChatInput({
     textareaRef,
   })
 
-  // Clean up preview URLs on unmount or when files change
-  useEffect(() => {
-    return () => {
-      previewUrls.forEach((url) => URL.revokeObjectURL(url))
-    }
-  }, [previewUrls])
-
-  const addFiles = useCallback((fileList: FileList | File[]) => {
-    const files = Array.from(fileList)
-    const valid: File[] = []
-
-    for (const file of files) {
-      if (!ALLOWED_TYPES.includes(file.type)) continue
-      if (file.size > MAX_SIZE) continue
-      valid.push(file)
-    }
-
-    if (valid.length === 0) return
-
-    setStagedFiles((prev) => [...prev, ...valid])
-    setPreviewUrls((prev) => [...prev, ...valid.map((f) => URL.createObjectURL(f))])
-  }, [])
-
-  const removeFile = useCallback((index: number) => {
-    setStagedFiles((prev) => prev.filter((_, i) => i !== index))
-    setPreviewUrls((prev) => {
-      const url = prev[index]
-      if (url) URL.revokeObjectURL(url)
-      return prev.filter((_, i) => i !== index)
-    })
-  }, [])
-
   const handleSubmit = useCallback(
     async (e?: FormEvent) => {
       e?.preventDefault()
       const trimmed = message.trim()
-      if ((!trimmed && stagedFiles.length === 0) || isLoading || disabled) return
+      if ((!trimmed && !hasFiles) || isLoading || disabled) return
 
-      const filesToSend = stagedFiles.length > 0 ? [...stagedFiles] : undefined
+      const filesToSend = hasFiles ? [...stagedFiles] : undefined
       await onSubmit(trimmed, filesToSend)
       setMessage('')
-      setStagedFiles([])
-      setPreviewUrls((prev) => {
-        prev.forEach((url) => URL.revokeObjectURL(url))
-        return []
-      })
+      clearFiles()
     },
-    [message, stagedFiles, isLoading, disabled, onSubmit]
+    [message, hasFiles, stagedFiles, isLoading, disabled, onSubmit, clearFiles]
   )
 
   const handleKeyDown = useCallback(
@@ -118,41 +83,8 @@ function ChatInput({
     [autocompleteProps.onKeyDown, handleSubmit]
   )
 
-  const handleDragOver = useCallback((e: DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(true)
-  }, [])
-
-  const handleDragLeave = useCallback((e: DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-  }, [])
-
-  const handleDrop = useCallback((e: DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-    if (e.dataTransfer.files.length > 0) {
-      addFiles(e.dataTransfer.files)
-    }
-  }, [addFiles])
-
-  const handlePaste = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const files = e.clipboardData.files
-    if (files.length > 0) {
-      addFiles(files)
-    }
-  }, [addFiles])
-
-  const handleFileInputChange = useCallback(() => {
-    const input = fileInputRef.current
-    if (input?.files && input.files.length > 0) {
-      addFiles(input.files)
-      input.value = ''
-    }
-  }, [addFiles])
-
   const isDisabled = disabled || isLoading
-  const canSubmit = (message.trim().length > 0 || stagedFiles.length > 0) && !isDisabled
+  const canSubmit = (message.trim().length > 0 || hasFiles) && !isDisabled
 
   const effectivePlaceholder = replyTarget
     ? `Reply to ${replyTarget.authorId}...`
@@ -165,9 +97,7 @@ function ChatInput({
         isDragOver && 'ring-2 ring-primary/50 bg-primary/5',
         className,
       )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      {...dragHandlers}
     >
       {replyTarget && (
         <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground bg-muted/50 rounded">

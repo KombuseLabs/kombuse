@@ -30,6 +30,7 @@ src/
 │   ├── use-commands.ts        - Get all available commands
 │   ├── use-command-context.ts - Access command registry
 │   ├── use-attachments.ts      - Attachment CRUD hooks
+│   ├── use-file-staging.ts     - File staging with validation, previews, drag-and-drop
 │   ├── use-claude-code.ts     - Claude Code project scanner hooks
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-projects.ts        - Project CRUD hooks
@@ -130,6 +131,28 @@ import { useSessionByKombuseId } from '@kombuse/ui/hooks'
 // Resolve a kombuse session ID (e.g. "trigger-abc123") to its Session object
 // Used internally by CommentItem to render session links on agent comments
 const { data: session } = useSessionByKombuseId(kombuseSessionId)
+```
+
+```typescript
+import { useFileStaging, formatFileSize } from '@kombuse/ui/hooks'
+
+// Manage file staging with validation, preview URLs, and drag-and-drop
+const {
+  stagedFiles, previewUrls, isDragOver, hasFiles,
+  addFiles, removeFile, clearFiles,
+  dragHandlers,    // { onDragOver, onDragLeave, onDrop } — spread onto drop zone
+  handlePaste,     // onPaste for textarea
+  fileInputRef, handleFileInputChange,
+} = useFileStaging()
+
+// With custom options
+const staging = useFileStaging({
+  allowedTypes: ['image/png', 'image/jpeg'],
+  maxSize: 5 * 1024 * 1024, // 5 MB
+})
+
+// Format bytes for display
+formatFileSize(1536) // => "1.5 KB"
 ```
 
 ### Providers
