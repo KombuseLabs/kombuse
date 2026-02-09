@@ -4,8 +4,6 @@
  * Two session ID formats exist:
  * - User-initiated: `chat-{uuid}`
  * - Triggered: `trigger-{uuid}`
- *
- * Legacy format `invocation-{id}` is supported for backward compatibility.
  */
 
 // Branded type for session IDs - provides compile-time safety
@@ -26,9 +24,6 @@ export interface ParsedSessionId {
 // Regex for validating session ID format
 const SESSION_ID_REGEX =
   /^(chat|trigger)-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
-
-// Legacy format for backward compatibility
-const LEGACY_INVOCATION_REGEX = /^invocation-(\d+)$/
 
 /**
  * Create a new session ID with the specified origin
@@ -61,40 +56,3 @@ export function isValidSessionId(id: string): id is KombuseSessionId {
   return SESSION_ID_REGEX.test(id)
 }
 
-/**
- * Check if a string is a legacy invocation-style ID (for backward compatibility)
- */
-export function isLegacyInvocationId(id: string): boolean {
-  return LEGACY_INVOCATION_REGEX.test(id)
-}
-
-/**
- * Check if a string is an acceptable session ID (new format or legacy)
- * Use this for validation during the transition period
- */
-export function isAcceptableSessionId(id: string): boolean {
-  return isValidSessionId(id) || isLegacyInvocationId(id)
-}
-
-/**
- * Get the origin of a session ID, handling legacy formats
- */
-export function getSessionOrigin(
-  id: string
-): SessionOrigin | 'legacy' | null {
-  const parsed = parseSessionId(id)
-  if (parsed) return parsed.origin
-  if (isLegacyInvocationId(id)) return 'legacy'
-  return null
-}
-
-/**
- * Assert that a string is a valid session ID (throws if invalid)
- */
-export function assertSessionId(id: string): asserts id is KombuseSessionId {
-  if (!isValidSessionId(id)) {
-    throw new Error(
-      `Invalid session ID format: ${id}. Expected format: {chat|trigger}-{uuid}`
-    )
-  }
-}

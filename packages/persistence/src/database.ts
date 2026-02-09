@@ -508,6 +508,47 @@ const migrations = [
         WHERE id = 'd2786543-5336-4989-b292-03f2ba264f79' AND permissions = '[]';
     `,
   },
+  {
+    name: '011_cleanup_legacy_session_ids',
+    sql: `
+      -- Create temp mapping table for invocation-* IDs to new trigger-{uuid} IDs
+      CREATE TEMP TABLE IF NOT EXISTS session_id_mapping (
+        old_id TEXT PRIMARY KEY,
+        new_id TEXT NOT NULL
+      );
+
+      -- Generate new trigger-{uuid} IDs for each invocation-* session
+      INSERT INTO session_id_mapping (old_id, new_id)
+      SELECT kombuse_session_id,
+        'trigger-'
+        || lower(hex(randomblob(4))) || '-'
+        || lower(hex(randomblob(2))) || '-4'
+        || substr(lower(hex(randomblob(2))), 2) || '-'
+        || substr('89ab', abs(random()) % 4 + 1, 1)
+        || substr(lower(hex(randomblob(2))), 2) || '-'
+        || lower(hex(randomblob(6)))
+      FROM sessions
+      WHERE kombuse_session_id LIKE 'invocation-%';
+
+      -- Update sessions table: invocation-* -> trigger-{uuid}
+      UPDATE sessions SET kombuse_session_id = (
+        SELECT new_id FROM session_id_mapping WHERE old_id = sessions.kombuse_session_id
+      ) WHERE kombuse_session_id LIKE 'invocation-%';
+
+      -- Update agent_invocations table with same new IDs
+      UPDATE agent_invocations SET kombuse_session_id = (
+        SELECT new_id FROM session_id_mapping WHERE old_id = agent_invocations.kombuse_session_id
+      ) WHERE kombuse_session_id LIKE 'invocation-%';
+
+      -- Bare UUIDs in sessions: prefix with 'trigger-'
+      UPDATE sessions SET kombuse_session_id = 'trigger-' || kombuse_session_id
+      WHERE kombuse_session_id IS NOT NULL
+        AND kombuse_session_id NOT LIKE 'chat-%'
+        AND kombuse_session_id NOT LIKE 'trigger-%';
+
+      DROP TABLE IF EXISTS session_id_mapping;
+    `,
+  },
 ]
 
 /**

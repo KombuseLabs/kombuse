@@ -9,10 +9,6 @@ import {
   createSessionId,
   parseSessionId,
   isValidSessionId,
-  isLegacyInvocationId,
-  isAcceptableSessionId,
-  getSessionOrigin,
-  assertSessionId,
 } from '../session-id'
 
 describe('session-id utilities', () => {
@@ -76,62 +72,4 @@ describe('session-id utilities', () => {
     })
   })
 
-  describe('isLegacyInvocationId', () => {
-    it('should recognize legacy invocation IDs', () => {
-      expect(isLegacyInvocationId('invocation-123')).toBe(true)
-      expect(isLegacyInvocationId('invocation-0')).toBe(true)
-      expect(isLegacyInvocationId('invocation-999999')).toBe(true)
-    })
-
-    it('should reject non-legacy formats', () => {
-      expect(isLegacyInvocationId('chat-550e8400-e29b-41d4-a716-446655440000')).toBe(false)
-      expect(isLegacyInvocationId('trigger-550e8400-e29b-41d4-a716-446655440000')).toBe(false)
-      expect(isLegacyInvocationId('invocation-abc')).toBe(false)
-      expect(isLegacyInvocationId('invocation-')).toBe(false)
-    })
-  })
-
-  describe('isAcceptableSessionId', () => {
-    it('should accept new format session IDs', () => {
-      expect(isAcceptableSessionId('chat-550e8400-e29b-41d4-a716-446655440000')).toBe(true)
-      expect(isAcceptableSessionId('trigger-550e8400-e29b-41d4-a716-446655440000')).toBe(true)
-    })
-
-    it('should accept legacy invocation IDs', () => {
-      expect(isAcceptableSessionId('invocation-123')).toBe(true)
-    })
-
-    it('should reject invalid formats', () => {
-      expect(isAcceptableSessionId('random-string')).toBe(false)
-      expect(isAcceptableSessionId('')).toBe(false)
-    })
-  })
-
-  describe('getSessionOrigin', () => {
-    it('should return origin for valid session IDs', () => {
-      expect(getSessionOrigin('chat-550e8400-e29b-41d4-a716-446655440000')).toBe('chat')
-      expect(getSessionOrigin('trigger-550e8400-e29b-41d4-a716-446655440000')).toBe('trigger')
-    })
-
-    it('should return legacy for invocation format', () => {
-      expect(getSessionOrigin('invocation-42')).toBe('legacy')
-    })
-
-    it('should return null for unknown formats', () => {
-      expect(getSessionOrigin('unknown-format')).toBeNull()
-      expect(getSessionOrigin('')).toBeNull()
-    })
-  })
-
-  describe('assertSessionId', () => {
-    it('should not throw for valid session IDs', () => {
-      expect(() => assertSessionId('chat-550e8400-e29b-41d4-a716-446655440000')).not.toThrow()
-      expect(() => assertSessionId('trigger-550e8400-e29b-41d4-a716-446655440000')).not.toThrow()
-    })
-
-    it('should throw for invalid formats', () => {
-      expect(() => assertSessionId('invocation-123')).toThrow(/Invalid session ID format/)
-      expect(() => assertSessionId('random-string')).toThrow(/Invalid session ID format/)
-    })
-  })
 })

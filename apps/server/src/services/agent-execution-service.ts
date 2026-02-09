@@ -147,7 +147,7 @@ import {
   type ISessionPersistenceService,
 } from '@kombuse/services'
 import { agentInvocationsRepository, eventsRepository, sessionsRepository } from '@kombuse/persistence'
-import { EVENT_TYPES, createSessionId, type ServerMessage } from '@kombuse/types'
+import { EVENT_TYPES, createSessionId, isValidSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
@@ -843,9 +843,10 @@ export async function processEventAndRunAgents(
 
     // Reuse existing session ID from the event when available,
     // otherwise generate a new one for this triggered invocation
-    const kombuseSessionId = event.kombuse_session_id
-      ? (event.kombuse_session_id as KombuseSessionId)
-      : createSessionId('trigger')
+    const kombuseSessionId =
+      event.kombuse_session_id && isValidSessionId(event.kombuse_session_id)
+        ? event.kombuse_session_id
+        : createSessionId('trigger')
 
     // Update invocation with session ID
     agentInvocationsRepository.update(invocation.id, {
@@ -1023,10 +1024,9 @@ export function startAgentChatSession(
   }
 
   // Use client-provided session ID or generate a new one
-  // Cast client ID to KombuseSessionId - client may provide legacy format for backward compat
   let appSessionId: KombuseSessionId
-  if (typeof kombuseSessionId === 'string' && kombuseSessionId.trim().length > 0) {
-    appSessionId = kombuseSessionId as KombuseSessionId
+  if (typeof kombuseSessionId === 'string' && isValidSessionId(kombuseSessionId.trim())) {
+    appSessionId = kombuseSessionId.trim() as KombuseSessionId
   } else {
     appSessionId = dependencies.generateSessionId()
   }
