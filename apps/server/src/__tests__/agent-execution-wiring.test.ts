@@ -125,9 +125,12 @@ describe('startAgentChatSession agent resolution from session context', () => {
     return { backend, getCapturedOptions: () => capturedOptions }
   }
 
-  function createMockDependencies(backend: AgentBackend, getAgentReturn: unknown) {
+  function createMockDependencies(
+    backend: AgentBackend,
+    agents: Record<string, unknown>,
+  ) {
     return {
-      getAgent: vi.fn(() => getAgentReturn),
+      getAgent: vi.fn((id: string) => agents[id] ?? null),
       processEvent: vi.fn(() => []),
       createBackend: vi.fn(() => backend),
       generateSessionId: vi.fn(() => 'chat-test-id' as KombuseSessionId),
@@ -179,7 +182,7 @@ describe('startAgentChatSession agent resolution from session context', () => {
     ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
 
     const { backend, getCapturedOptions } = createMockBackend()
-    const deps = createMockDependencies(backend, coderAgent)
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': coderAgent })
 
     startAgentChatSession(
       {
@@ -211,7 +214,7 @@ describe('startAgentChatSession agent resolution from session context', () => {
     ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
 
     const { backend, getCapturedOptions } = createMockBackend()
-    const deps = createMockDependencies(backend, null)
+    const deps = createMockDependencies(backend, {})
 
     startAgentChatSession(
       {
@@ -231,12 +234,50 @@ describe('startAgentChatSession agent resolution from session context', () => {
     ).toBeUndefined()
   })
 
+  it('uses the first invocation when multiple exist for the same session', async () => {
+    const olderInvocation = { ...mockInvocation, id: 2, agent_id: 'other-agent' }
+    const olderAgent = { ...coderAgent, id: 'other-agent', config: { type: 'kombuse' } }
+
+    // list() returns ORDER BY created_at DESC, so mockInvocation (most recent) is first
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([
+      mockInvocation,
+      olderInvocation,
+    ])
+
+    const { backend, getCapturedOptions } = createMockBackend()
+    const deps = createMockDependencies(backend, {
+      'ticket-analyzer': coderAgent,
+      'other-agent': olderAgent,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'hello',
+        kombuseSessionId: 'trigger-session-abc',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    // Should resolve to ticket-analyzer (first/most recent), not other-agent
+    expect(deps.getAgent).toHaveBeenCalledWith('ticket-analyzer')
+
+    const expectedTools = presetToAllowedTools(getTypePreset('coder'))
+    expect(
+      getCapturedOptions()?.allowedTools,
+      'should use coder preset from most recent invocation'
+    ).toEqual(expectedTools)
+  })
+
   it('does not use disabled agent from invocation lookup', async () => {
     ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
 
     const disabledAgent = { ...coderAgent, is_enabled: false }
     const { backend, getCapturedOptions } = createMockBackend()
-    const deps = createMockDependencies(backend, disabledAgent)
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': disabledAgent })
 
     startAgentChatSession(
       {
