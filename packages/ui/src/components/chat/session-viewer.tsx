@@ -5,6 +5,7 @@ import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse
 import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
+import { isValidAskUserInput } from './ask-user-types'
 import { AskUserRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
@@ -101,7 +102,7 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         }
 
         if (event.type === 'permission_request') {
-          if (event.toolName === 'AskUserQuestion') {
+          if (event.toolName === 'AskUserQuestion' && isValidAskUserInput(event.input as Record<string, unknown>)) {
             return <AskUserRenderer key={event.eventId} event={event} />
           }
           return <PermissionRequestRenderer key={event.eventId} event={event} />

@@ -455,6 +455,16 @@ import type { ViewMode } from '@kombuse/ui/components'
 
 `Chat` manages `viewMode` state internally and passes it to both `SessionHeader` and `SessionViewer`.
 
+`AskUserBar` props:
+- `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request with `toolName: 'AskUserQuestion'`
+- `onRespond`: `(updatedInput: Record<string, unknown>) => void` — callback with the original input plus populated `answers` map
+- Renders structured questions with selectable option cards (single-select and multi-select), an "Other" free-text option, and a submit button
+- Returns `null` if `input.questions` is malformed (falls back to `PermissionBar` in `Chat`)
+
+`AskUserRenderer` (in `renderers/`):
+- Read-only renderer for historical `AskUserQuestion` permission request events in the session timeline
+- Falls back to `PermissionRequestRenderer` if `input.questions` is malformed
+
 ### Timeline Components
 
 ```typescript
@@ -539,6 +549,28 @@ Props for `ImageLightbox`:
 - `onOpenChange`: Callback when open state changes (close via Escape key, close button, or overlay click)
 - Keyboard navigation: ArrowLeft/ArrowRight to navigate between images, Escape to close
 - Shows filename, image counter (e.g. "2 / 5"), and download link in footer
+
+### StagedFilePreviews
+
+```typescript
+import { StagedFilePreviews } from '@kombuse/ui/components'
+
+// Display thumbnails of staged files with remove buttons
+<StagedFilePreviews
+  stagedFiles={stagedFiles}
+  previewUrls={previewUrls}
+  onRemove={(index) => removeFile(index)}
+  className="mt-1"
+/>
+```
+
+Props:
+- `stagedFiles`: `File[]` — array of staged File objects
+- `previewUrls`: `string[]` — matching array of object URLs for previews
+- `onRemove`: `(index: number) => void` — callback when a file's remove button is clicked
+- `className`: Optional class name (merged with default flex layout)
+- Returns `null` when `stagedFiles` is empty
+- Used internally by `ChatInput`, `CommentItem`, `TicketDetail`, and the ticket create form
 
 Props for `ChatInput`:
 - `onSubmit`: Callback `(message: string, files?: File[]) => void` — receives message text and optional staged files

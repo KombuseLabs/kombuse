@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils'
 import { ChatCtx } from '../../providers/chat-context'
 import { ChatInput } from '../chat-input'
 import { AskUserBar } from './ask-user-bar'
+import { isValidAskUserInput } from './ask-user-types'
 import { PermissionBar } from './permission-bar'
 import { SessionHeader, type ViewMode } from './session-header'
 import { SessionViewer } from './session-viewer'
@@ -59,7 +60,7 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
       />
       <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} viewMode={viewMode} className="flex-1" />
       {pendingPermission && respondToPermission && (
-        pendingPermission.toolName === 'AskUserQuestion' ? (
+        pendingPermission.toolName === 'AskUserQuestion' && isValidAskUserInput(pendingPermission.input as Record<string, unknown>) ? (
           <AskUserBar
             permission={pendingPermission}
             onRespond={(updatedInput) =>

@@ -6,13 +6,7 @@ import { HelpCircle, Send, Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
-
-interface AskUserQuestion {
-  question: string
-  header: string
-  options: Array<{ label: string; description?: string }>
-  multiSelect?: boolean
-}
+import { type AskUserQuestion, isValidAskUserInput } from './ask-user-types'
 
 export interface AskUserBarProps {
   permission: SerializedAgentPermissionRequestEvent
@@ -20,10 +14,15 @@ export interface AskUserBarProps {
 }
 
 export function AskUserBar({ permission, onRespond }: AskUserBarProps) {
-  const questions = (permission.input.questions ?? []) as unknown as AskUserQuestion[]
+  const input = permission.input as Record<string, unknown>
+  const isValid = isValidAskUserInput(input)
+  const questions: AskUserQuestion[] = isValid ? input.questions : []
+
   const [selections, setSelections] = useState<Record<string, string[]>>({})
   const [otherTexts, setOtherTexts] = useState<Record<string, string>>({})
   const [otherActive, setOtherActive] = useState<Record<string, boolean>>({})
+
+  if (!isValid) return null
 
   const getAnswer = (header: string): string | undefined => {
     if (otherActive[header] && otherTexts[header]?.trim()) {
@@ -73,8 +72,8 @@ export function AskUserBar({ permission, onRespond }: AskUserBarProps) {
         <HelpCircle className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
 
         <div className="min-w-0 flex-1 space-y-3">
-          {questions.map((q) => (
-            <div key={q.header}>
+          {questions.map((q, index) => (
+            <div key={index}>
               <div className="mb-1.5 flex items-center gap-2">
                 <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
                   {q.header}

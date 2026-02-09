@@ -1,3 +1,4 @@
+export { AskUserBar, type AskUserBarProps } from './ask-user-bar'
 export { SessionViewer, type SessionViewerProps } from './session-viewer'
 export { SessionHeader, type SessionHeaderProps, type ViewMode } from './session-header'
 export { Chat, type ChatProps } from './chat'

@@ -1,13 +1,8 @@
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { HelpCircle } from 'lucide-react'
+import { isValidAskUserInput } from '../ask-user-types'
 import { EventCard } from './event-card'
-
-interface AskUserQuestion {
-  question: string
-  header: string
-  options: Array<{ label: string; description?: string }>
-  multiSelect?: boolean
-}
+import { PermissionRequestRenderer } from './permission-request-renderer'
 
 export interface AskUserRendererProps {
   event: SerializedAgentPermissionRequestEvent
@@ -15,7 +10,13 @@ export interface AskUserRendererProps {
 
 export function AskUserRenderer({ event }: AskUserRendererProps) {
   const { input, timestamp } = event
-  const questions = (input.questions ?? []) as unknown as AskUserQuestion[]
+  const inputRecord = input as Record<string, unknown>
+
+  if (!isValidAskUserInput(inputRecord)) {
+    return <PermissionRequestRenderer event={event} />
+  }
+
+  const questions = inputRecord.questions
 
   return (
     <EventCard
@@ -31,8 +32,8 @@ export function AskUserRenderer({ event }: AskUserRendererProps) {
       }
     >
       <div className="space-y-2">
-        {questions.map((q) => (
-          <div key={q.header}>
+        {questions.map((q, index) => (
+          <div key={index}>
             <div className="mb-1 flex items-center gap-2">
               <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
                 {q.header}
