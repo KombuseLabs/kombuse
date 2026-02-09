@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { TicketFilters, CreateTicketInput, UpdateTicketInput } from '@kombuse/types'
+import type { TicketFilters, TicketWithLabels, CreateTicketInput, UpdateTicketInput } from '@kombuse/types'
 import { ticketsApi } from '../lib/api'
 
 export function useTickets(filters?: TicketFilters) {
@@ -53,8 +53,11 @@ export function useMarkTicketViewed() {
   return useMutation({
     mutationFn: ({ id, profileId }: { id: number; profileId: string }) =>
       ticketsApi.markViewed(id, profileId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+    onMutate: ({ id }) => {
+      queryClient.setQueriesData<TicketWithLabels[]>(
+        { queryKey: ['tickets'] },
+        (old) => Array.isArray(old) ? old.map((t) => t.id === id ? { ...t, has_unread: 0 } : t) : old,
+      )
     },
   })
 }

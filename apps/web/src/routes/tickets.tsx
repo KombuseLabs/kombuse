@@ -193,16 +193,20 @@ export function Tickets() {
     setView("tickets");
   }, [projectId, setCurrentProjectId, setView]);
 
+  // Track last-viewed ticket to avoid redundant markViewed calls on reference changes
+  const lastViewedTicketIdRef = useRef<number | null>(null);
+
   // Sync selected ticket to context and mark as viewed
   useEffect(() => {
     setCurrentTicket(selectedTicket ?? null);
     setReplyTarget(null);
     setChatSessionId(null);
 
-    if (selectedTicket && selectedTicket.id > 0) {
+    if (selectedTicket && selectedTicket.id > 0 && selectedTicket.id !== lastViewedTicketIdRef.current) {
+      lastViewedTicketIdRef.current = selectedTicket.id;
       markViewed.mutate({ id: selectedTicket.id, profileId: "user-1" }); // TODO: Get from auth context
     }
-  }, [selectedTicket, setCurrentTicket]);
+  }, [selectedTicket, setCurrentTicket, markViewed]);
 
   const handleReplyToComment = useCallback((comment: CommentWithAuthor) => {
     setReplyTarget({
