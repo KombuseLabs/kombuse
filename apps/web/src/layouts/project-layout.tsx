@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useParams, Link } from "react-router-dom";
 import { Sidebar, SidebarItem } from "@kombuse/ui/components";
 import { useProject } from "@kombuse/ui/hooks";
-import { Ticket, Bot, Folder, MessageSquare, History, Tags } from "lucide-react";
+import { Ticket, Bot, Folder, MessageSquare, History, Tags, Shield } from "lucide-react";
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
@@ -69,6 +69,12 @@ export function ProjectLayout() {
           icon={<History className="size-4" />}
           label="Events"
           to={`/projects/${projectId}/events`}
+          isCollapsed={isCollapsed}
+        />
+        <SidebarItem
+          icon={<Shield className="size-4" />}
+          label="Permissions"
+          to={`/projects/${projectId}/permissions`}
           isCollapsed={isCollapsed}
         />
       </Sidebar>

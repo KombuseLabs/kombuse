@@ -11,6 +11,7 @@ import { Tickets } from "./routes/tickets";
 import { Agents } from "./routes/agents";
 import { Events } from "./routes/events";
 import { Labels } from "./routes/labels";
+import { Permissions } from "./routes/permissions";
 import { ClaudeCodeSessionViewer } from "./routes/claude-code-session";
 import { ProjectLayout } from "./layouts/project-layout";
 
@@ -52,6 +53,7 @@ function AppContent() {
           <Route path="labels" element={<Labels />} />
           <Route path="labels/:labelId" element={<Labels />} />
           <Route path="events" element={<Events />} />
+          <Route path="permissions" element={<Permissions />} />
         </Route>
 
         {/* Global agents (outside project context) */}

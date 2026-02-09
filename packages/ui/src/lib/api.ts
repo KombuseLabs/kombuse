@@ -37,6 +37,8 @@ import type {
   PendingPermission,
   AgentActivityStatus,
   SerializedAgentEvent,
+  PermissionLogEntry,
+  PermissionLogFilters,
 } from '@kombuse/types'
 
 const API_BASE = 'http://localhost:3331/api'
@@ -423,6 +425,23 @@ export const eventsApi = {
     const url = `${API_BASE}/events${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<EventWithActor[]>(response)
+  },
+}
+
+export const permissionsApi = {
+  async list(
+    projectId: string,
+    filters?: Omit<PermissionLogFilters, 'project_id'>
+  ): Promise<PermissionLogEntry[]> {
+    const params = new URLSearchParams()
+    if (filters?.tool_name) params.set('tool_name', filters.tool_name)
+    if (filters?.behavior) params.set('behavior', filters.behavior)
+    if (filters?.limit) params.set('limit', String(filters.limit))
+    if (filters?.offset) params.set('offset', String(filters.offset))
+
+    const url = `${API_BASE}/projects/${projectId}/permissions${params.toString() ? `?${params}` : ''}`
+    const response = await fetch(url)
+    return handleResponse<PermissionLogEntry[]>(response)
   },
 }
 

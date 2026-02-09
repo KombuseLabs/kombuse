@@ -2,6 +2,8 @@ import type {
   SessionEvent,
   SessionEventFilters,
   CreateSessionEventInput,
+  PermissionLogEntry,
+  PermissionLogFilters,
 } from '@kombuse/types'
 import { getDatabase } from './database'
 
@@ -15,6 +17,39 @@ interface RawSessionEvent {
   event_type: string
   payload: string
   created_at: string
+}
+
+/**
+ * Raw type from database for permission log query
+ */
+interface RawPermissionLogEntry {
+  id: number
+  session_id: string
+  requested_at: string
+  request_id: string
+  tool_name: string
+  description: string | null
+  auto_approved: number | null
+  resolved_at: string | null
+  behavior: string | null
+  deny_message: string | null
+}
+
+function mapPermissionLogEntry(row: RawPermissionLogEntry): PermissionLogEntry {
+  return {
+    id: row.id,
+    session_id: row.session_id,
+    requested_at: row.requested_at,
+    request_id: row.request_id,
+    tool_name: row.tool_name,
+    description: row.description,
+    auto_approved: row.auto_approved === 1,
+    behavior: row.auto_approved === 1
+      ? 'allow'
+      : (row.behavior as 'allow' | 'deny' | null),
+    deny_message: row.deny_message,
+    resolved_at: row.resolved_at,
+  }
 }
 
 /**
@@ -189,5 +224,70 @@ export const sessionEventsRepository = {
       .prepare('DELETE FROM session_events WHERE session_id = ?')
       .run(sessionId)
     return result.changes
+  },
+
+  /**
+   * List permission log entries (request + response pairs) for a project.
+   */
+  listPermissions(filters: PermissionLogFilters): PermissionLogEntry[] {
+    const db = getDatabase()
+    const conditions: string[] = [
+      'req.event_type = ?',
+    ]
+    const params: unknown[] = ['permission_request']
+
+    if (filters.project_id) {
+      conditions.push('t.project_id = ?')
+      params.push(filters.project_id)
+    }
+
+    if (filters.tool_name) {
+      conditions.push("json_extract(req.payload, '$.toolName') = ?")
+      params.push(filters.tool_name)
+    }
+
+    if (filters.behavior === 'auto_approved') {
+      conditions.push("json_extract(req.payload, '$.autoApproved') = 1")
+    } else if (filters.behavior === 'allow') {
+      conditions.push("json_extract(req.payload, '$.autoApproved') IS NOT 1")
+      conditions.push("json_extract(res.payload, '$.behavior') = 'allow'")
+    } else if (filters.behavior === 'deny') {
+      conditions.push("json_extract(res.payload, '$.behavior') = 'deny'")
+    }
+
+    const limit = filters.limit ?? 50
+    const offset = filters.offset ?? 0
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    const rows = db
+      .prepare(
+        `
+        SELECT
+          req.id,
+          req.session_id,
+          req.created_at as requested_at,
+          json_extract(req.payload, '$.requestId') as request_id,
+          json_extract(req.payload, '$.toolName') as tool_name,
+          json_extract(req.payload, '$.description') as description,
+          json_extract(req.payload, '$.autoApproved') as auto_approved,
+          res.created_at as resolved_at,
+          json_extract(res.payload, '$.behavior') as behavior,
+          json_extract(res.payload, '$.message') as deny_message
+        FROM session_events req
+        JOIN sessions s ON s.id = req.session_id
+        JOIN tickets t ON t.id = s.ticket_id
+        LEFT JOIN session_events res
+          ON res.session_id = req.session_id
+          AND res.event_type = 'permission_response'
+          AND json_extract(res.payload, '$.requestId') = json_extract(req.payload, '$.requestId')
+        ${whereClause}
+        ORDER BY req.created_at DESC
+        LIMIT ? OFFSET ?
+        `
+      )
+      .all(...params, limit, offset) as RawPermissionLogEntry[]
+
+    return rows.map(mapPermissionLogEntry)
   },
 }

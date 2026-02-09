@@ -60,6 +60,7 @@ export {
   useDeleteProject,
 } from './use-projects'
 export { useEvents } from './use-events'
+export { usePermissions } from './use-permissions'
 export { useTicketTimeline } from './use-ticket-timeline'
 export { useChat } from './use-chat'
 export {

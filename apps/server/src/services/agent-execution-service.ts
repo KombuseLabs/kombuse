@@ -1213,6 +1213,20 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
     message: denyMessage,
   })
 
+  // Persist the permission response as a session event
+  const session = sessionPersistenceService.getSessionByKombuseId(kombuseSessionId)
+  if (session) {
+    sessionPersistenceService.persistEvent(session.id, {
+      type: 'permission_response',
+      eventId: crypto.randomUUID(),
+      backend: backend.name,
+      timestamp: Date.now(),
+      requestId,
+      behavior,
+      message: denyMessage,
+    })
+  }
+
   // Broadcast resolution so all clients can update their UI
   const resolvedMsg: ServerMessage = {
     type: 'agent.permission_resolved',

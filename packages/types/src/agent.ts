@@ -99,6 +99,14 @@ export interface AgentPermissionRequestEvent extends AgentEventBase {
   raw?: unknown
 }
 
+/** Permission response persisted by the server when a user allows/denies a request */
+export interface AgentPermissionResponseEvent extends AgentEventBase {
+  type: 'permission_response'
+  requestId: string
+  behavior: 'allow' | 'deny'
+  message?: string
+}
+
 /** Opaque backend event forwarded for debugging/inspection */
 export interface AgentRawEvent extends AgentEventBase {
   type: 'raw'
@@ -130,6 +138,7 @@ export type AgentEvent =
   | AgentToolUseEvent
   | AgentToolResultEvent
   | AgentPermissionRequestEvent
+  | AgentPermissionResponseEvent
   | AgentRawEvent
   | AgentErrorEvent
   | AgentCompleteEvent
@@ -168,6 +177,8 @@ export type SerializedAgentPermissionRequestEvent = Omit<AgentPermissionRequestE
   raw?: JsonValue
 }
 
+export type SerializedAgentPermissionResponseEvent = AgentPermissionResponseEvent
+
 export type SerializedAgentRawEvent = Omit<AgentRawEvent, 'data'> & {
   data: JsonValue
 }
@@ -186,6 +197,7 @@ export type SerializedAgentEvent =
   | SerializedAgentToolUseEvent
   | SerializedAgentToolResultEvent
   | SerializedAgentPermissionRequestEvent
+  | SerializedAgentPermissionResponseEvent
   | SerializedAgentRawEvent
   | SerializedAgentErrorEvent
   | SerializedAgentCompleteEvent

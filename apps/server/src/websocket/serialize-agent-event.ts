@@ -45,6 +45,9 @@ export function serializeAgentEvent(event: AgentEvent): SerializedAgentEvent {
         raw: toOptionalJsonValue(event.raw),
       }
 
+    case 'permission_response':
+      return { ...event }
+
     case 'raw':
       return {
         ...event,

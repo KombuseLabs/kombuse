@@ -83,3 +83,30 @@ export interface SessionEventFilters {
   limit?: number
   offset?: number
 }
+
+/**
+ * A permission log entry combining a permission request with its response.
+ */
+export interface PermissionLogEntry {
+  id: number
+  session_id: string
+  requested_at: string
+  request_id: string
+  tool_name: string
+  description: string | null
+  auto_approved: boolean
+  behavior: 'allow' | 'deny' | null
+  deny_message: string | null
+  resolved_at: string | null
+}
+
+/**
+ * Filters for listing permission log entries.
+ */
+export interface PermissionLogFilters {
+  project_id?: string
+  tool_name?: string
+  behavior?: 'allow' | 'deny' | 'auto_approved'
+  limit?: number
+  offset?: number
+}
