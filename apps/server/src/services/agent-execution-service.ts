@@ -88,7 +88,7 @@ const CODER_PREAMBLE_TEMPLATE = `${SHARED_PREAMBLE_SECTION}
 const AGENT_TYPE_PRESETS: Record<string, AgentTypePreset> = {
   kombuse: {
     autoApprovedTools: [...KOMBUSE_TOOLS, ...READ_TOOLS],
-    autoApprovedBashCommands: [],
+    autoApprovedBashCommands: ['git status', 'git diff', 'git log', 'git show', 'git branch', 'git rev-parse'],
     preambleTemplate: KOMBUSE_PREAMBLE_TEMPLATE,
   },
   coder: {
@@ -488,6 +488,8 @@ function describeBashCommand(command: string): string {
       'stash': 'Stash changes',
       'clone': 'Clone repository',
       'reset': 'Reset changes',
+      'show': arg2 ? `Show ${arg2}` : 'Show commit',
+      'rev-parse': 'Resolve git reference',
     }
     return gitDesc[sub] ?? `git ${sub}`
   }

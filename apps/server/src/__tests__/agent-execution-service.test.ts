@@ -10,7 +10,7 @@ describe('getTypePreset', () => {
   it('returns kombuse preset for "kombuse"', () => {
     const preset = getTypePreset('kombuse')
     expect(preset.autoApprovedTools).toContain('mcp__kombuse__get_ticket')
-    expect(preset.autoApprovedBashCommands).toHaveLength(0)
+    expect(preset.autoApprovedBashCommands).toContain('git show')
     expect(preset.preambleTemplate).toContain('Kombuse Tools')
   })
 
@@ -93,20 +93,32 @@ describe('shouldAutoApprove', () => {
     expect(shouldAutoApprove('Bash', { command: 'git statusx' }, bashPrefixOnlyPreset)).toBe(false)
   })
 
-  it('rejects Bash when preset has no autoApprovedBashCommands', () => {
+  it('approves git read commands for kombuse preset', () => {
+    expect(shouldAutoApprove('Bash', { command: 'git show abc123' }, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Bash', { command: 'git show' }, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Bash', { command: 'git status' }, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Bash', { command: 'git diff HEAD~1' }, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Bash', { command: 'git log --oneline' }, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Bash', { command: 'git branch -a' }, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Bash', { command: 'git rev-parse HEAD' }, kombusePreset)).toBe(true)
+  })
+
+  it('rejects non-approved Bash commands for kombuse preset', () => {
     expect(shouldAutoApprove('Bash', { command: 'bun test' }, kombusePreset)).toBe(false)
     expect(shouldAutoApprove('Bash', { command: 'ls' }, kombusePreset)).toBe(false)
+    expect(shouldAutoApprove('Bash', { command: 'git push' }, kombusePreset)).toBe(false)
+    expect(shouldAutoApprove('Bash', { command: 'git commit -m "x"' }, kombusePreset)).toBe(false)
   })
 
   it('handles undefined input gracefully for non-approved Bash', () => {
     // Bash is in coder autoApprovedTools, so it's approved regardless of input
     expect(shouldAutoApprove('Bash', undefined, coderPreset)).toBe(true)
-    // But for kombuse where Bash is not auto-approved and no bash commands are allowed:
+    // kombuse has bash commands but undefined input has no command to match
     expect(shouldAutoApprove('Bash', undefined, kombusePreset)).toBe(false)
   })
 
-  it('handles Bash with missing command property for non-approved preset', () => {
-    // kombuse doesn't auto-approve Bash and has no bash commands
+  it('handles Bash with missing command property', () => {
+    // kombuse has bash commands but empty input has no command to match
     expect(shouldAutoApprove('Bash', {}, kombusePreset)).toBe(false)
   })
 })
@@ -131,6 +143,16 @@ describe('preset contents', () => {
     for (const tool of expectedTools) {
       expect(preset.autoApprovedTools, `missing ${tool}`).toContain(tool)
     }
+  })
+
+  it('kombuse preset has git read commands in autoApprovedBashCommands', () => {
+    const preset = getTypePreset('kombuse')
+    expect(preset.autoApprovedBashCommands).toContain('git status')
+    expect(preset.autoApprovedBashCommands).toContain('git diff')
+    expect(preset.autoApprovedBashCommands).toContain('git log')
+    expect(preset.autoApprovedBashCommands).toContain('git show')
+    expect(preset.autoApprovedBashCommands).toContain('git branch')
+    expect(preset.autoApprovedBashCommands).toContain('git rev-parse')
   })
 
   it('kombuse preset does not include write tools', () => {
@@ -186,7 +208,7 @@ describe('preset contents', () => {
 })
 
 describe('presetToAllowedTools', () => {
-  it('converts kombuse preset to allowed tools list', () => {
+  it('converts kombuse preset to allowed tools list with git Bash patterns', () => {
     const preset = getTypePreset('kombuse')
     const tools = presetToAllowedTools(preset)
 
@@ -194,9 +216,15 @@ describe('presetToAllowedTools', () => {
     expect(tools).toContain('Grep')
     expect(tools).toContain('Glob')
     expect(tools).toContain('Read')
-    // kombuse has no Bash access
+    // kombuse has no blanket Bash access
     expect(tools).not.toContain('Bash')
-    expect(tools.some(t => t.startsWith('Bash('))).toBe(false)
+    // but has Bash(git ... *) patterns for git read commands
+    expect(tools).toContain('Bash(git show *)')
+    expect(tools).toContain('Bash(git status *)')
+    expect(tools).toContain('Bash(git diff *)')
+    expect(tools).toContain('Bash(git log *)')
+    expect(tools).toContain('Bash(git branch *)')
+    expect(tools).toContain('Bash(git rev-parse *)')
   })
 
   it('converts coder preset - Bash in autoApprovedTools covers all commands', () => {
