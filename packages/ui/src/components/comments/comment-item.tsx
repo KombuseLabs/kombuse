@@ -11,7 +11,8 @@ import { cn } from '../../lib/utils'
 import { attachmentsApi } from '../../lib/api'
 import { useSessionByKombuseId } from '../../hooks/use-sessions'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
-import { useFileStaging, formatFileSize } from '../../hooks/use-file-staging'
+import { useFileStaging } from '../../hooks/use-file-staging'
+import { StagedFilePreviews } from '../staged-file-previews'
 import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare, Paperclip } from 'lucide-react'
 import { getAvatarIcon } from '../agents/avatar-picker'
 
@@ -224,29 +225,7 @@ function CommentItem({
             autoFocus
           />
           <AutocompletePortal />
-          {stagedFiles.length > 0 && (
-            <div className="flex gap-2 px-1 py-1 mt-1 overflow-x-auto">
-              {stagedFiles.map((file, index) => (
-                <div key={`${file.name}-${index}`} className="relative shrink-0 group">
-                  <img
-                    src={previewUrls[index]}
-                    alt={file.name}
-                    className="size-16 rounded object-cover border"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeFile(index)}
-                    className="absolute -top-1 -right-1 size-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="size-2.5" />
-                  </button>
-                  <div className="text-[10px] text-muted-foreground truncate max-w-16 mt-0.5">
-                    {formatFileSize(file.size)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <StagedFilePreviews stagedFiles={stagedFiles} previewUrls={previewUrls} onRemove={removeFile} className="mt-1" />
           <input
             ref={fileInputRef}
             type="file"
