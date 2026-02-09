@@ -440,6 +440,128 @@ describe('commentsRepository', () => {
       expect(events).toHaveLength(1)
       expect(events[0]?.actor_type, 'Agent-authored mention should have actor_type "agent"').toBe('agent')
     })
+
+    describe('cross-reference events', () => {
+      it('should create a cross-reference event on the mentioned ticket timeline', () => {
+        const targetTicket = ticketsRepository.create({
+          title: 'Target Ticket',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+
+        db.prepare('DELETE FROM events').run()
+
+        commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: `See also #${targetTicket.id}`,
+        })
+
+        const targetEvents = eventsRepository.getByTicket(targetTicket.id)
+        const crossRefEvents = targetEvents.filter((e) => {
+          const payload = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+          return e.event_type === 'mention.created' && payload.mention_type === 'ticket_cross_reference'
+        })
+
+        expect(crossRefEvents).toHaveLength(1)
+        const payload = typeof crossRefEvents[0]!.payload === 'string'
+          ? JSON.parse(crossRefEvents[0]!.payload)
+          : crossRefEvents[0]!.payload
+        expect(payload.source_ticket_id).toBe(testTicketId)
+        expect(payload.mention_text).toBe(`#${testTicketId}`)
+      })
+
+      it('should NOT create a cross-reference event for self-referencing ticket mentions', () => {
+        db.prepare('DELETE FROM events').run()
+
+        commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: `Referencing myself #${testTicketId}`,
+        })
+
+        const events = eventsRepository.list({ event_type: 'mention.created' })
+        expect(events, 'Only the outbound mention event should exist').toHaveLength(1)
+        expect(events[0]!.ticket_id).toBe(testTicketId)
+
+        const payload = typeof events[0]!.payload === 'string'
+          ? JSON.parse(events[0]!.payload)
+          : events[0]!.payload
+        expect(payload.mention_type).toBe('ticket')
+      })
+
+      it('should create cross-reference events for multiple mentioned tickets', () => {
+        const target1 = ticketsRepository.create({
+          title: 'Target 1',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+        const target2 = ticketsRepository.create({
+          title: 'Target 2',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+
+        db.prepare('DELETE FROM events').run()
+
+        commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: `Related to #${target1.id} and #${target2.id}`,
+        })
+
+        const target1CrossRefs = eventsRepository.getByTicket(target1.id).filter((e) => {
+          const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+          return p.mention_type === 'ticket_cross_reference'
+        })
+        const target2CrossRefs = eventsRepository.getByTicket(target2.id).filter((e) => {
+          const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+          return p.mention_type === 'ticket_cross_reference'
+        })
+
+        expect(target1CrossRefs).toHaveLength(1)
+        expect(target2CrossRefs).toHaveLength(1)
+      })
+
+      it('should create cross-reference events only for newly added mentions on comment edit', () => {
+        const target1 = ticketsRepository.create({
+          title: 'Target Edit 1',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+        const target2 = ticketsRepository.create({
+          title: 'Target Edit 2',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+
+        const comment = commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: `See #${target1.id}`,
+        })
+
+        db.prepare('DELETE FROM events').run()
+
+        commentsRepository.update(comment.id, {
+          body: `See #${target1.id} and also #${target2.id}`,
+        })
+
+        // target1 should NOT get a new cross-reference (already mentioned before edit)
+        const target1CrossRefs = eventsRepository.getByTicket(target1.id).filter((e) => {
+          const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+          return p.mention_type === 'ticket_cross_reference'
+        })
+        expect(target1CrossRefs, 'Pre-existing mention should not create new cross-reference').toHaveLength(0)
+
+        // target2 SHOULD get a cross-reference (newly added)
+        const target2CrossRefs = eventsRepository.getByTicket(target2.id).filter((e) => {
+          const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+          return p.mention_type === 'ticket_cross_reference'
+        })
+        expect(target2CrossRefs, 'Newly added mention should create cross-reference').toHaveLength(1)
+      })
+    })
   })
 
   /*

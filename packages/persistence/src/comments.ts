@@ -324,6 +324,29 @@ export const commentsRepository = {
             mention_text: `#${mentionedTicketId}`,
           },
         })
+
+        // Cross-reference event on the MENTIONED ticket's timeline
+        if (mentionedTicketId !== payload.ticket_id) {
+          const mentionedTicketInfo = db
+            .prepare('SELECT project_id FROM tickets WHERE id = ?')
+            .get(mentionedTicketId) as { project_id: string } | undefined
+
+          eventsRepository.create({
+            event_type: 'mention.created',
+            project_id: mentionedTicketInfo?.project_id,
+            ticket_id: mentionedTicketId,
+            comment_id: commentId,
+            actor_id: payload.author_id,
+            actor_type: actorType,
+            kombuse_session_id: payload.kombuse_session_id,
+            payload: {
+              mention_type: 'ticket_cross_reference',
+              source_ticket_id: payload.ticket_id,
+              source_comment_id: commentId,
+              mention_text: `#${payload.ticket_id}`,
+            },
+          })
+        }
       }
 
       // 5. Create comment.added event
@@ -384,6 +407,14 @@ export const commentsRepository = {
 
       // If body changed, re-parse mentions
       if (input.body !== undefined) {
+        // Capture old ticket mentions before re-parsing
+        const oldMentions = mentionsRepository.getByComment(id)
+        const oldTicketMentionIds = new Set(
+          oldMentions
+            .filter((m) => m.mention_type === 'ticket' && m.mentioned_ticket_id !== null)
+            .map((m) => m.mentioned_ticket_id!)
+        )
+
         // Delete old mentions
         mentionsRepository.deleteByComment(id)
 
@@ -444,11 +475,44 @@ export const commentsRepository = {
           })
         }
 
-        // Create comment.edited event
-        if (comment && ticket) {
+        // Cross-reference events for newly added ticket mentions
+        if (comment) {
           const authorProfile = profilesRepository.get(existingRow.author_id)
           const editActorType: ActorType =
             authorProfile?.type === 'agent' ? 'agent' : 'user'
+
+          for (const mentionedTicketId of mentions.ticketIds) {
+            if (oldTicketMentionIds.has(mentionedTicketId)) continue
+            if (mentionedTicketId === comment.ticket_id) continue
+
+            const mentionedTicketInfo = db
+              .prepare('SELECT id, project_id FROM tickets WHERE id = ?')
+              .get(mentionedTicketId) as { id: number; project_id: string } | undefined
+
+            if (!mentionedTicketInfo) continue
+
+            eventsRepository.create({
+              event_type: 'mention.created',
+              project_id: mentionedTicketInfo.project_id,
+              ticket_id: mentionedTicketId,
+              comment_id: id,
+              actor_id: existingRow.author_id,
+              actor_type: editActorType,
+              kombuse_session_id: existingRow.kombuse_session_id ?? undefined,
+              payload: {
+                mention_type: 'ticket_cross_reference',
+                source_ticket_id: comment.ticket_id,
+                source_comment_id: id,
+                mention_text: `#${comment.ticket_id}`,
+              },
+            })
+          }
+        }
+
+        // Create comment.edited event
+        if (comment && ticket) {
+          const editActorType: ActorType =
+            (profilesRepository.get(existingRow.author_id))?.type === 'agent' ? 'agent' : 'user'
           eventsRepository.create({
             event_type: 'comment.edited',
             project_id: ticket.project_id,

@@ -55,14 +55,47 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
 
   const actorLabel = event.actor?.name || event.actor_id || event.actor_type
 
-  // Parse label name from payload for label events
+  // Parse payload for richer event labels
   let eventLabel = config.label
+  let eventSuffix: React.ReactNode = null
+
   if (event.event_type === 'label.added' || event.event_type === 'label.removed') {
     try {
       const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
       if (payload?.label_name) {
         const action = event.event_type === 'label.added' ? 'added' : 'removed'
         eventLabel = `${action} label ${payload.label_name}`
+      }
+    } catch {
+      // Fall back to default label
+    }
+  }
+
+  if (event.event_type === 'mention.created') {
+    try {
+      const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
+      if (payload?.mention_type === 'ticket_cross_reference' && payload?.source_ticket_id) {
+        const ticketHref = projectId
+          ? `/projects/${projectId}/tickets/${payload.source_ticket_id}`
+          : `/tickets/${payload.source_ticket_id}`
+        eventLabel = 'mentioned this ticket in'
+        eventSuffix = (
+          <Link to={ticketHref} className="font-medium text-primary hover:underline">
+            {` #${payload.source_ticket_id}`}
+          </Link>
+        )
+      } else if (payload?.mention_type === 'ticket' && payload?.mentioned_ticket_id) {
+        const ticketHref = projectId
+          ? `/projects/${projectId}/tickets/${payload.mentioned_ticket_id}`
+          : `/tickets/${payload.mentioned_ticket_id}`
+        eventLabel = 'mentioned'
+        eventSuffix = (
+          <Link to={ticketHref} className="font-medium text-primary hover:underline">
+            {` #${payload.mentioned_ticket_id}`}
+          </Link>
+        )
+      } else if (payload?.mention_type === 'profile' && payload?.mention_text) {
+        eventLabel = `mentioned ${payload.mention_text}`
       }
     } catch {
       // Fall back to default label
@@ -122,7 +155,7 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
             <TooltipContent>View session</TooltipContent>
           </Tooltip>
         )}
-        {' '}{eventLabel}
+        {' '}{eventLabel}{eventSuffix}
       </span>
       <span className="text-xs">
         {new Date(event.created_at).toLocaleString()}
