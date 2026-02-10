@@ -276,6 +276,51 @@ describe('startAgentChatSession agent resolution from session context', () => {
     ).toEqual(expectedTools)
   })
 
+  it('includes agent role prompt in system prompt on resume', async () => {
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
+
+    const agentWithRole = {
+      ...coderAgent,
+      system_prompt: 'You are a read-only ticket analyzer. Do not modify any files.',
+    }
+
+    const { backend, getCapturedOptions } = createMockBackend()
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': agentWithRole })
+
+    // Simulate a resumed session by returning an existing backend_session_id
+    ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'session-1',
+      backend_session_id: 'backend-abc',
+      ticket_id: 42,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'what about the failing tests?',
+        kombuseSessionId: 'trigger-session-abc',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const systemPrompt = getCapturedOptions()?.systemPrompt
+    expect(
+      systemPrompt,
+      'system prompt should be defined on resume'
+    ).toBeDefined()
+    expect(
+      systemPrompt,
+      'system prompt should contain the agent role prompt'
+    ).toContain('You are a read-only ticket analyzer')
+    expect(
+      systemPrompt,
+      'system prompt should include the Agent Role heading'
+    ).toContain('## Agent Role')
+  })
+
   it('does not use disabled agent from invocation lookup', async () => {
     ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
 

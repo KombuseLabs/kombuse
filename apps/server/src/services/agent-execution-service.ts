@@ -1146,6 +1146,13 @@ export function startAgentChatSession(
       kombuse_session_id: appSessionId,
     }
     resolvedSystemPrompt = renderTemplate(preset.preambleTemplate, preambleContext)
+
+    // On resumed sessions, re-inject the agent's role prompt into the system prompt
+    // so it has system-level authority rather than being buried in conversation history.
+    if (agent.system_prompt && resumeSessionId) {
+      const renderedRolePrompt = renderTemplate(agent.system_prompt, preambleContext)
+      resolvedSystemPrompt += `\n\n## Agent Role\n${renderedRolePrompt}`
+    }
   }
 
   // Compute allowed tools for subprocess-level pre-approval
