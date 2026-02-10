@@ -302,18 +302,21 @@ export function ChatProvider({
     setIsLoading(false)
   }, [])
 
+  const backendSessionId = sessionData?.backend_session_id ?? null
+
   const value = useMemo(
     () => ({
       events,
       isLoading,
       isConnected,
       kombuseSessionId: effectiveKombuseSessionId,
+      backendSessionId,
       pendingPermission,
       send,
       respondToPermission,
       reset,
     }),
-    [events, isLoading, isConnected, effectiveKombuseSessionId, pendingPermission, send, respondToPermission, reset]
+    [events, isLoading, isConnected, effectiveKombuseSessionId, backendSessionId, pendingPermission, send, respondToPermission, reset]
   )
 
   return <ChatCtx.Provider value={value}>{children}</ChatCtx.Provider>

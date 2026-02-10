@@ -518,6 +518,7 @@ import type { ViewMode } from '@kombuse/ui/components'
 - `viewMode`: `'clean' | 'normal'` — controls display mode toggle state
 - `onViewModeChange`: Callback when toggle is switched
 - `sessionId`: Optional kombuse session ID string (e.g. `"chat-abc123..."`) — displayed as a truncated monospace label with click-to-copy for debugging
+- `backendSessionId`: Optional Claude backend session ID — displayed as a truncated monospace label with click-to-copy for debugging
 
 `SessionViewer` props:
 - `events`: `SerializedAgentEvent[]` to render

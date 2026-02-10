@@ -57,6 +57,7 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         sessionId={ctx?.kombuseSessionId}
+        backendSessionId={ctx?.backendSessionId}
       />
       <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} viewMode={viewMode} className="flex-1" />
       {pendingPermission && respondToPermission && (

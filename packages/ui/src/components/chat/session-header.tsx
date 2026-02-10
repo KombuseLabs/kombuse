@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '../../lib/utils'
 import { Label } from '../../base/label'
@@ -17,29 +17,39 @@ interface SessionHeaderProps {
   onViewModeChange?: (mode: ViewMode) => void
   /** Kombuse session ID shown for debugging (e.g. "chat-abc123") */
   sessionId?: string | null
+  /** Claude backend session ID shown for debugging */
+  backendSessionId?: string | null
   className?: string
 }
 
-function SessionHeader({ isConnected = true, isLoading = false, eventCount, lastEventTime, viewMode = 'normal', onViewModeChange, sessionId, className }: SessionHeaderProps) {
-  const [copied, setCopied] = useState(false)
+/** Truncate to prefix + first 8 chars of the UUID portion */
+function truncateId(id: string): string {
+  const dashIndex = id.indexOf('-')
+  if (dashIndex === -1) return id.slice(0, 12)
+  const prefix = id.slice(0, dashIndex + 1)
+  return prefix + id.slice(dashIndex + 1, dashIndex + 9)
+}
 
-  const handleCopySessionId = () => {
-    if (!sessionId) return
-    void navigator.clipboard.writeText(sessionId).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+function SessionHeader({ isConnected = true, isLoading = false, eventCount, lastEventTime, viewMode = 'normal', onViewModeChange, sessionId, backendSessionId, className }: SessionHeaderProps) {
+  const [copiedId, setCopiedId] = useState<'session' | 'backend' | null>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    }
+  }, [])
+
+  const handleCopy = (value: string, which: 'session' | 'backend') => {
+    void navigator.clipboard.writeText(value).then(() => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+      setCopiedId(which)
+      copyTimeoutRef.current = setTimeout(() => setCopiedId(null), 1500)
     })
   }
 
-  // Truncate to prefix + first 8 chars of the UUID portion
-  const truncatedSessionId = sessionId
-    ? (() => {
-        const dashIndex = sessionId.indexOf('-')
-        if (dashIndex === -1) return sessionId.slice(0, 12)
-        const prefix = sessionId.slice(0, dashIndex + 1)
-        return prefix + sessionId.slice(dashIndex + 1, dashIndex + 9)
-      })()
-    : null
+  const truncatedSessionId = sessionId ? truncateId(sessionId) : null
+  const truncatedBackendId = backendSessionId ? truncateId(backendSessionId) : null
 
   return (
     <div className={cn('flex items-center gap-3 px-4 py-2 border-b text-sm text-muted-foreground', className)}>
@@ -85,11 +95,25 @@ function SessionHeader({ isConnected = true, isLoading = false, eventCount, last
           <div className="w-px h-4 bg-border" />
           <button
             type="button"
-            onClick={handleCopySessionId}
+            onClick={() => handleCopy(sessionId!, 'session')}
             title={`Click to copy: ${sessionId}`}
             className="font-mono text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors cursor-pointer"
           >
-            {copied ? 'Copied!' : truncatedSessionId}
+            {copiedId === 'session' ? 'Copied!' : truncatedSessionId}
+          </button>
+        </>
+      )}
+
+      {truncatedBackendId && (
+        <>
+          <div className="w-px h-4 bg-border" />
+          <button
+            type="button"
+            onClick={() => handleCopy(backendSessionId!, 'backend')}
+            title={`Click to copy: ${backendSessionId}`}
+            className="font-mono text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors cursor-pointer"
+          >
+            {copiedId === 'backend' ? 'Copied!' : truncatedBackendId}
           </button>
         </>
       )}

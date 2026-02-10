@@ -10,6 +10,8 @@ export interface ChatContextValue {
   isConnected: boolean
   /** Current app session ID (set after first message) */
   kombuseSessionId: string | null
+  /** Claude backend session ID (available after session is fetched) */
+  backendSessionId: string | null
   /** Pending permission request awaiting user response */
   pendingPermission: SerializedAgentPermissionRequestEvent | null
   /** Send a message to the agent */
