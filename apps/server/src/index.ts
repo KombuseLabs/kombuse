@@ -16,6 +16,7 @@ import {
   registerTicketTools,
   registerDatabaseTools,
   registerApiTools,
+  registerAgentTools,
   type ApiRouteInfo,
 } from "@kombuse/mcp";
 import {
@@ -147,6 +148,7 @@ fastify.register(claudeCodeRoutes, { prefix: "/api" });
     registerTicketTools(mcpServer);
     registerDatabaseTools(mcpServer);
     registerApiTools(mcpServer, fastify, apiRoutes);
+    registerAgentTools(mcpServer);
     await mcpServer.server.connect(transport);
 
     await transport.handleRequest(request.raw, reply.raw, request.body);

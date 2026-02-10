@@ -27,6 +27,9 @@ const KOMBUSE_TOOLS: string[] = [
   'mcp__kombuse__describe_table',
   'mcp__kombuse__list_api_endpoints',
   'mcp__kombuse__call_api',
+  'mcp__kombuse__list_agents',
+  'mcp__kombuse__create_agent',
+  'mcp__kombuse__update_agent',
 ]
 
 const READ_TOOLS: string[] = ['Grep', 'Glob', 'Read']
@@ -56,6 +59,9 @@ You have these MCP tools for ticket communication:
 - list_tables / describe_table — explore the database schema
 - list_api_endpoints — discover available REST API endpoints (method + path)
 - call_api — call a GET endpoint on the Kombuse API (in-process, no curl needed)
+- list_agents — list agents with optional filters
+- create_agent — create a new agent
+- update_agent — update an existing agent's prompt, permissions, config, or enabled state
 
 ## Communication
 - Tickets are the primary coordination channel. Read the ticket and all comments before acting.
@@ -451,6 +457,9 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'mcp__kombuse__describe_table': 'Describe a database table',
   'mcp__kombuse__list_api_endpoints': 'List available API endpoints',
   'mcp__kombuse__call_api': 'Call a Kombuse API endpoint (GET)',
+  'mcp__kombuse__list_agents': 'List agents',
+  'mcp__kombuse__create_agent': 'Create a new agent',
+  'mcp__kombuse__update_agent': 'Update an agent',
   // Common Claude Code tools
   'Bash': 'Run a shell command',
   'Read': 'Read a file',
