@@ -513,6 +513,34 @@ import { PermissionEditor, PermissionRuleForm, PermissionRuleList, PermissionRul
 - `onDelete`: `() => void` — delete callback
 - `className`: Optional class name
 
+### Agent Components
+
+```typescript
+import { AgentCard, AgentDetail } from '@kombuse/ui/components'
+
+// Card for agent list view — shows name, avatar, toggle, and agent ID
+<AgentCard
+  agent={agent}
+  profile={profile}
+  isSelected={isSelected}
+  onClick={() => handleSelect(agent.id)}
+  onToggle={(enabled) => handleToggle(agent.id, enabled)}
+  isToggling={false}
+/>
+
+// Detail panel — shows agent config with copyable agent ID in the header
+<AgentDetail
+  agent={agent}
+  profile={profile}
+  triggers={triggers}
+  onClose={() => ...}
+  onSave={(updates) => ...}
+  onDelete={() => ...}
+/>
+```
+
+Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users can easily reference it in trigger conditions. `AgentDetail` includes a click-to-copy button next to the ID.
+
 ### Chat Components
 
 ```typescript

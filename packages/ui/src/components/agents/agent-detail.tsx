@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Agent, AgentTrigger, Permission, Profile, UpdateAgentInput, UpdateProfileInput } from '@kombuse/types'
-import { X, Trash2, Save } from 'lucide-react'
+import { X, Trash2, Save, Copy, Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
@@ -60,6 +60,23 @@ function AgentDetail({
   const [systemPrompt, setSystemPrompt] = useState(agent.system_prompt)
   const [permissions, setPermissions] = useState<Permission[]>(agent.permissions)
 
+  const [idCopied, setIdCopied] = useState(false)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    }
+  }, [])
+
+  const handleCopyId = () => {
+    void navigator.clipboard.writeText(agent.id).then(() => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+      setIdCopied(true)
+      copyTimeoutRef.current = setTimeout(() => setIdCopied(false), 1500)
+    })
+  }
+
   const hasChanges =
     name !== profile.name ||
     description !== (profile.description || '') ||
@@ -96,16 +113,36 @@ function AgentDetail({
             </div>
             <div>
               <CardTitle className="text-xl">{profile.name}</CardTitle>
-              <span
-                className={cn(
-                  'text-xs px-2 py-0.5 rounded-full',
-                  agent.is_enabled
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                )}
-              >
-                {agent.is_enabled ? 'Enabled' : 'Disabled'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'text-xs px-2 py-0.5 rounded-full',
+                    agent.is_enabled
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                  )}
+                >
+                  {agent.is_enabled ? 'Enabled' : 'Disabled'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyId}
+                  title={`Click to copy: ${agent.id}`}
+                  className="flex items-center gap-1 font-mono text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors cursor-pointer"
+                >
+                  {idCopied ? (
+                    <>
+                      <Check className="size-3" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="size-3" />
+                      {agent.id}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
