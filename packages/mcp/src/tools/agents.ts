@@ -138,7 +138,7 @@ export function registerAgentTools(server: McpServer): void {
     'create_agent',
     {
       description:
-        'Create a new agent. The agent ID must reference an existing profile with type "agent". Returns the created agent.',
+        'Create a new agent. Returns the created agent.',
       inputSchema: {
         id: z
           .string()

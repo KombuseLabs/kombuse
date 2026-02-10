@@ -148,18 +148,25 @@ describe('create_agent', () => {
     expect(data.is_enabled).toBe(false)
   })
 
-  it('should return error when profile does not exist', async () => {
+  it('should auto-create profile when it does not exist', async () => {
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'nonexistent',
-        system_prompt: 'Prompt',
+        id: 'auto-profile-agent',
+        system_prompt: 'Auto-created agent',
       },
     })
 
-    expect(result.isError).toBe(true)
-    const data = parseContent(result) as { error: string }
-    expect(data.error).toBeDefined()
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as Agent
+    expect(data.id).toBe('auto-profile-agent')
+    expect(data.system_prompt).toBe('Auto-created agent')
+
+    // Verify profile was auto-created
+    const profile = profilesRepository.get('auto-profile-agent')
+    expect(profile).toBeDefined()
+    expect(profile!.type).toBe('agent')
+    expect(profile!.name).toBe('auto-profile-agent')
   })
 
   it('should return error when profile is not type agent', async () => {

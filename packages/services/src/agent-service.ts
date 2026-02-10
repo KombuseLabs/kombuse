@@ -112,10 +112,14 @@ export class AgentService implements IAgentService {
   }
 
   createAgent(input: CreateAgentInput): Agent {
-    // Verify profile exists and is of type 'agent'
-    const profile = profilesRepository.get(input.id)
+    let profile = profilesRepository.get(input.id)
     if (!profile) {
-      throw new Error(`Profile ${input.id} not found. Create a profile first.`)
+      // Auto-create agent profile
+      profile = profilesRepository.create({
+        id: input.id,
+        type: 'agent',
+        name: input.name || input.id,
+      })
     }
     if (profile.type !== 'agent') {
       throw new Error(`Profile ${input.id} is not of type 'agent'`)

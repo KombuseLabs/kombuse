@@ -97,8 +97,10 @@ export interface Agent {
  * Input for creating an agent
  */
 export interface CreateAgentInput {
-  /** Must reference an existing profile with type='agent' */
+  /** Profile ID for the agent. A profile will be auto-created if one doesn't exist. */
   id: string
+  /** Display name for the agent profile (defaults to id if not provided) */
+  name?: string
   system_prompt: string
   permissions?: Permission[]
   config?: AgentConfig
