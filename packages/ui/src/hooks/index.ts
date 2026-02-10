@@ -65,7 +65,6 @@ export { useTicketTimeline } from './use-ticket-timeline'
 export { useChat } from './use-chat'
 export {
   useSessions,
-  useSession,
   useSessionByKombuseId,
   useSessionEvents,
   useCreateSession,

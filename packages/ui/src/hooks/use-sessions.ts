@@ -9,14 +9,6 @@ export function useSessions(filters?: SessionFilters) {
   })
 }
 
-export function useSession(id: string | null) {
-  return useQuery({
-    queryKey: ['sessions', id],
-    queryFn: () => sessionsApi.get(id!),
-    enabled: !!id,
-  })
-}
-
 export function useSessionByKombuseId(kombuseSessionId: string | null) {
   return useQuery({
     queryKey: ['sessions', 'by-kombuse', kombuseSessionId],

@@ -389,7 +389,7 @@ import { SessionItem, SessionList } from '@kombuse/ui/components'
 <SessionList
   sessions={sessions}
   selectedSessionId={selectedId}
-  onSessionClick={(session) => navigate(`/chats/${session.id}`)}
+  onSessionClick={(session) => navigate(`/chats/${session.kombuse_session_id}`)}
   onSessionDelete={(session) => deleteSession(session.id)}
   isSessionPendingPermission={(id) => hasPendingPermission(id)}
   isLoading={isLoading}
