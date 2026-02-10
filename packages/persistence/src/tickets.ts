@@ -20,7 +20,7 @@ function sanitizeFtsQuery(input: string): string | null {
     .split(/\s+/)
     .filter((t) => t.length > 0 && !FTS5_KEYWORDS.has(t.toUpperCase()))
   if (tokens.length === 0) return null
-  return tokens.map((t) => `"${t}"`).join(' ')
+  return tokens.map((t) => `"${t}"*`).join(' ')
 }
 
 /**

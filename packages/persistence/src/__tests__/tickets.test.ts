@@ -210,6 +210,18 @@ describe('ticketsRepository', () => {
       expect(results[0]?.title).toBe('Fix the login bug')
     })
 
+    it('should match partial-word prefixes (FTS5 prefix matching)', () => {
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Permission settings need update',
+      })
+
+      const results = ticketsRepository.list({ search: 'perm' })
+
+      expect(results, 'Prefix "perm" should match "Permission"').toHaveLength(1)
+      expect(results[0]?.title).toBe('Permission settings need update')
+    })
+
     it('should return empty results for non-matching search', () => {
       const results = ticketsRepository.list({ search: 'nonexistentxyz' })
 
