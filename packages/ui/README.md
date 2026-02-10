@@ -390,25 +390,25 @@ import { SessionItem, SessionList } from '@kombuse/ui/components'
   sessions={sessions}
   selectedSessionId={selectedId}
   onSessionClick={(session) => navigate(`/chats/${session.kombuse_session_id}`)}
-  onSessionDelete={(session) => deleteSession(session.id)}
+  onSessionDelete={(session) => deleteSession(session.kombuse_session_id!)}
   isSessionPendingPermission={(id) => hasPendingPermission(id)}
   isLoading={isLoading}
 />
 ```
 
 `SessionItem` props:
-- `session`: `Session` object
+- `session`: `PublicSession` object
 - `isSelected`: Whether this item is visually selected
 - `onClick`: Click handler
 - `onDelete`: Delete handler (shows confirmation dialog)
 - `hasPendingPermission`: Shows orange pulsing indicator when true
 
 `SessionList` props:
-- `sessions`: `Session[]` to render
+- `sessions`: `PublicSession[]` to render
 - `className`: Optional class name
 - `selectedSessionId`: ID of the currently selected session
-- `onSessionClick`: `(session: Session) => void`
-- `onSessionDelete`: `(session: Session) => void`
+- `onSessionClick`: `(session: PublicSession) => void`
+- `onSessionDelete`: `(session: PublicSession) => void`
 - `isSessionPendingPermission`: `(kombuseSessionId: string | null) => boolean`
 - `isLoading`: Shows loading state
 - `emptyMessage`: Custom empty state text (default: "No sessions yet")
