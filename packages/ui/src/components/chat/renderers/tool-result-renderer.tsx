@@ -35,16 +35,18 @@ function formatResultContent(content: string | JsonValue[]): string {
 }
 
 export interface ToolResultRendererProps {
-  toolUse: SerializedAgentToolUseEvent
+  toolUse?: SerializedAgentToolUseEvent
   result: SerializedAgentToolResultEvent
 }
 
 export function ToolResultRenderer({ toolUse, result }: ToolResultRendererProps) {
-  const { name, input, timestamp } = toolUse
-  const description = typeof input.description === 'string' ? input.description : null
-  const command = typeof input.command === 'string' ? input.command : null
+  const name = toolUse?.name ?? 'tool_result'
+  const input = toolUse?.input
+  const timestamp = toolUse?.timestamp ?? result.timestamp
+  const description = input && typeof input.description === 'string' ? input.description : null
+  const command = input && typeof input.command === 'string' ? input.command : null
 
-  const inputDisplay = command ?? JSON.stringify(input, null, 2)
+  const inputDisplay = command ?? (input ? JSON.stringify(input, null, 2) : null)
   const outputContent = formatResultContent(result.content)
 
   const isError = result.isError ?? false
@@ -66,14 +68,16 @@ export function ToolResultRenderer({ toolUse, result }: ToolResultRendererProps)
       }
     >
       <div className="space-y-2">
-        <div className="flex items-start gap-2">
-          <span className="w-8 shrink-0 pt-1.5 text-right font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            in
-          </span>
-          <pre className="flex-1 overflow-x-auto whitespace-pre-wrap rounded bg-muted/50 p-2 font-mono text-xs">
-            {inputDisplay}
-          </pre>
-        </div>
+        {inputDisplay && (
+          <div className="flex items-start gap-2">
+            <span className="w-8 shrink-0 pt-1.5 text-right font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              in
+            </span>
+            <pre className="flex-1 overflow-x-auto whitespace-pre-wrap rounded bg-muted/50 p-2 font-mono text-xs">
+              {inputDisplay}
+            </pre>
+          </div>
+        )}
 
         <div className="flex items-start gap-2">
           <span className="w-8 shrink-0 pt-1.5 text-right font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

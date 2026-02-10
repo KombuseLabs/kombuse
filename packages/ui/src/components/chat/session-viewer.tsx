@@ -6,7 +6,7 @@ import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { isValidAskUserInput } from './ask-user-types'
-import { AskUserRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
+import { AddCommentRenderer, AskUserRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GetTicketRenderer, GlobRenderer, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, UpdateTicketRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 const SCROLL_THRESHOLD = 100
@@ -97,6 +97,16 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           return <ThinkingRenderer key={event.eventId} event={event} />
         }
 
+        if (event.type === 'raw' && event.sourceType === 'process_spawn') {
+          const pid = (event.data as Record<string, unknown> | null)?.pid
+          return (
+            <div key={event.eventId} className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
+              <span>Process started{pid != null && <span className="font-mono"> (pid {String(pid)})</span>}</span>
+              <span className="ml-auto shrink-0 font-mono text-[10px]">{formatEventTime(event.timestamp)}</span>
+            </div>
+          )
+        }
+
         if (event.type === 'raw') {
           return <RawRenderer key={event.eventId} event={event} />
         }
@@ -125,6 +135,9 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (event.name === 'Edit') {
             return <EditRenderer key={event.eventId} toolUse={event} />
           }
+          if (event.name === 'Glob') {
+            return <GlobRenderer key={event.eventId} toolUse={event} />
+          }
           if (event.name === 'Grep') {
             return <GrepRenderer key={event.eventId} toolUse={event} />
           }
@@ -136,6 +149,15 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           }
           if (event.name === 'TodoWrite') {
             return <TodoRenderer key={event.eventId} toolUse={event} />
+          }
+          if (event.name === 'mcp__kombuse__add_comment') {
+            return <AddCommentRenderer key={event.eventId} toolUse={event} />
+          }
+          if (event.name === 'mcp__kombuse__get_ticket') {
+            return <GetTicketRenderer key={event.eventId} toolUse={event} />
+          }
+          if (event.name === 'mcp__kombuse__update_ticket') {
+            return <UpdateTicketRenderer key={event.eventId} toolUse={event} />
           }
           return <ToolUseRenderer key={event.eventId} event={event} />
         }
@@ -156,6 +178,9 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
             if (toolUse.name === 'Edit') {
               return <EditRenderer key={event.eventId} toolUse={toolUse} result={event} />
             }
+            if (toolUse.name === 'Glob') {
+              return <GlobRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
             if (toolUse.name === 'Grep') {
               return <GrepRenderer key={event.eventId} toolUse={toolUse} result={event} />
             }
@@ -168,14 +193,24 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
             if (toolUse.name === 'TodoWrite') {
               return <TodoRenderer key={event.eventId} toolUse={toolUse} />
             }
-            return (
-              <ToolResultRenderer
-                key={event.eventId}
-                toolUse={toolUse}
-                result={event}
-              />
-            )
+            if (toolUse.name === 'mcp__kombuse__add_comment') {
+              return <AddCommentRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
+            if (toolUse.name === 'mcp__kombuse__get_ticket') {
+              return <GetTicketRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
+            if (toolUse.name === 'mcp__kombuse__update_ticket') {
+              return <UpdateTicketRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
           }
+          // Render with or without matching tool_use (orphaned results show output only)
+          return (
+            <ToolResultRenderer
+              key={event.eventId}
+              toolUse={toolUse}
+              result={event}
+            />
+          )
         }
 
         return (

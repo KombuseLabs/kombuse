@@ -1,7 +1,7 @@
 import { BACKEND_TYPES, type AgentBackend, type AgentEvent, type StartOptions } from '../../types'
 import { Process, waitForRunning } from '../../utils'
 import { resolveClaudePath, createCleanEnv, createJsonLineBehavior, type ParsedClaudeMessage } from './utils'
-import type { ClaudeAssistantMessage, ClaudeContentBlock, ClaudeEvent, ClaudeResultMessage } from './types'
+import type { ClaudeAssistantMessage, ClaudeContentBlock, ClaudeEvent, ClaudeResultMessage, ClaudeUserMessage } from './types'
 
 export interface ClaudeCodeOptions {
   /** Path to claude CLI executable (default: 'claude') */
@@ -241,6 +241,9 @@ export class ClaudeCodeBackend implements AgentBackend {
       case 'assistant':
         return this.normalizeAssistantMessage(event)
 
+      case 'user':
+        return this.normalizeUserMessage(event)
+
       case 'control_request':
         return [
           {
@@ -298,6 +301,23 @@ export class ClaudeCodeBackend implements AgentBackend {
 
     if (normalized.length === 0) {
       normalized.push(this.createRawEvent(event, 'assistant'))
+    }
+
+    return normalized
+  }
+
+  private normalizeUserMessage(event: ClaudeUserMessage): AgentEvent[] {
+    const content = event.message.content
+    if (!Array.isArray(content)) {
+      return [this.createRawEvent(event, 'user')]
+    }
+
+    const normalized: AgentEvent[] = []
+    for (const block of content as ClaudeContentBlock[]) {
+      const mappedEvent = this.mapAssistantBlock(block)
+      if (mappedEvent) {
+        normalized.push(mappedEvent)
+      }
     }
 
     return normalized
