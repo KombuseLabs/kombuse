@@ -111,6 +111,12 @@ app.whenReady().then(async () => {
   const mode = getMode();
   console.log(`Starting in ${mode} mode`);
 
+  // Set dock icon in dev mode (packaged builds use icon.icns from build-resources)
+  if (is.dev() && process.platform === "darwin") {
+    const iconPath = join(__dirname, "..", "..", "build-resources", "icon.png");
+    app.dock?.setIcon(iconPath);
+  }
+
   try {
     if (is.dev()) {
       // Dev mode: embedded server, web from Vite
