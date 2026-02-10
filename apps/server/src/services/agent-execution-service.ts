@@ -51,9 +51,9 @@ const SHARED_PREAMBLE_SECTION = `You are working on ticket #{{ ticket_id }}{% if
 You have these MCP tools for ticket communication:
 - get_ticket — read a ticket and its comments
 - add_comment — post a comment (always include kombuse_session_id: "{{ kombuse_session_id }}")
-- create_ticket — create a new ticket for separate issues
+- create_ticket — create a new ticket (always include kombuse_session_id: "{{ kombuse_session_id }}")
 - update_comment — edit a previous comment
-- update_ticket — update ticket fields (status, title, labels, assignee, etc.)
+- update_ticket — update ticket fields (always include kombuse_session_id: "{{ kombuse_session_id }}")
 - list_labels — list available labels for a project
 - query_db — run read-only SQL for broader context (e.g. find related tickets)
 - list_tables / describe_table — explore the database schema
@@ -823,6 +823,15 @@ const AGENT_LIFECYCLE_EVENTS = [
   EVENT_TYPES.AGENT_FAILED,
 ] as const
 
+// Events that pass through the agent-origin filter. Includes lifecycle events
+// (for chaining) and mention.created (so agents can @-mention other agents).
+// Self-loop prevention: mention triggers require explicit mentioned_profile_id
+// conditions, and the chain depth guard (MAX_CHAIN_DEPTH) bounds all loops.
+const AGENT_PASSTHROUGH_EVENTS = [
+  ...AGENT_LIFECYCLE_EVENTS,
+  EVENT_TYPES.MENTION_CREATED,
+] as const
+
 // Maximum number of agent invocations per ticket within the time window
 // before the chain depth guard halts execution to prevent infinite loops.
 const MAX_CHAIN_DEPTH = 10
@@ -840,11 +849,12 @@ export async function processEventAndRunAgents(
   )
 
   const isLifecycleEvent = (AGENT_LIFECYCLE_EVENTS as readonly string[]).includes(event.event_type)
+  const isPassthroughEvent = (AGENT_PASSTHROUGH_EVENTS as readonly string[]).includes(event.event_type)
 
-  // Agent lifecycle events (agent.completed/started/failed) are allowed through
-  // so the Pipeline Orchestrator can chain agents. Other agent-originated events
-  // (comments, labels, mentions) are still blocked to prevent cascading loops.
-  if (event.actor_type === 'agent' && !isLifecycleEvent) {
+  // Agent lifecycle events and mention.created are allowed through so the
+  // Pipeline Orchestrator can chain agents via @mentions. Other agent-originated
+  // events (comments, labels) are still blocked to prevent cascading loops.
+  if (event.actor_type === 'agent' && !isPassthroughEvent) {
     console.log(
       `[Server] Skipping agent-originated event #${event.id} (${event.event_type})`
     )
@@ -853,9 +863,9 @@ export async function processEventAndRunAgents(
 
   // Skip events that already have an active session (e.g. user reply to
   // an agent comment handled via the WebSocket agent.invoke path).
-  // Agent lifecycle events are exempt: their session ID refers to the
-  // completing agent's session, not an active handler for this event.
-  if (event.kombuse_session_id && !isLifecycleEvent) {
+  // Passthrough events are exempt: their session ID refers to the
+  // originating agent's session, not an active handler for this event.
+  if (event.kombuse_session_id && !isPassthroughEvent) {
     console.log(
       `[Server] Skipping event #${event.id} — session ${event.kombuse_session_id} already active`
     )
@@ -938,10 +948,11 @@ export async function processEventAndRunAgents(
       continue
     }
 
-    // Reuse existing session ID from the event when available,
-    // otherwise generate a new one for this triggered invocation
+    // Reuse existing session ID from the event for lifecycle events (maintains
+    // conversation continuity), otherwise generate a fresh one. Mention-triggered
+    // agents get their own session since they're a new invocation context.
     const kombuseSessionId =
-      event.kombuse_session_id && isValidSessionId(event.kombuse_session_id)
+      event.kombuse_session_id && isValidSessionId(event.kombuse_session_id) && isLifecycleEvent
         ? event.kombuse_session_id
         : createSessionId('trigger')
 

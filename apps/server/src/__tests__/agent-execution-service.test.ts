@@ -14,6 +14,13 @@ describe('getTypePreset', () => {
     expect(preset.preambleTemplate).toContain('Kombuse Tools')
   })
 
+  it('kombuse preamble instructs agents to pass kombuse_session_id on mutating tools', () => {
+    const preset = getTypePreset('kombuse')
+    const matches = preset.preambleTemplate.match(/kombuse_session_id/g) ?? []
+    // Should appear for add_comment, create_ticket, and update_ticket (at least 3 times)
+    expect(matches.length).toBeGreaterThanOrEqual(3)
+  })
+
   it('returns coder preset for "coder"', () => {
     const preset = getTypePreset('coder')
     expect(preset.autoApprovedTools).toContain('Edit')

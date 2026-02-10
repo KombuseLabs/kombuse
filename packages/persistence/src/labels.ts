@@ -152,7 +152,9 @@ export const labelsRepository = {
       const label = this.get(labelId)
 
       const adderProfile = addedById ? profilesRepository.get(addedById) : null
-      const adderActorType: ActorType = adderProfile?.type === 'agent' ? 'agent' : 'user'
+      const adderActorType: ActorType = addedById
+        ? (adderProfile?.type === 'agent' ? 'agent' : 'user')
+        : 'system'
       eventsRepository.create({
         event_type: EVENT_TYPES.LABEL_ADDED,
         project_id: ticket?.project_id,
@@ -184,7 +186,9 @@ export const labelsRepository = {
         .get(ticketId) as { project_id: string } | undefined
 
       const removerProfile = removedById ? profilesRepository.get(removedById) : null
-      const removerActorType: ActorType = removerProfile?.type === 'agent' ? 'agent' : 'user'
+      const removerActorType: ActorType = removedById
+        ? (removerProfile?.type === 'agent' ? 'agent' : 'user')
+        : 'system'
       eventsRepository.create({
         event_type: EVENT_TYPES.LABEL_REMOVED,
         project_id: ticket?.project_id,

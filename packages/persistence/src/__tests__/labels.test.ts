@@ -556,5 +556,48 @@ describe('labelsRepository', () => {
       expect(events[0]?.actor_type, 'Agent-removed label should have actor_type "agent"').toBe('agent')
       expect(events[0]?.actor_id).toBe(TEST_AGENT_ID)
     })
+
+    it('should set actor_type to "system" when label is added with no addedById', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'system-label',
+      })
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.addToTicket(ticket.id, label.id)
+
+      const events = eventsRepository.list({ event_type: 'label.added' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Label added without actor should have actor_type "system"').toBe('system')
+      expect(events[0]?.actor_id).toBeNull()
+    })
+
+    it('should set actor_type to "system" when label is removed with no removedById', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'system-remove-label',
+      })
+      labelsRepository.addToTicket(ticket.id, label.id, TEST_USER_ID)
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.removeFromTicket(ticket.id, label.id)
+
+      const events = eventsRepository.list({ event_type: 'label.removed' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Label removed without actor should have actor_type "system"').toBe('system')
+      expect(events[0]?.actor_id).toBeNull()
+    })
   })
 })
