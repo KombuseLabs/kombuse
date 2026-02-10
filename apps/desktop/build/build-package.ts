@@ -39,6 +39,19 @@ async function buildPackage() {
     },
   });
 
+  // 1b. Bundle MCP stdio bridge (pure JS, no native modules)
+  console.log("Bundling MCP bridge...");
+  await build({
+    entryPoints: [join(ROOT, "../server/src/mcp-bridge.ts")],
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    outfile: join(DIST, "server/mcp-bridge.mjs"),
+    banner: {
+      js: "import{createRequire}from'module';const require=createRequire(import.meta.url);",
+    },
+  });
+
   // 2. Copy web dist
   console.log("Copying web assets...");
   cpSync(WEB_SRC, join(DIST, "web"), { recursive: true });
@@ -55,6 +68,7 @@ async function buildPackage() {
     buildTime: new Date().toISOString(),
     files: {
       server: "server/bundle.mjs",
+      mcpBridge: "server/mcp-bridge.mjs",
       web: "web/",
     },
   };

@@ -13,6 +13,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "mcp": "bun run src/mcp-bridge.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint --max-warnings 0",

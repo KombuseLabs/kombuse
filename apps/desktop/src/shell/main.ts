@@ -16,6 +16,8 @@ config();
 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeFileSync, unlinkSync } from "node:fs";
+import { homedir } from "node:os";
 import { app, BrowserWindow, ipcMain } from "electron";
 
 // ESM equivalent of __dirname
@@ -30,6 +32,7 @@ import { is, getMode } from "../env";
 const DEV_WEB_URL = "http://localhost:3333";
 
 let serverPort = 0;
+const PORT_FILE = join(homedir(), ".kombuse", "server-port");
 
 /**
  * Start embedded server in dev mode (direct import, no package).
@@ -45,6 +48,7 @@ async function startDevServer() {
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
+  writeFileSync(PORT_FILE, String(serverPort));
   console.log(`Dev server running on port ${serverPort}`);
   return { server };
 }
@@ -68,6 +72,7 @@ async function startPackageServer() {
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
+  writeFileSync(PORT_FILE, String(serverPort));
   console.log(`Server running on port ${serverPort}`);
   return { server, pkg };
 }
@@ -139,6 +144,10 @@ app.whenReady().then(async () => {
     console.error("Failed to start application:", error);
     app.quit();
   }
+});
+
+app.on("will-quit", () => {
+  try { unlinkSync(PORT_FILE); } catch { /* already removed */ }
 });
 
 app.on("window-all-closed", () => {

@@ -171,11 +171,19 @@ const isDirectExecution =
   process.argv[1]?.endsWith("tsx");
 
 if (isDirectExecution) {
+  const { writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { homedir } = await import("node:os");
+
+  const portFile = join(homedir(), ".kombuse", "server-port");
+
   const db = initializeDatabase();
   seedDatabase(db);
   const server = await createServer({ port: 3331, db });
   try {
-    await server.listen();
+    const address = await server.listen();
+    const port = new URL(address).port;
+    writeFileSync(portFile, port);
   } catch (err) {
     server.instance.log.error(err);
     process.exit(1);
