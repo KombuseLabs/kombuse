@@ -60,6 +60,7 @@ export interface CommentFilters {
   ticket_id?: number
   author_id?: string
   parent_id?: number | null
+  kombuse_session_id?: string
   limit?: number
   offset?: number
 }

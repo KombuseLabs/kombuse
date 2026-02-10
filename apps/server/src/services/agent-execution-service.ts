@@ -1191,20 +1191,26 @@ export function startAgentChatSession(
       if (ticketId && !didCallAddComment && lastAssistantMessage.trim()) {
         const authorId = agent?.id ?? 'anonymous-agent'
         try {
+          // Find the user's reply comment to thread the fallback response under it
+          const sessionComments = commentsRepository.list({
+            ticket_id: ticketId,
+            kombuse_session_id: appSessionId,
+            limit: 50,
+          })
+          const userReply = sessionComments
+            .filter((c) => c.author_id !== authorId)
+            .pop()
+
           commentsRepository.create({
             ticket_id: ticketId,
             author_id: authorId,
+            parent_id: userReply?.id,
             body: lastAssistantMessage.trim(),
             kombuse_session_id: appSessionId,
           })
-          console.log(
-            `[Server] Fallback: posted agent text as comment on ticket #${ticketId} (session ${appSessionId})`
-          )
+          logger.info('fallback comment posted', { ticketId, parentId: userReply?.id })
         } catch (fallbackError) {
-          console.error(
-            `[Server] Fallback comment failed for ticket #${ticketId}:`,
-            fallbackError
-          )
+          logger.info('fallback comment failed', { ticketId, error: String(fallbackError) })
         }
       }
 

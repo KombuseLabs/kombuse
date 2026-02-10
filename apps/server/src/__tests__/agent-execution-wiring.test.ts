@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AgentBackend, AgentEvent, KombuseSessionId, StartOptions } from '@kombuse/types'
 
 // Mock side-effect imports before importing the module under test
@@ -25,13 +25,17 @@ vi.mock('@kombuse/persistence', () => ({
   agentInvocationsRepository: {
     list: vi.fn(() => []),
   },
+  commentsRepository: {
+    list: vi.fn(() => []),
+    create: vi.fn(() => ({ id: 999 })),
+  },
   eventsRepository: {
     create: vi.fn(),
   },
   sessionsRepository: {},
 }))
 
-import { agentInvocationsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, commentsRepository } from '@kombuse/persistence'
 import {
   startAgentChatSession,
   presetToAllowedTools,
@@ -299,5 +303,253 @@ describe('startAgentChatSession agent resolution from session context', () => {
       getCapturedOptions()?.systemPrompt,
       'should have no system prompt when agent is disabled'
     ).toBeUndefined()
+  })
+})
+
+describe('startAgentChatSession fallback comment on complete', () => {
+  type EventCallback = (event: AgentEvent) => void
+
+  /** Create a backend where subscribe captures the callback for manual event firing. */
+  function createEventDrivenBackend() {
+    let eventCallback: EventCallback | undefined
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn((cb: EventCallback) => {
+        eventCallback = cb
+        return () => {}
+      }),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+    const fireEvent = (event: AgentEvent) => {
+      eventCallback?.(event)
+    }
+    return { backend, fireEvent }
+  }
+
+  const testAgent = {
+    id: 'test-agent',
+    name: 'Test Agent',
+    system_prompt: '',
+    is_enabled: true,
+    config: { type: 'kombuse' },
+    permissions: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  function createDeps(backend: AgentBackend) {
+    return {
+      getAgent: vi.fn(() => testAgent),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'chat-fallback-id' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+    }
+  }
+
+  function makeMessageEvent(content: string): AgentEvent {
+    return {
+      type: 'message',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      role: 'assistant',
+      content,
+    }
+  }
+
+  function makeToolUseEvent(name: string): AgentEvent {
+    return {
+      type: 'tool_use',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      id: 'tool-1',
+      name,
+      input: {},
+    }
+  }
+
+  function makeCompleteEvent(): AgentEvent {
+    return {
+      type: 'complete',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      reason: 'result',
+    }
+  }
+
+  beforeEach(() => {
+    vi.mocked(commentsRepository.create).mockClear()
+    vi.mocked(commentsRepository.list).mockReturnValue([])
+  })
+
+  it('creates fallback comment when agent produces text but does not call add_comment', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'what is the status?',
+        kombuseSessionId: 'chat-fallback-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      { ticketId: 42 },
+    )
+
+    await waitForBackendStart(backend)
+
+    fireEvent(makeMessageEvent('Here is my analysis of the ticket.'))
+    fireEvent(makeCompleteEvent())
+
+    expect(commentsRepository.create).toHaveBeenCalledOnce()
+    expect(commentsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticket_id: 42,
+        author_id: 'test-agent',
+        body: 'Here is my analysis of the ticket.',
+        kombuse_session_id: 'chat-fallback-id',
+      })
+    )
+  })
+
+  it('skips fallback when agent called add_comment', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'analyze this',
+        kombuseSessionId: 'chat-fallback-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      { ticketId: 42 },
+    )
+
+    await waitForBackendStart(backend)
+
+    fireEvent(makeMessageEvent('I will post my analysis.'))
+    fireEvent(makeToolUseEvent('mcp__kombuse__add_comment'))
+    fireEvent(makeCompleteEvent())
+
+    expect(commentsRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('skips fallback when there is no assistant message', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hi',
+        kombuseSessionId: 'chat-fallback-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      { ticketId: 42 },
+    )
+
+    await waitForBackendStart(backend)
+
+    // Complete without any assistant messages
+    fireEvent(makeCompleteEvent())
+
+    expect(commentsRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('skips fallback when ticketId is not set', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'chat-fallback-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      // No ticketId
+    )
+
+    await waitForBackendStart(backend)
+
+    fireEvent(makeMessageEvent('Some response text'))
+    fireEvent(makeCompleteEvent())
+
+    expect(commentsRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('threads fallback comment under the user reply when found', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    // Mock: the user's reply comment exists with the same session ID
+    vi.mocked(commentsRepository.list).mockReturnValue([
+      {
+        id: 100,
+        ticket_id: 42,
+        author_id: 'user-1',
+        parent_id: null,
+        kombuse_session_id: 'chat-fallback-id',
+        body: 'What is the status?',
+        is_edited: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        external_source: null,
+        external_id: null,
+        synced_at: null,
+        author: { id: 'user-1', type: 'user', name: 'Test User', email: null, description: null, avatar_url: null, external_source: null, external_id: null, is_active: true, created_at: '', updated_at: '' },
+      } as any,
+    ])
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'what is the status?',
+        kombuseSessionId: 'chat-fallback-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      { ticketId: 42 },
+    )
+
+    await waitForBackendStart(backend)
+
+    fireEvent(makeMessageEvent('Here is the analysis.'))
+    fireEvent(makeCompleteEvent())
+
+    expect(commentsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticket_id: 42,
+        parent_id: 100,
+        body: 'Here is the analysis.',
+      })
+    )
   })
 })
