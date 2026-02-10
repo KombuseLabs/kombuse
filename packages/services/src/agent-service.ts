@@ -77,7 +77,14 @@ function matchGlob(pattern: string, value: string): boolean {
 }
 
 /**
- * Check if conditions match an event payload
+ * Check if conditions match an event payload.
+ *
+ * Supports:
+ * - Strict equality: `{ label_id: 4 }` matches when `payload.label_id === 4`
+ * - Negation via `exclude_` prefix: `{ exclude_agent_id: 'x' }` matches when
+ *   `payload.agent_id !== 'x'`
+ * - Array containment: if the payload value is an array,
+ *   `{ changes: 'status' }` matches when `payload.changes` includes `'status'`
  */
 function matchConditions(
   conditions: Record<string, unknown> | null,
@@ -86,7 +93,26 @@ function matchConditions(
   if (!conditions) return true
 
   for (const [key, expectedValue] of Object.entries(conditions)) {
+    // Negation: exclude_ prefix means the payload field must NOT equal the value
+    if (key.startsWith('exclude_')) {
+      const payloadKey = key.slice('exclude_'.length)
+      const actualValue = eventPayload[payloadKey]
+      if (actualValue === expectedValue) {
+        return false
+      }
+      continue
+    }
+
     const actualValue = eventPayload[key]
+
+    // Array containment: if the payload value is an array, check includes
+    if (Array.isArray(actualValue)) {
+      if (!actualValue.includes(expectedValue)) {
+        return false
+      }
+      continue
+    }
+
     if (actualValue !== expectedValue) {
       return false
     }

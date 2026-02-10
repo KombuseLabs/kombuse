@@ -17,7 +17,19 @@ interface ConditionEditorProps {
   disabled?: boolean
 }
 
-const SUGGESTED_KEYS = ['status', 'priority', 'project_id', 'label_id', 'assignee_id', 'mention_type']
+const SUGGESTED_KEYS = [
+  'status',
+  'priority',
+  'project_id',
+  'label_id',
+  'assignee_id',
+  'mention_type',
+  'completing_agent_id',
+  'completing_agent_type',
+  'exclude_agent_id',
+  'changes',
+  'author_type',
+]
 
 function conditionsToRows(conditions: Record<string, unknown> | null): ConditionRow[] {
   if (!conditions) return []

@@ -361,6 +361,7 @@ export const commentsRepository = {
         payload: {
           comment_id: commentId,
           ticket_id: payload.ticket_id,
+          author_type: actorType,
         },
       })
 

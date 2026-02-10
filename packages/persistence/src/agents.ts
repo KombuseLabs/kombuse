@@ -427,6 +427,23 @@ export const agentInvocationsRepository = {
   },
 
   /**
+   * Count recent invocations for a given ticket (via context JSON).
+   * Used for chain depth guards to prevent infinite agent loops.
+   */
+  countRecentByTicketId(ticketId: number, sinceHoursAgo: number = 1): number {
+    const db = getDatabase()
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) as count FROM agent_invocations
+         WHERE json_extract(context, '$.ticket_id') = ?
+           AND status IN ('running', 'completed')
+           AND created_at >= datetime('now', '-' || ? || ' hours')`
+      )
+      .get(ticketId, sinceHoursAgo) as { count: number }
+    return row.count
+  },
+
+  /**
    * Delete an invocation
    */
   delete(id: number): boolean {

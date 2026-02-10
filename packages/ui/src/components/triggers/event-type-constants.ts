@@ -2,7 +2,7 @@ export interface EventTypeOption {
   value: string
   label: string
   description: string
-  category: 'ticket' | 'comment' | 'label' | 'mention'
+  category: 'ticket' | 'comment' | 'label' | 'mention' | 'agent'
 }
 
 export const EVENT_TYPE_OPTIONS: EventTypeOption[] = [
@@ -64,9 +64,28 @@ export const EVENT_TYPE_OPTIONS: EventTypeOption[] = [
     description: 'When a @profile or #ticket mention is created',
     category: 'mention',
   },
+  // Agent events
+  {
+    value: 'agent.completed',
+    label: 'Agent Completed',
+    description: 'When an agent completes its work on a ticket',
+    category: 'agent',
+  },
+  {
+    value: 'agent.started',
+    label: 'Agent Started',
+    description: 'When an agent begins execution on a ticket',
+    category: 'agent',
+  },
+  {
+    value: 'agent.failed',
+    label: 'Agent Failed',
+    description: 'When an agent execution fails',
+    category: 'agent',
+  },
 ]
 
-export const EVENT_TYPE_CATEGORIES = ['ticket', 'comment', 'label', 'mention'] as const
+export const EVENT_TYPE_CATEGORIES = ['ticket', 'comment', 'label', 'mention', 'agent'] as const
 
 export function getEventTypeOption(value: string): EventTypeOption | undefined {
   return EVENT_TYPE_OPTIONS.find((opt) => opt.value === value)

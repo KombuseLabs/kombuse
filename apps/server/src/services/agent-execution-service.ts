@@ -815,6 +815,18 @@ function resolveProjectPathForProject(projectId: string | null): string | undefi
   return undefined
 }
 
+// Agent lifecycle events that should bypass the actor_type and session_id filters.
+// These are allowed through so the Pipeline Orchestrator can chain agents.
+const AGENT_LIFECYCLE_EVENTS = [
+  EVENT_TYPES.AGENT_COMPLETED,
+  EVENT_TYPES.AGENT_STARTED,
+  EVENT_TYPES.AGENT_FAILED,
+] as const
+
+// Maximum number of agent invocations per ticket within the time window
+// before the chain depth guard halts execution to prevent infinite loops.
+const MAX_CHAIN_DEPTH = 10
+
 /**
  * Process a domain event by creating invocations and running them via chat infrastructure.
  * This ensures triggered agents have the same persistence, streaming, and permission handling as chat agents.
@@ -827,9 +839,12 @@ export async function processEventAndRunAgents(
     `[Server] Processing event #${event.id} (${event.event_type}) for agent triggers...`
   )
 
-  // Skip agent-originated events to prevent agents from triggering
-  // other agents (or themselves) via their comments/mentions
-  if (event.actor_type === 'agent') {
+  const isLifecycleEvent = (AGENT_LIFECYCLE_EVENTS as readonly string[]).includes(event.event_type)
+
+  // Agent lifecycle events (agent.completed/started/failed) are allowed through
+  // so the Pipeline Orchestrator can chain agents. Other agent-originated events
+  // (comments, labels, mentions) are still blocked to prevent cascading loops.
+  if (event.actor_type === 'agent' && !isLifecycleEvent) {
     console.log(
       `[Server] Skipping agent-originated event #${event.id} (${event.event_type})`
     )
@@ -837,8 +852,10 @@ export async function processEventAndRunAgents(
   }
 
   // Skip events that already have an active session (e.g. user reply to
-  // an agent comment handled via the WebSocket agent.invoke path)
-  if (event.kombuse_session_id) {
+  // an agent comment handled via the WebSocket agent.invoke path).
+  // Agent lifecycle events are exempt: their session ID refers to the
+  // completing agent's session, not an active handler for this event.
+  if (event.kombuse_session_id && !isLifecycleEvent) {
     console.log(
       `[Server] Skipping event #${event.id} — session ${event.kombuse_session_id} already active`
     )
@@ -862,6 +879,33 @@ export async function processEventAndRunAgents(
       continue
     }
 
+    // Chain depth guard: prevent infinite agent loops on a ticket (#199)
+    const ticketId = invocation.context.ticket_id as number | undefined
+    if (ticketId) {
+      const recentCount = agentInvocationsRepository.countRecentByTicketId(ticketId)
+      if (recentCount >= MAX_CHAIN_DEPTH) {
+        const errorMessage = `Chain depth limit reached (${MAX_CHAIN_DEPTH} invocations on ticket #${ticketId} in the last hour). Halting to prevent infinite loops.`
+        console.warn(`[Server] ${errorMessage}`)
+        agentInvocationsRepository.update(invocation.id, {
+          status: 'failed',
+          error: errorMessage,
+          completed_at: new Date().toISOString(),
+        })
+        emitAgentEvent(
+          EVENT_TYPES.AGENT_FAILED,
+          invocation.agent_id,
+          invocation.id,
+          invocation.context,
+          {
+            error: errorMessage,
+            completing_agent_id: invocation.agent_id,
+            completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
+          }
+        )
+        continue
+      }
+    }
+
     if (invocation.attempts >= invocation.max_attempts) {
       const errorMessage = `Invocation exceeded max attempts (${invocation.max_attempts})`
       agentInvocationsRepository.update(invocation.id, {
@@ -874,7 +918,11 @@ export async function processEventAndRunAgents(
         invocation.agent_id,
         invocation.id,
         invocation.context,
-        { error: errorMessage }
+        {
+          error: errorMessage,
+          completing_agent_id: invocation.agent_id,
+          completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
+        }
       )
       continue
     }
@@ -981,7 +1029,10 @@ export async function processEventAndRunAgents(
               invocation.agent_id,
               invocation.id,
               invocation.context,
-              undefined,
+              {
+                completing_agent_id: invocation.agent_id,
+                completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
+              },
               kombuseSessionId
             )
           }

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Tests for agent service mention trigger behavior
+ * @fileoverview Tests for agent service trigger behavior
  *
  * Run: bun run --filter @kombuse/services test
  */
@@ -202,6 +202,145 @@ describe('agentService', () => {
 
       const matches = agentService.findMatchingTriggers(event)
       expect(matches).toHaveLength(1)
+    })
+
+    it('should match agent.completed trigger with no conditions', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'agent.completed',
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'agent.completed',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: agentId,
+        actor_type: 'agent',
+        payload: { agent_id: agentId, invocation_id: 1, completing_agent_id: agentId, completing_agent_type: 'kombuse' },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches).toHaveLength(1)
+    })
+
+    it('should match exclude_ condition (negation) — agent not excluded', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'agent.completed',
+        conditions: { exclude_agent_id: 'pipeline-orchestrator' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'agent.completed',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: agentId,
+        actor_type: 'agent',
+        payload: { agent_id: 'coding-agent', invocation_id: 1 },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should match because completing agent is not the excluded one').toHaveLength(1)
+    })
+
+    it('should reject exclude_ condition (negation) — agent is excluded', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'agent.completed',
+        conditions: { exclude_agent_id: 'pipeline-orchestrator' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'agent.completed',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: agentId,
+        actor_type: 'agent',
+        payload: { agent_id: 'pipeline-orchestrator', invocation_id: 1 },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should not match because completing agent is the excluded one').toHaveLength(0)
+    })
+
+    it('should match array containment — changes includes target field', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'ticket.updated',
+        conditions: { changes: 'status' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'ticket.updated',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: TEST_USER_ID,
+        actor_type: 'user',
+        payload: { changes: ['status', 'title'] },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should match because changes array includes status').toHaveLength(1)
+    })
+
+    it('should reject array containment — changes does not include target field', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'ticket.updated',
+        conditions: { changes: 'status' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'ticket.updated',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: TEST_USER_ID,
+        actor_type: 'user',
+        payload: { changes: ['title', 'body'] },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should not match because changes array does not include status').toHaveLength(0)
+    })
+
+    it('should match author_type condition on comment.added', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'comment.added',
+        conditions: { author_type: 'user' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'comment.added',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: TEST_USER_ID,
+        actor_type: 'user',
+        payload: { comment_id: 1, ticket_id: testTicketId, author_type: 'user' },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches).toHaveLength(1)
+    })
+
+    it('should reject author_type condition mismatch on comment.added', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'comment.added',
+        conditions: { author_type: 'user' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'comment.added',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: agentId,
+        actor_type: 'agent',
+        payload: { comment_id: 1, ticket_id: testTicketId, author_type: 'agent' },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should not match because author_type is agent, not user').toHaveLength(0)
     })
   })
 })
