@@ -1,4 +1,5 @@
 import type {
+  ActorType,
   Ticket,
   TicketWithLabels,
   TicketFilters,
@@ -11,6 +12,7 @@ import { EVENT_TYPES } from '@kombuse/types'
 import { getDatabase } from './database'
 import { eventsRepository } from './events'
 import { labelsRepository } from './labels'
+import { profilesRepository } from './profiles'
 
 const FTS5_KEYWORDS = new Set(['AND', 'OR', 'NOT', 'NEAR'])
 
@@ -251,12 +253,14 @@ export const ticketsRepository = {
     const ticket = this.get(ticketId) as Ticket
 
     // Emit ticket.created event
+    const authorProfile = ticket.author_id ? profilesRepository.get(ticket.author_id) : null
+    const authorActorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
     eventsRepository.create({
       event_type: EVENT_TYPES.TICKET_CREATED,
       project_id: ticket.project_id,
       ticket_id: ticket.id,
       actor_id: ticket.author_id,
-      actor_type: 'user',
+      actor_type: authorActorType,
       payload: { title: ticket.title },
     })
 
@@ -340,12 +344,14 @@ export const ticketsRepository = {
       }
     }
 
+    const updaterProfile = updatedById ? profilesRepository.get(updatedById) : null
+    const updaterActorType: ActorType = updaterProfile?.type === 'agent' ? 'agent' : 'user'
     eventsRepository.create({
       event_type: eventType,
       project_id: currentTicket.project_id,
       ticket_id: id,
       actor_id: updatedById,
-      actor_type: 'user',
+      actor_type: updaterActorType,
       payload: { changes: Object.keys(input) },
     })
 
@@ -406,12 +412,14 @@ export const ticketsRepository = {
       const claimedTicket = this.get(input.ticket_id)
 
       // Emit ticket.claimed event
+      const claimerProfile = claimerId ? profilesRepository.get(claimerId) : null
+      const claimerActorType: ActorType = claimerProfile?.type === 'agent' ? 'agent' : 'user'
       eventsRepository.create({
         event_type: EVENT_TYPES.TICKET_CLAIMED,
         project_id: claimedTicket?.project_id,
         ticket_id: input.ticket_id,
         actor_id: claimerId,
-        actor_type: 'user',
+        actor_type: claimerActorType,
         payload: { claimed_by_id: claimerId },
       })
 
@@ -484,12 +492,14 @@ export const ticketsRepository = {
     const unclaimedTicket = this.get(ticketId)
 
     // Emit ticket.unclaimed event
+    const requesterProfile = requesterId ? profilesRepository.get(requesterId) : null
+    const requesterActorType: ActorType = requesterProfile?.type === 'agent' ? 'agent' : 'user'
     eventsRepository.create({
       event_type: EVENT_TYPES.TICKET_UNCLAIMED,
       project_id: ticket.project_id,
       ticket_id: ticketId,
       actor_id: requesterId,
-      actor_type: 'user',
+      actor_type: requesterActorType,
       payload: { previous_claimer_id: previousClaimerId },
     })
 

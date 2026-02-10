@@ -17,9 +17,10 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
-import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
+import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
 import { labelsRepository } from '../labels'
 import { ticketsRepository } from '../tickets'
+import { eventsRepository } from '../events'
 
 const NON_EXISTENT_ID = 999999
 
@@ -489,6 +490,71 @@ describe('labelsRepository', () => {
       const ticketIds = labelsRepository.getTicketIds(label.id)
 
       expect(ticketIds).toHaveLength(0)
+    })
+  })
+
+  describe('event actor_type resolution', () => {
+    it('should set actor_type to "agent" when label is added by an agent', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'agent-label',
+      })
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.addToTicket(ticket.id, label.id, TEST_AGENT_ID)
+
+      const events = eventsRepository.list({ event_type: 'label.added' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Agent-added label should have actor_type "agent"').toBe('agent')
+      expect(events[0]?.actor_id).toBe(TEST_AGENT_ID)
+    })
+
+    it('should set actor_type to "user" when label is added by a user', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'user-label',
+      })
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.addToTicket(ticket.id, label.id, TEST_USER_ID)
+
+      const events = eventsRepository.list({ event_type: 'label.added' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'User-added label should have actor_type "user"').toBe('user')
+    })
+
+    it('should set actor_type to "agent" when label is removed by an agent', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'remove-label',
+      })
+      labelsRepository.addToTicket(ticket.id, label.id, TEST_USER_ID)
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.removeFromTicket(ticket.id, label.id, TEST_AGENT_ID)
+
+      const events = eventsRepository.list({ event_type: 'label.removed' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Agent-removed label should have actor_type "agent"').toBe('agent')
+      expect(events[0]?.actor_id).toBe(TEST_AGENT_ID)
     })
   })
 })

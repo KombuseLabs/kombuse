@@ -1,4 +1,5 @@
 import type {
+  ActorType,
   Label,
   LabelFilters,
   CreateLabelInput,
@@ -7,6 +8,7 @@ import type {
 import { EVENT_TYPES } from '@kombuse/types'
 import { getDatabase } from './database'
 import { eventsRepository } from './events'
+import { profilesRepository } from './profiles'
 
 /**
  * Data access layer for labels
@@ -149,12 +151,14 @@ export const labelsRepository = {
 
       const label = this.get(labelId)
 
+      const adderProfile = addedById ? profilesRepository.get(addedById) : null
+      const adderActorType: ActorType = adderProfile?.type === 'agent' ? 'agent' : 'user'
       eventsRepository.create({
         event_type: EVENT_TYPES.LABEL_ADDED,
         project_id: ticket?.project_id,
         ticket_id: ticketId,
         actor_id: addedById,
-        actor_type: 'user',
+        actor_type: adderActorType,
         payload: { label_id: labelId, label_name: label?.name },
       })
     }
@@ -179,12 +183,14 @@ export const labelsRepository = {
         .prepare('SELECT project_id FROM tickets WHERE id = ?')
         .get(ticketId) as { project_id: string } | undefined
 
+      const removerProfile = removedById ? profilesRepository.get(removedById) : null
+      const removerActorType: ActorType = removerProfile?.type === 'agent' ? 'agent' : 'user'
       eventsRepository.create({
         event_type: EVENT_TYPES.LABEL_REMOVED,
         project_id: ticket?.project_id,
         ticket_id: ticketId,
         actor_id: removedById,
-        actor_type: 'user',
+        actor_type: removerActorType,
         payload: { label_id: labelId, label_name: label?.name },
       })
     }

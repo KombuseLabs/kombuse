@@ -14,11 +14,12 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
-import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
+import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
 import { getDatabase } from '../database'
 import { ticketsRepository } from '../tickets'
 import { labelsRepository } from '../labels'
 import { commentsRepository } from '../comments'
+import { eventsRepository } from '../events'
 
 // Test data constants - using the seeded project and user
 const TEST_TICKET = {
@@ -1121,6 +1122,72 @@ describe('ticketsRepository', () => {
 
       expect(tickets[0]?.title, 'Ticket with earlier last_activity_at should sort first').toBe('First')
       expect(tickets[1]?.title).toBe('Second')
+    })
+  })
+
+  describe('event actor_type resolution', () => {
+    it('should set actor_type to "agent" when ticket is created by an agent', () => {
+      db.prepare('DELETE FROM events').run()
+
+      ticketsRepository.create({
+        title: 'Agent-created ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_AGENT_ID,
+      })
+
+      const events = eventsRepository.list({ event_type: 'ticket.created' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Agent-created ticket should have actor_type "agent"').toBe('agent')
+      expect(events[0]?.actor_id).toBe(TEST_AGENT_ID)
+    })
+
+    it('should set actor_type to "user" when ticket is created by a user', () => {
+      db.prepare('DELETE FROM events').run()
+
+      ticketsRepository.create({
+        title: 'User-created ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      const events = eventsRepository.list({ event_type: 'ticket.created' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'User-created ticket should have actor_type "user"').toBe('user')
+    })
+
+    it('should set actor_type to "agent" when ticket is updated by an agent', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      db.prepare('DELETE FROM events').run()
+
+      ticketsRepository.update(ticket.id, { status: 'closed' }, TEST_AGENT_ID)
+
+      const events = eventsRepository.list({ event_type: 'ticket.closed' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Agent-closed ticket should have actor_type "agent"').toBe('agent')
+      expect(events[0]?.actor_id).toBe(TEST_AGENT_ID)
+    })
+
+    it('should set actor_type to "user" when ticket is updated by a user', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      db.prepare('DELETE FROM events').run()
+
+      ticketsRepository.update(ticket.id, { status: 'closed' }, TEST_USER_ID)
+
+      const events = eventsRepository.list({ event_type: 'ticket.closed' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'User-closed ticket should have actor_type "user"').toBe('user')
     })
   })
 })
