@@ -34,9 +34,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       backend_type: parseResult.data.backend_type ?? 'claude-code',
     })
 
-    const session = sessionsRepository.update(createdSession.id, { status: 'completed' })
-
-    return reply.status(201).send(session ?? createdSession)
+    return reply.status(201).send(createdSession)
   })
 
   // Get session by ID
