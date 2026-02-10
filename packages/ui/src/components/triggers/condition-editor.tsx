@@ -4,11 +4,19 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../base/select'
 
 interface ConditionRow {
   id: string
   key: string
   value: string
+  isExclude: boolean
 }
 
 interface ConditionEditorProps {
@@ -26,24 +34,29 @@ const SUGGESTED_KEYS = [
   'mention_type',
   'completing_agent_id',
   'completing_agent_type',
-  'exclude_agent_id',
   'changes',
   'author_type',
 ]
 
 function conditionsToRows(conditions: Record<string, unknown> | null): ConditionRow[] {
   if (!conditions) return []
-  return Object.entries(conditions).map(([key, value]) => ({
-    id: crypto.randomUUID(),
-    key,
-    value: String(value),
-  }))
+  return Object.entries(conditions).map(([key, value]) => {
+    const isExclude = key.startsWith('exclude_')
+    return {
+      id: crypto.randomUUID(),
+      key: isExclude ? key.slice('exclude_'.length) : key,
+      value: String(value),
+      isExclude,
+    }
+  })
 }
 
 function rowsToConditions(rows: ConditionRow[]): Record<string, unknown> | null {
   const validRows = rows.filter((r) => r.key.trim() && r.value.trim())
   if (validRows.length === 0) return null
-  return Object.fromEntries(validRows.map((r) => [r.key, r.value]))
+  return Object.fromEntries(
+    validRows.map((r) => [r.isExclude ? `exclude_${r.key}` : r.key, r.value])
+  )
 }
 
 function ConditionEditor({ conditions, onChange, disabled }: ConditionEditorProps) {
@@ -54,7 +67,7 @@ function ConditionEditor({ conditions, onChange, disabled }: ConditionEditorProp
   }, [conditions])
 
   const addRow = () => {
-    const newRows = [...rows, { id: crypto.randomUUID(), key: '', value: '' }]
+    const newRows = [...rows, { id: crypto.randomUUID(), key: '', value: '', isExclude: false }]
     setRows(newRows)
   }
 
@@ -66,6 +79,12 @@ function ConditionEditor({ conditions, onChange, disabled }: ConditionEditorProp
 
   const updateRow = (id: string, field: 'key' | 'value', value: string) => {
     const newRows = rows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    setRows(newRows)
+    onChange(rowsToConditions(newRows))
+  }
+
+  const toggleExclude = (id: string, isExclude: boolean) => {
+    const newRows = rows.map((r) => (r.id === id ? { ...r, isExclude } : r))
     setRows(newRows)
     onChange(rowsToConditions(newRows))
   }
@@ -82,7 +101,19 @@ function ConditionEditor({ conditions, onChange, disabled }: ConditionEditorProp
             disabled={disabled}
             list="condition-keys"
           />
-          <span className="text-muted-foreground">=</span>
+          <Select
+            value={row.isExclude ? 'exclude' : 'match'}
+            onValueChange={(v) => toggleExclude(row.id, v === 'exclude')}
+            disabled={disabled}
+          >
+            <SelectTrigger className="w-[100px] shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="match">matches</SelectItem>
+              <SelectItem value="exclude">excludes</SelectItem>
+            </SelectContent>
+          </Select>
           <Input
             value={row.value}
             onChange={(e) => updateRow(row.id, 'value', e.target.value)}

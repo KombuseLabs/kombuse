@@ -320,6 +320,15 @@ Props for `MentionTypePicker`:
 - `onValueChange`: `(value: MentionType) => void` — selection callback
 - `disabled`: Optional boolean
 
+#### ConditionEditor
+
+Generic key-value condition editor used by `TriggerForm` for event types that don't have a specialized picker. Each condition row includes a **matches/excludes toggle** — when set to "excludes", the condition key is saved with an `exclude_` prefix (e.g. `exclude_completing_agent_id`), which the backend interprets as a negation condition.
+
+Props for `ConditionEditor`:
+- `conditions`: `Record<string, unknown> | null` — current conditions (handles `exclude_` prefixed keys)
+- `onChange`: `(conditions: Record<string, unknown> | null) => void` — called when conditions change
+- `disabled`: Optional boolean
+
 ### Markdown
 
 ```typescript
