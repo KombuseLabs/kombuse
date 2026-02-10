@@ -599,6 +599,105 @@ describe('agentInvocationsRepository', () => {
     })
   })
 
+  describe('countRecentByTicketId', () => {
+    it('should count invocations for a specific ticket', () => {
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+
+      const count = agentInvocationsRepository.countRecentByTicketId(100)
+      expect(count).toBe(2)
+    })
+
+    it('should not count invocations for a different ticket', () => {
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 200 },
+      })
+
+      const count = agentInvocationsRepository.countRecentByTicketId(100)
+      expect(count, 'Should only count ticket 100, not ticket 200').toBe(1)
+    })
+
+    it('should return 0 when no invocations exist for the ticket', () => {
+      const count = agentInvocationsRepository.countRecentByTicketId(999)
+      expect(count).toBe(0)
+    })
+
+    it('should count all statuses (pending, running, completed, failed)', () => {
+      const inv1 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+      agentInvocationsRepository.update(inv1.id, { status: 'running' })
+
+      const inv2 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+      agentInvocationsRepository.update(inv2.id, { status: 'completed' })
+
+      const inv3 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+      agentInvocationsRepository.update(inv3.id, { status: 'failed' })
+
+      // inv4 stays as 'pending'
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+
+      const count = agentInvocationsRepository.countRecentByTicketId(100)
+      expect(count, 'Should count all 4 invocations regardless of status').toBe(4)
+    })
+
+    it('should only count invocations within the time window', () => {
+      // Create an invocation with a backdated created_at
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+      // Backdate one invocation to 2 hours ago
+      db.prepare(
+        `UPDATE agent_invocations SET created_at = datetime('now', '-2 hours')
+         WHERE id = (SELECT MAX(id) FROM agent_invocations)`
+      ).run()
+
+      // Create a recent invocation
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+
+      const count1h = agentInvocationsRepository.countRecentByTicketId(100, 1)
+      expect(count1h, 'Should only count the recent invocation within 1 hour').toBe(1)
+
+      const count3h = agentInvocationsRepository.countRecentByTicketId(100, 3)
+      expect(count3h, 'Should count both invocations within 3 hours').toBe(2)
+    })
+  })
+
   describe('delete', () => {
     it('should delete invocation and return true', () => {
       const invocation = agentInvocationsRepository.create({

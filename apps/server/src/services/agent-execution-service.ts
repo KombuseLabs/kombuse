@@ -882,9 +882,10 @@ export async function processEventAndRunAgents(
     // Chain depth guard: prevent infinite agent loops on a ticket (#199)
     const ticketId = invocation.context.ticket_id as number | undefined
     if (ticketId) {
+      const maxDepth = (agent.config?.max_chain_depth as number) ?? MAX_CHAIN_DEPTH
       const recentCount = agentInvocationsRepository.countRecentByTicketId(ticketId)
-      if (recentCount >= MAX_CHAIN_DEPTH) {
-        const errorMessage = `Chain depth limit reached (${MAX_CHAIN_DEPTH} invocations on ticket #${ticketId} in the last hour). Halting to prevent infinite loops.`
+      if (recentCount >= maxDepth) {
+        const errorMessage = `Chain depth limit reached (${maxDepth} invocations on ticket #${ticketId} in the last hour). Halting to prevent infinite loops.`
         console.warn(`[Server] ${errorMessage}`)
         agentInvocationsRepository.update(invocation.id, {
           status: 'failed',
@@ -902,6 +903,16 @@ export async function processEventAndRunAgents(
             completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
           }
         )
+        // Post a visible comment on the ticket so users know why agents stopped
+        try {
+          commentsRepository.create({
+            ticket_id: ticketId,
+            author_id: invocation.agent_id,
+            body: `**Agent loop detected** — ${errorMessage}`,
+          })
+        } catch (commentError) {
+          console.warn(`[Server] Failed to post chain depth comment on ticket #${ticketId}:`, commentError)
+        }
         continue
       }
     }
