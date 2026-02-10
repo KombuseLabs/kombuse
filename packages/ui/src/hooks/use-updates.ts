@@ -124,11 +124,4 @@ export function useUpdates(): UseUpdatesReturn {
   }
 }
 
-// Type declaration for the window.electron API
-declare global {
-  interface Window {
-    electron?: {
-      restart: () => Promise<void>
-    }
-  }
-}
+// Window.electron type is declared in lib/api.ts

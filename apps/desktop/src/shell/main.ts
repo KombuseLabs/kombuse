@@ -27,8 +27,9 @@ import { getPackageInfo, loadPackage } from "./package-loader";
 import { autoUpdater } from "./auto-updater";
 import { is, getMode } from "../env";
 
-const SERVER_PORT = 3332;
 const DEV_WEB_URL = "http://localhost:3333";
+
+let serverPort = 0;
 
 /**
  * Start embedded server in dev mode (direct import, no package).
@@ -40,10 +41,11 @@ async function startDevServer() {
   // Wire up auto-updater to server (available in dev for testing)
   setAutoUpdater(autoUpdater);
 
-  const server = await createServerDirect({ port: SERVER_PORT, db });
-  await server.listen();
+  const server = await createServerDirect({ port: 0, db });
+  const address = await server.listen();
+  serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
-  console.log(`Dev server running on port ${SERVER_PORT}`);
+  console.log(`Dev server running on port ${serverPort}`);
   return { server };
 }
 
@@ -62,10 +64,11 @@ async function startPackageServer() {
   // Wire up auto-updater to server
   setPackageAutoUpdater(autoUpdater);
 
-  const server = await createServer({ port: SERVER_PORT, db });
-  await server.listen();
+  const server = await createServer({ port: 0, db });
+  const address = await server.listen();
+  serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
-  console.log(`Server running on port ${SERVER_PORT}`);
+  console.log(`Server running on port ${serverPort}`);
   return { server, pkg };
 }
 
@@ -84,6 +87,11 @@ function createWindow(): void {
 
   mainWindow.loadURL(webUrl);
 }
+
+// IPC handler for server port (used by renderer to discover API address)
+ipcMain.on("server:port", (event) => {
+  event.returnValue = serverPort;
+});
 
 // IPC handler for app restart (used by auto-updater UI)
 ipcMain.handle("app:restart", () => {

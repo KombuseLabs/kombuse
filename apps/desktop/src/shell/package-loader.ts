@@ -118,7 +118,7 @@ export function getPackageInfo(): PackageInfo {
  */
 export async function loadPackage(serverBundlePath: string): Promise<{
   createServer: (options: { port: number; db: unknown }) => Promise<{
-    listen: () => Promise<void>;
+    listen: () => Promise<string>;
     close: () => Promise<void>;
   }>;
   setAutoUpdater: (updater: {

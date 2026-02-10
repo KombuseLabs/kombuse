@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
 import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
+import { getWsUrl } from "@kombuse/ui/lib/api";
 import { CommandSetup, usePalette } from "./command-setup";
 import { Home } from "./routes/home";
 import { Chats } from "./routes/chats";
@@ -81,7 +82,7 @@ export function App() {
         enableSystem
         disableTransitionOnChange
       >
-        <WebSocketProvider url="ws://localhost:3331/ws">
+        <WebSocketProvider url={getWsUrl()}>
           <AppProvider>
             <CommandSetup>
               <AppContent />

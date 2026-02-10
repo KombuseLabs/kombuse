@@ -41,7 +41,21 @@ import type {
   PermissionLogFilters,
 } from '@kombuse/types'
 
-const API_BASE = 'http://localhost:3331/api'
+declare global {
+  interface Window {
+    electron?: { serverPort?: number; restart?: () => Promise<void> }
+  }
+}
+
+export function getServerPort(): number {
+  return window.electron?.serverPort ?? 3332
+}
+
+export function getWsUrl(): string {
+  return `ws://localhost:${getServerPort()}/ws`
+}
+
+const API_BASE = `http://localhost:${getServerPort()}/api`
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {

@@ -13,4 +13,9 @@ contextBridge.exposeInMainWorld("electron", {
    * Restart the application to apply updates.
    */
   restart: () => ipcRenderer.invoke("app:restart"),
+
+  /**
+   * The port the embedded server is listening on (resolved at preload time).
+   */
+  serverPort: ipcRenderer.sendSync("server:port") as number,
 });
