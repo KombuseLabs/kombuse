@@ -233,12 +233,10 @@ async function runAgentChat(
       options.onEvent(evt)
 
       // Some backends may terminate with an error but without emitting complete.
+      // Route to onError (not onComplete) so the session is marked "failed".
       if (!backend.isRunning()) {
         didComplete = true
-        options.onComplete?.({
-          kombuseSessionId: appSessionId,
-          backendSessionId: backend.getBackendSessionId(),
-        })
+        options.onError?.(new Error(evt.message ?? 'Backend terminated with error'))
         finalize()
       }
     } else {
