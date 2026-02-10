@@ -636,14 +636,14 @@ export function Tickets() {
                     {selectedTicket && (
                       <>
                         {/* Scrollable area: ticket detail + comments */}
-                        <div className="flex-1 overflow-y-auto p-4">
+                        <div className="flex-1 overflow-y-auto">
                           <TicketDetail
                             onClose={handleCloseDetail}
                             isEditable
                           />
 
                           {/* Activity Timeline */}
-                          <div className="mt-6">
+                          <div className="mt-6 px-4 pb-4">
                             <h3 className="text-sm font-medium mb-4">
                               Activity {timeline?.total ? `(${timeline.total})` : ""}
                             </h3>

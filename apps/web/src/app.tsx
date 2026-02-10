@@ -1,4 +1,4 @@
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
 import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette } from "@kombuse/ui/components";
@@ -27,18 +27,23 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { open, setOpen } = usePalette();
+  const isHome = location.pathname === "/";
 
   return (
     <div className="min-h-screen">
-      <Header
-        center={
-          <CommandPalette open={open} onOpenChange={setOpen} onNavigate={navigate} />
-        }
-      >
-        <NotificationBell onNavigate={navigate} />
-        <ProfileButton onNavigate={navigate} />
-      </Header>
+      {!isHome && (
+        <Header
+          onNavigateHome={() => navigate("/")}
+          center={
+            <CommandPalette open={open} onOpenChange={setOpen} onNavigate={navigate} />
+          }
+        >
+          <NotificationBell onNavigate={navigate} />
+          <ProfileButton onNavigate={navigate} />
+        </Header>
+      )}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/profile" element={<Profile />} />

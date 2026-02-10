@@ -6,9 +6,10 @@ import { ModeToggle } from "./mode-toggle";
 
 interface HeaderProps extends React.ComponentProps<"header"> {
   center?: ReactNode;
+  onNavigateHome?: () => void;
 }
 
-function Header({ className, center, ...props }: HeaderProps) {
+function Header({ className, center, onNavigateHome, ...props }: HeaderProps) {
   return (
     <header
       className={cn(
@@ -17,7 +18,13 @@ function Header({ className, center, ...props }: HeaderProps) {
       )}
       {...props}
     >
-      <span className="shrink-0 text-xl font-semibold">Kombuse</span>
+      <span
+        className="shrink-0 text-xl font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={onNavigateHome}
+        role="link"
+      >
+        Kombuse
+      </span>
       <div className="flex flex-1 justify-center px-4">
         {center}
       </div>

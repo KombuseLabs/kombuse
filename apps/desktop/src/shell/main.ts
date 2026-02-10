@@ -83,11 +83,17 @@ function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    backgroundColor: "#1A1A1A",
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: join(__dirname, "preload.cjs"),
     },
+  });
+
+  mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
   });
 
   mainWindow.loadURL(webUrl);

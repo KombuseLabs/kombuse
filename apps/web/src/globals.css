@@ -211,6 +211,13 @@ pre.shiki code {
   background-clip: text;
 }
 
+.kombuse-gradient-bg {
+  background: linear-gradient(135deg, #F43678 0%, #FB7B3C 50%, #FBBF24 100%);
+}
+.kombuse-gradient-bg:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
 .kombuse-fade-up {
   opacity: 0;
   transform: translateY(12px);

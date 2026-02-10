@@ -1,12 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import type { TicketStatus } from '@kombuse/types'
 import { cn } from '../../lib/utils'
-import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Textarea } from '../../base/textarea'
 import { Tabs, TabsList, TabsTrigger } from '../../base/tabs'
-import { X, Trash2, Pencil, Paperclip } from 'lucide-react'
+import { X, Trash2, Pencil, Paperclip, ChevronDown, ChevronRight } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
 import { StatusIndicator } from '../status-indicator'
@@ -86,6 +85,29 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   } = useFileStaging()
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [descriptionClamped, setDescriptionClamped] = useState(false)
+  const descriptionRef = useRef<HTMLDivElement>(null)
+
+  // Detect whether the description is long enough to need clamping
+  const checkDescriptionClamped = useCallback(() => {
+    const el = descriptionRef.current
+    if (!el) return
+    setDescriptionClamped(el.scrollHeight > el.clientHeight + 1)
+  }, [])
+
+  // Re-check on render and when ticket body changes
+  useLayoutEffect(() => {
+    if (!descriptionExpanded) {
+      checkDescriptionClamped()
+    }
+  }, [currentTicket?.body, descriptionExpanded, checkDescriptionClamped])
+
+  // Reset expanded state when switching tickets
+  useEffect(() => {
+    setDescriptionExpanded(false)
+    setDescriptionClamped(false)
+  }, [currentTicket?.id])
 
   if (!currentTicket) {
     return null
@@ -133,8 +155,9 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   }
 
   return (
-    <Card className={cn('py-4 gap-3', className)}>
-      <CardHeader>
+    <div className={cn(className)}>
+      {/* Sticky header — sticks within the nearest overflow-y-auto ancestor */}
+      <div className="sticky top-0 z-10 bg-background border-b shadow-sm px-4 py-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             {mode === 'view' ? (
@@ -184,7 +207,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                     {new Date(ticket.created_at).toLocaleDateString()}
                   </span>
                 </div>
-                <CardTitle className="text-lg">{ticket.title}</CardTitle>
+                <div className="text-lg font-semibold leading-none">{ticket.title}</div>
               </>
             ) : (
               <div className="space-y-2">
@@ -219,20 +242,32 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                 />
               </div>
             )}
-            {ticketLabels.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {ticketLabels.map((label) => (
-                  <LabelBadge
-                    key={label.id}
-                    label={label}
-                    size="sm"
-                    onRemove={
-                      isEditable ? () => removeLabel(label.id, 'user-1') : undefined
-                    }
-                  />
-                ))}
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-1 mt-2">
+              {ticketLabels.map((label) => (
+                <LabelBadge
+                  key={label.id}
+                  label={label}
+                  size="sm"
+                  onRemove={
+                    isEditable ? () => removeLabel(label.id, 'user-1') : undefined
+                  }
+                />
+              ))}
+              {isEditable && (
+                <LabelSelector
+                  availableLabels={projectLabels}
+                  selectedLabelIds={ticketLabels.map((l) => l.id)}
+                  onLabelAdd={(labelId) => addLabel(labelId, 'user-1')}
+                  onLabelRemove={(labelId) => removeLabel(labelId, 'user-1')}
+                  onLabelCreate={(data) => createLabel(data)}
+                  onLabelUpdate={(id, data) => updateLabel(id, data)}
+                  onLabelDelete={(id) => deleteLabel(id)}
+                  isCreating={isCreatingLabel}
+                  isUpdating={isUpdatingLabel}
+                  isDeleting={isDeletingLabel}
+                />
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1">
             {isEditable && (
@@ -263,13 +298,39 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
             )}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </div>
+
+      {/* Content body — scrolls beneath the sticky header */}
+      <div className="space-y-3 px-4 py-4">
         {mode === 'view' ? (
           <>
             {ticket.body && (
               <div className="text-sm text-muted-foreground">
-                <Markdown projectId={currentProjectId}>{ticket.body}</Markdown>
+                <div
+                  ref={descriptionRef}
+                  className={cn(!descriptionExpanded && 'line-clamp-4')}
+                >
+                  <Markdown projectId={currentProjectId}>{ticket.body}</Markdown>
+                </div>
+                {(descriptionClamped || descriptionExpanded) && (
+                  <button
+                    type="button"
+                    onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+                    className="mt-1 flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+                  >
+                    {descriptionExpanded ? (
+                      <>
+                        <ChevronDown className="size-3" />
+                        <span>Show less</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronRight className="size-3" />
+                        <span>Show more</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
             {ticketAttachments && ticketAttachments.length > 0 && (
@@ -349,24 +410,6 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
           </div>
         )}
 
-        {isEditable && (
-          <div className="pt-4 border-t">
-            <h4 className="text-sm font-medium mb-2">Labels</h4>
-            <LabelSelector
-              availableLabels={projectLabels}
-              selectedLabelIds={ticketLabels.map((l) => l.id)}
-              onLabelAdd={(labelId) => addLabel(labelId, 'user-1')}
-              onLabelRemove={(labelId) => removeLabel(labelId, 'user-1')}
-              onLabelCreate={(data) => createLabel(data)}
-              onLabelUpdate={(id, data) => updateLabel(id, data)}
-              onLabelDelete={(id) => deleteLabel(id)}
-              isCreating={isCreatingLabel}
-              isUpdating={isUpdatingLabel}
-              isDeleting={isDeletingLabel}
-            />
-          </div>
-        )}
-
         {mode === 'edit' && (
           <div className="flex justify-end gap-2 pt-4 border-t">
             <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUpdating}>
@@ -380,8 +423,8 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
             </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
