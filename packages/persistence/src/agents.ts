@@ -436,7 +436,6 @@ export const agentInvocationsRepository = {
       .prepare(
         `SELECT COUNT(*) as count FROM agent_invocations
          WHERE json_extract(context, '$.ticket_id') = ?
-           AND status IN ('running', 'completed')
            AND created_at >= datetime('now', '-' || ? || ' hours')`
       )
       .get(ticketId, sinceHoursAgo) as { count: number }

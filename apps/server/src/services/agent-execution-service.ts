@@ -970,7 +970,11 @@ export async function processEventAndRunAgents(
         invocation.agent_id,
         invocation.id,
         invocation.context,
-        { error: message ?? 'Agent invocation failed' },
+        {
+          error: message ?? 'Agent invocation failed',
+          completing_agent_id: invocation.agent_id,
+          completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
+        },
         kombuseSessionId
       )
       // Broadcast updated ticket agent status on failure
