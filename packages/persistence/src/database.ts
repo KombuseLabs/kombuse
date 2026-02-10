@@ -549,6 +549,43 @@ const migrations = [
       DROP TABLE IF EXISTS session_id_mapping;
     `,
   },
+  {
+    name: '012_comments_fts_search',
+    sql: `
+      CREATE VIRTUAL TABLE IF NOT EXISTS comments_fts USING fts5(
+        body,
+        content=comments,
+        content_rowid=id,
+        tokenize='porter unicode61'
+      );
+
+      CREATE TRIGGER IF NOT EXISTS comments_fts_insert
+      AFTER INSERT ON comments
+      BEGIN
+        INSERT INTO comments_fts(rowid, body)
+        VALUES (new.id, COALESCE(new.body, ''));
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS comments_fts_delete
+      AFTER DELETE ON comments
+      BEGIN
+        INSERT INTO comments_fts(comments_fts, rowid, body)
+        VALUES ('delete', old.id, COALESCE(old.body, ''));
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS comments_fts_update
+      AFTER UPDATE ON comments
+      BEGIN
+        INSERT INTO comments_fts(comments_fts, rowid, body)
+        VALUES ('delete', old.id, COALESCE(old.body, ''));
+        INSERT INTO comments_fts(rowid, body)
+        VALUES (new.id, COALESCE(new.body, ''));
+      END;
+
+      INSERT INTO comments_fts(rowid, body)
+      SELECT id, COALESCE(body, '') FROM comments;
+    `,
+  },
 ]
 
 /**

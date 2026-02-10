@@ -73,6 +73,7 @@ const EXPECTED_MIGRATIONS = [
   '009_ticket_views',
   '010_agent_permissions',
   '011_cleanup_legacy_session_ids',
+  '012_comments_fts_search',
 ]
 
 describe('database', () => {

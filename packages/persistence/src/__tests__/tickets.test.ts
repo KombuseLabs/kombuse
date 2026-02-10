@@ -369,6 +369,187 @@ describe('ticketsRepository', () => {
       expect(results).toHaveLength(0)
     })
 
+    it('should find a ticket by comment body content', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Unrelated title for comment search',
+      })
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'The deploymentpipeline is failing in staging',
+      })
+
+      const results = ticketsRepository.list({ search: 'deploymentpipeline' })
+
+      expect(results, 'Should find ticket via comment body').toHaveLength(1)
+      expect(results[0]?.id).toBe(ticket.id)
+    })
+
+    it('should match stemmed variants in comments (porter stemming)', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Stemming test ticket',
+      })
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'The containers are crashing frequently',
+      })
+
+      const results = ticketsRepository.list({ search: 'crash' })
+
+      expect(results, 'Porter stemmer should match "crashing" from "crash"').toHaveLength(1)
+      expect(results[0]?.id).toBe(ticket.id)
+    })
+
+    it('should deduplicate when ticket matches both title/body and comments', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Authentication failure',
+        body: 'Login is broken',
+      })
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'Authentication also fails on mobile',
+      })
+
+      const results = ticketsRepository.list({ search: 'authentication' })
+
+      expect(results, 'Ticket should appear once despite matching in title and comment').toHaveLength(1)
+      expect(results[0]?.id).toBe(ticket.id)
+    })
+
+    it('should prioritize title/body matches over comment-only matches', () => {
+      const directMatch = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Performance optimization needed',
+        body: 'The API is slow',
+      })
+      const commentMatch = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Unrelated feature request',
+      })
+      commentsRepository.create({
+        ticket_id: commentMatch.id,
+        author_id: TEST_USER_ID,
+        body: 'This also affects performance optimization',
+      })
+
+      const results = ticketsRepository.list({ search: 'performance optimization' })
+
+      expect(results.length).toBeGreaterThanOrEqual(2)
+      expect(results[0]?.id, 'Direct title match should rank first').toBe(directMatch.id)
+    })
+
+    it('should not find ticket after comment is deleted', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'No matching words in title',
+      })
+      const comment = commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'Unique searchterm xyzcommentonly',
+      })
+
+      let results = ticketsRepository.list({ search: 'xyzcommentonly' })
+      expect(results).toHaveLength(1)
+
+      commentsRepository.delete(comment.id)
+
+      results = ticketsRepository.list({ search: 'xyzcommentonly' })
+      expect(results, 'Should not find ticket after comment is deleted').toHaveLength(0)
+    })
+
+    it('should find ticket after comment is updated with new content', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Comment update search test',
+      })
+      const comment = commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'Original comment text uniqueoriginal',
+      })
+
+      commentsRepository.update(comment.id, { body: 'Updated comment uniqueupdatedtext' })
+
+      const byNewText = ticketsRepository.list({ search: 'uniqueupdatedtext' })
+      expect(byNewText, 'Should find by updated comment text').toHaveLength(1)
+
+      const byOldText = ticketsRepository.list({ search: 'uniqueoriginal' })
+      expect(byOldText, 'Should not find by old comment text').toHaveLength(0)
+    })
+
+    it('should remove comment FTS entries when parent ticket is deleted', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Ticket to delete with comments',
+      })
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'Unique cascade deletetest term',
+      })
+
+      ticketsRepository.delete(ticket.id)
+
+      const results = ticketsRepository.list({ search: 'deletetest' })
+      expect(results, 'Should not find deleted ticket via orphaned comment FTS').toHaveLength(0)
+    })
+
+    it('should combine comment search with status filter', () => {
+      const openTicket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Open ticket no match',
+        status: 'open',
+      })
+      const closedTicket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Closed ticket no match',
+        status: 'closed',
+      })
+      commentsRepository.create({
+        ticket_id: openTicket.id,
+        author_id: TEST_USER_ID,
+        body: 'Unique filterable commentterm',
+      })
+      commentsRepository.create({
+        ticket_id: closedTicket.id,
+        author_id: TEST_USER_ID,
+        body: 'Also has filterable commentterm',
+      })
+
+      const results = ticketsRepository.list({ search: 'commentterm', status: 'open' })
+
+      expect(results).toHaveLength(1)
+      expect(results[0]?.id).toBe(openTicket.id)
+    })
+
+    it('should find ticket once when multiple comments match', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Multi-comment test',
+      })
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'First comment about multicommentunique',
+      })
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'Second comment also about multicommentunique',
+      })
+
+      const results = ticketsRepository.list({ search: 'multicommentunique' })
+
+      expect(results, 'Should return ticket once even with multiple matching comments').toHaveLength(1)
+      expect(results[0]?.id).toBe(ticket.id)
+    })
+
     it('should limit number of returned tickets', () => {
       const tickets = ticketsRepository.list({ limit: 2 })
 

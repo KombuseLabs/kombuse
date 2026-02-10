@@ -90,18 +90,24 @@ export const ticketsRepository = {
       const numericId = /^\d+$/.test(trimmed) ? Number(trimmed) : null
 
       if (ftsQuery && numericId !== null) {
-        // Numeric query: match by FTS OR exact ticket ID, boost ID match to top
+        // Numeric query: match by FTS (title/body/comments) OR exact ticket ID, boost ID match to top
         joinClause +=
           ' LEFT JOIN tickets_fts ON tickets.id = tickets_fts.rowid AND tickets_fts MATCH ?'
         joinParams.push(ftsQuery)
-        conditions.push('(tickets_fts.rowid IS NOT NULL OR tickets.id = ?)')
-        params.push(numericId)
+        conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id = ? OR tickets.id IN (
+          SELECT ticket_id FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments_fts MATCH ?
+        ))`)
+        params.push(numericId, ftsQuery)
         useRelevanceSort = true
         idBoostParam = numericId
       } else if (ftsQuery) {
-        // Text query: FTS only (existing behavior)
-        joinClause += ' JOIN tickets_fts ON tickets.id = tickets_fts.rowid'
-        conditions.push('tickets_fts MATCH ?')
+        // Text query: FTS across ticket title/body AND comment bodies
+        joinClause +=
+          ' LEFT JOIN tickets_fts ON tickets.id = tickets_fts.rowid AND tickets_fts MATCH ?'
+        joinParams.push(ftsQuery)
+        conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id IN (
+          SELECT ticket_id FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments_fts MATCH ?
+        ))`)
         params.push(ftsQuery)
         useRelevanceSort = true
       } else if (numericId !== null) {
@@ -126,10 +132,10 @@ export const ticketsRepository = {
     const orderByParams: unknown[] = []
     if (useRelevanceSort && !filters?.sort_by) {
       if (idBoostParam !== null) {
-        orderByClause = 'ORDER BY CASE WHEN tickets.id = ? THEN 0 ELSE 1 END, rank'
+        orderByClause = 'ORDER BY CASE WHEN tickets.id = ? THEN 0 WHEN tickets_fts.rank IS NOT NULL THEN 1 ELSE 2 END, tickets_fts.rank, tickets.updated_at DESC'
         orderByParams.push(idBoostParam)
       } else {
-        orderByClause = 'ORDER BY rank'
+        orderByClause = 'ORDER BY CASE WHEN tickets_fts.rank IS NOT NULL THEN 0 ELSE 1 END, tickets_fts.rank, tickets.updated_at DESC'
       }
     } else {
       const sortBy = filters?.sort_by && ALLOWED_SORT_COLUMNS.includes(filters.sort_by)

@@ -394,7 +394,7 @@ export function registerTicketTools(server: McpServer): void {
     'search_tickets',
     {
       description:
-        'Full-text search across ticket titles and bodies. Results are ranked by relevance. Use this to find related work, duplicates, and prior art before creating new tickets.',
+        'Full-text search across ticket titles, bodies, and comments. Results are ranked by relevance, with direct ticket matches prioritized over comment matches. Use this to find related work, duplicates, and prior art before creating new tickets.',
       inputSchema: {
         query: z
           .string()
