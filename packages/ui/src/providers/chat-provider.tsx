@@ -11,7 +11,7 @@ import type {
   Session,
 } from '@kombuse/types'
 import { useWebSocket } from '../hooks/use-websocket'
-import { useSession, useSessionEvents } from '../hooks/use-sessions'
+import { useSessionByKombuseId, useSessionEvents } from '../hooks/use-sessions'
 import { ChatCtx } from './chat-context'
 
 interface ChatProviderProps {
@@ -47,11 +47,11 @@ export function ChatProvider({
   const [pendingPermission, setPendingPermission] =
     useState<SerializedAgentPermissionRequestEvent | null>(null)
 
-  // Fetch session metadata to get kombuse_session_id for topic subscription
-  const { data: sessionData } = useSession(sessionId ?? null)
+  // Fetch session metadata — URL now contains kombuse_session_id
+  const { data: sessionData } = useSessionByKombuseId(sessionId ?? null)
 
-  // Historical mode: fetch session events
-  const { data: sessionEventsData } = useSessionEvents(sessionId ?? null)
+  // Historical mode: fetch session events (needs DB primary key, derived from resolved session)
+  const { data: sessionEventsData } = useSessionEvents(sessionData?.id ?? null)
 
   // The effective kombuse session ID — either from the loaded session record,
   // or from state set when the user started a new session

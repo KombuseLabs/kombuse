@@ -106,8 +106,8 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
 
   const sessionUrl = linkedSession
     ? projectId
-      ? `/projects/${projectId}/chats/${linkedSession.id}`
-      : `/chats/${linkedSession.id}`
+      ? `/projects/${projectId}/chats/${linkedSession.kombuse_session_id}`
+      : `/chats/${linkedSession.kombuse_session_id}`
     : null
 
   const sessionOrigin = event.kombuse_session_id
@@ -130,7 +130,7 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
               {onSessionClick ? (
                 <button
                   type="button"
-                  onClick={() => onSessionClick(linkedSession.id)}
+                  onClick={() => onSessionClick(linkedSession.kombuse_session_id!)}
                   className="inline-flex ml-1 text-muted-foreground hover:text-foreground transition-colors align-middle"
                 >
                   {sessionOrigin === 'trigger' ? (

@@ -220,7 +220,7 @@ function SessionList({
         <SessionItem
           key={session.id}
           session={session}
-          isSelected={selectedSessionId === session.id}
+          isSelected={selectedSessionId === session.kombuse_session_id}
           onClick={() => onSessionClick?.(session)}
           onDelete={onSessionDelete ? () => onSessionDelete(session) : undefined}
           hasPendingPermission={

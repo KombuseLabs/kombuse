@@ -11,7 +11,7 @@ import { ChatCtx, type ChatContextValue } from '../chat-context'
 let mockSessionData: Session | undefined
 
 vi.mock('../../hooks/use-sessions', () => ({
-  useSession: () => ({ data: mockSessionData }),
+  useSessionByKombuseId: () => ({ data: mockSessionData }),
   useSessionEvents: () => ({ data: undefined }),
 }))
 
@@ -24,7 +24,7 @@ vi.mock('../../hooks/use-websocket', () => ({
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
     id: 'sess-1',
-    kombuse_session_id: 'ks-abc-123' as KombuseSessionId,
+    kombuse_session_id: 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId,
     backend_type: 'mock',
     backend_session_id: null,
     ticket_id: null,

@@ -85,8 +85,8 @@ function CommentItem({
 
   const sessionUrl = linkedSession
     ? projectId
-      ? `/projects/${projectId}/chats/${linkedSession.id}`
-      : `/chats/${linkedSession.id}`
+      ? `/projects/${projectId}/chats/${linkedSession.kombuse_session_id}`
+      : `/chats/${linkedSession.kombuse_session_id}`
     : null
 
   const sessionOrigin = comment.kombuse_session_id
@@ -108,7 +108,7 @@ function CommentItem({
                 {onSessionClick ? (
                   <button
                     type="button"
-                    onClick={() => onSessionClick(linkedSession.id)}
+                    onClick={() => onSessionClick(linkedSession.kombuse_session_id!)}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {sessionOrigin === 'trigger' ? (

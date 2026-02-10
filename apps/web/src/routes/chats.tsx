@@ -42,8 +42,8 @@ export function Chats() {
     const session = await createSession.mutateAsync({
       backend_type: "claude-code",
     });
-    navigate(`${chatsBasePath}/${session.id}`);
-    return session.id;
+    navigate(`${chatsBasePath}/${session.kombuse_session_id}`);
+    return session.kombuse_session_id;
   };
 
   // Determine the key for ChatProvider to force remount when switching
@@ -77,10 +77,10 @@ export function Chats() {
           <SessionList
             sessions={sessions ?? []}
             selectedSessionId={selectedSessionId}
-            onSessionClick={(session) => handleSelectSession(session.id)}
+            onSessionClick={(session) => handleSelectSession(session.kombuse_session_id!)}
             onSessionDelete={(session) => {
               deleteSession.mutate(session.id)
-              if (selectedSessionId === session.id) {
+              if (selectedSessionId === session.kombuse_session_id) {
                 navigate(chatsBasePath)
               }
             }}
