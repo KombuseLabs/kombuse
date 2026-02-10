@@ -140,3 +140,90 @@ pre.shiki code {
   background-color: transparent !important;
   padding: 0;
 }
+
+/* Prose spacing — "generous whitespace, let content breathe" */
+.prose :where(p + p):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 1.5em;
+}
+
+.prose :where(h1, h2, h3, h4):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+}
+
+.prose :where(ul, ol):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 1.25em;
+  margin-bottom: 1.25em;
+}
+
+.prose :where(li + li):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 0.375em;
+}
+
+.prose :where(blockquote):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  padding-left: 1.25em;
+  border-left-width: 2px;
+}
+
+.prose :where(hr):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+
+/* Kombuse home splash */
+.kombuse-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 50%,
+    rgba(251, 123, 60, 0.13) 0%,
+    rgba(244, 54, 120, 0.06) 35%,
+    transparent 70%
+  );
+  animation: glow-in 1.6s ease-out forwards;
+  pointer-events: none;
+}
+
+.dark .kombuse-glow {
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 50%,
+    rgba(251, 123, 60, 0.1) 0%,
+    rgba(244, 54, 120, 0.04) 35%,
+    transparent 70%
+  );
+}
+
+@keyframes glow-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.kombuse-gradient-text {
+  background: linear-gradient(135deg, #F43678 0%, #FB7B3C 50%, #FBBF24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.kombuse-fade-up {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: kombuse-fade-up 0.7s ease-out forwards;
+}
+
+@keyframes kombuse-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kombuse-delay-1 { animation-delay: 0.25s; }
+.kombuse-delay-2 { animation-delay: 0.45s; }
+.kombuse-delay-3 { animation-delay: 0.65s; }

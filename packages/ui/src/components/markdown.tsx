@@ -77,13 +77,21 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
     <div
       className={cn(
         'prose prose-sm max-w-none font-sans',
+        // Ultra-light headings with tight tracking per design system
         'text-foreground prose-headings:text-foreground',
-        'prose-headings:font-semibold',
-        'prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground',
+        'prose-headings:font-light prose-headings:tracking-tight',
+        // Light body text for elegance
+        'prose-p:text-foreground prose-p:font-light',
+        'prose-li:text-foreground prose-li:font-light',
+        'prose-strong:text-foreground prose-strong:font-medium',
+        // Links
         'prose-a:text-primary prose-a:no-underline hover:prose-a:underline',
+        // Inline code
         'prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none',
         'prose-pre:bg-transparent prose-pre:border-0 prose-pre:p-0',
-        'prose-blockquote:text-muted-foreground prose-blockquote:border-border',
+        // Blockquotes
+        'prose-blockquote:text-muted-foreground prose-blockquote:border-border prose-blockquote:font-light prose-blockquote:not-italic',
+        // Media & tables
         'prose-img:rounded-md',
         'prose-table:border prose-th:border prose-th:px-3 prose-th:py-2 prose-td:border prose-td:px-3 prose-td:py-2',
         'prose-hr:border-border',
