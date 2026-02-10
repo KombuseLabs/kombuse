@@ -2,32 +2,53 @@
  * MCP stdio-to-HTTP bridge.
  *
  * Spawned by MCP clients (Claude Code / Claude Desktop) in stdio mode.
- * Reads the running server's port from ~/.kombuse/server-port, then relays
- * JSON-RPC messages between stdin/stdout and the HTTP /mcp endpoint.
+ * Watches ~/.kombuse/server-port for changes, then relays JSON-RPC messages
+ * between stdin/stdout and the HTTP /mcp endpoint.
  *
  * Pure JS — no native modules, no database access.
  */
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { readFileSync } from "node:fs";
+import { readFileSync, watchFile } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const portFile = join(homedir(), ".kombuse", "server-port");
+// --- Port resolution ---
 
-let port: string;
-try {
-  port = readFileSync(portFile, "utf-8").trim();
-} catch {
-  process.stderr.write(
-    `Kombuse server is not running (${portFile} not found). Start the server or desktop app first.\n`
-  );
-  process.exit(1);
+const portFile = join(homedir(), ".kombuse", "server-port");
+let mcpUrl: string | null = null;
+
+function readPort(): string | null {
+  try {
+    const content = readFileSync(portFile, "utf-8").trim();
+    if (/^\d+$/.test(content) && Number(content) > 0 && Number(content) <= 65535) {
+      return content;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
-const mcpUrl = `http://localhost:${port}/mcp`;
+function updateMcpUrl(): void {
+  const newPort = readPort();
+  if (newPort) {
+    const newUrl = `http://localhost:${newPort}/mcp`;
+    if (newUrl !== mcpUrl) {
+      process.stderr.write(`Bridge: server port ${newPort}\n`);
+      mcpUrl = newUrl;
+    }
+  }
+  // If port file is missing/invalid, keep last known mcpUrl (handles transient deletes during restart)
+}
 
-const transport = new StdioServerTransport();
+updateMcpUrl();
+if (!mcpUrl) {
+  process.stderr.write(`Waiting for server (${portFile})...\n`);
+}
+watchFile(portFile, { interval: 1000 }, () => updateMcpUrl());
+
+// --- SSE parsing ---
 
 /**
  * Parse SSE response body into JSON-RPC messages.
@@ -47,36 +68,62 @@ function parseSseMessages(text: string): unknown[] {
   return messages;
 }
 
-transport.onmessage = async (message) => {
-  try {
-    const res = await fetch(mcpUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json, text/event-stream",
-      },
-      body: JSON.stringify(message),
-    });
+// --- Relay ---
 
-    const contentType = res.headers.get("content-type") ?? "";
-    if (contentType.includes("text/event-stream")) {
-      // SSE response — extract JSON-RPC messages from data: lines
-      const text = await res.text();
-      for (const msg of parseSseMessages(text)) {
-        await transport.send(msg as Parameters<typeof transport.send>[0]);
+type Message = Parameters<StdioServerTransport["send"]>[0];
+
+async function relay(url: string, message: unknown, transport: StdioServerTransport): Promise<void> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify(message),
+  });
+
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("text/event-stream")) {
+    const text = await res.text();
+    for (const msg of parseSseMessages(text)) {
+      await transport.send(msg as Message);
+    }
+  } else {
+    const body = await res.json();
+    if (Array.isArray(body)) {
+      for (const msg of body) {
+        await transport.send(msg);
       }
     } else {
-      // Plain JSON response
-      const body = await res.json();
-      if (Array.isArray(body)) {
-        for (const msg of body) {
-          await transport.send(msg);
-        }
-      } else {
-        await transport.send(body);
+      await transport.send(body);
+    }
+  }
+}
+
+// --- Transport ---
+
+const transport = new StdioServerTransport();
+
+transport.onmessage = async (message) => {
+  if (!mcpUrl) {
+    process.stderr.write("Bridge error: server not available yet\n");
+    return;
+  }
+
+  try {
+    await relay(mcpUrl, message, transport);
+  } catch (err) {
+    // Connection failed — re-read port file and retry once if port changed
+    const prevUrl = mcpUrl;
+    updateMcpUrl();
+    if (mcpUrl && mcpUrl !== prevUrl) {
+      try {
+        await relay(mcpUrl, message, transport);
+        return;
+      } catch {
+        // fall through to error log
       }
     }
-  } catch (err) {
     process.stderr.write(
       `Bridge error: ${err instanceof Error ? err.message : String(err)}\n`
     );
