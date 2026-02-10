@@ -315,8 +315,17 @@ export class Process implements IProcess {
           this._handleStderr(text)
         }
       }
-    } catch {
-      // Stream closed
+    } catch (err) {
+      // Stream closure after process exit is expected.
+      // Only report genuine errors while the process is still running.
+      if (this._status.state === 'running') {
+        const error = err instanceof Error ? err : new Error('Stream closed unexpectedly')
+        this._status = { state: 'error', error }
+        this._callbacks.onError?.(error)
+        for (const behavior of this._behaviors) {
+          behavior.onError?.(error, this)
+        }
+      }
     }
   }
 

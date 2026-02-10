@@ -34,7 +34,7 @@ import {
   claudeCodeRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
-import { processEventAndRunAgents } from "./services/agent-execution-service";
+import { processEventAndRunAgents, cleanupOrphanedSessions } from "./services/agent-execution-service";
 
 // Re-export for desktop shell integration
 export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
@@ -60,6 +60,16 @@ export async function createServer({ port, db }: ServerOptions) {
       `[Server] Aborted ${abortedCount} orphaned session(s) from previous run`
     );
   }
+
+  // Periodically detect and abort orphaned sessions (running with no live backend)
+  const orphanInterval = setInterval(() => {
+    const count = cleanupOrphanedSessions();
+    if (count > 0) {
+      console.log(
+        `[Server] Cleaned up ${count} orphaned session(s)`
+      );
+    }
+  }, 60_000);
 
   const fastify = Fastify({
     logger: false,
@@ -145,7 +155,10 @@ fastify.register(claudeCodeRoutes, { prefix: "/api" });
 
   return {
     listen: () => fastify.listen({ port, host: "0.0.0.0" }),
-    close: () => fastify.close(),
+    close: () => {
+      clearInterval(orphanInterval);
+      return fastify.close();
+    },
     instance: fastify,
   };
 }

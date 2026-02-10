@@ -78,6 +78,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       {
         onSpawn: (pid) => {
           console.log('[claude-code] spawned pid:', pid)
+          this.emit(this.createRawEvent({ pid }, 'process_spawn'))
         },
         onStderr: (data) => {
           console.error('[claude-code] stderr:', data)

@@ -215,12 +215,19 @@ async function runAgentChat(
 
     if (evt.type === 'complete') {
       didComplete = true
-      const backendSessionId = backend.getBackendSessionId()
-      const context: ConversationContext = {
-        kombuseSessionId: appSessionId,
-        backendSessionId,
+      if (evt.success === false) {
+        const msg = evt.exitCode != null
+          ? `Process exited with code ${evt.exitCode}`
+          : `Agent run failed (${evt.reason})`
+        options.onError?.(new Error(msg))
+      } else {
+        const backendSessionId = backend.getBackendSessionId()
+        const context: ConversationContext = {
+          kombuseSessionId: appSessionId,
+          backendSessionId,
+        }
+        options.onComplete?.(context)
       }
-      options.onComplete?.(context)
       finalize()
     } else if (evt.type === 'error') {
       options.onEvent(evt)
@@ -381,6 +388,30 @@ export function broadcastTicketAgentStatus(ticketId: number): void {
     status,
     sessionCount,
   })
+}
+
+/**
+ * Detect and abort sessions stuck in 'running' with no live backend.
+ * Returns the number of orphaned sessions cleaned up.
+ */
+export function cleanupOrphanedSessions(): number {
+  const runningSessions = sessionsRepository.list({ status: 'running' })
+  let cleaned = 0
+  const affectedTickets = new Set<number>()
+
+  for (const session of runningSessions) {
+    if (session.kombuse_session_id && !activeBackends.has(session.kombuse_session_id)) {
+      sessionsRepository.update(session.id, { status: 'aborted' })
+      if (session.ticket_id) affectedTickets.add(session.ticket_id)
+      cleaned++
+    }
+  }
+
+  for (const ticketId of affectedTickets) {
+    broadcastTicketAgentStatus(ticketId)
+  }
+
+  return cleaned
 }
 
 /**
