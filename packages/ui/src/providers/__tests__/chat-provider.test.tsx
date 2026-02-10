@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useContext, type ReactNode } from 'react'
-import type { Session, KombuseSessionId } from '@kombuse/types'
+import type { PublicSession, KombuseSessionId } from '@kombuse/types'
 import { ChatProvider } from '../chat-provider'
 import { ChatCtx, type ChatContextValue } from '../chat-context'
 
 // --- Mocks ---
 
-let mockSessionData: Session | undefined
+let mockSessionData: PublicSession | undefined
 
 vi.mock('../../hooks/use-sessions', () => ({
   useSessionByKombuseId: () => ({ data: mockSessionData }),
@@ -21,9 +21,8 @@ vi.mock('../../hooks/use-websocket', () => ({
 
 // --- Helpers ---
 
-function makeSession(overrides: Partial<Session> = {}): Session {
+function makeSession(overrides: Partial<PublicSession> = {}): PublicSession {
   return {
-    id: 'sess-1',
     kombuse_session_id: 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId,
     backend_type: 'mock',
     backend_session_id: null,

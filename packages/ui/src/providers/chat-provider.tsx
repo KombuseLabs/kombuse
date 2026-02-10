@@ -8,7 +8,7 @@ import type {
   SerializedAgentMessageEvent,
   SerializedAgentErrorEvent,
   SerializedAgentPermissionRequestEvent,
-  Session,
+  PublicSession,
 } from '@kombuse/types'
 import { useWebSocket } from '../hooks/use-websocket'
 import { useSessionByKombuseId, useSessionEvents } from '../hooks/use-sessions'
@@ -50,8 +50,8 @@ export function ChatProvider({
   // Fetch session metadata — URL now contains kombuse_session_id
   const { data: sessionData } = useSessionByKombuseId(sessionId ?? null)
 
-  // Historical mode: fetch session events (needs DB primary key, derived from resolved session)
-  const { data: sessionEventsData } = useSessionEvents(sessionData?.id ?? null)
+  // Historical mode: fetch session events by kombuse session ID
+  const { data: sessionEventsData } = useSessionEvents(sessionData?.kombuse_session_id ?? null)
 
   // The effective kombuse session ID — either from the loaded session record,
   // or from state set when the user started a new session
@@ -91,7 +91,7 @@ export function ChatProvider({
   }, [queryClient])
 
   const updateSessionStatus = useCallback(
-    (sessionId: string, status: Session['status']) => {
+    (sessionId: string, status: PublicSession['status']) => {
       queryClient.setQueriesData({ queryKey: ['sessions'] }, (data) => {
         if (!Array.isArray(data)) {
           return data
@@ -101,8 +101,8 @@ export function ChatProvider({
           if (!entry || typeof entry !== 'object') {
             return entry
           }
-          const session = entry as Session
-          if (session.id === sessionId || session.kombuse_session_id === sessionId) {
+          const session = entry as PublicSession
+          if (session.kombuse_session_id === sessionId) {
             updated = true
             return { ...session, status }
           }

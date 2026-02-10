@@ -12,17 +12,17 @@ export function useSessions(filters?: SessionFilters) {
 export function useSessionByKombuseId(kombuseSessionId: string | null) {
   return useQuery({
     queryKey: ['sessions', 'by-kombuse', kombuseSessionId],
-    queryFn: () => sessionsApi.getByKombuseId(kombuseSessionId!),
+    queryFn: () => sessionsApi.get(kombuseSessionId!),
     enabled: !!kombuseSessionId,
     staleTime: 5 * 60 * 1000,
   })
 }
 
-export function useSessionEvents(sessionId: string | null) {
+export function useSessionEvents(kombuseSessionId: string | null) {
   return useQuery({
-    queryKey: ['sessions', sessionId, 'events'],
-    queryFn: () => sessionsApi.getEvents(sessionId!),
-    enabled: !!sessionId,
+    queryKey: ['sessions', kombuseSessionId, 'events'],
+    queryFn: () => sessionsApi.getEvents(kombuseSessionId!),
+    enabled: !!kombuseSessionId,
   })
 }
 
@@ -39,7 +39,7 @@ export function useCreateSession() {
 export function useDeleteSession() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => sessionsApi.delete(id),
+    mutationFn: (kombuseSessionId: string) => sessionsApi.delete(kombuseSessionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
     },

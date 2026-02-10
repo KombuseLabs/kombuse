@@ -1,12 +1,16 @@
 import type { FastifyInstance } from 'fastify'
+import type { Session, PublicSession } from '@kombuse/types'
 import { createSessionId } from '@kombuse/types'
-import { sessionPersistenceService } from '@kombuse/services'
 import { sessionsRepository, sessionEventsRepository } from '@kombuse/persistence'
 import {
   createSessionSchema,
   sessionFiltersSchema,
   sessionEventFiltersSchema,
 } from '../schemas/sessions'
+
+function toPublicSession({ id, ...rest }: Session): PublicSession {
+  return rest
+}
 
 export async function sessionRoutes(fastify: FastifyInstance) {
   // List sessions with optional filters
@@ -16,7 +20,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return sessionsRepository.list(parseResult.data)
+    return sessionsRepository.list(parseResult.data).map(toPublicSession)
   })
 
   // Create a new session. By default use the session ID as kombuse_session_id
@@ -34,38 +38,25 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       backend_type: parseResult.data.backend_type ?? 'claude-code',
     })
 
-    return reply.status(201).send(createdSession)
-  })
-
-  // Get session by ID
-  fastify.get<{
-    Params: { id: string }
-  }>('/sessions/:id', async (request, reply) => {
-    const session = sessionsRepository.get(request.params.id)
-    if (!session) {
-      return reply.status(404).send({ error: 'Session not found' })
-    }
-    return session
+    return reply.status(201).send(toPublicSession(createdSession))
   })
 
   // Get session by kombuse session ID
   fastify.get<{
-    Params: { kombuseSessionId: string }
-  }>('/sessions/by-kombuse/:kombuseSessionId', async (request, reply) => {
-    const session = sessionPersistenceService.getSessionByKombuseId(
-      request.params.kombuseSessionId
-    )
+    Params: { id: string }
+  }>('/sessions/:id', async (request, reply) => {
+    const session = sessionsRepository.getByKombuseSessionId(request.params.id)
     if (!session) {
       return reply.status(404).send({ error: 'Session not found' })
     }
-    return session
+    return toPublicSession(session)
   })
 
-  // Get events for a session
+  // Get events for a session (looked up by kombuse session ID)
   fastify.get<{
     Params: { id: string }
   }>('/sessions/:id/events', async (request, reply) => {
-    const session = sessionsRepository.get(request.params.id)
+    const session = sessionsRepository.getByKombuseSessionId(request.params.id)
     if (!session) {
       return reply.status(404).send({ error: 'Session not found' })
     }
@@ -78,7 +69,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     const { since_seq, event_type, limit } = parseResult.data
 
     let events = sessionEventsRepository.getBySession(
-      request.params.id,
+      session.id,
       since_seq
     )
 
@@ -93,14 +84,15 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // Delete a session
+  // Delete a session (looked up by kombuse session ID)
   fastify.delete<{
     Params: { id: string }
   }>('/sessions/:id', async (request, reply) => {
-    const deleted = sessionsRepository.delete(request.params.id)
-    if (!deleted) {
+    const session = sessionsRepository.getByKombuseSessionId(request.params.id)
+    if (!session) {
       return reply.status(404).send({ error: 'Session not found' })
     }
+    sessionsRepository.delete(session.id)
     return reply.status(204).send()
   })
 }

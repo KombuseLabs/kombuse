@@ -21,6 +21,12 @@ export interface Session {
 }
 
 /**
+ * Session as exposed by the public API — omits internal database ID.
+ * Frontend code should use this type exclusively.
+ */
+export type PublicSession = Omit<Session, 'id'>
+
+/**
  * Input for creating a session
  */
 export interface CreateSessionInput {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Session } from '@kombuse/types'
+import type { PublicSession } from '@kombuse/types'
 import { parseSessionId } from '@kombuse/types'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { MessageSquare, Trash2, Zap } from 'lucide-react'
@@ -17,7 +17,7 @@ import {
 } from '../../base'
 
 function getIndicatorStatus(
-  session: Session,
+  session: PublicSession,
   hasPendingPermission: boolean
 ): StatusIndicatorStatus {
   if (hasPendingPermission) return 'pending'
@@ -26,7 +26,7 @@ function getIndicatorStatus(
   return 'idle'
 }
 
-function getSessionLabel(session: Session): { origin: 'chat' | 'trigger' | null; label: string } {
+function getSessionLabel(session: PublicSession): { origin: 'chat' | 'trigger' | null; label: string } {
   const origin = session.kombuse_session_id
     ? (parseSessionId(session.kombuse_session_id)?.origin ?? null)
     : null
@@ -39,8 +39,8 @@ function getSessionLabel(session: Session): { origin: 'chat' | 'trigger' | null;
   }
 
   const shortId = session.kombuse_session_id
-    ? (parseSessionId(session.kombuse_session_id)?.uuid.slice(0, 8) ?? session.id.slice(0, 8))
-    : session.id.slice(0, 8)
+    ? (parseSessionId(session.kombuse_session_id)?.uuid.slice(0, 8) ?? 'Unknown')
+    : 'Unknown'
   return { origin, label: shortId }
 }
 
@@ -60,7 +60,7 @@ const OriginIcon = ({ origin }: { origin: 'chat' | 'trigger' | null }) => {
   return <MessageSquare className="size-3.5 text-muted-foreground" />
 }
 
-function getStatusText(session: Session, hasPendingPermission: boolean): string {
+function getStatusText(session: PublicSession, hasPendingPermission: boolean): string {
   if (hasPendingPermission) return 'Awaiting input'
   switch (session.status) {
     case 'running':
@@ -77,7 +77,7 @@ function getStatusText(session: Session, hasPendingPermission: boolean): string 
 }
 
 export interface SessionItemProps {
-  session: Session
+  session: PublicSession
   isSelected?: boolean
   onClick?: () => void
   onDelete?: () => void
@@ -178,11 +178,11 @@ function SessionItem({
 }
 
 export interface SessionListProps {
-  sessions: Session[]
+  sessions: PublicSession[]
   className?: string
   selectedSessionId?: string | null
-  onSessionClick?: (session: Session) => void
-  onSessionDelete?: (session: Session) => void
+  onSessionClick?: (session: PublicSession) => void
+  onSessionDelete?: (session: PublicSession) => void
   isSessionPendingPermission?: (kombuseSessionId: string | null) => boolean
   isLoading?: boolean
   emptyMessage?: string
@@ -218,7 +218,7 @@ function SessionList({
     <div className={cn('divide-y', className)}>
       {sessions.map((session) => (
         <SessionItem
-          key={session.id}
+          key={session.kombuse_session_id!}
           session={session}
           isSelected={selectedSessionId === session.kombuse_session_id}
           onClick={() => onSessionClick?.(session)}

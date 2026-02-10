@@ -29,7 +29,7 @@ import type {
   ClaudeCodeProjectWithStatus,
   EventWithActor,
   EventFilters,
-  Session,
+  PublicSession,
   SessionFilters,
   SessionEvent,
   TicketTimeline,
@@ -453,7 +453,7 @@ export const timelineApi = {
 }
 
 export const sessionsApi = {
-  async list(filters?: SessionFilters): Promise<Session[]> {
+  async list(filters?: SessionFilters): Promise<PublicSession[]> {
     const params = new URLSearchParams()
     if (filters?.status) params.set('status', filters.status)
     if (filters?.sort_by) params.set('sort_by', filters.sort_by)
@@ -462,25 +462,25 @@ export const sessionsApi = {
 
     const url = `${API_BASE}/sessions${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
-    return handleResponse<Session[]>(response)
+    return handleResponse<PublicSession[]>(response)
   },
 
-  async get(id: string): Promise<Session> {
-    const response = await fetch(`${API_BASE}/sessions/${id}`)
-    return handleResponse<Session>(response)
+  async get(kombuseSessionId: string): Promise<PublicSession> {
+    const response = await fetch(`${API_BASE}/sessions/${kombuseSessionId}`)
+    return handleResponse<PublicSession>(response)
   },
 
-  async create(input?: { backend_type?: string }): Promise<Session> {
+  async create(input?: { backend_type?: string }): Promise<PublicSession> {
     const response = await fetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input ?? {}),
     })
-    return handleResponse<Session>(response)
+    return handleResponse<PublicSession>(response)
   },
 
   async getEvents(
-    sessionId: string,
+    kombuseSessionId: string,
     filters?: { since_seq?: number; event_type?: string; limit?: number }
   ): Promise<{ session_id: string; events: SessionEvent[]; total: number }> {
     const params = new URLSearchParams()
@@ -488,18 +488,13 @@ export const sessionsApi = {
     if (filters?.event_type) params.set('event_type', filters.event_type)
     if (filters?.limit) params.set('limit', String(filters.limit))
 
-    const url = `${API_BASE}/sessions/${sessionId}/events${params.toString() ? `?${params}` : ''}`
+    const url = `${API_BASE}/sessions/${kombuseSessionId}/events${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<{ session_id: string; events: SessionEvent[]; total: number }>(response)
   },
 
-  async getByKombuseId(kombuseSessionId: string): Promise<Session> {
-    const response = await fetch(`${API_BASE}/sessions/by-kombuse/${kombuseSessionId}`)
-    return handleResponse<Session>(response)
-  },
-
-  async delete(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/sessions/${id}`, {
+  async delete(kombuseSessionId: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/sessions/${kombuseSessionId}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
