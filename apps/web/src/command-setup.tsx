@@ -92,6 +92,14 @@ export function CommandSetup({ children }: CommandSetupProps) {
           navigate("/projects/new");
         },
       }),
+      registry.register({
+        id: "profile.view",
+        title: "View Profile",
+        category: "General",
+        handler: () => {
+          navigate("/profile");
+        },
+      }),
     ];
 
     return () => unregisterFns.forEach((fn) => fn());

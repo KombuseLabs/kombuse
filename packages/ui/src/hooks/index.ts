@@ -81,6 +81,7 @@ export {
   useUploadTicketAttachment,
 } from './use-attachments'
 export { useClaudeCodeProjects, useImportClaudeCodeProjects, useClaudeCodeSessions, useClaudeCodeSessionContent } from './use-claude-code'
+export { useProfile, useCurrentUserProfile } from './use-profile'
 export { useProfileSearch } from './use-profile-search'
 export { useTicketSearch } from './use-ticket-search'
 export { useTextareaAutocomplete } from './use-textarea-autocomplete'

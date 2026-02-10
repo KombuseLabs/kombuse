@@ -1,7 +1,7 @@
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UpdateNotification, NotificationBell, CommandPalette } from "@kombuse/ui/components";
+import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { CommandSetup, usePalette } from "./command-setup";
 import { Home } from "./routes/home";
@@ -13,6 +13,7 @@ import { Events } from "./routes/events";
 import { Labels } from "./routes/labels";
 import { Permissions } from "./routes/permissions";
 import { ClaudeCodeSessionViewer } from "./routes/claude-code-session";
+import { Profile } from "./routes/profile";
 import { ProjectLayout } from "./layouts/project-layout";
 
 const queryClient = new QueryClient({
@@ -35,9 +36,11 @@ function AppContent() {
         }
       >
         <NotificationBell onNavigate={navigate} />
+        <ProfileButton onNavigate={navigate} />
       </Header>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/chats" element={<Chats />} />
         <Route path="/chats/:sessionId" element={<Chats />} />
         <Route path="/projects" element={<Projects />} />

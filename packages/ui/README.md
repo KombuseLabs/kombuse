@@ -25,11 +25,13 @@ src/
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components
 │   ├── header.tsx
+│   ├── profile-button.tsx       - Header profile link button
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks
 │   ├── use-command.ts         - Execute specific commands
 │   ├── use-commands.ts        - Get all available commands
 │   ├── use-command-context.ts - Access command registry
+│   ├── use-profile.ts           - Current user profile hook
 │   ├── use-attachments.ts      - Attachment CRUD hooks
 │   ├── use-file-staging.ts     - File staging with validation, previews, drag-and-drop
 │   ├── use-claude-code.ts     - Claude Code project scanner hooks
@@ -96,6 +98,16 @@ const commands = useCommands()
 
 // Access registry directly
 const { registry, context } = useCommandContext()
+```
+
+```typescript
+import { useProfile, useCurrentUserProfile } from '@kombuse/ui/hooks'
+
+// Fetch a profile by ID
+const { data: profile, isLoading } = useProfile('user-1')
+
+// Fetch the current user's profile (hardcoded to "user-1" until auth is implemented)
+const { data: currentUser } = useCurrentUserProfile()
 ```
 
 ```typescript
@@ -176,6 +188,13 @@ import { CommandPalette, SearchBar, Header, ModeToggle } from '@kombuse/ui/compo
   }
 >
   <NotificationBell />
+</Header>
+
+// Profile button for the header (navigates to /profile)
+import { ProfileButton } from '@kombuse/ui/components'
+<Header center={...}>
+  <NotificationBell />
+  <ProfileButton onNavigate={navigate} />
 </Header>
 
 // Header props:
