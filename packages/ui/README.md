@@ -566,6 +566,12 @@ import type { ViewMode } from '@kombuse/ui/components'
 
 `Chat` manages `viewMode` state internally and passes it to both `SessionHeader` and `SessionViewer`.
 
+`BashRenderer` (in `renderers/`):
+- Dedicated renderer for Bash tool_use and tool_result events in the session timeline
+- Renders commands in a terminal-style dark card with `$ command` prompt, monospace font, and collapsible output
+- Shows optional `description`, `run_in_background`, and `timeout` metadata as badges
+- Error states display red ring and red output text
+
 `AskUserBar` props:
 - `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request with `toolName: 'AskUserQuestion'`
 - `onRespond`: `(updatedInput: Record<string, unknown>) => void` — callback with the original input plus populated `answers` map

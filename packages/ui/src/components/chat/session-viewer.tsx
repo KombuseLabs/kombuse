@@ -6,7 +6,7 @@ import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { isValidAskUserInput } from './ask-user-types'
-import { AddCommentRenderer, AskUserRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GetTicketRenderer, GlobRenderer, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, UpdateTicketRenderer, WriteRenderer } from './renderers'
+import { AddCommentRenderer, AskUserRenderer, BashRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GetTicketRenderer, GlobRenderer, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, UpdateTicketRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 const SCROLL_THRESHOLD = 100
@@ -123,6 +123,9 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (toolUseIdsWithResults.has(event.id)) {
             return null
           }
+          if (event.name === 'Bash') {
+            return <BashRenderer key={event.eventId} toolUse={event} />
+          }
           if (event.name === 'Task') {
             return <TaskRenderer key={event.eventId} toolUse={event} />
           }
@@ -166,6 +169,9 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         if (event.type === 'tool_result') {
           const toolUse = toolUseMap.get(event.toolUseId)
           if (toolUse) {
+            if (toolUse.name === 'Bash') {
+              return <BashRenderer key={event.eventId} toolUse={toolUse} result={event} />
+            }
             if (toolUse.name === 'Task') {
               return <TaskRenderer key={event.eventId} toolUse={toolUse} result={event} />
             }

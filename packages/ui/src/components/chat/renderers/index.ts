@@ -1,4 +1,5 @@
 export { AddCommentRenderer, type AddCommentRendererProps } from './add-comment-renderer'
+export { BashRenderer, type BashRendererProps } from './bash-renderer'
 export { AskUserRenderer, type AskUserRendererProps } from './ask-user-renderer'
 export { EditRenderer, type EditRendererProps } from './edit-renderer'
 export { EnterPlanModeRenderer, type EnterPlanModeRendererProps } from './enter-plan-mode-renderer'
