@@ -27,8 +27,9 @@ const COMMENT_PROTOCOL_REGEX = /^comment:\/\/(\d+)\/(\d+)$/
 export function Markdown({ children, className, projectId }: MarkdownProps) {
   const { highlight } = useShiki()
 
-  const remarkPlugins: PluggableList = [remarkGfm, remarkProfileMentions, remarkLabelMentions]
+  const remarkPlugins: PluggableList = [remarkGfm, remarkProfileMentions]
   if (projectId) {
+    remarkPlugins.push(remarkLabelMentions)
     remarkPlugins.push(remarkCommentLinks)
     remarkPlugins.push([remarkTicketLinks, { projectId }])
   }
@@ -95,7 +96,7 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
         </a>
       )
     },
-  }), [highlight])
+  }), [highlight, projectId])
 
   return (
     <div

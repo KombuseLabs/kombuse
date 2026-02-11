@@ -2,6 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { CommentFilters, CreateCommentInput, UpdateCommentInput } from '@kombuse/types'
 import { commentsApi } from '../lib/api'
 
+export function useComment(id: number) {
+  return useQuery({
+    queryKey: ['comment', id],
+    queryFn: () => commentsApi.get(id),
+    enabled: id > 0,
+  })
+}
+
 export function useComments(ticketId: number, filters?: CommentFilters) {
   return useQuery({
     queryKey: ['comments', ticketId, filters],

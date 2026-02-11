@@ -153,6 +153,14 @@ const { textareaProps, AutocompletePortal } = useTextareaAutocomplete({
 - Handles mention context detection, debounced search, keyboard navigation (Arrow keys, Enter/Tab, Escape), and mention insertion
 
 ```typescript
+import { useComment } from '@kombuse/ui/hooks'
+
+// Fetch a single comment by ID (used by CommentMentionChip)
+const { data: comment, isLoading } = useComment(commentId)
+// Returns CommentWithAuthor (includes author profile)
+```
+
+```typescript
 import { useSessionByKombuseId } from '@kombuse/ui/hooks'
 
 // Resolve a kombuse session ID (e.g. "trigger-abc123") to its Session object
@@ -390,12 +398,18 @@ import { Markdown } from '@kombuse/ui/components'
 
 // @mentions are automatically styled (e.g., @AgentName renders as highlighted text)
 <Markdown>{'Ask @CodingAgent to implement this'}</Markdown>
+
+// Label references (~[Name](id) → colored badge chip, requires projectId)
+<Markdown projectId="my-project">{'Apply ~[Bug](3) label'}</Markdown>
+
+// Comment links (#ticketId/c/commentId → navigable chip with author name, requires projectId)
+<Markdown projectId="my-project">{'See #235/c/901 for context'}</Markdown>
 ```
 
 Props:
 - `children`: Markdown string to render
 - `className`: Optional class name
-- `projectId`: Optional project ID — when provided, `#<number>` patterns render as rich inline chips showing the ticket ID, title, and a status dot (fetched automatically via React Query)
+- `projectId`: Optional project ID — when provided, enables `#<number>` ticket chips, `~[Name](id)` label badges, and `#N/c/M` comment link chips (all fetched via React Query)
 
 Code blocks use [Shiki](https://shiki.style) for syntax highlighting with dual-theme support (`github-light` / `github-dark`). Language detection is automatic from fenced code block language hints (e.g., `` ```typescript ``). Inline code retains simple muted styling.
 
@@ -414,6 +428,40 @@ Props:
 - `ticketId`: Ticket ID to fetch and display
 - `href`: Navigation URL for the chip link
 - Falls back to a plain `#ID` link while loading or on error
+
+### LabelMentionChip
+
+Used internally by `Markdown` to render label references. Can also be used standalone:
+
+```typescript
+import { LabelMentionChip } from '@kombuse/ui/components'
+
+// Renders a colored LabelBadge inline
+<LabelMentionChip labelId={3} labelName="Bug" projectId="my-project" />
+```
+
+Props:
+- `labelId`: Label ID to look up in project labels
+- `labelName`: Display name (used as fallback if label not found)
+- `projectId`: Project ID for fetching labels via `useProjectLabels`
+- Falls back to muted `~Name` text if label not found
+
+### CommentMentionChip
+
+Used internally by `Markdown` to render comment links. Can also be used standalone:
+
+```typescript
+import { CommentMentionChip } from '@kombuse/ui/components'
+
+// Renders a chip: #235/c/901 · AuthorName, linking to the comment anchor
+<CommentMentionChip ticketId={235} commentId={901} projectId="my-project" />
+```
+
+Props:
+- `ticketId`: Ticket ID for the link URL
+- `commentId`: Comment ID to fetch and display
+- `projectId`: Project ID for the link URL
+- Falls back to a plain `#N/c/M` link while loading or on error
 
 ### Ticket Components
 

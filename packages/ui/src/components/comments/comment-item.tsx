@@ -94,7 +94,7 @@ function CommentItem({
     : null
 
   return (
-    <div className={cn('p-3 rounded-lg bg-muted/50', className)}>
+    <div id={`comment-${comment.id}`} className={cn('p-3 rounded-lg bg-muted/50', className)}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           {comment.author.type === 'agent' && (() => {

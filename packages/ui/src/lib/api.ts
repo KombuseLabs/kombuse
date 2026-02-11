@@ -148,6 +148,11 @@ export const ticketsApi = {
 }
 
 export const commentsApi = {
+  async get(id: number): Promise<CommentWithAuthor> {
+    const response = await fetch(`${API_BASE}/comments/${id}`)
+    return handleResponse<CommentWithAuthor>(response)
+  },
+
   async list(ticketId: number, filters?: CommentFilters): Promise<CommentWithAuthor[]> {
     const params = new URLSearchParams()
     if (filters?.limit) params.set('limit', String(filters.limit))
