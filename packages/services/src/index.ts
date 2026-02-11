@@ -29,6 +29,7 @@ export type {
 export {
   SessionPersistenceService,
   sessionPersistenceService,
+  buildConversationSummary,
 } from './session-persistence-service'
 export type {
   ISessionPersistenceService,

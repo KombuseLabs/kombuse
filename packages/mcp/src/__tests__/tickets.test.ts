@@ -1,11 +1,34 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '@kombuse/persistence/test-utils'
-import { ticketsRepository, projectsRepository, labelsRepository, profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository } from '@kombuse/persistence'
+import { ticketsRepository, projectsRepository, labelsRepository, profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository, commentsRepository, attachmentsRepository } from '@kombuse/persistence'
 import type { Permission } from '@kombuse/types'
 import { registerTicketTools } from '../index'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
+
+// Smallest valid 1x1 pixel PNG
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64'
+)
+
+let mockUploadsRoot: string
+
+vi.mock('@kombuse/services', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@kombuse/services')>()
+  return {
+    ...actual,
+    fileStorage: {
+      getAbsolutePath: vi.fn((storagePath: string) => {
+        return join(mockUploadsRoot, storagePath)
+      }),
+    },
+  }
+})
 
 let cleanup: () => void
 let client: Client
@@ -30,6 +53,7 @@ function parseContent(result: any): unknown {
 }
 
 beforeEach(async () => {
+  mockUploadsRoot = mkdtempSync(join(tmpdir(), 'kombuse-test-uploads-'))
   const setup = setupTestDb()
   cleanup = setup.cleanup
   client = await setupTestClient()
@@ -37,6 +61,219 @@ beforeEach(async () => {
 
 afterEach(() => {
   cleanup()
+  rmSync(mockUploadsRoot, { recursive: true, force: true })
+})
+
+function getAllBlocks(result: any) {
+  return result.content as Array<{ type: string; text?: string; data?: string; mimeType?: string }>
+}
+
+function getImageBlocks(result: any) {
+  return getAllBlocks(result).filter((b: any) => b.type === 'image')
+}
+
+function writeTestFile(storagePath: string, data: Buffer) {
+  const parts = storagePath.split('/')
+  const dir = join(mockUploadsRoot, ...parts.slice(0, -1))
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(mockUploadsRoot, storagePath), data)
+}
+
+describe('get_ticket', () => {
+  it('should return ticket with empty ticket_attachments when none exist', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const data = parseContent(result) as any
+
+    expect(data.ticket.id).toBe(ticket.id)
+    expect(data.ticket_attachments).toEqual([])
+  })
+
+  it('should return error for non-existent ticket', async () => {
+    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: 9999 } })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('9999')
+  })
+
+  it('should return ticket description attachment metadata with file_path', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const storagePath = '2026/02/test-screenshot.png'
+    writeTestFile(storagePath, TINY_PNG)
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'screenshot.png',
+      mime_type: 'image/png',
+      size_bytes: TINY_PNG.length,
+      storage_path: storagePath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const data = parseContent(result) as any
+
+    expect(data.ticket_attachments).toHaveLength(1)
+    expect(data.ticket_attachments[0].filename).toBe('screenshot.png')
+    expect(data.ticket_attachments[0].mime_type).toBe('image/png')
+    expect(data.ticket_attachments[0].size_bytes).toBe(TINY_PNG.length)
+    expect(data.ticket_attachments[0].file_path).toContain(storagePath)
+  })
+
+  it('should return comment attachment metadata with file_path', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'See attached',
+    })
+
+    const storagePath = '2026/02/test-error.png'
+    writeTestFile(storagePath, TINY_PNG)
+    attachmentsRepository.create({
+      comment_id: comment.id,
+      filename: 'error.png',
+      mime_type: 'image/png',
+      size_bytes: TINY_PNG.length,
+      storage_path: storagePath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const data = parseContent(result) as any
+
+    const commentData = data.comments.find((c: any) => c.id === comment.id)
+    expect(commentData.attachments).toHaveLength(1)
+    expect(commentData.attachments[0].filename).toBe('error.png')
+    expect(commentData.attachments[0].file_path).toContain(storagePath)
+  })
+
+  it('should return image content blocks for ticket description images', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const storagePath = '2026/02/test-img.png'
+    writeTestFile(storagePath, TINY_PNG)
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'img.png',
+      mime_type: 'image/png',
+      size_bytes: TINY_PNG.length,
+      storage_path: storagePath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const imageBlocks = getImageBlocks(result)
+
+    expect(imageBlocks).toHaveLength(1)
+    expect(imageBlocks[0]!.mimeType).toBe('image/png')
+    expect(imageBlocks[0]!.data).toBe(TINY_PNG.toString('base64'))
+  })
+
+  it('should return image content blocks for comment images', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'See attached',
+    })
+
+    const storagePath = '2026/02/test-comment-img.jpeg'
+    writeTestFile(storagePath, TINY_PNG)
+    attachmentsRepository.create({
+      comment_id: comment.id,
+      filename: 'photo.jpeg',
+      mime_type: 'image/jpeg',
+      size_bytes: TINY_PNG.length,
+      storage_path: storagePath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const imageBlocks = getImageBlocks(result)
+
+    expect(imageBlocks).toHaveLength(1)
+    expect(imageBlocks[0]!.mimeType).toBe('image/jpeg')
+  })
+
+  it('should skip non-image attachments from image blocks', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const storagePath = '2026/02/test-diagram.svg'
+    writeTestFile(storagePath, Buffer.from('<svg></svg>'))
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'diagram.svg',
+      mime_type: 'image/svg+xml',
+      size_bytes: 11,
+      storage_path: storagePath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const imageBlocks = getImageBlocks(result)
+
+    expect(imageBlocks).toHaveLength(0)
+    // But metadata should still be in the text block
+    const data = parseContent(result) as any
+    expect(data.ticket_attachments).toHaveLength(1)
+    expect(data.ticket_attachments[0].filename).toBe('diagram.svg')
+  })
+
+  it('should handle missing files gracefully', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    // Create attachment record but don't write the file
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'missing.png',
+      mime_type: 'image/png',
+      size_bytes: 1024,
+      storage_path: '2026/02/nonexistent.png',
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const imageBlocks = getImageBlocks(result)
+    const allBlocks = getAllBlocks(result)
+
+    expect(imageBlocks).toHaveLength(0)
+    // Should have a skipped note
+    const skippedBlock = allBlocks.find(b => b.type === 'text' && b.text?.includes('skipped'))
+    expect(skippedBlock).toBeDefined()
+    expect(skippedBlock!.text).toContain('missing.png')
+    expect(skippedBlock!.text).toContain('file not found on disk')
+  })
 })
 
 describe('list_tickets', () => {

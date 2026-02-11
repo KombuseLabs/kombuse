@@ -350,9 +350,10 @@ describe('startAgentChatSession agent resolution from session context', () => {
     const { backend, getCapturedOptions } = createMockBackend()
     const deps = createMockDependencies(backend, { 'ticket-analyzer': agentWithRole })
 
-    // Simulate a resumed session by returning an existing backend_session_id
+    // Simulate a resumed session by returning an existing running session
     ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue({
       id: 'session-1',
+      status: 'running',
       backend_session_id: 'backend-abc',
       ticket_id: 42,
     })
@@ -411,6 +412,186 @@ describe('startAgentChatSession agent resolution from session context', () => {
       getCapturedOptions()?.systemPrompt,
       'should have no system prompt when agent is disabled'
     ).toBeUndefined()
+  })
+
+  it('does not resume a completed session (no --resume flag)', async () => {
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
+
+    const { backend, getCapturedOptions } = createMockBackend()
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': coderAgent })
+
+    ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'session-1',
+      status: 'completed',
+      backend_session_id: 'backend-abc',
+      ticket_id: 42,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'follow up question',
+        kombuseSessionId: 'trigger-session-abc',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(
+      getCapturedOptions()?.resumeSessionId,
+      'should NOT pass resumeSessionId for completed session'
+    ).toBeUndefined()
+  })
+
+  it('does not resume a failed session', async () => {
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
+
+    const { backend, getCapturedOptions } = createMockBackend()
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': coderAgent })
+
+    ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'session-1',
+      status: 'failed',
+      backend_session_id: 'backend-abc',
+      ticket_id: 42,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'retry this',
+        kombuseSessionId: 'trigger-session-abc',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(getCapturedOptions()?.resumeSessionId).toBeUndefined()
+  })
+
+  it('injects conversation history when session is completed', async () => {
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
+
+    const agentWithRole = {
+      ...coderAgent,
+      system_prompt: 'You are a ticket analyzer.',
+    }
+
+    const { backend, getCapturedOptions } = createMockBackend()
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': agentWithRole })
+
+    ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'session-1',
+      status: 'completed',
+      backend_session_id: 'backend-abc',
+      ticket_id: 42,
+    })
+
+    ;(deps.sessionPersistence.getSessionEvents as ReturnType<typeof vi.fn>).mockReturnValue([
+      {
+        id: 1,
+        session_id: 'session-1',
+        seq: 1,
+        event_type: 'message',
+        payload: { type: 'message', role: 'user', content: 'What color is it?' },
+        created_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 2,
+        session_id: 'session-1',
+        seq: 2,
+        event_type: 'message',
+        payload: { type: 'message', role: 'assistant', content: '?' },
+        created_at: '2026-01-01T00:00:01Z',
+      },
+    ])
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'sky',
+        kombuseSessionId: 'trigger-session-abc',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const systemPrompt = getCapturedOptions()?.systemPrompt
+    expect(systemPrompt).toContain('## Prior Conversation')
+    expect(systemPrompt).toContain('**User**: What color is it?')
+    expect(systemPrompt).toContain('**Assistant**: ?')
+    expect(systemPrompt).toContain('## Agent Role')
+    expect(systemPrompt).toContain('You are a ticket analyzer.')
+  })
+
+  it('does not inject history when no prior session exists', async () => {
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
+
+    const { backend, getCapturedOptions } = createMockBackend()
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': coderAgent })
+
+    ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue(null)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'hello',
+        kombuseSessionId: 'trigger-session-abc',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const systemPrompt = getCapturedOptions()?.systemPrompt ?? ''
+    expect(systemPrompt).not.toContain('## Prior Conversation')
+  })
+
+  it('does not inject history when session has no message events', async () => {
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
+
+    const { backend, getCapturedOptions } = createMockBackend()
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': coderAgent })
+
+    ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'session-1',
+      status: 'completed',
+      backend_session_id: 'backend-abc',
+      ticket_id: 42,
+    })
+
+    ;(deps.sessionPersistence.getSessionEvents as ReturnType<typeof vi.fn>).mockReturnValue([
+      {
+        id: 1,
+        session_id: 'session-1',
+        seq: 1,
+        event_type: 'tool_use',
+        payload: { type: 'tool_use', name: 'Read', input: {} },
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    ])
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'follow up',
+        kombuseSessionId: 'trigger-session-abc',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const systemPrompt = getCapturedOptions()?.systemPrompt ?? ''
+    expect(systemPrompt).not.toContain('## Prior Conversation')
   })
 })
 

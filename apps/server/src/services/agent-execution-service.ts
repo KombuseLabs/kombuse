@@ -169,6 +169,7 @@ import {
   sessionPersistenceService,
   renderTemplate,
   buildTemplateContext,
+  buildConversationSummary,
   type ISessionPersistenceService,
 } from '@kombuse/services'
 import { agentInvocationsRepository, commentsRepository, eventsRepository, profilesRepository, sessionsRepository } from '@kombuse/persistence'
@@ -1182,6 +1183,7 @@ export function startAgentChatSession(
   // (important for resumed sessions where the client doesn't pass ticketId)
   const ticketId = options?.ticketId ?? existingSession?.ticket_id ?? undefined
   const resumeSessionId =
+    existingSession?.status === 'running' &&
     typeof existingSession?.backend_session_id === 'string' &&
     existingSession.backend_session_id.trim().length > 0
       ? existingSession.backend_session_id.trim()
@@ -1248,11 +1250,21 @@ export function startAgentChatSession(
     }
     resolvedSystemPrompt = renderTemplate(preset.preambleTemplate, preambleContext)
 
-    // On resumed sessions, re-inject the agent's role prompt into the system prompt
-    // so it has system-level authority rather than being buried in conversation history.
-    if (agent.system_prompt && resumeSessionId) {
+    // On sessions with prior context (resumed or history-fallback),
+    // re-inject the agent's role prompt so it has system-level authority.
+    if (agent.system_prompt && (resumeSessionId || existingSession)) {
       const renderedRolePrompt = renderTemplate(agent.system_prompt, preambleContext)
       resolvedSystemPrompt += `\n\n## Agent Role\n${renderedRolePrompt}`
+    }
+
+    // When resume is unavailable but a prior session exists, inject
+    // conversation history from persisted session events as fallback memory.
+    if (!resumeSessionId && existingSession) {
+      const priorEvents = dependencies.sessionPersistence.getSessionEvents(persistentSessionId)
+      const conversationHistory = buildConversationSummary(priorEvents)
+      if (conversationHistory) {
+        resolvedSystemPrompt += `\n\n## Prior Conversation\nThe following is the conversation history from a previous session. Use this context to maintain continuity.\n\n${conversationHistory}`
+      }
     }
   }
 

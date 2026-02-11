@@ -180,3 +180,44 @@ export class SessionPersistenceService implements ISessionPersistenceService {
 
 // Singleton instance for convenience
 export const sessionPersistenceService = new SessionPersistenceService()
+
+/**
+ * Maximum character budget for conversation summary injected into system prompt.
+ */
+const MAX_SUMMARY_CHARS = 8000
+
+/**
+ * Build a human-readable conversation summary from session events.
+ *
+ * Filters to message events, extracts role and content, and formats as a
+ * transcript. Truncates to the last N turns that fit within MAX_SUMMARY_CHARS.
+ * Returns empty string if no message events exist.
+ */
+export function buildConversationSummary(events: SessionEvent[]): string {
+  const messageEvents = events.filter((e) => e.event_type === 'message')
+
+  if (messageEvents.length === 0) return ''
+
+  const lines: string[] = []
+  let totalChars = 0
+
+  for (let i = messageEvents.length - 1; i >= 0; i--) {
+    const event = messageEvents[i]!
+    const role = event.payload.role as string | undefined
+    const content = event.payload.content as string | undefined
+
+    if (!role || !content) continue
+
+    const label = role === 'user' ? '**User**' : role === 'assistant' ? '**Assistant**' : `**${role}**`
+    const line = `${label}: ${content}`
+
+    if (totalChars + line.length > MAX_SUMMARY_CHARS && lines.length > 0) {
+      break
+    }
+
+    lines.unshift(line)
+    totalChars += line.length
+  }
+
+  return lines.join('\n\n')
+}

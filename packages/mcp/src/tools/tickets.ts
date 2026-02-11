@@ -1,16 +1,70 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository, agentsRepository } from '@kombuse/persistence'
-import type { Ticket, Project, Label, CommentWithAuthorAndAttachments, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext } from '@kombuse/types'
+import type { Ticket, Project, Label, CommentWithAuthorAndAttachments, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Attachment } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
-import { agentService } from '@kombuse/services'
+import { agentService, fileStorage } from '@kombuse/services'
 import { z } from 'zod'
+import { existsSync, readFileSync } from 'fs'
 
-/**
- * Response type for get_ticket tool
- */
-interface TicketWithComments {
-  ticket: Ticket
-  comments: CommentWithAuthorAndAttachments[]
+const SUPPORTED_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024   // 5 MB per image
+const MAX_TOTAL_IMAGE_BYTES = 20 * 1024 * 1024  // 20 MB total
+
+type ContentBlock = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
+
+interface ImageCollectionResult {
+  blocks: ContentBlock[]
+  totalBytes: number
+  skippedImages: string[]
+}
+
+function collectImageBlocks(
+  attachments: Attachment[],
+  sourceLabel: string,
+  runningTotalBytes: number
+): ImageCollectionResult {
+  const blocks: ContentBlock[] = []
+  let totalBytes = runningTotalBytes
+  const skippedImages: string[] = []
+
+  for (const attachment of attachments) {
+    if (!(SUPPORTED_IMAGE_MIME_TYPES as readonly string[]).includes(attachment.mime_type)) {
+      continue
+    }
+
+    if (attachment.size_bytes > MAX_IMAGE_SIZE_BYTES) {
+      skippedImages.push(`${attachment.filename} (${sourceLabel}): exceeds ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB limit`)
+      continue
+    }
+
+    if (totalBytes + attachment.size_bytes > MAX_TOTAL_IMAGE_BYTES) {
+      skippedImages.push(`${attachment.filename} (${sourceLabel}): would exceed ${MAX_TOTAL_IMAGE_BYTES / 1024 / 1024}MB total limit`)
+      continue
+    }
+
+    const absolutePath = fileStorage.getAbsolutePath(attachment.storage_path)
+    if (!existsSync(absolutePath)) {
+      skippedImages.push(`${attachment.filename} (${sourceLabel}): file not found on disk`)
+      continue
+    }
+
+    const buffer = readFileSync(absolutePath)
+    const base64Data = buffer.toString('base64')
+    totalBytes += buffer.length
+
+    blocks.push({
+      type: 'text' as const,
+      text: `Image from ${sourceLabel}: ${attachment.filename} (id: ${attachment.id})`,
+    })
+
+    blocks.push({
+      type: 'image' as const,
+      data: base64Data,
+      mimeType: attachment.mime_type,
+    })
+  }
+
+  return { blocks, totalBytes, skippedImages }
 }
 
 /**
@@ -73,7 +127,7 @@ export function registerTicketTools(server: McpServer): void {
     'get_ticket',
     {
       description:
-        'Get a ticket by ID including all its comments. Returns the ticket details and an array of comments in chronological order. Each comment includes attachment metadata (filename, mime_type, size_bytes) if any files are attached.',
+        'Get a ticket by ID including all its comments. Returns the ticket details and an array of comments in chronological order. Each comment includes attachment metadata (filename, mime_type, size_bytes, file_path) if any files are attached. Raster images (PNG, JPEG, GIF, WebP) are also returned as image content blocks with base64 data.',
       inputSchema: {
         ticket_id: z
           .number()
@@ -98,31 +152,69 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       const comments = commentsRepository.getByTicket(ticket_id)
+      const ticketAttachments = attachmentsRepository.getByTicket(ticket_id)
       const attachmentsByComment = attachmentsRepository.getByTicketComments(ticket_id)
 
-      const commentsWithAttachments: CommentWithAuthorAndAttachments[] = comments.map((comment) => ({
+      const ticketAttachmentsMeta = ticketAttachments.map((a) => ({
+        id: a.id,
+        filename: a.filename,
+        mime_type: a.mime_type,
+        size_bytes: a.size_bytes,
+        file_path: fileStorage.getAbsolutePath(a.storage_path),
+      }))
+
+      const commentsWithAttachments = comments.map((comment) => ({
         ...comment,
         attachments: (attachmentsByComment[comment.id] ?? []).map((a) => ({
           id: a.id,
           filename: a.filename,
           mime_type: a.mime_type,
           size_bytes: a.size_bytes,
+          file_path: fileStorage.getAbsolutePath(a.storage_path),
         })),
       }))
 
-      const result: TicketWithComments = {
+      const result = {
         ticket,
+        ticket_attachments: ticketAttachmentsMeta,
         comments: commentsWithAttachments,
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
+      const content: ContentBlock[] = [
+        { type: 'text' as const, text: JSON.stringify(result, null, 2) },
+      ]
+
+      // Collect image content blocks from ticket description attachments
+      const ticketImages = collectImageBlocks(ticketAttachments, 'ticket description', 0)
+      content.push(...ticketImages.blocks)
+
+      // Collect image content blocks from comment attachments
+      let runningTotal = ticketImages.totalBytes
+      const allSkipped = [...ticketImages.skippedImages]
+
+      for (const comment of comments) {
+        const commentAttachments = attachmentsByComment[comment.id] ?? []
+        if (commentAttachments.length === 0) continue
+
+        const commentImages = collectImageBlocks(
+          commentAttachments,
+          `comment #${comment.id}`,
+          runningTotal
+        )
+        content.push(...commentImages.blocks)
+        runningTotal = commentImages.totalBytes
+        allSkipped.push(...commentImages.skippedImages)
       }
+
+      // Add skipped images summary if any
+      if (allSkipped.length > 0) {
+        content.push({
+          type: 'text' as const,
+          text: `Note: ${allSkipped.length} image(s) skipped:\n${allSkipped.map(s => `- ${s}`).join('\n')}`,
+        })
+      }
+
+      return { content }
     }
   )
 
