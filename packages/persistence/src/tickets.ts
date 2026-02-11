@@ -2,6 +2,7 @@ import type {
   ActorType,
   Ticket,
   TicketWithLabels,
+  TicketWithRelations,
   TicketFilters,
   CreateTicketInput,
   UpdateTicketInput,
@@ -23,6 +24,118 @@ function sanitizeFtsQuery(input: string): string | null {
     .filter((t) => t.length > 0 && !FTS5_KEYWORDS.has(t.toUpperCase()))
   if (tokens.length === 0) return null
   return tokens.map((t) => `"${t}"*`).join(' ')
+}
+
+// Raw ticket row with joined author and assignee profile columns
+interface RawTicketWithProfiles {
+  id: number
+  project_id: string
+  author_id: string
+  assignee_id: string | null
+  claimed_by_id: string | null
+  title: string
+  body: string | null
+  status: string
+  priority: number | null
+  external_source: string | null
+  external_id: string | null
+  external_url: string | null
+  synced_at: string | null
+  claimed_at: string | null
+  claim_expires_at: string | null
+  created_at: string
+  updated_at: string
+  opened_at: string
+  closed_at: string | null
+  last_activity_at: string
+  author_type: string
+  author_name: string
+  author_email: string | null
+  author_description: string | null
+  author_avatar_url: string | null
+  author_external_source: string | null
+  author_external_id: string | null
+  author_is_active: number
+  author_created_at: string
+  author_updated_at: string
+  assignee_type: string | null
+  assignee_name: string | null
+  assignee_email: string | null
+  assignee_description: string | null
+  assignee_avatar_url: string | null
+  assignee_external_source: string | null
+  assignee_external_id: string | null
+  assignee_is_active: number | null
+  assignee_created_at: string | null
+  assignee_updated_at: string | null
+}
+
+const TICKET_WITH_PROFILES_SELECT = `
+  SELECT t.*,
+    ap.type AS author_type, ap.name AS author_name, ap.email AS author_email,
+    ap.description AS author_description, ap.avatar_url AS author_avatar_url,
+    ap.external_source AS author_external_source, ap.external_id AS author_external_id,
+    ap.is_active AS author_is_active, ap.created_at AS author_created_at,
+    ap.updated_at AS author_updated_at,
+    asp.type AS assignee_type, asp.name AS assignee_name, asp.email AS assignee_email,
+    asp.description AS assignee_description, asp.avatar_url AS assignee_avatar_url,
+    asp.external_source AS assignee_external_source, asp.external_id AS assignee_external_id,
+    asp.is_active AS assignee_is_active, asp.created_at AS assignee_created_at,
+    asp.updated_at AS assignee_updated_at
+  FROM tickets t
+  JOIN profiles ap ON ap.id = t.author_id
+  LEFT JOIN profiles asp ON asp.id = t.assignee_id
+`
+
+function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelations, 'labels' | 'has_unread'> {
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    author_id: row.author_id,
+    assignee_id: row.assignee_id,
+    claimed_by_id: row.claimed_by_id,
+    title: row.title,
+    body: row.body,
+    status: row.status as Ticket['status'],
+    priority: row.priority as Ticket['priority'],
+    external_source: row.external_source,
+    external_id: row.external_id,
+    external_url: row.external_url,
+    synced_at: row.synced_at,
+    claimed_at: row.claimed_at,
+    claim_expires_at: row.claim_expires_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    opened_at: row.opened_at,
+    closed_at: row.closed_at,
+    last_activity_at: row.last_activity_at,
+    author: {
+      id: row.author_id,
+      type: row.author_type as 'user' | 'agent',
+      name: row.author_name,
+      email: row.author_email,
+      description: row.author_description,
+      avatar_url: row.author_avatar_url,
+      external_source: row.author_external_source,
+      external_id: row.author_external_id,
+      is_active: row.author_is_active === 1,
+      created_at: row.author_created_at,
+      updated_at: row.author_updated_at,
+    },
+    assignee: row.assignee_id && row.assignee_type ? {
+      id: row.assignee_id,
+      type: row.assignee_type as 'user' | 'agent',
+      name: row.assignee_name!,
+      email: row.assignee_email ?? null,
+      description: row.assignee_description ?? null,
+      avatar_url: row.assignee_avatar_url ?? null,
+      external_source: row.assignee_external_source ?? null,
+      external_id: row.assignee_external_id ?? null,
+      is_active: row.assignee_is_active === 1,
+      created_at: row.assignee_created_at!,
+      updated_at: row.assignee_updated_at!,
+    } : null,
+  }
 }
 
 /**
@@ -178,6 +291,32 @@ export const ticketsRepository = {
   },
 
   /**
+   * List tickets with resolved author, assignee profiles, and labels
+   */
+  listWithRelations(filters?: TicketFilters): TicketWithRelations[] {
+    const tickets = this.list(filters)
+    if (tickets.length === 0) return []
+
+    const ticketIds = tickets.map((t) => t.id)
+    const labelsByTicket = labelsRepository.getLabelsForTickets(ticketIds)
+
+    const profileIds = new Set<string>()
+    for (const ticket of tickets) {
+      profileIds.add(ticket.author_id)
+      if (ticket.assignee_id) profileIds.add(ticket.assignee_id)
+    }
+
+    const profilesMap = profilesRepository.getByIds([...profileIds])
+
+    return tickets.map((ticket) => ({
+      ...ticket,
+      author: profilesMap.get(ticket.author_id)!,
+      assignee: ticket.assignee_id ? profilesMap.get(ticket.assignee_id) ?? null : null,
+      labels: labelsByTicket.get(ticket.id) ?? [],
+    }))
+  },
+
+  /**
    * Get a single ticket by ID
    */
   get(id: number): Ticket | null {
@@ -186,6 +325,20 @@ export const ticketsRepository = {
       .prepare('SELECT * FROM tickets WHERE id = ?')
       .get(id) as Ticket | undefined
     return ticket ?? null
+  },
+
+  /**
+   * Get a single ticket by ID with resolved author, assignee, and labels
+   */
+  getWithRelations(id: number): TicketWithRelations | null {
+    const db = getDatabase()
+    const row = db
+      .prepare(`${TICKET_WITH_PROFILES_SELECT} WHERE t.id = ?`)
+      .get(id) as RawTicketWithProfiles | undefined
+    if (!row) return null
+
+    const labels = labelsRepository.getTicketLabels(id)
+    return { ...mapTicketWithProfiles(row), labels }
   },
 
   /**

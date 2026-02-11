@@ -137,7 +137,7 @@ export function registerTicketTools(server: McpServer): void {
       },
     },
     async ({ ticket_id }) => {
-      const ticket = ticketsRepository.get(ticket_id)
+      const ticket = ticketsRepository.getWithRelations(ticket_id)
 
       if (!ticket) {
         return {
@@ -360,11 +360,13 @@ export function registerTicketTools(server: McpServer): void {
         body,
       })
 
+      const ticketWithRelations = ticketsRepository.getWithRelations(ticket.id)
+
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(ticket, null, 2),
+            text: JSON.stringify(ticketWithRelations, null, 2),
           },
         ],
       }
@@ -459,7 +461,7 @@ export function registerTicketTools(server: McpServer): void {
       },
     },
     async ({ project_id, status, assignee_id, label_ids, sort_by, sort_order, limit, offset }) => {
-      const tickets = ticketsRepository.list({
+      const tickets = ticketsRepository.listWithRelations({
         project_id,
         status,
         assignee_id,
@@ -531,7 +533,7 @@ export function registerTicketTools(server: McpServer): void {
         }
       }
 
-      const tickets = ticketsRepository.list({
+      const tickets = ticketsRepository.listWithRelations({
         search: query,
         project_id,
         status,
@@ -777,14 +779,13 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       // Return updated state
-      const updatedTicket = ticketsRepository.get(ticket_id)!
-      const labels = labelsRepository.getTicketLabels(ticket_id)
+      const updatedTicket = ticketsRepository.getWithRelations(ticket_id)!
 
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({ ticket: updatedTicket, labels }, null, 2),
+            text: JSON.stringify(updatedTicket, null, 2),
           },
         ],
       }

@@ -20,7 +20,7 @@ export async function ticketRoutes(fastify: FastifyInstance) {
     }
 
     const filters = parseResult.data
-    return ticketService.listWithLabels(filters)
+    return ticketService.listWithRelations(filters)
   })
 
   // Get single ticket with activities
@@ -32,7 +32,7 @@ export async function ticketRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket ID' })
     }
 
-    const ticket = ticketService.get(id)
+    const ticket = ticketService.getWithRelations(id)
     if (!ticket) {
       return reply.status(404).send({ error: 'Ticket not found' })
     }

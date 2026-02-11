@@ -354,6 +354,44 @@ describe('profilesRepository', () => {
   })
 
   /*
+   * BATCH GET TESTS
+   */
+  describe('getByIds', () => {
+    it('should return empty map for empty input', () => {
+      const result = profilesRepository.getByIds([])
+      expect(result.size).toBe(0)
+    })
+
+    it('should return profiles for valid IDs', () => {
+      const p1 = profilesRepository.create({ type: 'user', name: 'Batch User 1', email: uniqueEmail() })
+      const p2 = profilesRepository.create({ type: 'agent', name: 'Batch Agent 1' })
+
+      const result = profilesRepository.getByIds([p1.id, p2.id])
+
+      expect(result.size).toBe(2)
+      expect(result.get(p1.id)!.name).toBe('Batch User 1')
+      expect(result.get(p2.id)!.name).toBe('Batch Agent 1')
+    })
+
+    it('should skip non-existent IDs', () => {
+      const p1 = profilesRepository.create({ type: 'user', name: 'Batch User 2', email: uniqueEmail() })
+
+      const result = profilesRepository.getByIds([p1.id, 'non-existent-id'])
+
+      expect(result.size).toBe(1)
+      expect(result.has('non-existent-id')).toBe(false)
+    })
+
+    it('should deduplicate IDs', () => {
+      const p1 = profilesRepository.create({ type: 'user', name: 'Batch User 3', email: uniqueEmail() })
+
+      const result = profilesRepository.getByIds([p1.id, p1.id])
+
+      expect(result.size).toBe(1)
+    })
+  })
+
+  /*
    * DELETE TESTS (soft delete)
    */
   describe('delete', () => {

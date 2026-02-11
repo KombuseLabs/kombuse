@@ -1125,6 +1125,121 @@ describe('ticketsRepository', () => {
     })
   })
 
+  describe('getWithRelations', () => {
+    it('should return null for non-existent ticket', () => {
+      const ticket = ticketsRepository.getWithRelations(NON_EXISTENT_ID)
+      expect(ticket).toBeNull()
+    })
+
+    it('should return ticket with resolved author profile', () => {
+      const created = ticketsRepository.create(TEST_TICKET)
+      const ticket = ticketsRepository.getWithRelations(created.id)
+
+      expect(ticket).not.toBeNull()
+      expect(ticket!.author).toBeDefined()
+      expect(ticket!.author.id).toBe(TEST_USER_ID)
+      expect(ticket!.author.name).toBe('Test User')
+      expect(ticket!.author.type).toBe('user')
+      expect(ticket!.author.is_active).toBe(true)
+    })
+
+    it('should return null assignee when ticket has no assignee', () => {
+      const created = ticketsRepository.create(TEST_TICKET)
+      const ticket = ticketsRepository.getWithRelations(created.id)
+
+      expect(ticket!.assignee).toBeNull()
+    })
+
+    it('should return resolved assignee profile when assigned', () => {
+      const created = ticketsRepository.create({
+        ...TEST_TICKET,
+        assignee_id: TEST_AGENT_ID,
+      })
+      const ticket = ticketsRepository.getWithRelations(created.id)
+
+      expect(ticket!.assignee).not.toBeNull()
+      expect(ticket!.assignee!.id).toBe(TEST_AGENT_ID)
+      expect(ticket!.assignee!.name).toBe('Test Agent')
+      expect(ticket!.assignee!.type).toBe('agent')
+    })
+
+    it('should include labels', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'bug',
+      })
+      const created = ticketsRepository.create(TEST_TICKET)
+      labelsRepository.addToTicket(created.id, label.id)
+
+      const ticket = ticketsRepository.getWithRelations(created.id)
+
+      expect(ticket!.labels).toHaveLength(1)
+      expect(ticket!.labels[0]!.name).toBe('bug')
+    })
+  })
+
+  describe('listWithRelations', () => {
+    it('should return empty array when no tickets match', () => {
+      const tickets = ticketsRepository.listWithRelations({ status: 'blocked' })
+      expect(tickets).toHaveLength(0)
+    })
+
+    it('should return tickets with resolved author profiles', () => {
+      ticketsRepository.create(TEST_TICKET)
+      const tickets = ticketsRepository.listWithRelations()
+
+      expect(tickets.length).toBeGreaterThan(0)
+      for (const ticket of tickets) {
+        expect(ticket.author).toBeDefined()
+        expect(ticket.author.id).toBe(ticket.author_id)
+        expect(typeof ticket.author.name).toBe('string')
+      }
+    })
+
+    it('should resolve assignee profiles where present', () => {
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Assigned ticket',
+        assignee_id: TEST_AGENT_ID,
+      })
+      ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Unassigned ticket',
+      })
+
+      const tickets = ticketsRepository.listWithRelations()
+      const assigned = tickets.find((t) => t.title === 'Assigned ticket')
+      const unassigned = tickets.find((t) => t.title === 'Unassigned ticket')
+
+      expect(assigned!.assignee).not.toBeNull()
+      expect(assigned!.assignee!.id).toBe(TEST_AGENT_ID)
+      expect(unassigned!.assignee).toBeNull()
+    })
+
+    it('should include labels for each ticket', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'feature',
+      })
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      labelsRepository.addToTicket(ticket.id, label.id)
+
+      const tickets = ticketsRepository.listWithRelations()
+      const found = tickets.find((t) => t.id === ticket.id)
+
+      expect(found!.labels).toHaveLength(1)
+      expect(found!.labels[0]!.name).toBe('feature')
+    })
+
+    it('should apply filters', () => {
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Open', status: 'open' })
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Closed', status: 'closed' })
+
+      const openTickets = ticketsRepository.listWithRelations({ status: 'open' })
+      expect(openTickets.every((t) => t.status === 'open')).toBe(true)
+    })
+  })
+
   describe('event actor_type resolution', () => {
     it('should set actor_type to "agent" when ticket is created by an agent', () => {
       db.prepare('DELETE FROM events').run()

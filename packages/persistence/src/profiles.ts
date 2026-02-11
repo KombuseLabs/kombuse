@@ -170,6 +170,27 @@ export const profilesRepository = {
   },
 
   /**
+   * Get multiple profiles by IDs (batch operation)
+   */
+  getByIds(ids: string[]): Map<string, Profile> {
+    if (ids.length === 0) return new Map()
+
+    const db = getDatabase()
+    const uniqueIds = [...new Set(ids)]
+    const placeholders = uniqueIds.map(() => '?').join(', ')
+
+    const rows = db
+      .prepare(`SELECT * FROM profiles WHERE id IN (${placeholders})`)
+      .all(...uniqueIds) as RawProfile[]
+
+    const profileMap = new Map<string, Profile>()
+    for (const row of rows) {
+      profileMap.set(row.id, mapProfile(row))
+    }
+    return profileMap
+  },
+
+  /**
    * Soft delete a profile (sets is_active = 0)
    */
   delete(id: string): boolean {
