@@ -57,39 +57,53 @@ function ActivityTimeline({
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
-      {items.map((item) => {
-        if (item.type === 'comment') {
+    <div className={cn(className)}>
+      {items.map((item, index) => {
+        const prevItem = index > 0 ? items[index - 1] : null
+        const isComment = item.type === 'comment'
+        const prevIsComment = prevItem?.type === 'comment'
+
+        const marginClass = index === 0
+          ? ''
+          : isComment
+            ? 'mt-4'
+            : prevIsComment
+              ? 'mt-2'
+              : 'mt-1'
+
+        if (isComment) {
           const comment = item.data as CommentWithAuthor
           return (
-            <CommentItem
-              key={`comment-${comment.id}`}
-              comment={comment}
-              parentComment={comment.parent_id ? commentById.get(comment.parent_id) : undefined}
-              projectId={projectId}
-              attachments={attachmentsByCommentId?.[comment.id]}
-              isEditing={editingCommentId === comment.id}
-              editBody={editBody}
-              onEditBodyChange={onEditBodyChange}
-              onStartEdit={() => onStartEditComment?.(comment)}
-              onSaveEdit={onSaveEditComment}
-              onCancelEdit={onCancelEditComment}
-              onDelete={() => onDeleteComment?.(comment.id)}
-              onReply={() => onReplyComment?.(comment)}
-              onSessionClick={onSessionClick}
-              isUpdating={isUpdatingComment}
-              isDeleting={isDeletingComment}
-            />
+            <div key={`comment-${comment.id}`} className={marginClass}>
+              <CommentItem
+                comment={comment}
+                parentComment={comment.parent_id ? commentById.get(comment.parent_id) : undefined}
+                projectId={projectId}
+                attachments={attachmentsByCommentId?.[comment.id]}
+                isEditing={editingCommentId === comment.id}
+                editBody={editBody}
+                onEditBodyChange={onEditBodyChange}
+                onStartEdit={() => onStartEditComment?.(comment)}
+                onSaveEdit={onSaveEditComment}
+                onCancelEdit={onCancelEditComment}
+                onDelete={() => onDeleteComment?.(comment.id)}
+                onReply={() => onReplyComment?.(comment)}
+                onSessionClick={onSessionClick}
+                isUpdating={isUpdatingComment}
+                isDeleting={isDeletingComment}
+              />
+            </div>
           )
         } else {
           const event = item.data as EventWithActor
           return (
-            <TimelineEventItem
-              key={`event-${event.id}`}
-              event={event}
-              projectId={projectId}
-              onSessionClick={onSessionClick}
-            />
+            <div key={`event-${event.id}`} className={marginClass}>
+              <TimelineEventItem
+                event={event}
+                projectId={projectId}
+                onSessionClick={onSessionClick}
+              />
+            </div>
           )
         }
       })}

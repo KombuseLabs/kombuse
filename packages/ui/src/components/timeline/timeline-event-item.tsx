@@ -117,11 +117,11 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
   return (
     <div
       className={cn(
-        'flex items-center gap-2 py-2 px-3 text-sm text-muted-foreground',
+        'flex items-center gap-1.5 py-1 px-3 ml-6 text-xs text-muted-foreground',
         className
       )}
     >
-      <Icon className="size-4 shrink-0" />
+      <Icon className="size-3.5 shrink-0" />
       <span>
         <span className="font-medium text-foreground">{actorLabel}</span>
         {sessionUrl && linkedSession && (
