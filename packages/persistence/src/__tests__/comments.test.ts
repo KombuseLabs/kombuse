@@ -850,6 +850,73 @@ describe('commentsRepository', () => {
       expect(deleted).toBe(false)
     })
 
+    it('should set parent_id to NULL on replies when parent is deleted', () => {
+      const parent = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Parent comment',
+      })
+
+      const reply1 = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Reply 1',
+        parent_id: parent.id,
+      })
+
+      const reply2 = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_AGENT_ID,
+        body: 'Reply 2',
+        parent_id: parent.id,
+      })
+
+      const deleted = commentsRepository.delete(parent.id)
+      expect(deleted).toBe(true)
+
+      const fetchedReply1 = commentsRepository.get(reply1.id)
+      const fetchedReply2 = commentsRepository.get(reply2.id)
+
+      expect(fetchedReply1, 'Reply 1 should not be deleted').not.toBeNull()
+      expect(fetchedReply2, 'Reply 2 should not be deleted').not.toBeNull()
+      expect(fetchedReply1!.parent_id, 'Reply 1 parent_id should be NULL').toBeNull()
+      expect(fetchedReply2!.parent_id, 'Reply 2 parent_id should be NULL').toBeNull()
+    })
+
+    it('should emit comment.deleted event', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Comment to delete',
+      })
+
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.delete(comment.id)
+
+      const events = eventsRepository.list({ event_type: 'comment.deleted' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.ticket_id).toBe(testTicketId)
+      expect(events[0]?.actor_id).toBe(TEST_USER_ID)
+      expect(events[0]?.actor_type).toBe('user')
+
+      const payload = JSON.parse(events[0]!.payload)
+      expect(payload.comment_id).toBe(comment.id)
+      expect(payload.ticket_id).toBe(testTicketId)
+    })
+
+    it('should not emit event when deleting non-existent comment', () => {
+      db.prepare('DELETE FROM events').run()
+
+      const deleted = commentsRepository.delete(NON_EXISTENT_ID)
+
+      expect(deleted).toBe(false)
+
+      const events = eventsRepository.list({ event_type: 'comment.deleted' })
+      expect(events).toHaveLength(0)
+    })
+
     it('should cascade delete mentions', () => {
       db.prepare(
         'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'

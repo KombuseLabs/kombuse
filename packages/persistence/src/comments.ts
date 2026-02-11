@@ -535,9 +535,42 @@ export const commentsRepository = {
    */
   delete(id: number): boolean {
     const db = getDatabase()
-    // Mentions are deleted via ON DELETE CASCADE
-    const result = db.prepare('DELETE FROM comments WHERE id = ?').run(id)
-    return result.changes > 0
+
+    const existingRow = db
+      .prepare('SELECT * FROM comments WHERE id = ?')
+      .get(id) as RawComment | undefined
+    if (!existingRow) return false
+
+    const ticket = db
+      .prepare('SELECT project_id FROM tickets WHERE id = ?')
+      .get(existingRow.ticket_id) as { project_id: string } | undefined
+
+    const authorProfile = profilesRepository.get(existingRow.author_id)
+    const actorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
+
+    const deleteComment = db.transaction(() => {
+      // Mentions are deleted via ON DELETE CASCADE
+      const result = db.prepare('DELETE FROM comments WHERE id = ?').run(id)
+
+      if (result.changes > 0) {
+        eventsRepository.create({
+          event_type: 'comment.deleted',
+          project_id: ticket?.project_id,
+          ticket_id: existingRow.ticket_id,
+          actor_id: existingRow.author_id,
+          actor_type: actorType,
+          kombuse_session_id: existingRow.kombuse_session_id ?? undefined,
+          payload: {
+            comment_id: id,
+            ticket_id: existingRow.ticket_id,
+          },
+        })
+      }
+
+      return result.changes > 0
+    })
+
+    return deleteComment()
   },
 
   /**

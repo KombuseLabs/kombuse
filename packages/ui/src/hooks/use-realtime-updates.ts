@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { WebSocketEvent, EventType, ServerMessage } from '@kombuse/types'
 import { EVENT_TYPES } from '@kombuse/types'
@@ -65,6 +65,7 @@ export function useRealtimeUpdates({
 
         case EVENT_TYPES.COMMENT_ADDED:
         case EVENT_TYPES.COMMENT_EDITED:
+        case EVENT_TYPES.COMMENT_DELETED:
           // Invalidate comments and timeline for the ticket
           if (event.ticket_id) {
             queryClient.invalidateQueries({
@@ -132,6 +133,23 @@ export function useRealtimeUpdates({
     topics,
     onMessage: handleMessage,
   })
+
+  // Invalidate stale caches on WebSocket reconnect
+  const wasConnectedRef = useRef(isConnected)
+  useEffect(() => {
+    const wasConnected = wasConnectedRef.current
+    wasConnectedRef.current = isConnected
+
+    if (!wasConnected && isConnected) {
+      queryClient.invalidateQueries({ queryKey: ['tickets'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['comments'], exact: false })
+      queryClient.invalidateQueries({
+        queryKey: ['ticket-timeline'],
+        exact: false,
+      })
+      queryClient.invalidateQueries({ queryKey: ['labels'], exact: false })
+    }
+  }, [isConnected, queryClient])
 
   return { isConnected }
 }

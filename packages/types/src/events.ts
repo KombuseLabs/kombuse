@@ -75,6 +75,7 @@ export const EVENT_TYPES = {
   TICKET_UNCLAIMED: 'ticket.unclaimed',
   COMMENT_ADDED: 'comment.added',
   COMMENT_EDITED: 'comment.edited',
+  COMMENT_DELETED: 'comment.deleted',
   LABEL_ADDED: 'label.added',
   LABEL_REMOVED: 'label.removed',
   MENTION_CREATED: 'mention.created',

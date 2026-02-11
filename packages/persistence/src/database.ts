@@ -586,6 +586,65 @@ const migrations = [
       SELECT id, COALESCE(body, '') FROM comments;
     `,
   },
+  {
+    name: '013_comments_parent_set_null',
+    sql: `
+      PRAGMA foreign_keys = OFF;
+
+      CREATE TABLE comments_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        author_id TEXT NOT NULL REFERENCES profiles(id),
+        parent_id INTEGER REFERENCES comments_new(id) ON DELETE SET NULL,
+        body TEXT NOT NULL,
+        external_source TEXT,
+        external_id TEXT,
+        synced_at TEXT,
+        is_edited INTEGER NOT NULL DEFAULT 0,
+        kombuse_session_id TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      INSERT INTO comments_new (id, ticket_id, author_id, parent_id, body, external_source, external_id, synced_at, is_edited, kombuse_session_id, created_at, updated_at)
+        SELECT id, ticket_id, author_id, parent_id, body, external_source, external_id, synced_at, is_edited, kombuse_session_id, created_at, updated_at
+        FROM comments;
+
+      DROP TABLE comments;
+
+      ALTER TABLE comments_new RENAME TO comments;
+
+      CREATE INDEX IF NOT EXISTS idx_comments_ticket ON comments(ticket_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_comments_author ON comments(author_id);
+      CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id) WHERE parent_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_comments_session ON comments(kombuse_session_id) WHERE kombuse_session_id IS NOT NULL;
+
+      CREATE TRIGGER IF NOT EXISTS comments_fts_insert
+      AFTER INSERT ON comments
+      BEGIN
+        INSERT INTO comments_fts(rowid, body)
+        VALUES (new.id, COALESCE(new.body, ''));
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS comments_fts_delete
+      AFTER DELETE ON comments
+      BEGIN
+        INSERT INTO comments_fts(comments_fts, rowid, body)
+        VALUES ('delete', old.id, COALESCE(old.body, ''));
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS comments_fts_update
+      AFTER UPDATE ON comments
+      BEGIN
+        INSERT INTO comments_fts(comments_fts, rowid, body)
+        VALUES ('delete', old.id, COALESCE(old.body, ''));
+        INSERT INTO comments_fts(rowid, body)
+        VALUES (new.id, COALESCE(new.body, ''));
+      END;
+
+      PRAGMA foreign_keys = ON;
+    `,
+  },
 ]
 
 /**
