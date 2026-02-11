@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { createCommandRegistry } from "@kombuse/core";
 import { CommandProvider } from "@kombuse/ui/providers";
-import { useAppContext } from "@kombuse/ui/hooks";
+import { useAppContext, useProfileSetting, useUpsertProfileSetting } from "@kombuse/ui/hooks";
 import type { CommandContext } from "@kombuse/types";
 
 interface PaletteState {
@@ -29,6 +29,12 @@ export function CommandSetup({ children }: CommandSetupProps) {
     useAppContext();
 
   const registry = useMemo(() => createCommandRegistry(), []);
+
+  const { data: eventsSetting } = useProfileSetting("user-1", "sidebar.hidden.events");
+  const { data: permissionsSetting } = useProfileSetting("user-1", "sidebar.hidden.permissions");
+  const eventsVisible = eventsSetting?.setting_value === "false";
+  const permissionsVisible = permissionsSetting?.setting_value === "false";
+  const upsertSetting = useUpsertProfileSetting();
 
   // Register commands
   useEffect(() => {
@@ -100,10 +106,54 @@ export function CommandSetup({ children }: CommandSetupProps) {
           navigate("/profile");
         },
       }),
+      registry.register({
+        id: "sidebar.toggleEvents",
+        title: eventsVisible ? "Hide Events in Sidebar" : "Show Events in Sidebar",
+        category: "Sidebar",
+        handler: () => {
+          upsertSetting.mutate({
+            profile_id: "user-1",
+            setting_key: "sidebar.hidden.events",
+            setting_value: eventsVisible ? "true" : "false",
+          });
+        },
+      }),
+      registry.register({
+        id: "sidebar.togglePermissions",
+        title: permissionsVisible ? "Hide Permissions in Sidebar" : "Show Permissions in Sidebar",
+        category: "Sidebar",
+        handler: () => {
+          upsertSetting.mutate({
+            profile_id: "user-1",
+            setting_key: "sidebar.hidden.permissions",
+            setting_value: permissionsVisible ? "true" : "false",
+          });
+        },
+      }),
+      registry.register({
+        id: "nav.events",
+        title: "Go to Events",
+        category: "Navigation",
+        icon: "History",
+        when: (ctx) => ctx.currentProjectId != null,
+        handler: () => {
+          navigate(`/projects/${currentProjectId}/events`);
+        },
+      }),
+      registry.register({
+        id: "nav.permissions",
+        title: "Go to Permissions",
+        category: "Navigation",
+        icon: "Shield",
+        when: (ctx) => ctx.currentProjectId != null,
+        handler: () => {
+          navigate(`/projects/${currentProjectId}/permissions`);
+        },
+      }),
     ];
 
     return () => unregisterFns.forEach((fn) => fn());
-  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId]);
+  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, upsertSetting]);
 
   const context: CommandContext = useMemo(
     () => ({

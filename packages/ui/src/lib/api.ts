@@ -39,6 +39,8 @@ import type {
   SerializedAgentEvent,
   PermissionLogEntry,
   PermissionLogFilters,
+  ProfileSetting,
+  UpsertProfileSettingInput,
 } from '@kombuse/types'
 
 declare global {
@@ -628,6 +630,24 @@ export const claudeCodeApi = {
     const params = new URLSearchParams({ path: projectPath })
     const response = await fetch(`${API_BASE}/claude-code/sessions/${sessionId}?${params}`)
     return handleResponse<ClaudeCodeSessionContent>(response)
+  },
+}
+
+export const profileSettingsApi = {
+  async get(profileId: string, key: string): Promise<ProfileSetting> {
+    const response = await fetch(
+      `${API_BASE}/profiles/${profileId}/settings/${encodeURIComponent(key)}`
+    )
+    return handleResponse<ProfileSetting>(response)
+  },
+
+  async upsert(input: UpsertProfileSettingInput): Promise<ProfileSetting> {
+    const response = await fetch(`${API_BASE}/profile-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<ProfileSetting>(response)
   },
 }
 

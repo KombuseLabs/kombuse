@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, useParams, Link } from "react-router-dom";
 import { Sidebar, SidebarItem } from "@kombuse/ui/components";
-import { useProject } from "@kombuse/ui/hooks";
+import { useProject, useProfileSetting } from "@kombuse/ui/hooks";
 import { Ticket, Bot, Folder, MessageSquare, History, Tags, Shield } from "lucide-react";
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
@@ -13,6 +13,11 @@ export function ProjectLayout() {
     const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
     return stored === "true";
   });
+
+  const { data: eventsSetting } = useProfileSetting("user-1", "sidebar.hidden.events");
+  const { data: permissionsSetting } = useProfileSetting("user-1", "sidebar.hidden.permissions");
+  const showEvents = eventsSetting?.setting_value === "false";
+  const showPermissions = permissionsSetting?.setting_value === "false";
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(isCollapsed));
@@ -65,18 +70,22 @@ export function ProjectLayout() {
           to={`/projects/${projectId}/labels`}
           isCollapsed={isCollapsed}
         />
-        <SidebarItem
-          icon={<History className="size-4" />}
-          label="Events"
-          to={`/projects/${projectId}/events`}
-          isCollapsed={isCollapsed}
-        />
-        <SidebarItem
-          icon={<Shield className="size-4" />}
-          label="Permissions"
-          to={`/projects/${projectId}/permissions`}
-          isCollapsed={isCollapsed}
-        />
+        {showEvents && (
+          <SidebarItem
+            icon={<History className="size-4" />}
+            label="Events"
+            to={`/projects/${projectId}/events`}
+            isCollapsed={isCollapsed}
+          />
+        )}
+        {showPermissions && (
+          <SidebarItem
+            icon={<Shield className="size-4" />}
+            label="Permissions"
+            to={`/projects/${projectId}/permissions`}
+            isCollapsed={isCollapsed}
+          />
+        )}
       </Sidebar>
 
       <main className="flex-1 overflow-hidden">

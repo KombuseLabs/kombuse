@@ -40,6 +40,7 @@ src/
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-permissions.ts     - Permission log query hook
+│   ├── use-profile-settings.ts - Profile settings read/write hooks
 │   ├── use-projects.ts        - Project CRUD hooks
 │   ├── use-shiki.ts           - Shiki syntax highlighter hook (singleton, lazy-loaded)
 │   └── use-tickets.ts         - Ticket CRUD hooks
@@ -121,6 +122,23 @@ const { data: profile, isLoading } = useProfile('user-1')
 
 // Fetch the current user's profile (hardcoded to "user-1" until auth is implemented)
 const { data: currentUser } = useCurrentUserProfile()
+```
+
+```typescript
+import { useProfileSetting, useUpsertProfileSetting } from '@kombuse/ui/hooks'
+
+// Fetch a single profile setting by key
+const { data: setting, isLoading } = useProfileSetting('user-1', 'sidebar.hidden.events')
+// setting?.setting_value => "true" | "false"
+
+// Create or update a profile setting
+const upsertSetting = useUpsertProfileSetting()
+upsertSetting.mutate({
+  profile_id: 'user-1',
+  setting_key: 'sidebar.hidden.events',
+  setting_value: 'false',
+})
+// Automatically invalidates the matching query key on success
 ```
 
 ```typescript

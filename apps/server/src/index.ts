@@ -33,6 +33,7 @@ import {
   permissionRoutes,
   syncRoutes,
   claudeCodeRoutes,
+  profileSettingsRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
 import { processEventAndRunAgents, cleanupOrphanedSessions } from "./services/agent-execution-service";
@@ -129,6 +130,7 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(permissionRoutes, { prefix: "/api" });
   fastify.register(syncRoutes, { prefix: "/api" });
 fastify.register(claudeCodeRoutes, { prefix: "/api" });
+  fastify.register(profileSettingsRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {
     return { hello: "world" };
