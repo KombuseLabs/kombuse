@@ -84,6 +84,8 @@ function createWindow(): void {
     width: 1200,
     height: 800,
     backgroundColor: "#1A1A1A",
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 16, y: 12 },
     show: false,
     webPreferences: {
       nodeIntegration: false,

@@ -4,6 +4,7 @@ import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/provi
 import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { getWsUrl } from "@kombuse/ui/lib/api";
+import { useDesktop } from "@kombuse/ui/hooks";
 import { CommandSetup, usePalette } from "./command-setup";
 import { Home } from "./routes/home";
 import { Chats } from "./routes/chats";
@@ -29,11 +30,15 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const { open, setOpen } = usePalette();
+  const { isDesktop } = useDesktop();
   const isHome = location.pathname === "/";
 
   return (
-    <div className="min-h-screen">
-      {!isHome && (
+    <div
+      className="min-h-screen"
+      style={isDesktop ? { "--header-height": "2.5rem" } as React.CSSProperties : undefined}
+    >
+      {!isHome ? (
         <Header
           onNavigateHome={() => navigate("/")}
           center={
@@ -43,7 +48,9 @@ function AppContent() {
           <NotificationBell onNavigate={navigate} />
           <ProfileButton onNavigate={navigate} />
         </Header>
-      )}
+      ) : isDesktop ? (
+        <div className="electron-drag h-10 absolute inset-x-0 top-0 z-50" />
+      ) : null}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/profile" element={<Profile />} />

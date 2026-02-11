@@ -43,7 +43,11 @@ import type {
 
 declare global {
   interface Window {
-    electron?: { serverPort?: number; restart?: () => Promise<void> }
+    electron?: {
+      serverPort?: number
+      restart?: () => Promise<void>
+      platform?: string
+    }
   }
 }
 

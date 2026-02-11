@@ -97,3 +97,4 @@ export {
   type UseScrollToBottomOptions,
   type UseScrollToBottomReturn,
 } from './use-scroll-to-bottom'
+export { useDesktop } from './use-desktop'

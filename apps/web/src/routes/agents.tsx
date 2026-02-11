@@ -236,7 +236,7 @@ export function Agents() {
   );
 
   return (
-    <Container className={`flex flex-col ${isProjectContext ? "h-full" : "h-[calc(100vh-4rem)]"}`}>
+    <Container className={`flex flex-col ${isProjectContext ? "h-full" : "h-[calc(100vh-var(--header-height))]"}`}>
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center gap-4">
           {!isProjectContext && <Bot className="size-6" />}

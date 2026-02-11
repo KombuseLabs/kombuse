@@ -34,7 +34,9 @@ src/
 │   ├── use-profile.ts           - Current user profile hook
 │   ├── use-attachments.ts      - Attachment CRUD hooks
 │   ├── use-file-staging.ts     - File staging with validation, previews, drag-and-drop
+│   ├── use-scroll-to-bottom.ts - Auto-scroll and floating scroll button hook
 │   ├── use-claude-code.ts     - Claude Code project scanner hooks
+│   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-projects.ts        - Project CRUD hooks
@@ -98,6 +100,15 @@ const commands = useCommands()
 
 // Access registry directly
 const { registry, context } = useCommandContext()
+```
+
+```typescript
+import { useDesktop } from '@kombuse/ui/hooks'
+
+// Detect if running inside the Electron shell
+const { isDesktop, platform } = useDesktop()
+// isDesktop: true when window.electron exists
+// platform: 'darwin' | 'win32' | 'linux' | null
 ```
 
 ```typescript
@@ -169,6 +180,29 @@ const staging = useFileStaging({
 formatFileSize(1536) // => "1.5 KB"
 ```
 
+```typescript
+import { useScrollToBottom } from '@kombuse/ui/hooks'
+
+// Auto-scroll container with floating scroll-to-bottom button support
+const { scrollRef, isAtBottom, scrollToBottom, onScroll } = useScrollToBottom({
+  deps: [items.length],                  // Auto-scroll when these change (if at bottom)
+  threshold: 100,                         // Pixels from bottom to consider "at bottom" (default: 100)
+  initialScrollOnChange: selectedId,      // Force-scroll when this value changes
+})
+
+// Attach to scrollable container
+<div ref={scrollRef} onScroll={onScroll} className="overflow-y-auto">
+  {/* content */}
+</div>
+
+// Show floating button when not at bottom
+{!isAtBottom && <Button onClick={scrollToBottom}>↓</Button>}
+```
+
+- Used by `SessionViewer` (chat) and the ticket detail view
+- `deps`: triggers auto-scroll when values change and user is already at bottom
+- `initialScrollOnChange`: forces scroll to bottom when the value changes (e.g. switching tickets)
+
 ### Providers
 
 ```typescript
@@ -199,6 +233,7 @@ import { ProfileButton } from '@kombuse/ui/components'
 
 // Header props:
 // - center: ReactNode rendered in the center between title and nav
+// - onNavigateHome: Optional callback when the "Kombuse" logo is clicked
 // - children: rendered in the right nav area
 
 // CommandPalette supports #ticket search and navigation

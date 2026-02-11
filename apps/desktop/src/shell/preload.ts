@@ -18,4 +18,9 @@ contextBridge.exposeInMainWorld("electron", {
    * The port the embedded server is listening on (resolved at preload time).
    */
   serverPort: ipcRenderer.sendSync("server:port") as number,
+
+  /**
+   * The platform the app is running on ('darwin', 'win32', 'linux').
+   */
+  platform: process.platform,
 });
