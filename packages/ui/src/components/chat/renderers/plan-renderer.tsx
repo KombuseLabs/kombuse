@@ -40,15 +40,39 @@ export function PlanRenderer({ toolUse, result }: PlanRendererProps) {
   const { currentProjectId } = useCurrentProject()
 
   const isError = result?.isError ?? false
+  const hasResult = !!result
   const rawText = result ? extractTextContent(result.content) : ''
   const planContent = extractPlanContent(rawText)
+  const isApproved = hasResult && !isError && planContent.length > 0
+  const isRejected = hasResult && isError
 
   return (
-    <div className={`rounded-lg border bg-background p-4 text-sm ${isError ? 'border-red-500/30 bg-red-500/5' : 'border-border'}`}>
+    <div className={`rounded-lg border bg-background p-4 text-sm ${
+      isRejected ? 'border-red-500/30 bg-red-500/5'
+      : isApproved ? 'border-green-500/30 bg-green-500/5'
+      : 'border-border'
+    }`}>
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {isError ? "Plan failed" : "Claude's Plan"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {isRejected ? "Plan rejected" : isApproved ? "Approved Plan" : "Claude's Plan"}
+          </span>
+          {isApproved && (
+            <span className="rounded bg-green-500/20 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-300">
+              Approved
+            </span>
+          )}
+          {isRejected && (
+            <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-300">
+              Rejected
+            </span>
+          )}
+          {!hasResult && (
+            <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300">
+              Pending
+            </span>
+          )}
+        </div>
         <span className="font-mono text-[10px] text-muted-foreground">
           {formatEventTime(timestamp)}
         </span>
@@ -56,7 +80,9 @@ export function PlanRenderer({ toolUse, result }: PlanRendererProps) {
       {planContent ? (
         <Markdown projectId={currentProjectId}>{planContent}</Markdown>
       ) : (
-        <p className="text-xs text-muted-foreground italic">Plan pending approval...</p>
+        <p className="text-xs text-muted-foreground italic">
+          {!hasResult ? 'Plan pending approval...' : 'No plan content available.'}
+        </p>
       )}
     </div>
   )

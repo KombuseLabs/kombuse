@@ -662,6 +662,14 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Read-only renderer for historical `AskUserQuestion` permission request events in the session timeline
 - Falls back to `PermissionRequestRenderer` if `input.questions` is malformed
 
+`PlanApprovalBar` props:
+- `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request with `toolName: 'ExitPlanMode'`
+- `onRespond`: `(behavior: 'allow' | 'deny', message?: string) => void` — callback for user decision
+- Renders a plan approval checkpoint with indigo/purple theme
+- Three actions: Approve (green), Reject (destructive), Request Changes (reveals text input)
+- Displays `allowedPrompts` from the permission input if present (permissions the plan will need)
+- Keyboard: `Cmd/Ctrl+Enter` approves, `Escape` toggles revision input
+
 ### Timeline Components
 
 ```typescript

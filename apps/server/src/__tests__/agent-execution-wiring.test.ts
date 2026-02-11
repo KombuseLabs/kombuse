@@ -44,6 +44,7 @@ import {
   startAgentChatSession,
   presetToAllowedTools,
   getTypePreset,
+  shouldAutoApprove,
 } from '../services/agent-execution-service'
 
 /** Wait for async work fired by startAgentChatSession (which is sync but spawns async). */
@@ -881,5 +882,57 @@ describe('startAgentChatSession plan-to-comment bridge', () => {
         body: expect.stringContaining('3. Deploy'),
       })
     )
+  })
+
+  it('does not create plan comment when ExitPlanMode tool result has isError', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'coder-agent',
+        message: 'implement the feature',
+        kombuseSessionId: 'chat-plan-denied' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      { ticketId: 42 },
+    )
+
+    await waitForBackendStart(backend)
+
+    fireEvent({
+      type: 'tool_use',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      id: 'plan-tool-denied',
+      name: 'ExitPlanMode',
+      input: {},
+    })
+    fireEvent({
+      type: 'tool_result',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      toolUseId: 'plan-tool-denied',
+      content: 'The user denied this request.',
+      isError: true,
+    })
+
+    expect(commentsRepository.create).not.toHaveBeenCalled()
+  })
+})
+
+describe('ExitPlanMode auto-approval', () => {
+  it('ExitPlanMode is not auto-approved for coder agents', () => {
+    const preset = getTypePreset('coder')
+    expect(shouldAutoApprove('ExitPlanMode', {}, preset)).toBe(false)
+  })
+
+  it('EnterPlanMode is still auto-approved for coder agents', () => {
+    const preset = getTypePreset('coder')
+    expect(shouldAutoApprove('EnterPlanMode', {}, preset)).toBe(true)
   })
 })

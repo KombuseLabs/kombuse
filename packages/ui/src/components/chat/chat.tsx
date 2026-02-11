@@ -7,6 +7,7 @@ import { ChatCtx } from '../../providers/chat-context'
 import { ChatInput } from '../chat-input'
 import { AskUserBar } from './ask-user-bar'
 import { isValidAskUserInput } from './ask-user-types'
+import { PlanApprovalBar } from './plan-approval-bar'
 import { PermissionBar } from './permission-bar'
 import { SessionHeader, type ViewMode } from './session-header'
 import { SessionViewer } from './session-viewer'
@@ -66,6 +67,13 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
             permission={pendingPermission}
             onRespond={(updatedInput) =>
               respondToPermission(pendingPermission.requestId, 'allow', undefined, updatedInput)
+            }
+          />
+        ) : pendingPermission.toolName === 'ExitPlanMode' ? (
+          <PlanApprovalBar
+            permission={pendingPermission}
+            onRespond={(behavior, message) =>
+              respondToPermission(pendingPermission.requestId, behavior, message)
             }
           />
         ) : (

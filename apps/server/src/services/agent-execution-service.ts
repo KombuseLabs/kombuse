@@ -113,7 +113,7 @@ const AGENT_TYPE_PRESETS: Record<string, AgentTypePreset> = {
       ...KOMBUSE_TOOLS,
       ...READ_TOOLS,
       'Edit', 'Write', 'Bash', 'Task', 'TodoWrite',
-      'EnterPlanMode', 'ExitPlanMode',
+      'EnterPlanMode',
     ],
     autoApprovedBashCommands: ['bun', 'npm', 'git status', 'git diff', 'git log'],
     preambleTemplate: CODER_PREAMBLE_TEMPLATE,
@@ -489,6 +489,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'Task': 'Launch a subagent',
   'TodoWrite': 'Update task list',
   'AskUserQuestion': 'Ask the user a question',
+  'ExitPlanMode': 'Submit implementation plan for review',
 }
 
 /**
@@ -1294,7 +1295,8 @@ export function startAgentChatSession(
         event.type === 'tool_result' &&
         exitPlanModeToolUseId &&
         event.toolUseId === exitPlanModeToolUseId &&
-        ticketId
+        ticketId &&
+        !event.isError
       ) {
         exitPlanModeToolUseId = undefined
         const planText = typeof event.content === 'string'

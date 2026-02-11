@@ -4,3 +4,4 @@ export { SessionHeader, type SessionHeaderProps, type ViewMode } from './session
 export { Chat, type ChatProps } from './chat'
 export { MessageRenderer, type MessageRendererProps } from './renderers'
 export { PermissionBar, type PermissionBarProps } from './permission-bar'
+export { PlanApprovalBar, type PlanApprovalBarProps } from './plan-approval-bar'
