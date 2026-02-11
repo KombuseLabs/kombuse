@@ -5,7 +5,11 @@ import remarkGfm from 'remark-gfm'
 import { Link } from 'react-router-dom'
 import { remarkTicketLinks } from './remark-ticket-links'
 import { remarkProfileMentions } from './remark-profile-mentions'
+import { remarkLabelMentions } from './remark-label-mentions'
+import { remarkCommentLinks } from './remark-comment-links'
 import { TicketMentionChip } from './ticket-mention-chip'
+import { LabelMentionChip } from './label-mention-chip'
+import { CommentMentionChip } from './comment-mention-chip'
 import { useShiki } from '../hooks/use-shiki'
 import { cn } from '../lib/utils'
 import type { PluggableList } from 'unified'
@@ -17,12 +21,15 @@ interface MarkdownProps {
 }
 
 const TICKET_LINK_REGEX = /\/projects\/[^/]+\/tickets\/(\d+)$/
+const LABEL_PROTOCOL_REGEX = /^label:\/\/(\d+)$/
+const COMMENT_PROTOCOL_REGEX = /^comment:\/\/(\d+)\/(\d+)$/
 
 export function Markdown({ children, className, projectId }: MarkdownProps) {
   const { highlight } = useShiki()
 
-  const remarkPlugins: PluggableList = [remarkGfm, remarkProfileMentions]
+  const remarkPlugins: PluggableList = [remarkGfm, remarkProfileMentions, remarkLabelMentions]
   if (projectId) {
+    remarkPlugins.push(remarkCommentLinks)
     remarkPlugins.push([remarkTicketLinks, { projectId }])
   }
 
@@ -54,6 +61,23 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
           </span>
         )
       }
+      if (href?.startsWith('label://') && projectId) {
+        const labelMatch = href.match(LABEL_PROTOCOL_REGEX)
+        if (labelMatch) {
+          const labelName = typeof linkChildren === 'string'
+            ? linkChildren
+            : Array.isArray(linkChildren)
+              ? linkChildren.join('')
+              : String(linkChildren ?? '')
+          return <LabelMentionChip labelId={Number(labelMatch[1])} labelName={labelName} projectId={projectId} />
+        }
+      }
+      if (href?.startsWith('comment://') && projectId) {
+        const commentMatch = href.match(COMMENT_PROTOCOL_REGEX)
+        if (commentMatch) {
+          return <CommentMentionChip ticketId={Number(commentMatch[1])} commentId={Number(commentMatch[2])} projectId={projectId} />
+        }
+      }
       if (href?.startsWith('/projects/')) {
         const ticketMatch = href.match(TICKET_LINK_REGEX)
         if (ticketMatch) {
@@ -77,12 +101,13 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
     <div
       className={cn(
         'prose prose-sm max-w-none font-sans',
-        // Ultra-light headings with tight tracking per design system
+        // Compact headings with tight tracking per design system
         'text-foreground prose-headings:text-foreground',
         'prose-headings:font-light prose-headings:tracking-tight',
-        // Light body text for elegance
-        'prose-p:text-foreground prose-p:font-light',
-        'prose-li:text-foreground prose-li:font-light',
+        'prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-h4:text-sm',
+        // Body text at normal weight for readability
+        'prose-p:text-foreground',
+        'prose-li:text-foreground',
         'prose-strong:text-foreground prose-strong:font-medium',
         // Links
         'prose-a:text-primary prose-a:no-underline hover:prose-a:underline',
