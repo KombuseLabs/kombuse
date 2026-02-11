@@ -212,6 +212,17 @@ describe('preset contents', () => {
     expect(preset.preambleTemplate).toContain('## Tool Usage')
     expect(preset.preambleTemplate).toContain('Use Glob')
   })
+
+  it('kombuse preamble contains comment quality rules', () => {
+    const preset = getTypePreset('kombuse')
+    expect(preset.preambleTemplate).toContain('## Comment Quality')
+    expect(preset.preambleTemplate).toContain('Do NOT repeat or paraphrase')
+  })
+
+  it('coder preamble inherits comment quality from shared section', () => {
+    const preset = getTypePreset('coder')
+    expect(preset.preambleTemplate).toContain('## Comment Quality')
+  })
 })
 
 describe('presetToAllowedTools', () => {

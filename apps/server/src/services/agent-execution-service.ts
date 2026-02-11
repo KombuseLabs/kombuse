@@ -70,6 +70,12 @@ You have these MCP tools for ticket communication:
 - Post your results as a comment on #{{ ticket_id }} using add_comment.
 - If you discover unrelated issues, use create_ticket rather than scope-creeping.
 - If the ticket cross-references other tickets (#NNN), read them for context.
+
+## Comment Quality
+- Before posting, review ALL existing comments on the ticket.
+- Do NOT repeat or paraphrase what another commenter has already said.
+- If you agree and have nothing new to add, say so briefly (e.g. "Nothing to add beyond the above analysis") rather than restating it.
+- Every comment must contribute distinct information, analysis, or perspective.
 {% if ticket %}
 ## Ticket Context
 **{{ ticket.title }}**
