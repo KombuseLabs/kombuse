@@ -23,7 +23,7 @@ interface PromptEditorProps {
 }
 
 // Regex to match template variables like {{ticket.title}}, {{user.name}}
-const VARIABLE_REGEX = /\{\{([a-zA-Z_][a-zA-Z0-9_.]*)\}\}/g
+const VARIABLE_REGEX = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}/g
 
 function PromptEditor({
   value,
