@@ -270,13 +270,24 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {isEditable && (
+            {isEditable && mode === 'edit' ? (
+              <>
+                <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUpdating}>
+                  <Paperclip className="size-4" />
+                </Button>
+                <Button variant="ghost" onClick={handleCancel} disabled={isUpdating}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={!editTitle.trim() || isUpdating}>
+                  {isUpdating ? 'Saving...' : 'Save'}
+                </Button>
+              </>
+            ) : isEditable ? (
               <>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleEditClick}
-                  disabled={mode === 'edit'}
                 >
                   <Pencil className="size-4" />
                 </Button>
@@ -290,7 +301,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                   <Trash2 className="size-4" />
                 </Button>
               </>
-            )}
+            ) : null}
             {onClose && (
               <Button variant="ghost" size="icon" onClick={onClose}>
                 <X className="size-4" />
@@ -410,19 +421,6 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
           </div>
         )}
 
-        {mode === 'edit' && (
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUpdating}>
-              <Paperclip className="size-4" />
-            </Button>
-            <Button variant="ghost" onClick={handleCancel} disabled={isUpdating}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={!editTitle.trim() || isUpdating}>
-              {isUpdating ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        )}
       </div>
     </>
   )
