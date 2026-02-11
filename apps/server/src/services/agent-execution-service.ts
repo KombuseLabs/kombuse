@@ -858,7 +858,7 @@ const AGENT_PASSTHROUGH_EVENTS = [
 
 // Maximum number of agent invocations per ticket within the time window
 // before the chain depth guard halts execution to prevent infinite loops.
-const MAX_CHAIN_DEPTH = 10
+const MAX_CHAIN_DEPTH = 15
 
 /**
  * Process a domain event by creating invocations and running them via chat infrastructure.
