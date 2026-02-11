@@ -41,6 +41,7 @@ src/
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-projects.ts        - Project CRUD hooks
+│   ├── use-shiki.ts           - Shiki syntax highlighter hook (singleton, lazy-loaded)
 │   └── use-tickets.ts         - Ticket CRUD hooks
 ├── providers/      - Context providers
 │   ├── command-provider.tsx   - Command system provider
@@ -203,6 +204,17 @@ const { scrollRef, isAtBottom, scrollToBottom, onScroll } = useScrollToBottom({
 - Used by `SessionViewer` (chat) and the ticket detail view
 - `deps`: triggers auto-scroll when values change and user is already at bottom
 - `initialScrollOnChange`: forces scroll to bottom when the value changes (e.g. switching tickets)
+
+```typescript
+import { useShiki } from '@kombuse/ui/hooks'
+
+// Lazy-load the Shiki syntax highlighter (singleton, shared across all components)
+const { ready, highlight } = useShiki()
+// ready: boolean — true once the highlighter has loaded
+// highlight(code, lang): string | null — returns HTML string or null if not ready
+```
+
+Used internally by `Markdown` for fenced code block highlighting. Preloads 16 common languages (TypeScript, JavaScript, TSX, JSX, Python, Bash, JSON, HTML, CSS, Go, Rust, YAML, SQL, Markdown, Diff). Supports dual themes (`github-light` / `github-dark`) with automatic dark mode switching via CSS variables.
 
 ### Providers
 

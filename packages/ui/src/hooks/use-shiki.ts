@@ -15,13 +15,18 @@ async function loadHighlighter(): Promise<Highlighter> {
   if (highlighterPromise) return highlighterPromise
 
   highlighterPromise = (async () => {
-    const { createHighlighter } = await import('shiki')
-    const h = await createHighlighter({
-      themes: ['github-light', 'github-dark'],
-      langs: [...PRELOAD_LANGUAGES],
-    })
-    highlighterInstance = h
-    return h
+    try {
+      const { createHighlighter } = await import('shiki')
+      const h = await createHighlighter({
+        themes: ['github-light', 'github-dark'],
+        langs: [...PRELOAD_LANGUAGES],
+      })
+      highlighterInstance = h
+      return h
+    } catch (e) {
+      highlighterPromise = null
+      throw e
+    }
   })()
 
   return highlighterPromise

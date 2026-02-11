@@ -28,7 +28,7 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
 
   const components = useMemo<Components>(() => ({
     code: ({ children, className, ...rest }) => {
-      const langMatch = (className || '').match(/language-(?:\w+=)?(\w+)/)
+      const langMatch = (className || '').match(/language-(\w+)/)
       if (langMatch) {
         const lang = langMatch[1] ?? ''
         const code = String(children ?? '').replace(/\n$/, '')
