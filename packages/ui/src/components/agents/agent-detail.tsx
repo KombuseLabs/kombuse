@@ -203,6 +203,7 @@ function AgentDetail({
             value={systemPrompt}
             onChange={setSystemPrompt}
             placeholder="Enter the agent's system prompt..."
+            showAvailableVariables
           />
         </div>
 

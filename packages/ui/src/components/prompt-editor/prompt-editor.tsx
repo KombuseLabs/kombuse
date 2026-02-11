@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Copy, Check, Eye, Edit2 } from 'lucide-react'
+import { Copy, Check, Eye, Edit2, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Textarea } from '../../base/textarea'
 import { Button } from '../../base/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../base/collapsible'
+import { TEMPLATE_VARIABLE_GROUPS, type TemplateVariableGroup } from './template-variables'
 
 interface PromptEditorProps {
   value: string
@@ -16,6 +18,8 @@ interface PromptEditorProps {
   maxHeight?: number
   showCounts?: boolean
   showPreview?: boolean
+  showAvailableVariables?: boolean
+  availableVariables?: TemplateVariableGroup[]
 }
 
 // Regex to match template variables like {{ticket.title}}, {{user.name}}
@@ -31,9 +35,12 @@ function PromptEditor({
   maxHeight = 500,
   showCounts = true,
   showPreview = true,
+  showAvailableVariables = false,
+  availableVariables,
 }: PromptEditorProps) {
   const [copied, setCopied] = useState(false)
   const [isPreview, setIsPreview] = useState(false)
+  const [variablesOpen, setVariablesOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-resize textarea
@@ -54,6 +61,27 @@ function PromptEditor({
   // Extract variables from the prompt
   const variables = [...value.matchAll(VARIABLE_REGEX)].map((m) => m[1])
   const uniqueVariables = [...new Set(variables)]
+  const usedVariableSet = new Set(uniqueVariables)
+  const variableGroups = availableVariables ?? TEMPLATE_VARIABLE_GROUPS
+
+  const insertAtCursor = (variableName: string) => {
+    const textarea = textareaRef.current
+    if (!textarea || isPreview) return
+
+    const insertText = `{{ ${variableName} }}`
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const before = value.slice(0, start)
+    const after = value.slice(end)
+
+    onChange(before + insertText + after)
+
+    requestAnimationFrame(() => {
+      textarea.focus()
+      const newPos = start + insertText.length
+      textarea.setSelectionRange(newPos, newPos)
+    })
+  }
 
   // Rough token estimate (1 token ~ 4 chars for English)
   const estimatedTokens = Math.ceil(value.length / 4)
@@ -137,6 +165,64 @@ function PromptEditor({
           className="font-mono text-sm resize-none"
           style={{ minHeight }}
         />
+      )}
+
+      {/* Available Variables */}
+      {showAvailableVariables && (
+        <Collapsible open={variablesOpen} onOpenChange={setVariablesOpen}>
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 px-0 h-auto text-xs text-muted-foreground hover:bg-transparent"
+            >
+              {variablesOpen ? (
+                <ChevronDown className="size-3" />
+              ) : (
+                <ChevronRight className="size-3" />
+              )}
+              Available Variables
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1">
+            <div className="rounded-md border bg-muted/30 p-3 space-y-3 text-xs">
+              {variableGroups.map((group) => (
+                <div key={group.label}>
+                  <div className="font-medium text-muted-foreground mb-1">
+                    {group.label}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {group.variables.map((variable) => {
+                      const isUsed = usedVariableSet.has(variable.name)
+                      return (
+                        <button
+                          key={variable.name}
+                          type="button"
+                          title={variable.description}
+                          onClick={() => insertAtCursor(variable.name)}
+                          disabled={disabled || isPreview}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono',
+                            'border transition-colors cursor-pointer',
+                            'hover:bg-primary/10 hover:border-primary/30',
+                            'disabled:cursor-not-allowed disabled:opacity-50',
+                            isUsed
+                              ? 'bg-primary/10 border-primary/20 text-primary'
+                              : 'bg-muted border-transparent text-muted-foreground'
+                          )}
+                        >
+                          {isUsed && <Check className="size-3" />}
+                          {`{{ ${variable.name} }}`}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* Footer with counts and variables */}

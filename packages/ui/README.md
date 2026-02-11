@@ -20,6 +20,7 @@ src/
 ├── components/     - Domain components
 │   ├── command-palette/  - Command palette UI
 │   ├── labels/           - Label management components
+│   ├── prompt-editor/    - System prompt editor with template variables
 │   ├── sidebar/          - Collapsible sidebar navigation
 │   ├── permissions/      - Permission decision log components
 │   ├── sessions/         - Session list components
@@ -575,6 +576,50 @@ import { AgentCard, AgentDetail } from '@kombuse/ui/components'
 ```
 
 Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users can easily reference it in trigger conditions. `AgentDetail` includes a click-to-copy button next to the ID.
+
+### Prompt Editor
+
+```typescript
+import { PromptEditor } from '@kombuse/ui/components'
+import { TEMPLATE_VARIABLE_GROUPS } from '@kombuse/ui/components'
+import type { TemplateVariable, TemplateVariableGroup } from '@kombuse/ui/components'
+
+// Basic prompt editor
+<PromptEditor
+  value={prompt}
+  onChange={setPrompt}
+  placeholder="Enter your system prompt..."
+/>
+
+// With available variables panel (for agent prompts)
+<PromptEditor
+  value={prompt}
+  onChange={setPrompt}
+  showAvailableVariables
+/>
+
+// With custom variable catalog
+<PromptEditor
+  value={prompt}
+  onChange={setPrompt}
+  showAvailableVariables
+  availableVariables={customGroups}
+/>
+```
+
+Props:
+- `value`: Prompt text value
+- `onChange`: Callback when text changes
+- `placeholder`: Input placeholder (default: "Enter your system prompt...")
+- `disabled`: Disable editing
+- `className`: Additional CSS class
+- `minHeight` / `maxHeight`: Textarea height constraints (default: 200 / 500)
+- `showCounts`: Show character/token counts in footer (default: true)
+- `showPreview`: Show edit/preview toggle (default: true)
+- `showAvailableVariables`: Show collapsible panel of available template variables (default: false)
+- `availableVariables`: Override the default variable catalog (`TEMPLATE_VARIABLE_GROUPS`)
+
+The available variables panel lists variables grouped by category (Event, Ticket, Project, Comment, Actor, Session). Clicking a variable badge inserts `{{ variable }}` at the cursor position. Variables already used in the prompt are highlighted with a checkmark.
 
 ### Chat Components
 

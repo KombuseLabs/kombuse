@@ -319,6 +319,7 @@ export function Agents() {
                         value={newAgentPrompt}
                         onChange={setNewAgentPrompt}
                         placeholder="Enter the agent's system prompt..."
+                        showAvailableVariables
                       />
                     </div>
 
