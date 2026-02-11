@@ -31,8 +31,8 @@ function Header({ className, center, onNavigateHome, children, ...props }: Heade
       >
         Kombuse
       </button>
-      <div className="flex flex-1 justify-center px-4 electron-no-drag">
-        {center}
+      <div className="flex flex-1 justify-center px-4">
+        {center ? <div className="electron-no-drag">{center}</div> : null}
       </div>
       <nav className="flex shrink-0 items-center gap-4 electron-no-drag">
         {children}
