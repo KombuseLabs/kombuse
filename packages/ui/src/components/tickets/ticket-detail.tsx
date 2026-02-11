@@ -155,14 +155,14 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   }
 
   return (
-    <div className={cn(className)}>
-      {/* Sticky header — sticks within the nearest overflow-y-auto ancestor */}
-      <div className="sticky top-0 z-10 bg-background border-b shadow-sm px-4 py-4">
+    <>
+      {/* Sticky header — direct child of scroll container so sticky works correctly */}
+      <div className={cn('sticky top-0 z-10 bg-background border-b shadow-sm px-4 py-4', className)}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             {mode === 'view' ? (
               <>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-2">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   {isEditable ? (
@@ -211,7 +211,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
               </>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-2">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   <Tabs
@@ -301,7 +301,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
       </div>
 
       {/* Content body — scrolls beneath the sticky header */}
-      <div className="space-y-3 px-4 py-4">
+      <div className="space-y-3 px-4 py-4 border-b">
         {mode === 'view' ? (
           <>
             {ticket.body && (
@@ -424,7 +424,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }
 

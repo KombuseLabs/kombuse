@@ -38,6 +38,7 @@ import {
   useTextareaAutocomplete,
   useMarkTicketViewed,
   useFileStaging,
+  useScrollToBottom,
 } from "@kombuse/ui/hooks";
 import { LabelBadge, StagedFilePreviews } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip } from "lucide-react";
@@ -152,6 +153,12 @@ export function Tickets() {
   );
   const attachmentsByCommentId = useCommentsAttachments(commentIds);
   const uploadAttachment = useUploadAttachment();
+
+  // Scroll-to-bottom for ticket detail
+  const { scrollRef: ticketScrollRef, isAtBottom: ticketIsAtBottom, scrollToBottom: ticketScrollToBottom, onScroll: ticketOnScroll } = useScrollToBottom({
+    deps: [timeline?.items.length],
+    initialScrollOnChange: selectedTicket?.id,
+  });
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editBody, setEditBody] = useState("");
@@ -634,9 +641,9 @@ export function Tickets() {
                     )}
 
                     {selectedTicket && (
-                      <>
+                      <div className="relative flex flex-col flex-1 min-h-0">
                         {/* Scrollable area: ticket detail + comments */}
-                        <div className="flex-1 overflow-y-auto">
+                        <div ref={ticketScrollRef} onScroll={ticketOnScroll} className="flex-1 overflow-y-auto">
                           <TicketDetail
                             onClose={handleCloseDetail}
                             isEditable
@@ -692,6 +699,19 @@ export function Tickets() {
                           </div>
                         </div>
 
+                        {/* Floating scroll-to-bottom button */}
+                        {!ticketIsAtBottom && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="absolute bottom-16 left-1/2 -translate-x-1/2 rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity z-10"
+                            onClick={ticketScrollToBottom}
+                            aria-label="Scroll to bottom"
+                          >
+                            <ArrowDown className="h-4 w-4" />
+                          </Button>
+                        )}
+
                         {/* Fixed ChatInput at bottom */}
                         <div className="border-t p-4">
                           {agentReplySessionId && (
@@ -708,7 +728,7 @@ export function Tickets() {
                             onCancelReply={handleCancelReply}
                           />
                         </div>
-                      </>
+                      </div>
                     )}
                   </>
                 )}

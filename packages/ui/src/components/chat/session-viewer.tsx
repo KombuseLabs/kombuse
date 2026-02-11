@@ -1,15 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { ArrowDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
+import { useScrollToBottom } from '../../hooks/use-scroll-to-bottom'
 import { isValidAskUserInput } from './ask-user-types'
 import { AddCommentRenderer, AskUserRenderer, BashRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GetTicketRenderer, GlobRenderer, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, UpdateTicketRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
-
-const SCROLL_THRESHOLD = 100
 
 interface SessionViewerProps {
   events: SerializedAgentEvent[]
@@ -20,31 +19,10 @@ interface SessionViewerProps {
 }
 
 function SessionViewer({ events, isLoading = false, emptyMessage = 'No events yet', viewMode = 'normal', className }: SessionViewerProps) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [isAtBottom, setIsAtBottom] = useState(true)
+  const { scrollRef, isAtBottom, scrollToBottom, onScroll } = useScrollToBottom({
+    deps: [events.length, isLoading],
+  })
 
-  const checkIfAtBottom = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-    setIsAtBottom(distanceFromBottom <= SCROLL_THRESHOLD)
-  }, [])
-
-  const scrollToBottom = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-  }, [])
-
-  // Auto-scroll when new events arrive and user is at the bottom
-  useEffect(() => {
-    if (isAtBottom) {
-      const el = scrollRef.current
-      if (el) {
-        el.scrollTop = el.scrollHeight
-      }
-    }
-  }, [events.length, isLoading, isAtBottom])
   // Build maps for tool_use events and track which ones have results
   const { toolUseMap, toolUseIdsWithResults } = useMemo(() => {
     const useMap = new Map<string, SerializedAgentToolUseEvent>()
@@ -87,7 +65,7 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
 
   return (
     <div className={cn('relative flex-1 overflow-hidden', className)}>
-      <div ref={scrollRef} onScroll={checkIfAtBottom} className="h-full overflow-y-auto p-4 space-y-4">
+      <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto p-4 space-y-4">
       {visibleEvents.map((event) => {
         if (event.type === 'message') {
           return <MessageRenderer key={event.eventId} event={event} />

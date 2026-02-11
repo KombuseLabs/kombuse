@@ -92,3 +92,8 @@ export {
   type UseFileStagingOptions,
   type UseFileStagingReturn,
 } from './use-file-staging'
+export {
+  useScrollToBottom,
+  type UseScrollToBottomOptions,
+  type UseScrollToBottomReturn,
+} from './use-scroll-to-bottom'
