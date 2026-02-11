@@ -55,7 +55,10 @@ function LabelDetail({
               className="size-10 rounded-full shrink-0"
               style={{ backgroundColor: label.color }}
             />
-            <CardTitle className="text-xl">{label.name}</CardTitle>
+            <div>
+              <CardTitle className="text-xl">{label.name}</CardTitle>
+              <span className="text-sm text-muted-foreground">ID: {label.id}</span>
+            </div>
           </div>
           <div className="flex items-center gap-1">
             {onDelete && (
