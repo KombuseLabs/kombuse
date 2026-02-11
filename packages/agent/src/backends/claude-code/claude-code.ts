@@ -64,6 +64,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       onMessage: (msg) => this.handleMessage(msg),
     })
     console.log('[claude-code] spawning with args:', args.join(' '))
+    console.log('[claude-code] project path:', options.projectPath)
     this.process = new Process(
       {
         command: this.options.cliPath,
@@ -223,7 +224,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   private handleMessage(msg: ParsedClaudeMessage): void {
     const event = msg.data
-
+    console.log('[claude-code] received event:', msg)
     for (const normalizedEvent of this.normalizeEvent(event)) {
       this.emit(normalizedEvent)
     }
@@ -380,7 +381,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   private normalizeResult(event: ClaudeResultMessage): AgentEvent[] {
     this.backendSessionId = event.session_id
-
+    console.log('[claude-code] session event', event)
     const events: AgentEvent[] = []
     const isSuccess = event.subtype === 'success' && !event.is_error
     const errorMessage = isSuccess ? undefined : this.getResultErrorMessage(event)
@@ -413,6 +414,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   private updateBackendSessionId(event: ClaudeEvent): void {
     if ('session_id' in event && typeof event.session_id === 'string') {
+      console.log('[claude-code] updating backend session ID:', event.session_id)
       this.backendSessionId = event.session_id
     }
   }
