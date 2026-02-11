@@ -332,6 +332,57 @@ describe('sessionsRepository', () => {
       expect(sessions[0]!.prompt_preview).toHaveLength(80)
     })
 
+    it('should return one row per session even with multiple agent_invocations', () => {
+      const kombuseSessionId = createSessionId('trigger')
+      sessionsRepository.create({ kombuse_session_id: kombuseSessionId, ticket_id: testTicketId })
+
+      // Ensure agent record exists
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt')
+      `).run(TEST_AGENT_ID)
+
+      // Create a second agent profile for the second invocation
+      const secondAgentId = 'test-agent-2'
+      db.prepare(`
+        INSERT OR IGNORE INTO profiles (id, type, name)
+        VALUES (?, 'agent', 'Second Agent')
+      `).run(secondAgentId)
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt 2')
+      `).run(secondAgentId)
+
+      // Create two triggers and two invocations for the same session
+      const trigger1 = db.prepare(`
+        INSERT INTO agent_triggers (agent_id, event_type)
+        VALUES (?, 'ticket.created')
+      `).run(TEST_AGENT_ID)
+      db.prepare(`
+        INSERT INTO agent_invocations (agent_id, trigger_id, context, kombuse_session_id, created_at)
+        VALUES (?, ?, '{}', ?, '2025-01-01 00:00:00')
+      `).run(TEST_AGENT_ID, trigger1.lastInsertRowid, kombuseSessionId)
+
+      const trigger2 = db.prepare(`
+        INSERT INTO agent_triggers (agent_id, event_type)
+        VALUES (?, 'ticket.created')
+      `).run(secondAgentId)
+      db.prepare(`
+        INSERT INTO agent_invocations (agent_id, trigger_id, context, kombuse_session_id, created_at)
+        VALUES (?, ?, '{}', ?, '2025-01-02 00:00:00')
+      `).run(secondAgentId, trigger2.lastInsertRowid, kombuseSessionId)
+
+      // list() should return exactly 1 row, not 2
+      const sessions = sessionsRepository.list()
+      expect(sessions, 'should not duplicate sessions with multiple invocations').toHaveLength(1)
+      expect(sessions[0]!.agent_name, 'should pick most recent invocation agent name').toBe('Second Agent')
+
+      // listByTicket() should also return exactly 1 row
+      const ticketSessions = sessionsRepository.listByTicket(testTicketId)
+      expect(ticketSessions, 'listByTicket should not duplicate sessions').toHaveLength(1)
+      expect(ticketSessions[0]!.agent_name).toBe('Second Agent')
+    })
+
     it('should return metadata in listByTicket()', () => {
       const kombuseSessionId = createSessionId('trigger')
       sessionsRepository.create({

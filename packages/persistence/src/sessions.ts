@@ -37,14 +37,16 @@ export const sessionsRepository = {
 
     const stmt = db.prepare(`
       SELECT s.*,
-        p.name AS agent_name,
+        (SELECT p2.name FROM agent_invocations ai2
+         JOIN profiles p2 ON p2.id = ai2.agent_id
+         WHERE ai2.kombuse_session_id = s.kombuse_session_id
+         ORDER BY ai2.created_at DESC LIMIT 1
+        ) AS agent_name,
         (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
          FROM session_events se
          WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
         ) AS prompt_preview
       FROM sessions s
-      LEFT JOIN agent_invocations ai ON ai.kombuse_session_id = s.kombuse_session_id
-      LEFT JOIN profiles p ON p.id = ai.agent_id
       ${whereClause}
       ORDER BY s.${sortColumn} DESC
       LIMIT ? OFFSET ?
@@ -185,14 +187,16 @@ export const sessionsRepository = {
 
     const stmt = db.prepare(`
       SELECT s.*,
-        p.name AS agent_name,
+        (SELECT p2.name FROM agent_invocations ai2
+         JOIN profiles p2 ON p2.id = ai2.agent_id
+         WHERE ai2.kombuse_session_id = s.kombuse_session_id
+         ORDER BY ai2.created_at DESC LIMIT 1
+        ) AS agent_name,
         (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
          FROM session_events se
          WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
         ) AS prompt_preview
       FROM sessions s
-      LEFT JOIN agent_invocations ai ON ai.kombuse_session_id = s.kombuse_session_id
-      LEFT JOIN profiles p ON p.id = ai.agent_id
       WHERE ${conditions.join(' AND ')}
       ORDER BY s.${sortColumn} DESC
       LIMIT ? OFFSET ?
