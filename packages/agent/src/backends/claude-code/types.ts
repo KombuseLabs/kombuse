@@ -9,7 +9,8 @@
 
 export type ApiKeySource = 'user' | 'project' | 'org' | 'temporary'
 
-export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan'
+import type { PermissionMode } from '@kombuse/types'
+export type { PermissionMode }
 
 export interface Usage {
   input_tokens: number

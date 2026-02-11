@@ -206,6 +206,11 @@ export class ClaudeCodeBackend implements AgentBackend {
       args.push('--resume', options.resumeSessionId.trim())
     }
 
+    // Set permission mode (e.g. 'plan' forces plan-first workflow)
+    if (options.permissionMode && options.permissionMode !== 'default') {
+      args.push('--permission-mode', options.permissionMode)
+    }
+
     // Append to Claude Code's built-in system prompt (does NOT replace it)
     if (typeof options.systemPrompt === 'string' && options.systemPrompt.trim().length > 0) {
       args.push('--append-system-prompt', options.systemPrompt.trim())
@@ -378,6 +383,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
     const events: AgentEvent[] = []
     const isSuccess = event.subtype === 'success' && !event.is_error
+    const errorMessage = isSuccess ? undefined : this.getResultErrorMessage(event)
 
     events.push({
       type: 'complete',
@@ -387,11 +393,12 @@ export class ClaudeCodeBackend implements AgentBackend {
       reason: 'result',
       sessionId: event.session_id,
       success: isSuccess,
+      errorMessage,
       raw: event,
     })
 
     if (!isSuccess) {
-      events.push(this.createErrorEvent(this.getResultErrorMessage(event), undefined, event))
+      events.push(this.createErrorEvent(errorMessage!, undefined, event))
     }
 
     return events

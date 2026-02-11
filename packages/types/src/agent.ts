@@ -5,6 +5,9 @@
 
 import type { KombuseSessionId } from './session-id'
 
+/** CLI permission mode controlling how the agent interacts with tools. */
+export type PermissionMode = 'default' | 'plan' | 'acceptEdits' | 'bypassPermissions'
+
 /**
  * Configuration for starting an agent backend
  */
@@ -21,6 +24,8 @@ export interface StartOptions {
   maxTurns?: number
   /** Tools pre-approved at the subprocess level via --allowedTools. */
   allowedTools?: string[]
+  /** Permission mode for the CLI session (e.g. 'plan' forces plan-first workflow). */
+  permissionMode?: PermissionMode
 }
 
 /**
@@ -131,6 +136,8 @@ export interface AgentCompleteEvent extends AgentEventBase {
   sessionId?: string
   exitCode?: number | null
   success?: boolean
+  /** Human-readable error message when success is false */
+  errorMessage?: string
   raw?: unknown
 }
 

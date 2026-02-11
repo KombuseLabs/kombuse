@@ -115,6 +115,45 @@ describe('ClaudeCodeBackend', () => {
 
       expect(args).not.toContain('--allowedTools')
     })
+
+    it('includes --permission-mode when permissionMode is plan', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        permissionMode: 'plan',
+      })
+
+      expect(args).toContain('--permission-mode')
+      expect(args).toContain('plan')
+    })
+
+    it('omits --permission-mode when permissionMode is default', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        permissionMode: 'default',
+      })
+
+      expect(args).not.toContain('--permission-mode')
+    })
+
+    it('omits --permission-mode when permissionMode is undefined', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+      })
+
+      expect(args).not.toContain('--permission-mode')
+    })
   })
 
   describe('handleMessage', () => {
@@ -181,6 +220,10 @@ describe('ClaudeCodeBackend', () => {
 
       expect(events).toHaveLength(1)
       expect(events[0]!.type).toBe('complete')
+      if (events[0]!.type === 'complete') {
+        expect(events[0]!.success).toBe(true)
+        expect(events[0]!.errorMessage).toBeUndefined()
+      }
       expect(backend.getBackendSessionId()).toBe('session_abc')
     })
 
@@ -207,6 +250,10 @@ describe('ClaudeCodeBackend', () => {
 
       expect(events).toHaveLength(2)
       expect(events[0]!.type).toBe('complete')
+      if (events[0]!.type === 'complete') {
+        expect(events[0]!.success).toBe(false)
+        expect(events[0]!.errorMessage).toBe('boom')
+      }
       expect(events[1]!.type).toBe('error')
       expect(backend.getBackendSessionId()).toBe('session_err')
     })
