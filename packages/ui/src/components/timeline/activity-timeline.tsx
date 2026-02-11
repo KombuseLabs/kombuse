@@ -66,7 +66,7 @@ function ActivityTimeline({
         const marginClass = index === 0
           ? ''
           : isComment
-            ? 'mt-4'
+            ? 'mt-5'
             : prevIsComment
               ? 'mt-2'
               : 'mt-1'
