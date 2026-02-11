@@ -96,7 +96,7 @@ export function Chats() {
         isProjectContext ? "" : "p-4"
       )}>
         <div className={cn(
-          "flex items-center gap-4 mb-4",
+          "flex items-center gap-4 mb-4 shrink-0",
           isProjectContext && "p-4 border-b"
         )}>
           <h1 className="text-2xl font-bold">
@@ -104,7 +104,7 @@ export function Chats() {
           </h1>
         </div>
 
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <ChatProvider
             key={chatKey}
             sessionId={selectedSessionId}
