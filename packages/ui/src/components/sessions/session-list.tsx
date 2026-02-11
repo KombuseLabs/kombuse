@@ -216,7 +216,7 @@ function SessionList({
   }
 
   return (
-    <div className={cn('divide-y', className)}>
+    <div className={cn('rounded-lg border divide-y', className)}>
       {sessions.map((session) => (
         <SessionItem
           key={session.kombuse_session_id!}
