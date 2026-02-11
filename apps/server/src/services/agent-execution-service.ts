@@ -875,12 +875,11 @@ export async function processEventAndRunAgents(
   const isLifecycleEvent = (AGENT_LIFECYCLE_EVENTS as readonly string[]).includes(event.event_type)
   const isPassthroughEvent = (AGENT_PASSTHROUGH_EVENTS as readonly string[]).includes(event.event_type)
 
-  // Agent lifecycle events and mention.created are allowed through so the
-  // Pipeline Orchestrator can chain agents via @mentions. Other agent-originated
-  // events (comments, labels) are still blocked to prevent cascading loops.
-  if (event.actor_type === 'agent' && !isPassthroughEvent) {
+  // Only user-originated events trigger agents (except passthrough events like
+  // agent lifecycle and mention.created, which enable pipeline chaining).
+  if (event.actor_type !== 'user' && !isPassthroughEvent) {
     console.log(
-      `[Server] Skipping agent-originated event #${event.id} (${event.event_type})`
+      `[Server] Skipping non-user event #${event.id} (${event.event_type}, actor_type=${event.actor_type})`
     )
     return
   }
