@@ -27,6 +27,7 @@ import { createServer as createServerDirect, setAutoUpdater } from "server";
 import { registerAppProtocol } from "./protocol";
 import { getPackageInfo, loadPackage } from "./package-loader";
 import { autoUpdater } from "./auto-updater";
+import { buildAppMenu, refreshMenu } from "./menu";
 import { is, getMode } from "../env";
 
 const DEV_WEB_URL = "http://localhost:3333";
@@ -79,10 +80,16 @@ async function startPackageServer() {
 
 let webUrl = DEV_WEB_URL;
 
-function createWindow(): void {
+function createWindow(path?: string): void {
+  const focused = BrowserWindow.getFocusedWindow();
+  const bounds = focused?.getBounds();
+  const x = bounds ? bounds.x + 20 : undefined;
+  const y = bounds ? bounds.y + 20 : undefined;
+
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    ...(x !== undefined && y !== undefined ? { x, y } : {}),
     backgroundColor: "#1A1A1A",
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 12 },
@@ -98,7 +105,8 @@ function createWindow(): void {
     mainWindow.show();
   });
 
-  mainWindow.loadURL(webUrl);
+  const url = path ? `${webUrl}${path}` : webUrl;
+  mainWindow.loadURL(url);
 }
 
 // IPC handler for server port (used by renderer to discover API address)
@@ -137,7 +145,19 @@ app.whenReady().then(async () => {
       webUrl = "app://./";
     }
 
+    buildAppMenu({
+      createWindow,
+      webUrl,
+      serverPort,
+      isDev: is.dev(),
+    });
+    refreshMenu();
+
     createWindow();
+
+    app.on("browser-window-focus", () => {
+      refreshMenu();
+    });
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
