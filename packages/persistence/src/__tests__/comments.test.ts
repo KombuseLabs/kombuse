@@ -580,6 +580,71 @@ describe('commentsRepository', () => {
         const ticketMentions = mentions.filter((m) => m.mention_type === 'ticket')
         expect(ticketMentions, 'No mention records for non-existent ticket').toHaveLength(0)
       })
+
+      it('should NOT create a duplicate cross-reference event when a second comment on the same ticket mentions the same target', () => {
+        const targetTicket = ticketsRepository.create({
+          title: 'Dedup Target',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+
+        db.prepare('DELETE FROM events').run()
+
+        commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: `First mention of #${targetTicket.id}`,
+        })
+
+        commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_AGENT_ID,
+          body: `Second mention of #${targetTicket.id}`,
+        })
+
+        const targetEvents = eventsRepository.getByTicket(targetTicket.id)
+        const crossRefEvents = targetEvents.filter((e) => {
+          const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+          return e.event_type === 'mention.created' && p.mention_type === 'ticket_cross_reference'
+        })
+
+        expect(crossRefEvents, 'Only one cross-reference event per source→target pair').toHaveLength(1)
+      })
+
+      it('should still create cross-reference events from different source tickets', () => {
+        const targetTicket = ticketsRepository.create({
+          title: 'Multi-Source Target',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+        const sourceTicket2 = ticketsRepository.create({
+          title: 'Second Source',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+
+        db.prepare('DELETE FROM events').run()
+
+        commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: `From source 1: #${targetTicket.id}`,
+        })
+
+        commentsRepository.create({
+          ticket_id: sourceTicket2.id,
+          author_id: TEST_USER_ID,
+          body: `From source 2: #${targetTicket.id}`,
+        })
+
+        const targetEvents = eventsRepository.getByTicket(targetTicket.id)
+        const crossRefEvents = targetEvents.filter((e) => {
+          const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+          return e.event_type === 'mention.created' && p.mention_type === 'ticket_cross_reference'
+        })
+
+        expect(crossRefEvents, 'One cross-reference per unique source ticket').toHaveLength(2)
+      })
     })
   })
 

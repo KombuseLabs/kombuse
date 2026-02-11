@@ -329,23 +329,36 @@ export const commentsRepository = {
           },
         })
 
-        // Cross-reference event on the MENTIONED ticket's timeline
+        // Cross-reference event on the MENTIONED ticket's timeline (deduplicated per source→target pair)
         if (mentionedTicketId !== payload.ticket_id) {
-          eventsRepository.create({
-            event_type: 'mention.created',
-            project_id: mentionedTicket.project_id,
-            ticket_id: mentionedTicketId,
-            comment_id: commentId,
-            actor_id: payload.author_id,
-            actor_type: actorType,
-            kombuse_session_id: payload.kombuse_session_id,
-            payload: {
-              mention_type: 'ticket_cross_reference',
-              source_ticket_id: payload.ticket_id,
-              source_comment_id: commentId,
-              mention_text: `#${payload.ticket_id}`,
-            },
-          })
+          const existingCrossRef = db
+            .prepare(
+              `SELECT 1 FROM events
+               WHERE event_type = 'mention.created'
+                 AND ticket_id = ?
+                 AND json_extract(payload, '$.mention_type') = 'ticket_cross_reference'
+                 AND json_extract(payload, '$.source_ticket_id') = ?
+               LIMIT 1`
+            )
+            .get(mentionedTicketId, payload.ticket_id)
+
+          if (!existingCrossRef) {
+            eventsRepository.create({
+              event_type: 'mention.created',
+              project_id: mentionedTicket.project_id,
+              ticket_id: mentionedTicketId,
+              comment_id: commentId,
+              actor_id: payload.author_id,
+              actor_type: actorType,
+              kombuse_session_id: payload.kombuse_session_id,
+              payload: {
+                mention_type: 'ticket_cross_reference',
+                source_ticket_id: payload.ticket_id,
+                source_comment_id: commentId,
+                mention_text: `#${payload.ticket_id}`,
+              },
+            })
+          }
         }
       }
 
@@ -480,7 +493,7 @@ export const commentsRepository = {
         const editActorType: ActorType =
           authorProfile?.type === 'agent' ? 'agent' : 'user'
 
-        // Cross-reference events for newly added ticket mentions
+        // Cross-reference events for newly added ticket mentions (deduplicated per source→target pair)
         if (comment) {
           for (const mentionedTicketId of mentions.ticketIds) {
             if (oldTicketMentionIds.has(mentionedTicketId)) continue
@@ -491,6 +504,19 @@ export const commentsRepository = {
               .get(mentionedTicketId) as { id: number; project_id: string } | undefined
 
             if (!mentionedTicketInfo) continue
+
+            const existingCrossRef = db
+              .prepare(
+                `SELECT 1 FROM events
+                 WHERE event_type = 'mention.created'
+                   AND ticket_id = ?
+                   AND json_extract(payload, '$.mention_type') = 'ticket_cross_reference'
+                   AND json_extract(payload, '$.source_ticket_id') = ?
+                 LIMIT 1`
+              )
+              .get(mentionedTicketId, comment.ticket_id)
+
+            if (existingCrossRef) continue
 
             eventsRepository.create({
               event_type: 'mention.created',
