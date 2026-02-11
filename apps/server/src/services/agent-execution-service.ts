@@ -13,6 +13,8 @@ export interface AgentTypePreset {
   autoApprovedBashCommands: string[]
   /** Nunjucks template for the type preamble (injected via --append-system-prompt) */
   preambleTemplate: string
+  /** Permission mode for the CLI session (e.g. 'plan' forces plan-first workflow) */
+  permissionMode?: PermissionMode
 }
 
 const KOMBUSE_TOOLS: string[] = [
@@ -74,7 +76,16 @@ You have these MCP tools for ticket communication:
 {% if ticket.body %}{{ ticket.body }}{% endif %}
 {% if ticket.labels and ticket.labels | length > 0 %}Labels: {% for label in ticket.labels %}{{ label.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
 {% if ticket.assignee %}Assignee: {{ ticket.assignee.name }}{% endif %}
-{% endif %}`
+{% endif %}
+## Mention Syntax
+- To mention an agent or user: @[Display Name](profile-id)
+- To reference a ticket: #123
+- The legacy @single-word format also works but only for single-word profile IDs
+{% if agents and agents.length > 0 %}
+## Agent Directory
+Available agents you can @mention:
+{% for agent in agents %}- @[{{ agent.name }}]({{ agent.id }})
+{% endfor %}{% endif %}`
 
 /**
  * Preamble template for 'kombuse' type agents (ticket-aware).
@@ -102,9 +113,11 @@ const AGENT_TYPE_PRESETS: Record<string, AgentTypePreset> = {
       ...KOMBUSE_TOOLS,
       ...READ_TOOLS,
       'Edit', 'Write', 'Bash', 'Task', 'TodoWrite',
+      'EnterPlanMode', 'ExitPlanMode',
     ],
     autoApprovedBashCommands: ['bun', 'npm', 'git status', 'git diff', 'git log'],
     preambleTemplate: CODER_PREAMBLE_TEMPLATE,
+    permissionMode: 'plan',
   },
   generic: {
     autoApprovedTools: [...READ_TOOLS],
@@ -152,8 +165,8 @@ import {
   buildTemplateContext,
   type ISessionPersistenceService,
 } from '@kombuse/services'
-import { agentInvocationsRepository, commentsRepository, eventsRepository, sessionsRepository } from '@kombuse/persistence'
-import { EVENT_TYPES, createSessionId, isValidSessionId, type ServerMessage } from '@kombuse/types'
+import { agentInvocationsRepository, commentsRepository, eventsRepository, profilesRepository, sessionsRepository } from '@kombuse/persistence'
+import { EVENT_TYPES, createSessionId, isValidSessionId, type PermissionMode, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
@@ -181,6 +194,8 @@ interface ChatRunnerOptions {
   systemPrompt?: string
   /** Tools to pre-approve at the subprocess level via --allowedTools */
   allowedTools?: string[]
+  /** Permission mode for the CLI session (e.g. 'plan' forces plan-first workflow) */
+  permissionMode?: PermissionMode
   /** Callback for each agent event */
   onEvent: (event: AgentEvent) => void
   /** Callback when complete, receives backend session context if available */
@@ -222,9 +237,10 @@ async function runAgentChat(
     if (evt.type === 'complete') {
       didComplete = true
       if (evt.success === false) {
-        const msg = evt.exitCode != null
-          ? `Process exited with code ${evt.exitCode}`
-          : `Agent run failed (${evt.reason})`
+        const msg = evt.errorMessage
+          ?? (evt.exitCode != null
+            ? `Process exited with code ${evt.exitCode}`
+            : `Agent run failed (${evt.reason})`)
         options.onError?.(new Error(msg))
       } else {
         const backendSessionId = backend.getBackendSessionId()
@@ -257,6 +273,7 @@ async function runAgentChat(
     projectPath: options.projectPath,
     systemPrompt: options.systemPrompt,
     allowedTools: options.allowedTools,
+    permissionMode: options.permissionMode,
     initialMessage: message,
   })
 
@@ -1221,6 +1238,7 @@ export function startAgentChatSession(
       actor_type: 'user' as const,
       payload: {} as Record<string, unknown>,
       kombuse_session_id: appSessionId,
+      agents: profilesRepository.list({ type: 'agent', is_active: true }).map((p) => ({ id: p.id, name: p.name })),
     }
     resolvedSystemPrompt = renderTemplate(preset.preambleTemplate, preambleContext)
 
@@ -1241,11 +1259,17 @@ export function startAgentChatSession(
   let didCallAddComment = false
   let lastAssistantMessage = ''
 
+  // Plan-to-comment bridge: when the agent uses ExitPlanMode, post/update
+  // a plan comment on the ticket so stakeholders can review the approach.
+  let planCommentId: number | undefined
+  let exitPlanModeToolUseId: string | undefined
+
   runAgentChat(backend, userMessage, appSessionId, {
     projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
     resumeSessionId,
     systemPrompt: resolvedSystemPrompt,
     allowedTools,
+    permissionMode: preset.permissionMode,
     onEvent: (event: AgentEvent) => {
 
       logger.logEvent(event)
@@ -1259,6 +1283,57 @@ export function startAgentChatSession(
       }
       if (event.type === 'message' && event.role === 'assistant' && event.content) {
         lastAssistantMessage = event.content
+      }
+
+      // Plan-to-comment bridge: capture ExitPlanMode tool_use ID, then post
+      // the plan content as a ticket comment when the result arrives.
+      if (event.type === 'tool_use' && event.name === 'ExitPlanMode') {
+        exitPlanModeToolUseId = event.id
+      }
+      if (
+        event.type === 'tool_result' &&
+        exitPlanModeToolUseId &&
+        event.toolUseId === exitPlanModeToolUseId &&
+        ticketId
+      ) {
+        exitPlanModeToolUseId = undefined
+        const planText = typeof event.content === 'string'
+          ? event.content
+          : Array.isArray(event.content)
+            ? event.content
+                .filter((b): b is { type: string; text: string } =>
+                  typeof b === 'object' && b !== null && (b as Record<string, unknown>).type === 'text'
+                )
+                .map((b) => b.text)
+                .join('\n')
+            : ''
+        if (planText.trim()) {
+          const authorId = agent?.id ?? 'anonymous-agent'
+          // Strip "## Approved Plan:" prefix if present
+          const marker = '## Approved Plan:\n'
+          const markerIdx = planText.indexOf(marker)
+          const cleanPlan = markerIdx !== -1
+            ? planText.slice(markerIdx + marker.length).trim()
+            : planText.trim()
+          const commentBody = `**Implementation Plan**\n\n${cleanPlan}`
+          try {
+            if (planCommentId) {
+              commentsRepository.update(planCommentId, { body: commentBody })
+              logger.info('plan comment updated', { commentId: planCommentId, ticketId })
+            } else {
+              const created = commentsRepository.create({
+                ticket_id: ticketId,
+                author_id: authorId,
+                body: commentBody,
+                kombuse_session_id: appSessionId,
+              })
+              planCommentId = created.id
+              logger.info('plan comment created', { commentId: planCommentId, ticketId })
+            }
+          } catch (planCommentError) {
+            logger.info('plan comment failed', { ticketId, error: String(planCommentError) })
+          }
+        }
       }
 
       // Handle permission requests - check auto-approve BEFORE emitting

@@ -68,5 +68,10 @@ export function buildTemplateContext(event: Event): TemplateContext {
     context.actor = profilesRepository.get(event.actor_id)
   }
 
+  // Inject active agent profiles for the mention directory
+  context.agents = profilesRepository
+    .list({ type: 'agent', is_active: true })
+    .map((p) => ({ id: p.id, name: p.name }))
+
   return context
 }

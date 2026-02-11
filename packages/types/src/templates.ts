@@ -34,6 +34,8 @@ export interface TemplateContext {
   actor?: Profile | null
   /** Kombuse session ID for linking agent actions */
   kombuse_session_id?: string
+  /** Active agent profiles for mention directory */
+  agents?: Array<{ id: string; name: string }>
 }
 
 /**

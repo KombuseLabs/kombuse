@@ -28,11 +28,15 @@ vi.mock('@kombuse/persistence', () => ({
   commentsRepository: {
     list: vi.fn(() => []),
     create: vi.fn(() => ({ id: 999 })),
+    update: vi.fn(),
   },
   eventsRepository: {
     create: vi.fn(),
   },
   sessionsRepository: {},
+  profilesRepository: {
+    list: vi.fn(() => []),
+  },
 }))
 
 import { agentInvocationsRepository, commentsRepository } from '@kombuse/persistence'
@@ -109,6 +113,64 @@ describe('startAgentChatSession allowedTools wiring', () => {
 
     const expectedTools = presetToAllowedTools(getTypePreset('kombuse'))
     expect(capturedOptions?.allowedTools, 'allowedTools should be wired from preset to backend.start()').toEqual(expectedTools)
+  })
+
+  it('passes permissionMode plan for coder preset through to backend.start()', async () => {
+    let capturedOptions: StartOptions | undefined
+
+    const mockBackend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async (options: StartOptions) => {
+        capturedOptions = options
+      }),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+
+    const mockDependencies = {
+      getAgent: vi.fn(() => ({
+        id: 'coder-agent',
+        name: 'Coder Agent',
+        system_prompt: '',
+        is_enabled: true,
+        config: { type: 'coder' },
+        permissions: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => mockBackend),
+      generateSessionId: vi.fn(() => 'chat-coder-id' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+    }
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'coder-agent',
+        message: 'implement the feature',
+        kombuseSessionId: 'chat-coder-id' as KombuseSessionId,
+      },
+      () => {},
+      mockDependencies as any,
+    )
+
+    await waitForBackendStart(mockBackend)
+
+    expect(capturedOptions?.permissionMode, 'coder preset should pass permissionMode plan').toBe('plan')
   })
 })
 
@@ -594,6 +656,229 @@ describe('startAgentChatSession fallback comment on complete', () => {
         ticket_id: 42,
         parent_id: 100,
         body: 'Here is the analysis.',
+      })
+    )
+  })
+})
+
+describe('startAgentChatSession plan-to-comment bridge', () => {
+  type EventCallback = (event: AgentEvent) => void
+
+  function createEventDrivenBackend() {
+    let eventCallback: EventCallback | undefined
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn((cb: EventCallback) => {
+        eventCallback = cb
+        return () => {}
+      }),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+    const fireEvent = (event: AgentEvent) => {
+      eventCallback?.(event)
+    }
+    return { backend, fireEvent }
+  }
+
+  const coderAgent = {
+    id: 'coder-agent',
+    name: 'Coder Agent',
+    system_prompt: '',
+    is_enabled: true,
+    config: { type: 'coder' },
+    permissions: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  function createDeps(backend: AgentBackend) {
+    return {
+      getAgent: vi.fn(() => coderAgent),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'chat-plan-id' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+    }
+  }
+
+  beforeEach(() => {
+    vi.mocked(commentsRepository.create).mockClear()
+    vi.mocked(commentsRepository.update).mockClear()
+    vi.mocked(commentsRepository.list).mockReturnValue([])
+  })
+
+  it('creates a plan comment when ExitPlanMode tool result arrives', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'coder-agent',
+        message: 'implement the feature',
+        kombuseSessionId: 'chat-plan-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      { ticketId: 42 },
+    )
+
+    await waitForBackendStart(backend)
+
+    // Emit ExitPlanMode tool_use followed by its tool_result
+    fireEvent({
+      type: 'tool_use',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      id: 'plan-tool-1',
+      name: 'ExitPlanMode',
+      input: {},
+    })
+    fireEvent({
+      type: 'tool_result',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      toolUseId: 'plan-tool-1',
+      content: '## Approved Plan:\n1. Add types\n2. Write tests\n3. Implement',
+    })
+
+    expect(commentsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticket_id: 42,
+        author_id: 'coder-agent',
+        body: expect.stringContaining('1. Add types'),
+        kombuse_session_id: 'chat-plan-id',
+      })
+    )
+    expect(commentsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.stringContaining('**Implementation Plan**'),
+      })
+    )
+  })
+
+  it('does not create plan comment when there is no ticketId', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'coder-agent',
+        message: 'implement the feature',
+        kombuseSessionId: 'chat-plan-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      // No ticketId
+    )
+
+    await waitForBackendStart(backend)
+
+    fireEvent({
+      type: 'tool_use',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      id: 'plan-tool-2',
+      name: 'ExitPlanMode',
+      input: {},
+    })
+    fireEvent({
+      type: 'tool_result',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      toolUseId: 'plan-tool-2',
+      content: '1. Do stuff',
+    })
+
+    expect(commentsRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('updates existing plan comment on second ExitPlanMode call', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'coder-agent',
+        message: 'implement the feature',
+        kombuseSessionId: 'chat-plan-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      { ticketId: 42 },
+    )
+
+    await waitForBackendStart(backend)
+
+    // First ExitPlanMode — should create a new plan comment
+    fireEvent({
+      type: 'tool_use',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      id: 'plan-tool-1',
+      name: 'ExitPlanMode',
+      input: {},
+    })
+    fireEvent({
+      type: 'tool_result',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      toolUseId: 'plan-tool-1',
+      content: '## Approved Plan:\n1. Add types\n2. Write tests',
+    })
+
+    expect(commentsRepository.create).toHaveBeenCalledOnce()
+    expect(commentsRepository.update).not.toHaveBeenCalled()
+
+    // Second ExitPlanMode — should update the existing comment (id: 999)
+    fireEvent({
+      type: 'tool_use',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      id: 'plan-tool-2',
+      name: 'ExitPlanMode',
+      input: {},
+    })
+    fireEvent({
+      type: 'tool_result',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      toolUseId: 'plan-tool-2',
+      content: '## Approved Plan:\n1. Add types\n2. Write tests\n3. Deploy',
+    })
+
+    // create should still have been called only once (from the first plan)
+    expect(commentsRepository.create).toHaveBeenCalledOnce()
+    // update should be called with the comment id from create (999)
+    expect(commentsRepository.update).toHaveBeenCalledOnce()
+    expect(commentsRepository.update).toHaveBeenCalledWith(
+      999,
+      expect.objectContaining({
+        body: expect.stringContaining('3. Deploy'),
       })
     )
   })
