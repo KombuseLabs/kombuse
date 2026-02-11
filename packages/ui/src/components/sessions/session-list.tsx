@@ -23,6 +23,7 @@ function getIndicatorStatus(
   if (hasPendingPermission) return 'pending'
   if (session.status === 'running') return 'running'
   if (session.status === 'failed') return 'error'
+  if (session.status === 'aborted') return 'error'
   return 'idle'
 }
 

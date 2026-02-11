@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type {
   Ticket,
   AppView,
@@ -29,6 +30,7 @@ export function AppProvider({
   initialView = null,
   initialProjectId = null,
 }: AppProviderProps) {
+  const queryClient = useQueryClient()
   const [currentTicket, setCurrentTicketState] = useState<Ticket | null>(null)
   const [currentProjectId, setCurrentProjectIdState] = useState<string | null>(
     initialProjectId
@@ -118,6 +120,10 @@ export function AppProvider({
   const handleMessage = useCallback(
     (message: ServerMessage) => {
       switch (message.type) {
+        case 'agent.started': {
+          void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+          break
+        }
         case 'agent.permission_pending': {
           console.log('[client] received permission_pending:', message)
           addPendingPermission({
@@ -135,8 +141,8 @@ export function AppProvider({
           break
         }
         case 'agent.complete': {
-          // Clear all pending permissions for this session
           clearPendingPermissionsForSession(message.kombuseSessionId)
+          void queryClient.invalidateQueries({ queryKey: ['sessions'] })
           break
         }
         case 'ticket.agent_status': {
@@ -148,7 +154,7 @@ export function AppProvider({
         }
       }
     },
-    [addPendingPermission, removePendingPermission, clearPendingPermissionsForSession, updateTicketAgentStatus]
+    [queryClient, addPendingPermission, removePendingPermission, clearPendingPermissionsForSession, updateTicketAgentStatus]
   )
 
   useWebSocket({ topics: ['*'], onMessage: handleMessage })

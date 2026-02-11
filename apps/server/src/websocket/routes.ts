@@ -101,6 +101,7 @@ function handleAgentInvoke(
           ticketId: event.ticketId,
         }
         wsHub.broadcastAgentMessage(event.kombuseSessionId, msg, socket)
+        wsHub.broadcastToTopic('*', msg)
         break
       }
       case 'event': {
@@ -124,6 +125,7 @@ function handleAgentInvoke(
           ticketId: event.ticketId,
         }
         wsHub.broadcastAgentMessage(event.kombuseSessionId, msg, socket)
+        wsHub.broadcastToTopic('*', msg)
         break
       }
       case 'error':
