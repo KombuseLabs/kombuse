@@ -177,6 +177,7 @@ import { EVENT_TYPES, createSessionId, isValidSessionId, type PermissionMode, ty
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
+  ActiveSessionInfo,
   AgentBackend,
   AgentActivityStatus,
   AgentEvent,
@@ -424,6 +425,19 @@ function unregisterBackend(sessionId: string): void {
 }
 
 /**
+ * Stop a single agent session by its kombuse session ID.
+ * Returns true if the backend was found and stopped, false otherwise.
+ */
+export function stopAgentSession(kombuseSessionId: string): boolean {
+  const backend = activeBackends.get(kombuseSessionId)
+  if (!backend || !backend.isRunning()) {
+    return false
+  }
+  void backend.stop()
+  return true
+}
+
+/**
  * Stop all active backends (for graceful server shutdown).
  */
 export function stopAllActiveBackends(): void {
@@ -519,6 +533,29 @@ export function broadcastTicketAgentStatus(ticketId: number): void {
     status,
     sessionCount,
   })
+}
+
+/**
+ * Return enriched info about currently active sessions for the Active Agents Indicator.
+ * Cross-references the in-memory activeBackends map so only truly running sessions are returned.
+ */
+export function getActiveSessions(): ActiveSessionInfo[] {
+  const runningSessions = sessionsRepository.list({ status: 'running' })
+  const results: ActiveSessionInfo[] = []
+
+  for (const session of runningSessions) {
+    if (!session.kombuse_session_id || !activeBackends.has(session.kombuse_session_id)) {
+      continue
+    }
+    results.push({
+      kombuseSessionId: session.kombuse_session_id,
+      agentName: session.agent_name ?? 'Agent',
+      ticketId: session.ticket_id ?? undefined,
+      startedAt: session.started_at,
+    })
+  }
+
+  return results
 }
 
 /**
@@ -720,6 +757,30 @@ function generatePermissionDescription(
     return describeBashCommand(input.command)
   }
 
+  // Extract actual question text for AskUserQuestion
+  if (toolName === 'AskUserQuestion' && Array.isArray(input.questions)) {
+    const questions = input.questions as Array<Record<string, unknown>>
+    const firstQ = questions[0]
+    if (firstQ && typeof firstQ.question === 'string') {
+      const questionText = firstQ.question as string
+      const truncated = questionText.length > 120
+        ? questionText.slice(0, 117) + '...'
+        : questionText
+      if (questions.length > 1) {
+        return `${truncated} (+${questions.length - 1} more)`
+      }
+      return truncated
+    }
+  }
+
+  // Show prompt count for ExitPlanMode
+  if (toolName === 'ExitPlanMode' && Array.isArray(input.allowedPrompts)) {
+    const count = (input.allowedPrompts as unknown[]).length
+    if (count > 0) {
+      return `Plan review: ${count} tool permission${count !== 1 ? 's' : ''} requested`
+    }
+  }
+
   const baseDescription = TOOL_DESCRIPTIONS[toolName]
   const contextParts: string[] = []
 
@@ -766,7 +827,7 @@ function generatePermissionDescription(
 }
 
 export type AgentExecutionEvent =
-  | { type: 'started'; kombuseSessionId: string; ticketId?: number }
+  | { type: 'started'; kombuseSessionId: string; ticketId?: number; agentName?: string; startedAt?: string }
   | { type: 'event'; kombuseSessionId: string; event: AgentEvent }
   | {
       type: 'complete'
@@ -1166,6 +1227,8 @@ export async function processEventAndRunAgents(
             type: 'agent.started',
             kombuseSessionId: evt.kombuseSessionId,
             ticketId: evt.ticketId,
+            agentName: evt.agentName,
+            startedAt: evt.startedAt,
           }
           wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           wsHub.broadcastToTopic('*', msg)
@@ -1306,6 +1369,11 @@ export function startAgentChatSession(
       ? existingSession.backend_session_id.trim()
       : undefined
 
+  // Resolve agent display name for the Active Agents Indicator
+  const agentName = agent
+    ? (profilesRepository.get(agent.id)?.name ?? agent.id)
+    : undefined
+
   // === PERSISTENT BACKEND REUSE PATH ===
   // If an active backend already exists for this session, reuse it by sending
   // the new message to the existing process instead of spawning a new one.
@@ -1334,6 +1402,8 @@ export function startAgentChatSession(
       type: 'started',
       kombuseSessionId: appSessionId,
       ticketId,
+      agentName,
+      startedAt: new Date().toISOString(),
     })
 
     const agentType = (agent?.config as { type?: string } | undefined)?.type
@@ -1438,6 +1508,8 @@ export function startAgentChatSession(
     type: 'started',
     kombuseSessionId: appSessionId,
     ticketId,
+    agentName,
+    startedAt: new Date().toISOString(),
   })
 
   // Persist user message before running agent

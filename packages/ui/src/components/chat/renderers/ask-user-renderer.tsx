@@ -44,7 +44,7 @@ export function AskUserRenderer({ event }: AskUserRendererProps) {
               {q.options.map((opt) => (
                 <span
                   key={opt.label}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
+                  className="rounded bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground"
                 >
                   {opt.label}
                 </span>

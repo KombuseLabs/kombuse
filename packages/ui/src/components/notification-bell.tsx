@@ -60,9 +60,13 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
   }
 
   const getNavigationPath = (permission: PendingPermission) => {
-    if (permission.ticketId && currentProjectId) {
+    // AskUserQuestion and ExitPlanMode require the interactive chat UI
+    const preferChat = permission.toolName === 'AskUserQuestion' || permission.toolName === 'ExitPlanMode'
+
+    if (!preferChat && permission.ticketId && currentProjectId) {
       return `/projects/${currentProjectId}/tickets/${permission.ticketId}`
-    } else if (currentProjectId) {
+    }
+    if (currentProjectId) {
       return `/projects/${currentProjectId}/chats/${permission.sessionId}`
     }
     return `/chats/${permission.sessionId}`
@@ -129,7 +133,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                 onClick={() => onNavigate(getNavigationPath(permission))}
               >
                 <ExternalLink className="mr-1 size-3" />
-                Review
+                Open
               </Button>
             )}
           </div>
@@ -138,6 +142,12 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
     }
 
     if (permission.toolName === 'AskUserQuestion') {
+      const inputRecord = permission.input as Record<string, unknown>
+      const questions = Array.isArray(inputRecord.questions)
+        ? (inputRecord.questions as Array<{ question?: string; header?: string; options?: Array<{ label: string }> }>)
+        : []
+      const firstQuestion = questions[0]
+
       return (
         <div
           key={permission.requestId}
@@ -149,9 +159,35 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
               Input Required
             </span>
           </div>
-          {permission.description && (
+          {firstQuestion?.question ? (
+            <p className="mb-1 pl-6 text-sm text-foreground">
+              {firstQuestion.question}
+            </p>
+          ) : permission.description ? (
             <p className="mb-1 pl-6 text-sm text-foreground">
               {permission.description}
+            </p>
+          ) : null}
+          {firstQuestion?.options && firstQuestion.options.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1 pl-6">
+              {firstQuestion.options.slice(0, 4).map((opt) => (
+                <span
+                  key={opt.label}
+                  className="rounded-md border border-border bg-background px-1.5 py-0.5 text-xs text-muted-foreground"
+                >
+                  {opt.label}
+                </span>
+              ))}
+              {firstQuestion.options.length > 4 && (
+                <span className="text-xs text-muted-foreground">
+                  +{firstQuestion.options.length - 4} more
+                </span>
+              )}
+            </div>
+          )}
+          {questions.length > 1 && (
+            <p className="mb-1 pl-6 text-xs text-muted-foreground">
+              +{questions.length - 1} more question{questions.length - 1 > 1 ? 's' : ''}
             </p>
           )}
           <div className="flex items-center gap-2">
@@ -162,7 +198,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                 onClick={() => onNavigate(getNavigationPath(permission))}
               >
                 <ExternalLink className="mr-1 size-3" />
-                Review
+                Reply
               </Button>
             )}
           </div>

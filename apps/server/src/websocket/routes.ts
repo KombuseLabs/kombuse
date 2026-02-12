@@ -3,7 +3,7 @@ import type { RawData, WebSocket } from 'ws'
 import type { ClientMessage, ServerMessage } from '@kombuse/types'
 import { wsHub } from './hub'
 import { serializeAgentStreamEvent } from './serialize-agent-event'
-import { respondToPermission, startAgentChatSession } from '../services/agent-execution-service'
+import { respondToPermission, startAgentChatSession, stopAgentSession } from '../services/agent-execution-service'
 
 /**
  * WebSocket route handler for real-time event subscriptions.
@@ -55,6 +55,15 @@ export async function websocketRoutes(fastify: FastifyInstance) {
               })
             }
             break
+
+          case 'agent.stop':
+            if (!stopAgentSession(message.kombuseSessionId)) {
+              sendServerMessage(socket, {
+                type: 'error',
+                message: 'No active agent to stop for this session',
+              })
+            }
+            break
         }
       } catch {
         sendServerMessage(socket, {
@@ -99,6 +108,8 @@ function handleAgentInvoke(
           type: 'agent.started',
           kombuseSessionId: event.kombuseSessionId,
           ticketId: event.ticketId,
+          agentName: event.agentName,
+          startedAt: event.startedAt,
         }
         wsHub.broadcastAgentMessage(event.kombuseSessionId, msg, socket)
         wsHub.broadcastToTopic('*', msg)

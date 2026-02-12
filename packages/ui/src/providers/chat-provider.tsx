@@ -9,9 +9,12 @@ import type {
   SerializedAgentErrorEvent,
   SerializedAgentPermissionRequestEvent,
   PublicSession,
+  PendingPermission,
+  JsonObject,
 } from '@kombuse/types'
 import { useWebSocket } from '../hooks/use-websocket'
 import { useSessionByKombuseId, useSessionEvents } from '../hooks/use-sessions'
+import { useAppContext } from '../hooks/use-app-context'
 import { ChatCtx } from './chat-context'
 
 interface ChatProviderProps {
@@ -24,6 +27,22 @@ interface ChatProviderProps {
   projectId?: string | null
   /** Create/resolve a session ID when sending from a draft chat */
   onEnsureSession?: () => Promise<string>
+}
+
+/** Convert a global PendingPermission into a SerializedAgentPermissionRequestEvent for ChatProvider */
+function pendingPermissionToEvent(perm: PendingPermission): SerializedAgentPermissionRequestEvent {
+  return {
+    type: 'permission_request',
+    eventId: `restored-${perm.requestId}`,
+    backend: 'claude-code',
+    timestamp: Date.now(),
+    requestId: perm.requestId,
+    toolName: perm.toolName,
+    toolUseId: `restored-${perm.requestId}`,
+    input: perm.input as JsonObject,
+    description: perm.description,
+    autoApproved: false,
+  }
 }
 
 /**
@@ -46,6 +65,8 @@ export function ChatProvider({
   const [kombuseSessionId, setKombuseSessionId] = useState<string | null>(null)
   const [pendingPermission, setPendingPermission] =
     useState<SerializedAgentPermissionRequestEvent | null>(null)
+
+  const { pendingPermissions } = useAppContext()
 
   // Fetch session metadata — URL now contains kombuse_session_id
   const { data: sessionData } = useSessionByKombuseId(sessionId ?? null)
@@ -76,6 +97,23 @@ export function ChatProvider({
       setIsLoading(false)
     }
   }, [sessionData?.status])
+
+  // Restore pendingPermission from AppProvider's global map when loading a session.
+  // This enables the interactive AskUserBar/PlanApprovalBar to render when navigating
+  // to a chat with a pending permission (e.g. via the notification bell).
+  const globalPermForSession = useMemo(() => {
+    if (!effectiveKombuseSessionId) return undefined
+    return [...pendingPermissions.values()].find(
+      (p) => p.sessionId === effectiveKombuseSessionId
+    )
+  }, [pendingPermissions, effectiveKombuseSessionId])
+
+  useEffect(() => {
+    if (pendingPermission) return
+    if (globalPermForSession) {
+      setPendingPermission(pendingPermissionToEvent(globalPermForSession))
+    }
+  }, [globalPermForSession, pendingPermission])
 
   // Reset events when switching modes
   useEffect(() => {

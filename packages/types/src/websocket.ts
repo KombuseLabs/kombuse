@@ -46,6 +46,10 @@ export type ClientMessage =
       updatedInput?: Record<string, unknown>
       message?: string
     }
+  | {
+      type: 'agent.stop'
+      kombuseSessionId: string
+    }
 
 /**
  * Server-to-client message types
@@ -57,7 +61,7 @@ export type ServerMessage =
   | { type: 'pong' }
   | { type: 'error'; message: string }
   | { type: 'update:status'; status: UpdateStatus }
-  | { type: 'agent.started'; kombuseSessionId: string; ticketId?: number }
+  | { type: 'agent.started'; kombuseSessionId: string; ticketId?: number; agentName?: string; startedAt?: string }
   | { type: 'agent.event'; kombuseSessionId: string; event: AgentStreamEvent }
   | {
       type: 'agent.complete'
