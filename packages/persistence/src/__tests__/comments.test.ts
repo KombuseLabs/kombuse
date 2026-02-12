@@ -238,6 +238,81 @@ describe('commentsRepository', () => {
       expect(mentions[0]?.mentioned_ticket_id).toBe(targetTicket.id)
     })
 
+    it('should not parse ordered list markers as ticket mentions', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: '1. First item\n2. Second item\n3. Third item',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions, 'Ordered list numbers should not be parsed as ticket mentions').toHaveLength(0)
+    })
+
+    it('should not parse dot-prefixed #N as ticket mentions', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'See item 1.#6 for details',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions, 'Dot-prefixed #N should not be parsed').toHaveLength(0)
+    })
+
+    it('should not parse word-prefixed #N as ticket mentions', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Check CSS#123 property',
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions, 'Word-prefixed #N should not be parsed').toHaveLength(0)
+    })
+
+    it('should parse legitimate ticket mentions but not false positives in the same body', () => {
+      const targetTicket = ticketsRepository.create({
+        title: 'Legit target',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: `See #${targetTicket.id} and also item#6`,
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      const ticketMentions = mentions.filter((m) => m.mention_type === 'ticket')
+      expect(ticketMentions, 'Only the legitimate ticket mention should be parsed').toHaveLength(1)
+      expect(ticketMentions[0]?.mentioned_ticket_id).toBe(targetTicket.id)
+    })
+
+    it('should parse ticket mentions in parentheses and after newlines', () => {
+      const target1 = ticketsRepository.create({
+        title: 'Target in parens',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const target2 = ticketsRepository.create({
+        title: 'Target after newline',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: `Related to (#${target1.id}) and\n#${target2.id}`,
+      })
+
+      const mentions = mentionsRepository.getByComment(comment.id)
+      const ticketMentions = mentions.filter((m) => m.mention_type === 'ticket')
+      expect(ticketMentions, 'Both legitimate ticket mentions should be parsed').toHaveLength(2)
+    })
+
     it('should ignore #ticket mentions when the target ticket does not exist', () => {
       const comment = commentsRepository.create({
         ticket_id: testTicketId,

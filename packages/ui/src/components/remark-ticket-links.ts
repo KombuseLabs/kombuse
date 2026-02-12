@@ -1,7 +1,7 @@
 import { findAndReplace } from 'mdast-util-find-and-replace'
 import type { Root, Link } from 'mdast'
 
-const TICKET_ID_REGEX = /#(\d+)\b/g
+const TICKET_ID_REGEX = /(?<![.\w])#(\d+)\b/g
 
 export interface RemarkTicketLinksOptions {
   projectId: string
@@ -22,6 +22,6 @@ export function remarkTicketLinks(options: RemarkTicketLinksOptions) {
           return link
         },
       ],
-    ], { ignore: ['link', 'linkReference'] })
+    ], { ignore: ['link', 'linkReference', 'listItem'] })
   }
 }

@@ -87,6 +87,7 @@ You have these MCP tools for ticket communication:
 - To mention an agent or user: @[Display Name](profile-id)
 - To reference a ticket: #123
 - The legacy @single-word format also works but only for single-word profile IDs
+- IMPORTANT: Avoid #N in numbered lists or non-ticket contexts — the system parses #NNN as a ticket link. Use "item 6" or "step 6" instead of "#6".
 {% if agents and agents.length > 0 %}
 ## Agent Directory
 Available agents you can @mention:

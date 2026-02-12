@@ -98,7 +98,7 @@ function parseMentions(body: string): ParsedMentions {
   const newProfileMentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g
   // Legacy format: @single-word-name
   const legacyProfileMentionRegex = /@([a-zA-Z0-9_-]+)/g
-  const ticketMentionRegex = /#(\d+)\b/g
+  const ticketMentionRegex = /(?<![.\w])#(\d+)\b/g
 
   const profileIds = [
     ...new Set(
