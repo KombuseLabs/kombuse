@@ -138,6 +138,8 @@ export interface AgentCompleteEvent extends AgentEventBase {
   success?: boolean
   /** Human-readable error message when success is false */
   errorMessage?: string
+  /** True when the CLI returned a "session does not exist" or similar resume error */
+  resumeFailed?: boolean
   raw?: unknown
 }
 

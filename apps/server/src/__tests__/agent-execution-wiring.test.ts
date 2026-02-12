@@ -414,7 +414,7 @@ describe('startAgentChatSession agent resolution from session context', () => {
     ).toBeUndefined()
   })
 
-  it('does not resume a completed session (no --resume flag)', async () => {
+  it('resumes a completed session (passes --resume flag)', async () => {
     ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
 
     const { backend, getCapturedOptions } = createMockBackend()
@@ -441,11 +441,11 @@ describe('startAgentChatSession agent resolution from session context', () => {
 
     expect(
       getCapturedOptions()?.resumeSessionId,
-      'should NOT pass resumeSessionId for completed session'
-    ).toBeUndefined()
+      'should pass resumeSessionId for completed session'
+    ).toBe('backend-abc')
   })
 
-  it('does not resume a failed session', async () => {
+  it('resumes a failed session (passes --resume flag)', async () => {
     ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
 
     const { backend, getCapturedOptions } = createMockBackend()
@@ -470,10 +470,10 @@ describe('startAgentChatSession agent resolution from session context', () => {
 
     await waitForBackendStart(backend)
 
-    expect(getCapturedOptions()?.resumeSessionId).toBeUndefined()
+    expect(getCapturedOptions()?.resumeSessionId).toBe('backend-abc')
   })
 
-  it('injects conversation history when session is completed', async () => {
+  it('attempts resume for completed session and does not inject history upfront', async () => {
     ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
 
     const agentWithRole = {
@@ -491,25 +491,6 @@ describe('startAgentChatSession agent resolution from session context', () => {
       ticket_id: 42,
     })
 
-    ;(deps.sessionPersistence.getSessionEvents as ReturnType<typeof vi.fn>).mockReturnValue([
-      {
-        id: 1,
-        session_id: 'session-1',
-        seq: 1,
-        event_type: 'message',
-        payload: { type: 'message', role: 'user', content: 'What color is it?' },
-        created_at: '2026-01-01T00:00:00Z',
-      },
-      {
-        id: 2,
-        session_id: 'session-1',
-        seq: 2,
-        event_type: 'message',
-        payload: { type: 'message', role: 'assistant', content: '?' },
-        created_at: '2026-01-01T00:00:01Z',
-      },
-    ])
-
     startAgentChatSession(
       {
         type: 'agent.invoke' as const,
@@ -522,10 +503,12 @@ describe('startAgentChatSession agent resolution from session context', () => {
 
     await waitForBackendStart(backend)
 
-    const systemPrompt = getCapturedOptions()?.systemPrompt
-    expect(systemPrompt).toContain('## Prior Conversation')
-    expect(systemPrompt).toContain('**User**: What color is it?')
-    expect(systemPrompt).toContain('**Assistant**: ?')
+    // Resume should be attempted for completed sessions
+    expect(getCapturedOptions()?.resumeSessionId).toBe('backend-abc')
+    // Conversation history is NOT injected upfront — only on retry via onResumeFailed
+    const systemPrompt = getCapturedOptions()?.systemPrompt ?? ''
+    expect(systemPrompt).not.toContain('## Prior Conversation')
+    // Agent role prompt is still injected for sessions with prior context
     expect(systemPrompt).toContain('## Agent Role')
     expect(systemPrompt).toContain('You are a ticket analyzer.')
   })

@@ -209,6 +209,8 @@ interface ChatRunnerOptions {
   onComplete?: (context: ConversationContext) => void
   /** Callback on error */
   onError?: (error: Error) => void
+  /** Callback when resume fails (e.g. "session does not exist") — allows retry without --resume */
+  onResumeFailed?: () => void
 }
 
 /**
@@ -243,6 +245,11 @@ async function runAgentChat(
 
     if (evt.type === 'complete') {
       didComplete = true
+      if (evt.resumeFailed && options.onResumeFailed) {
+        finalize()
+        options.onResumeFailed()
+        return
+      }
       if (evt.success === false) {
         const msg = evt.errorMessage
           ?? (evt.exitCode != null
@@ -1183,7 +1190,6 @@ export function startAgentChatSession(
   // (important for resumed sessions where the client doesn't pass ticketId)
   const ticketId = options?.ticketId ?? existingSession?.ticket_id ?? undefined
   const resumeSessionId =
-    existingSession?.status === 'running' &&
     typeof existingSession?.backend_session_id === 'string' &&
     existingSession.backend_session_id.trim().length > 0
       ? existingSession.backend_session_id.trim()
@@ -1257,15 +1263,6 @@ export function startAgentChatSession(
       resolvedSystemPrompt += `\n\n## Agent Role\n${renderedRolePrompt}`
     }
 
-    // When resume is unavailable but a prior session exists, inject
-    // conversation history from persisted session events as fallback memory.
-    if (!resumeSessionId && existingSession) {
-      const priorEvents = dependencies.sessionPersistence.getSessionEvents(persistentSessionId)
-      const conversationHistory = buildConversationSummary(priorEvents)
-      if (conversationHistory) {
-        resolvedSystemPrompt += `\n\n## Prior Conversation\nThe following is the conversation history from a previous session. Use this context to maintain continuity.\n\n${conversationHistory}`
-      }
-    }
   }
 
   // Compute allowed tools for subprocess-level pre-approval
@@ -1437,6 +1434,71 @@ export function startAgentChatSession(
         ticketId,
       })
     },
+    onResumeFailed: resumeSessionId ? () => {
+      console.log('[agent-execution] Resume failed, retrying without --resume')
+      unregisterBackend(appSessionId)
+
+      // Build conversation summary as fallback memory
+      let fallbackSystemPrompt = resolvedSystemPrompt
+      const priorEvents = dependencies.sessionPersistence.getSessionEvents(persistentSessionId)
+      const conversationHistory = buildConversationSummary(priorEvents)
+      if (conversationHistory) {
+        fallbackSystemPrompt = (fallbackSystemPrompt ?? '') +
+          `\n\n## Prior Conversation\nThe following is the conversation history from a previous session. Use this context to maintain continuity.\n\n${conversationHistory}`
+      }
+
+      const retryBackend = dependencies.createBackend()
+      registerBackend(appSessionId, retryBackend)
+
+      runAgentChat(retryBackend, userMessage, appSessionId, {
+        projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
+        systemPrompt: fallbackSystemPrompt,
+        allowedTools,
+        permissionMode: preset.permissionMode,
+        onEvent: (event: AgentEvent) => {
+          logger.logEvent(event)
+          dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
+          if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
+            didCallAddComment = true
+          }
+          if (event.type === 'message' && event.role === 'assistant' && event.content) {
+            lastAssistantMessage = event.content
+          }
+          emit({ type: 'event', kombuseSessionId: appSessionId, event })
+        },
+        onComplete: (context: ConversationContext) => {
+          logger.close()
+          unregisterBackend(appSessionId)
+          dependencies.sessionPersistence.completeSession(persistentSessionId, context.backendSessionId)
+          if (ticketId && !didCallAddComment && lastAssistantMessage.trim()) {
+            const authorId = agent?.id ?? 'anonymous-agent'
+            try {
+              const sessionComments = commentsRepository.list({ ticket_id: ticketId, kombuse_session_id: appSessionId, limit: 50 })
+              const userReply = sessionComments.filter((c) => c.author_id !== authorId).pop()
+              commentsRepository.create({ ticket_id: ticketId, author_id: authorId, parent_id: userReply?.id, body: lastAssistantMessage.trim(), kombuse_session_id: appSessionId })
+            } catch { /* fallback comment failed */ }
+          }
+          emit({ type: 'complete', kombuseSessionId: appSessionId, backendSessionId: context.backendSessionId, ticketId })
+        },
+        onError: (error: Error) => {
+          logger.close()
+          unregisterBackend(appSessionId)
+          const errorEvent: AgentEvent = { type: 'error', eventId: crypto.randomUUID(), backend: retryBackend.name, timestamp: Date.now(), message: error.message, error }
+          dependencies.sessionPersistence.persistEvent(persistentSessionId, errorEvent)
+          dependencies.sessionPersistence.failSession(persistentSessionId)
+          emit({ type: 'event', kombuseSessionId: appSessionId, event: errorEvent })
+          emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
+          if (ticketId) broadcastTicketAgentStatus(ticketId)
+        },
+      }).catch((retryError: unknown) => {
+        logger.close()
+        unregisterBackend(appSessionId)
+        dependencies.sessionPersistence.failSession(persistentSessionId)
+        emit({ type: 'error', message: `Failed to start agent (retry): ${retryError instanceof Error ? retryError.message : String(retryError)}` })
+        emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
+        if (ticketId) broadcastTicketAgentStatus(ticketId)
+      })
+    } : undefined,
     onError: (error: Error) => {
       logger.close()
       // Clean up backend registry
