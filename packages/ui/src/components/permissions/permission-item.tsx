@@ -87,14 +87,16 @@ function PermissionItem({ entry, projectId, className }: PermissionItemProps) {
   const ToolIcon = toolIconMap[entry.tool_name] || Shield
   const detail = extractPermissionDetail(entry.tool_name, entry.input, entry.description)
 
-  const sessionUrl =
-    projectId && entry.kombuse_session_id
-      ? `/projects/${projectId}/chats/${entry.kombuse_session_id}`
-      : null
-
   const ticketUrl =
     projectId && entry.ticket_id
-      ? `/projects/${projectId}/tickets/${entry.ticket_id}`
+      ? entry.kombuse_session_id
+        ? `/projects/${projectId}/tickets/${entry.ticket_id}?session=${entry.kombuse_session_id}`
+        : `/projects/${projectId}/tickets/${entry.ticket_id}`
+      : null
+
+  const sessionUrl =
+    !ticketUrl && projectId && entry.kombuse_session_id
+      ? `/projects/${projectId}/chats/${entry.kombuse_session_id}`
       : null
 
   return (

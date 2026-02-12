@@ -60,11 +60,8 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
   }
 
   const getNavigationPath = (permission: PendingPermission) => {
-    // AskUserQuestion and ExitPlanMode require the interactive chat UI
-    const preferChat = permission.toolName === 'AskUserQuestion' || permission.toolName === 'ExitPlanMode'
-
-    if (!preferChat && permission.ticketId && currentProjectId) {
-      return `/projects/${currentProjectId}/tickets/${permission.ticketId}`
+    if (permission.ticketId && currentProjectId) {
+      return `/projects/${currentProjectId}/tickets/${permission.ticketId}?session=${permission.sessionId}`
     }
     if (currentProjectId) {
       return `/projects/${currentProjectId}/chats/${permission.sessionId}`

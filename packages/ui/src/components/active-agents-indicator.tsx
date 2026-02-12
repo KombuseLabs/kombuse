@@ -30,7 +30,7 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
 
   const getNavigationPath = (session: ActiveSessionInfo) => {
     if (session.ticketId && currentProjectId) {
-      return `/projects/${currentProjectId}/tickets/${session.ticketId}`
+      return `/projects/${currentProjectId}/tickets/${session.ticketId}?session=${session.kombuseSessionId}`
     }
     if (currentProjectId) {
       return `/projects/${currentProjectId}/chats/${session.kombuseSessionId}`

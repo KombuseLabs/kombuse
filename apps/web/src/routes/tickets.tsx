@@ -183,8 +183,8 @@ export function Tickets() {
   // Reply state
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
 
-  // Chat panel state — session ID to display inline
-  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  // Chat panel state — session ID to display inline, persisted in URL
+  const chatSessionId = searchParams.get('session');
 
   // Agent reply state — tracks active agent session for loading indicator
   const [agentReplySessionId, setAgentReplySessionId] = useState<string | null>(null);
@@ -248,7 +248,7 @@ export function Tickets() {
   useEffect(() => {
     setCurrentTicket(selectedTicket ?? null);
     setReplyTarget(null);
-    setChatSessionId(null);
+    updateSearchParams({ session: null });
     setAgentReplySessionId(null);
 
     if (selectedTicket && selectedTicket.id > 0 && selectedTicket.id !== lastViewedTicketIdRef.current) {
@@ -358,7 +358,9 @@ export function Tickets() {
   };
 
   const handleTicketClick = (ticket: Ticket) => {
-    navigate({ pathname: `/projects/${projectId}/tickets/${ticket.id}`, search: searchParams.toString() });
+    const params = new URLSearchParams(searchParams);
+    params.delete('session');
+    navigate({ pathname: `/projects/${projectId}/tickets/${ticket.id}`, search: params.toString() });
   };
 
   const handleCloseDetail = () => {
@@ -690,7 +692,7 @@ export function Tickets() {
                               }}
                               onDeleteComment={deleteComment}
                               onReplyComment={handleReplyToComment}
-                              onSessionClick={setChatSessionId}
+                              onSessionClick={(sessionId) => updateSearchParams({ session: sessionId })}
                               isUpdatingComment={isUpdatingComment}
                               isDeletingComment={isDeletingComment}
                             />
@@ -759,7 +761,7 @@ export function Tickets() {
                         variant="ghost"
                         size="icon"
                         className="size-6"
-                        onClick={() => setChatSessionId(null)}
+                        onClick={() => updateSearchParams({ session: null })}
                       >
                         <X className="size-4" />
                       </Button>
