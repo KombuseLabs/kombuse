@@ -60,7 +60,7 @@ export function Tickets() {
   });
 
   // Sync route params to app context
-  const { setCurrentTicket, setCurrentProjectId, setView } = useAppContext();
+  const { setCurrentTicket, setView } = useAppContext();
 
   // Filter state synced to URL search params
   const [searchParams, setSearchParams] = useSearchParams();
@@ -237,11 +237,9 @@ export function Tickets() {
     localStorage.setItem(TICKETS_PANEL_LAYOUT_KEY, JSON.stringify(layout));
   }, []);
 
-  // Sync project ID to context
   useEffect(() => {
-    setCurrentProjectId(projectId ?? null);
     setView("tickets");
-  }, [projectId, setCurrentProjectId, setView]);
+  }, [setView]);
 
   // Track last-viewed ticket to avoid redundant markViewed calls on reference changes
   const lastViewedTicketIdRef = useRef<number | null>(null);

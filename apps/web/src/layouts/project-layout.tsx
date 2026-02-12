@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, useParams, Link } from "react-router-dom";
 import { Sidebar, SidebarItem } from "@kombuse/ui/components";
-import { useProject, useProfileSetting } from "@kombuse/ui/hooks";
+import { useProject, useProfileSetting, useAppContext } from "@kombuse/ui/hooks";
 import { Ticket, Bot, Folder, MessageSquare, History, Tags, Shield } from "lucide-react";
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
@@ -13,6 +13,12 @@ export function ProjectLayout() {
     const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
     return stored === "true";
   });
+
+  const { setCurrentProjectId } = useAppContext();
+  useEffect(() => {
+    setCurrentProjectId(projectId ?? null);
+    return () => setCurrentProjectId(null);
+  }, [projectId, setCurrentProjectId]);
 
   const { data: eventsSetting } = useProfileSetting("user-1", "sidebar.hidden.events");
   const { data: permissionsSetting } = useProfileSetting("user-1", "sidebar.hidden.permissions");

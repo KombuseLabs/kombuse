@@ -93,7 +93,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
 
   const { data: ticketResults = [], isLoading: isSearching } = useTicketSearch(
     ticketSearchTerm,
-    { enabled: ticketSearchTerm.length >= 2 && hasProjectId }
+    { enabled: ticketSearchTerm.length >= 2 }
   )
 
   // Exact #N match for direct "go to ticket" navigation
@@ -106,7 +106,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
   }, [query])
 
   const canGoToTicket = ticketMatch !== null && hasProjectId
-  const showTicketSection = canGoToTicket || (ticketResults.length > 0 && hasProjectId) || (isSearching && hasProjectId)
+  const showTicketSection = canGoToTicket || ticketResults.length > 0 || isSearching
 
   const grouped = useMemo(() => filterAndGroupCommands(commands, query), [commands, query])
 
@@ -120,10 +120,11 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
   )
 
   const handleGoToTicket = useCallback(
-    (ticketNumber: number) => {
+    (ticketNumber: number, ticketProjectId?: string) => {
       onOpenChange(false)
       setQuery('')
-      onNavigate?.(`/projects/${context.currentProjectId}/tickets/${ticketNumber}`)
+      const projectId = context.currentProjectId ?? ticketProjectId
+      onNavigate?.(`/projects/${projectId}/tickets/${ticketNumber}`)
     },
     [onOpenChange, onNavigate, context.currentProjectId]
   )
@@ -193,7 +194,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
                   <CommandItem
                     key={`ticket-${ticket.id}`}
                     value={`ticket-${ticket.id}-${ticket.title}`}
-                    onSelect={() => handleGoToTicket(ticket.id)}
+                    onSelect={() => handleGoToTicket(ticket.id, ticket.project_id)}
                   >
                     <Ticket className="size-4" />
                     <span className="shrink-0 font-mono text-xs text-muted-foreground">#{ticket.id}</span>
