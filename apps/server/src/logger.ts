@@ -87,8 +87,12 @@ export function createSessionLogger(options: SessionLoggerOptions): SessionLogge
           stack: serialized.error.stack,
         }
       }
-      writeLine({ ...base, ...serialized })
-      return
+      try {
+        writeLine({ ...base, ...serialized })
+        return
+      } catch {
+        // Fall through to slim format if serialization fails (e.g. circular refs)
+      }
     }
 
     let entry: Record<string, unknown>

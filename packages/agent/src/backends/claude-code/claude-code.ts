@@ -79,7 +79,7 @@ export class ClaudeCodeBackend implements AgentBackend {
           this.emit(this.createRawEvent({ pid }, 'process_spawn'))
         },
         onStderr: (data) => {
-          this.emit(this.createRawEvent({ stderr: data }, 'stderr'))
+          this.emit(this.createRawEvent({ stderr: data }, 'process_stderr'))
         },
         onExit: (code, signal) => {
           this.running = false
