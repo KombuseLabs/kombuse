@@ -64,7 +64,6 @@ export class ClaudeCodeBackend implements AgentBackend {
       onMessage: (msg) => this.handleMessage(msg),
     })
     console.log('[claude-code] spawning with args:', args.join(' '))
-    console.log('[claude-code] project path:', options.projectPath)
     this.process = new Process(
       {
         command: this.options.cliPath,
@@ -83,6 +82,7 @@ export class ClaudeCodeBackend implements AgentBackend {
         },
         onStderr: (data) => {
           console.error('[claude-code] stderr:', data)
+          this.emit(this.createRawEvent({ stderr: data }, 'stderr'))
         },
         onExit: (code, signal) => {
           console.log('[claude-code] process exited', { code, signal })
@@ -203,7 +203,6 @@ export class ClaudeCodeBackend implements AgentBackend {
       typeof options.resumeSessionId === 'string' &&
       options.resumeSessionId.trim().length > 0
     ) {
-      console.log('[claude-code] Resuming session with ID:', options.resumeSessionId)
       args.push('--resume', options.resumeSessionId.trim())
     }
 
@@ -224,7 +223,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   private handleMessage(msg: ParsedClaudeMessage): void {
     const event = msg.data
-    console.log('[claude-code] received event:', msg)
+    this.emit(this.createRawEvent(event, 'cli_pre_normalization'))
     for (const normalizedEvent of this.normalizeEvent(event)) {
       this.emit(normalizedEvent)
     }
@@ -381,10 +380,10 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   private normalizeResult(event: ClaudeResultMessage): AgentEvent[] {
     this.backendSessionId = event.session_id
-    console.log('[claude-code] session event', event)
     const events: AgentEvent[] = []
     const isSuccess = event.subtype === 'success' && !event.is_error
     const errorMessage = isSuccess ? undefined : this.getResultErrorMessage(event)
+    const resumeFailed = !isSuccess && this.isResumeFailure(errorMessage)
 
     events.push({
       type: 'complete',
@@ -395,6 +394,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       sessionId: event.session_id,
       success: isSuccess,
       errorMessage,
+      ...(resumeFailed ? { resumeFailed } : {}),
       raw: event,
     })
 
@@ -414,9 +414,16 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   private updateBackendSessionId(event: ClaudeEvent): void {
     if ('session_id' in event && typeof event.session_id === 'string') {
-      console.log('[claude-code] updating backend session ID:', event.session_id)
       this.backendSessionId = event.session_id
     }
+  }
+
+  private isResumeFailure(errorMessage: string | undefined): boolean {
+    if (!errorMessage) return false
+    const lower = errorMessage.toLowerCase()
+    return lower.includes('session does not exist') ||
+      lower.includes('session not found') ||
+      lower.includes('no such session')
   }
 
   private createRawEvent(data: unknown, sourceType?: string): AgentEvent {

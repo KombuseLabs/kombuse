@@ -4,12 +4,15 @@ import type { WriteStream } from 'node:fs'
 import type { AgentEvent, KombuseSessionId } from '@kombuse/types'
 
 type LogTarget = 'file' | 'console'
+type LogLevel = 'info' | 'debug'
 
 export interface SessionLoggerOptions {
   kombuseSessionId: KombuseSessionId
   /** Resolved lazily at first write — the backend session ID may not be available yet */
   getBackendSessionId: () => string | undefined
   target?: LogTarget
+  /** Log level: 'info' (default) keeps slim per-type format, 'debug' writes full event objects */
+  logLevel?: LogLevel
 }
 
 export interface SessionLogger {
@@ -24,12 +27,17 @@ function resolveLogTarget(): LogTarget {
   return process.env.KOMBUSE_LOG_TARGET === 'console' ? 'console' : 'file'
 }
 
+function resolveLogLevel(): LogLevel {
+  return process.env.KOMBUSE_LOG_LEVEL === 'debug' ? 'debug' : 'info'
+}
+
 function getLogDir(): string {
   return join(process.cwd(), 'logs')
 }
 
 export function createSessionLogger(options: SessionLoggerOptions): SessionLogger {
   const target = options.target ?? resolveLogTarget()
+  const logLevel = options.logLevel ?? resolveLogLevel()
   let stream: WriteStream | null = null
 
   function ensureStream(): WriteStream {
@@ -68,6 +76,19 @@ export function createSessionLogger(options: SessionLoggerOptions): SessionLogge
       level: event.type === 'error' ? 'error' : 'info',
       session: options.kombuseSessionId,
       event_type: event.type,
+    }
+
+    if (logLevel === 'debug') {
+      const serialized = { ...event } as Record<string, unknown>
+      if ('error' in serialized && serialized.error instanceof Error) {
+        serialized.error = {
+          name: serialized.error.name,
+          message: serialized.error.message,
+          stack: serialized.error.stack,
+        }
+      }
+      writeLine({ ...base, ...serialized })
+      return
     }
 
     let entry: Record<string, unknown>

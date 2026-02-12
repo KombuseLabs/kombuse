@@ -188,8 +188,9 @@ describe('ClaudeCodeBackend', () => {
 
       callHandleMessage(backend, msg)
 
-      expect(events).toHaveLength(1)
-      const evt = events[0]!
+      expect(events).toHaveLength(2)
+      expect(events[0]!.type).toBe('raw')
+      const evt = events[1]!
       expect(evt.type).toBe('message')
       expect(evt.backend).toBe('claude-code')
       if (evt.type === 'message') {
@@ -218,11 +219,12 @@ describe('ClaudeCodeBackend', () => {
 
       callHandleMessage(backend, msg)
 
-      expect(events).toHaveLength(1)
-      expect(events[0]!.type).toBe('complete')
-      if (events[0]!.type === 'complete') {
-        expect(events[0]!.success).toBe(true)
-        expect(events[0]!.errorMessage).toBeUndefined()
+      expect(events).toHaveLength(2)
+      expect(events[0]!.type).toBe('raw')
+      expect(events[1]!.type).toBe('complete')
+      if (events[1]!.type === 'complete') {
+        expect(events[1]!.success).toBe(true)
+        expect(events[1]!.errorMessage).toBeUndefined()
       }
       expect(backend.getBackendSessionId()).toBe('session_abc')
     })
@@ -248,14 +250,77 @@ describe('ClaudeCodeBackend', () => {
 
       callHandleMessage(backend, msg)
 
-      expect(events).toHaveLength(2)
-      expect(events[0]!.type).toBe('complete')
-      if (events[0]!.type === 'complete') {
-        expect(events[0]!.success).toBe(false)
-        expect(events[0]!.errorMessage).toBe('boom')
+      expect(events).toHaveLength(3)
+      expect(events[0]!.type).toBe('raw')
+      expect(events[1]!.type).toBe('complete')
+      if (events[1]!.type === 'complete') {
+        expect(events[1]!.success).toBe(false)
+        expect(events[1]!.errorMessage).toBe('boom')
       }
-      expect(events[1]!.type).toBe('error')
+      expect(events[2]!.type).toBe('error')
       expect(backend.getBackendSessionId()).toBe('session_err')
+    })
+
+    it('should set resumeFailed when result error contains "session does not exist"', () => {
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'error_during_execution',
+          uuid: 'test-uuid',
+          session_id: 'session_resume_fail',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: true,
+          num_turns: 0,
+          total_cost_usd: 0,
+          usage: { input_tokens: 0, output_tokens: 0 },
+          modelUsage: {},
+          permission_denials: [],
+          errors: ['Session does not exist'],
+        },
+      }
+
+      callHandleMessage(backend, msg)
+
+      expect(events).toHaveLength(3)
+      expect(events[0]!.type).toBe('raw')
+      const completeEvt = events[1]!
+      expect(completeEvt.type).toBe('complete')
+      if (completeEvt.type === 'complete') {
+        expect(completeEvt.success).toBe(false)
+        expect(completeEvt.resumeFailed).toBe(true)
+      }
+    })
+
+    it('should not set resumeFailed for normal errors', () => {
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'error_during_execution',
+          uuid: 'test-uuid',
+          session_id: 'session_normal_err',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: true,
+          num_turns: 1,
+          total_cost_usd: 0.01,
+          usage: { input_tokens: 10, output_tokens: 20 },
+          modelUsage: {},
+          permission_denials: [],
+          errors: ['Some other error'],
+        },
+      }
+
+      callHandleMessage(backend, msg)
+
+      expect(events).toHaveLength(3)
+      expect(events[0]!.type).toBe('raw')
+      const completeEvt = events[1]!
+      expect(completeEvt.type).toBe('complete')
+      if (completeEvt.type === 'complete') {
+        expect(completeEvt.success).toBe(false)
+        expect(completeEvt.resumeFailed).toBeUndefined()
+      }
     })
 
     it('should emit raw event type as-is', () => {
@@ -268,9 +333,35 @@ describe('ClaudeCodeBackend', () => {
 
       callHandleMessage(backend, msg)
 
-      expect(events).toHaveLength(1)
+      expect(events).toHaveLength(2)
       expect(events[0]!.type).toBe('raw')
-      expect(events[0]!.backend).toBe('claude-code')
+      expect(events[1]!.type).toBe('raw')
+      expect(events[1]!.backend).toBe('claude-code')
+    })
+
+    it('should emit cli_pre_normalization raw event before normalized events', () => {
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'assistant',
+          uuid: 'test-uuid',
+          session_id: 'test-session',
+          message: {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'Test' }]
+          },
+          parent_tool_use_id: null
+        }
+      }
+
+      callHandleMessage(backend, msg)
+
+      expect(events.length).toBeGreaterThanOrEqual(2)
+      const preNorm = events[0]!
+      expect(preNorm.type).toBe('raw')
+      if (preNorm.type === 'raw') {
+        expect(preNorm.sourceType).toBe('cli_pre_normalization')
+        expect(preNorm.data).toEqual(msg.data)
+      }
     })
   })
 })
