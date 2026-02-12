@@ -52,6 +52,10 @@ export interface TicketWithRelations extends Ticket {
   labels: Label[]
   /** 1 if ticket has activity since the viewer last viewed it, 0 otherwise. Only present when viewer_id is provided. */
   has_unread?: number
+  /** FTS snippet excerpt showing matched text. Only present when search filter is active. */
+  match_context?: string | null
+  /** Where the match was found. Only present when search filter is active. */
+  match_source?: 'title' | 'body' | 'comment' | null
 }
 
 /**
@@ -61,6 +65,10 @@ export interface TicketWithLabels extends Ticket {
   labels: Label[]
   /** 1 if ticket has activity since the viewer last viewed it, 0 otherwise. Only present when viewer_id is provided. */
   has_unread?: number
+  /** FTS snippet excerpt showing matched text. Only present when search filter is active. */
+  match_context?: string | null
+  /** Where the match was found. Only present when search filter is active. */
+  match_source?: 'title' | 'body' | 'comment' | null
 }
 
 /**

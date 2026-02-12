@@ -148,12 +148,14 @@ export const ticketsRepository = {
   list(filters?: TicketFilters): Ticket[] {
     const db = getDatabase()
     const conditions: string[] = []
+    const selectParams: unknown[] = []
     const joinParams: unknown[] = []
     const params: unknown[] = []
     let joinClause = ''
     let selectColumns = 'tickets.*'
     let useRelevanceSort = false
     let idBoostParam: number | null = null
+    let hasSnippets = false
 
     // Viewer-based unread computation (JOIN param must precede WHERE params)
     if (filters?.viewer_id) {
@@ -209,6 +211,10 @@ export const ticketsRepository = {
         joinClause +=
           ' LEFT JOIN tickets_fts ON tickets.id = tickets_fts.rowid AND tickets_fts MATCH ?'
         joinParams.push(ftsQuery)
+        selectColumns += `, CASE WHEN tickets_fts.rowid IS NOT NULL THEN snippet(tickets_fts, 1, '«', '»', '…', 64) ELSE NULL END AS body_snippet`
+        selectColumns += `, (SELECT snippet(comments_fts, 0, '«', '»', '…', 64) FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments.ticket_id = tickets.id AND comments_fts MATCH ? LIMIT 1) AS comment_snippet`
+        selectParams.push(ftsQuery)
+        hasSnippets = true
         conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id = ? OR tickets.id IN (
           SELECT ticket_id FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments_fts MATCH ?
         ))`)
@@ -220,6 +226,10 @@ export const ticketsRepository = {
         joinClause +=
           ' LEFT JOIN tickets_fts ON tickets.id = tickets_fts.rowid AND tickets_fts MATCH ?'
         joinParams.push(ftsQuery)
+        selectColumns += `, CASE WHEN tickets_fts.rowid IS NOT NULL THEN snippet(tickets_fts, 1, '«', '»', '…', 64) ELSE NULL END AS body_snippet`
+        selectColumns += `, (SELECT snippet(comments_fts, 0, '«', '»', '…', 64) FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments.ticket_id = tickets.id AND comments_fts MATCH ? LIMIT 1) AS comment_snippet`
+        selectParams.push(ftsQuery)
+        hasSnippets = true
         conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id IN (
           SELECT ticket_id FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments_fts MATCH ?
         ))`)
@@ -271,7 +281,22 @@ export const ticketsRepository = {
       LIMIT ? OFFSET ?
     `)
 
-    return stmt.all(...joinParams, ...params, ...orderByParams, limit, offset) as Ticket[]
+    const rows = stmt.all(...selectParams, ...joinParams, ...params, ...orderByParams, limit, offset) as Ticket[]
+
+    if (hasSnippets) {
+      return rows.map((row) => {
+        const raw = row as Ticket & { body_snippet?: string | null; comment_snippet?: string | null }
+        const match_context = raw.body_snippet ?? raw.comment_snippet ?? null
+        let match_source: 'body' | 'comment' | null = null
+        if (raw.body_snippet) match_source = 'body'
+        else if (raw.comment_snippet) match_source = 'comment'
+        delete raw.body_snippet
+        delete raw.comment_snippet
+        return Object.assign(raw, { match_context, match_source })
+      })
+    }
+
+    return rows
   },
 
   /**

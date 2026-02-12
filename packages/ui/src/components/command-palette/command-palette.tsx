@@ -19,6 +19,24 @@ import { cn } from '../../lib/utils'
 import { statusColors } from '../../lib/ticket-utils'
 import { SearchBar } from './search-bar'
 
+function HighlightedSnippet({ text }: { text: string }) {
+  const parts = text.split(/(«[^»]*»)/g)
+  return (
+    <span className="line-clamp-1">
+      {parts.map((part, i) => {
+        if (part.startsWith('«') && part.endsWith('»')) {
+          return (
+            <mark key={i} className="rounded-sm bg-yellow-200 dark:bg-yellow-800">
+              {part.slice(1, -1)}
+            </mark>
+          )
+        }
+        return part
+      })}
+    </span>
+  )
+}
+
 export function filterAndGroupCommands(
   commands: CommandType[],
   query: string
@@ -179,7 +197,17 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
                   >
                     <Ticket className="size-4" />
                     <span className="shrink-0 font-mono text-xs text-muted-foreground">#{ticket.id}</span>
-                    <span className="truncate">{ticket.title}</span>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate">{ticket.title}</span>
+                      {ticket.match_context && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="shrink-0 text-[10px] opacity-60">
+                            {ticket.match_source === 'comment' ? 'Comment:' : 'Body:'}
+                          </span>
+                          <HighlightedSnippet text={ticket.match_context} />
+                        </span>
+                      )}
+                    </div>
                     <span
                       className={cn(
                         'ml-auto shrink-0 rounded-full px-1.5 py-0 text-[10px] font-medium',

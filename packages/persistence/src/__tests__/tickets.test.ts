@@ -623,6 +623,84 @@ describe('ticketsRepository', () => {
         ).toBeGreaterThanOrEqual(currTime)
       }
     })
+
+    it('should return body snippet with delimiters when search matches body', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Snippet body test',
+        body: 'The quickfoxjumps over the lazy dog',
+      })
+
+      const results = ticketsRepository.list({ search: 'quickfoxjumps' }) as any[]
+
+      expect(results).toHaveLength(1)
+      expect(results[0]?.id).toBe(ticket.id)
+      expect(results[0]?.match_source).toBe('body')
+      expect(results[0]?.match_context).toContain('«')
+      expect(results[0]?.match_context).toContain('»')
+      expect(results[0]?.match_context).toContain('quickfoxjumps')
+    })
+
+    it('should return comment snippet when search only matches a comment', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Snippet comment test',
+        body: 'Nothing relevant here',
+      })
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'The xyzcommentsnippet is important',
+      })
+
+      const results = ticketsRepository.list({ search: 'xyzcommentsnippet' }) as any[]
+
+      expect(results).toHaveLength(1)
+      expect(results[0]?.id).toBe(ticket.id)
+      expect(results[0]?.match_source).toBe('comment')
+      expect(results[0]?.match_context).toContain('xyzcommentsnippet')
+    })
+
+    it('should not return snippet when search only matches title', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Uniquetitleonlysnippet',
+      })
+
+      const results = ticketsRepository.list({ search: 'Uniquetitleonlysnippet' }) as any[]
+
+      expect(results).toHaveLength(1)
+      expect(results[0]?.id).toBe(ticket.id)
+      expect(results[0]?.match_context).toBeNull()
+      expect(results[0]?.match_source).toBeNull()
+    })
+
+    it('should not include snippet fields when search filter is absent', () => {
+      const results = ticketsRepository.list({ limit: 1 }) as any[]
+
+      expect(results).toHaveLength(1)
+      expect(results[0]?.match_context).toBeUndefined()
+      expect(results[0]?.match_source).toBeUndefined()
+    })
+
+    it('should prefer body snippet over comment snippet when both match', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        title: 'Dual match snippet test',
+        body: 'The dualsnippetmatch is in the body',
+      })
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: 'The dualsnippetmatch is also in a comment',
+      })
+
+      const results = ticketsRepository.list({ search: 'dualsnippetmatch' }) as any[]
+
+      expect(results).toHaveLength(1)
+      expect(results[0]?.id).toBe(ticket.id)
+      expect(results[0]?.match_source, 'Should prefer body over comment').toBe('body')
+    })
   })
 
   /*
