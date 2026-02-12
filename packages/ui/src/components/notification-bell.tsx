@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Bell, Shield, Check, X, ExternalLink, FileCheck, HelpCircle } from 'lucide-react'
 import { Button } from '../base/button'
 import { Badge } from '../base/badge'
@@ -8,6 +9,7 @@ import { useAppContext } from '../hooks/use-app-context'
 import { useWebSocket } from '../hooks/use-websocket'
 import type { PendingPermission } from '@kombuse/types'
 import { extractPermissionDetail } from '../lib/permission-utils'
+import { PlanPreviewDialog } from './plan-preview-dialog'
 
 export interface NotificationBellProps {
   /** Navigation function - receives full path to navigate to */
@@ -32,6 +34,7 @@ function isAllowedPromptsArray(value: unknown): value is { tool: string; prompt:
 export function NotificationBell({ onNavigate }: NotificationBellProps) {
   const { pendingPermissions, removePendingPermission, currentProjectId } = useAppContext()
   const { send } = useWebSocket({ topics: [] })
+  const [planDialogPermission, setPlanDialogPermission] = useState<PendingPermission | null>(null)
 
   const permissions = [...pendingPermissions.values()]
   const count = permissions.length
@@ -56,6 +59,17 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       behavior: 'deny',
     })
     // Optimistically remove from UI
+    removePendingPermission(permission.requestId)
+  }
+
+  const handleDenyWithMessage = (permission: PendingPermission, message?: string) => {
+    send({
+      type: 'permission.response',
+      kombuseSessionId: permission.sessionId,
+      requestId: permission.requestId,
+      behavior: 'deny',
+      ...(message ? { message } : {}),
+    })
     removePendingPermission(permission.requestId)
   }
 
@@ -86,25 +100,32 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
               Plan Review
             </span>
           </div>
-          {permission.description && (
-            <p className="mb-1 pl-6 text-sm text-foreground">
-              {permission.description}
-            </p>
-          )}
-          {allowedPrompts && allowedPrompts.length > 0 && (
-            <div className="mb-2 pl-6">
-              <div className="flex flex-wrap gap-1">
-                {allowedPrompts.map((ap, i) => (
-                  <span
-                    key={i}
-                    className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground"
-                  >
-                    {ap.prompt}
-                  </span>
-                ))}
+          <button
+            type="button"
+            className="mb-1 w-full cursor-pointer text-left hover:bg-muted/60 rounded -mx-1 px-1"
+            onClick={() => setPlanDialogPermission(permission)}
+          >
+            {permission.description && (
+              <p className="mb-1 pl-6 text-sm text-foreground">
+                {permission.description}
+              </p>
+            )}
+            {allowedPrompts && allowedPrompts.length > 0 && (
+              <div className="mb-2 pl-6">
+                <div className="flex flex-wrap gap-1">
+                  {allowedPrompts.map((ap, i) => (
+                    <span
+                      key={i}
+                      className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground"
+                    >
+                      {ap.prompt}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            <span className="pl-6 text-xs text-muted-foreground underline">View full plan</span>
+          </button>
           <div className="flex items-center gap-2">
             <Button
               size="sm"
@@ -269,34 +290,46 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
   }
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="size-5" />
-          {count > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 flex size-5 items-center justify-center p-0 text-xs"
-            >
-              {count > 9 ? '9+' : count}
-            </Badge>
+    <>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="size-5" />
+            {count > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -top-1 -right-1 flex size-5 items-center justify-center p-0 text-xs"
+              >
+                {count > 9 ? '9+' : count}
+              </Badge>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-80 p-0">
+          <div className="border-b px-3 py-2">
+            <h4 className="text-sm font-medium">Notifications</h4>
+          </div>
+          {permissions.length === 0 ? (
+            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+              No pending requests
+            </div>
+          ) : (
+            <div className="max-h-80 overflow-y-auto">
+              {permissions.map(renderPermissionCard)}
+            </div>
           )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
-        <div className="border-b px-3 py-2">
-          <h4 className="text-sm font-medium">Notifications</h4>
-        </div>
-        {permissions.length === 0 ? (
-          <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-            No pending requests
-          </div>
-        ) : (
-          <div className="max-h-80 overflow-y-auto">
-            {permissions.map(renderPermissionCard)}
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+      <PlanPreviewDialog
+        permission={planDialogPermission}
+        onOpenChange={(open) => {
+          if (!open) setPlanDialogPermission(null)
+        }}
+        onAllow={handleAllow}
+        onDeny={handleDenyWithMessage}
+        onNavigate={onNavigate}
+        navigationPath={planDialogPermission ? getNavigationPath(planDialogPermission) : undefined}
+      />
+    </>
   )
 }

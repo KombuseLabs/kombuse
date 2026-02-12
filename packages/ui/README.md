@@ -822,6 +822,16 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Displays `allowedPrompts` from the permission input if present (permissions the plan will need)
 - Keyboard: `Cmd/Ctrl+Enter` approves, `Escape` toggles revision input
 
+`PlanPreviewDialog` props:
+- `permission`: `PendingPermission | null` — the plan permission to display (dialog opens when non-null)
+- `onOpenChange`: `(open: boolean) => void` — callback when dialog open state changes
+- `onAllow`: `(permission: PendingPermission) => void` — approve callback
+- `onDeny`: `(permission: PendingPermission, message?: string) => void` — reject/request changes callback
+- `onNavigate`: Optional `(path: string) => void` — navigation callback for "Open" link
+- `navigationPath`: Optional string — path to navigate to
+- Fetches session events and extracts plan content from assistant messages preceding the `ExitPlanMode` tool use
+- Renders plan as scrollable markdown with Approve, Reject, and Request Changes actions
+
 ### Timeline Components
 
 ```typescript
