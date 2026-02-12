@@ -26,7 +26,7 @@ src/
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components
 │   ├── header.tsx
-│   ├── profile-button.tsx       - Header profile link button
+│   ├── profile-button.tsx       - Header user menu dropdown (Profile + Settings)
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks
 │   ├── use-command.ts         - Execute specific commands
@@ -40,7 +40,7 @@ src/
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-permissions.ts     - Permission log query hook
-│   ├── use-profile-settings.ts - Profile settings read/write hooks
+│   ├── use-profile-settings.ts - Profile settings read/write hooks (single + all)
 │   ├── use-projects.ts        - Project CRUD hooks
 │   ├── use-shiki.ts           - Shiki syntax highlighter hook (singleton, lazy-loaded)
 │   └── use-tickets.ts         - Ticket CRUD hooks
@@ -125,11 +125,15 @@ const { data: currentUser } = useCurrentUserProfile()
 ```
 
 ```typescript
-import { useProfileSetting, useUpsertProfileSetting } from '@kombuse/ui/hooks'
+import { useProfileSetting, useProfileSettings, useUpsertProfileSetting } from '@kombuse/ui/hooks'
 
 // Fetch a single profile setting by key
 const { data: setting, isLoading } = useProfileSetting('user-1', 'sidebar.hidden.events')
 // setting?.setting_value => "true" | "false"
+
+// Fetch all settings for a profile
+const { data: settings } = useProfileSettings('user-1')
+// Returns ProfileSetting[]
 
 // Create or update a profile setting
 const upsertSetting = useUpsertProfileSetting()
@@ -138,7 +142,7 @@ upsertSetting.mutate({
   setting_key: 'sidebar.hidden.events',
   setting_value: 'false',
 })
-// Automatically invalidates the matching query key on success
+// Automatically invalidates both single-key and list query keys on success
 ```
 
 ```typescript
@@ -264,12 +268,13 @@ import { CommandPalette, SearchBar, Header, ModeToggle } from '@kombuse/ui/compo
   <NotificationBell />
 </Header>
 
-// Profile button for the header (navigates to /profile)
+// Profile/Settings dropdown menu for the header
 import { ProfileButton } from '@kombuse/ui/components'
 <Header center={...}>
   <NotificationBell />
   <ProfileButton onNavigate={navigate} />
 </Header>
+// Opens dropdown with "Profile" (/profile) and "Settings" (/settings) links
 
 // Header props:
 // - center: ReactNode rendered in the center between title and nav

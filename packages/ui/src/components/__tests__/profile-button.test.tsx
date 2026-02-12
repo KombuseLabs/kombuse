@@ -1,26 +1,21 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, fireEvent } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { ProfileButton } from '../profile-button'
 
 describe('ProfileButton', () => {
-  it('renders a button with aria-label', () => {
+  it('renders a dropdown trigger with aria-label', () => {
     const { getByRole } = render(<ProfileButton />)
-    const button = getByRole('button', { name: 'View profile' })
+    const button = getByRole('button', { name: 'User menu' })
     expect(button).toBeDefined()
+    expect(button.getAttribute('aria-haspopup')).toBe('menu')
   })
 
-  it('calls onNavigate with /profile on click', () => {
+  it('renders without crashing when onNavigate is undefined', () => {
+    expect(() => render(<ProfileButton />)).not.toThrow()
+  })
+
+  it('renders without crashing when onNavigate is provided', () => {
     const onNavigate = vi.fn()
-    const { getByRole } = render(<ProfileButton onNavigate={onNavigate} />)
-
-    fireEvent.click(getByRole('button'))
-
-    expect(onNavigate).toHaveBeenCalledOnce()
-    expect(onNavigate).toHaveBeenCalledWith('/profile')
-  })
-
-  it('does not crash when onNavigate is undefined', () => {
-    const { getByRole } = render(<ProfileButton />)
-    expect(() => fireEvent.click(getByRole('button'))).not.toThrow()
+    expect(() => render(<ProfileButton onNavigate={onNavigate} />)).not.toThrow()
   })
 })

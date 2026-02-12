@@ -642,6 +642,13 @@ export const profileSettingsApi = {
     return handleResponse<ProfileSetting>(response)
   },
 
+  async getAll(profileId: string): Promise<ProfileSetting[]> {
+    const response = await fetch(
+      `${API_BASE}/profiles/${encodeURIComponent(profileId)}/settings`
+    )
+    return handleResponse<ProfileSetting[]>(response)
+  },
+
   async upsert(input: UpsertProfileSettingInput): Promise<ProfileSetting> {
     const response = await fetch(`${API_BASE}/profile-settings`, {
       method: 'PUT',

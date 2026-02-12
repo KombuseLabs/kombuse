@@ -16,6 +16,7 @@ import { Labels } from "./routes/labels";
 import { Permissions } from "./routes/permissions";
 import { ClaudeCodeSessionViewer } from "./routes/claude-code-session";
 import { Profile } from "./routes/profile";
+import { Settings } from "./routes/settings";
 import { ProjectLayout } from "./layouts/project-layout";
 
 const queryClient = new QueryClient({
@@ -54,6 +55,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/chats" element={<Chats />} />
         <Route path="/chats/:sessionId" element={<Chats />} />
         <Route path="/projects" element={<Projects />} />

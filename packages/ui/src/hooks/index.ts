@@ -98,5 +98,5 @@ export {
   type UseScrollToBottomReturn,
 } from './use-scroll-to-bottom'
 export { useDesktop } from './use-desktop'
-export { useProfileSetting, useUpsertProfileSetting } from './use-profile-settings'
+export { useProfileSetting, useProfileSettings, useUpsertProfileSetting } from './use-profile-settings'
 export { useShiki } from './use-shiki'

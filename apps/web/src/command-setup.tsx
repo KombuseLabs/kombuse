@@ -107,6 +107,15 @@ export function CommandSetup({ children }: CommandSetupProps) {
         },
       }),
       registry.register({
+        id: "settings.open",
+        title: "Open Settings",
+        category: "General",
+        keybinding: "mod+,",
+        handler: () => {
+          navigate("/settings");
+        },
+      }),
+      registry.register({
         id: "sidebar.toggleEvents",
         title: eventsVisible ? "Hide Events in Sidebar" : "Show Events in Sidebar",
         category: "Sidebar",

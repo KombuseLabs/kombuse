@@ -11,6 +11,14 @@ export function useProfileSetting(profileId: string, key: string) {
   })
 }
 
+export function useProfileSettings(profileId: string) {
+  return useQuery({
+    queryKey: ['profile-settings', profileId],
+    queryFn: () => profileSettingsApi.getAll(profileId),
+    enabled: !!profileId,
+  })
+}
+
 export function useUpsertProfileSetting() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -19,6 +27,10 @@ export function useUpsertProfileSetting() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: ['profile-settings', data.profile_id, data.setting_key],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['profile-settings', data.profile_id],
+        exact: true,
       })
     },
   })

@@ -3,6 +3,13 @@ import { profileSettingsRepository } from '@kombuse/persistence'
 import { upsertProfileSettingSchema } from '../schemas/profile-settings'
 
 export async function profileSettingsRoutes(fastify: FastifyInstance) {
+  // List all settings for a profile
+  fastify.get<{
+    Params: { profileId: string }
+  }>('/profiles/:profileId/settings', async (request) => {
+    return profileSettingsRepository.getByProfile(request.params.profileId)
+  })
+
   // Get a single profile setting by key
   fastify.get<{
     Params: { profileId: string; key: string }
