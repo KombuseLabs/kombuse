@@ -292,6 +292,37 @@ describe('ClaudeCodeBackend', () => {
       }
     })
 
+    it('should set resumeFailed when result error contains "session id does not exist"', () => {
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'error_during_execution',
+          uuid: 'test-uuid',
+          session_id: 'session_resume_fail',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: true,
+          num_turns: 0,
+          total_cost_usd: 0,
+          usage: { input_tokens: 0, output_tokens: 0 },
+          modelUsage: {},
+          permission_denials: [],
+          errors: ['Session ID does not exist'],
+        },
+      }
+
+      callHandleMessage(backend, msg)
+
+      expect(events).toHaveLength(3)
+      expect(events[0]!.type).toBe('raw')
+      const completeEvt = events[1]!
+      expect(completeEvt.type).toBe('complete')
+      if (completeEvt.type === 'complete') {
+        expect(completeEvt.success).toBe(false)
+        expect(completeEvt.resumeFailed).toBe(true)
+      }
+    })
+
     it('should not set resumeFailed for normal errors', () => {
       const msg: ParsedClaudeMessage = {
         data: {

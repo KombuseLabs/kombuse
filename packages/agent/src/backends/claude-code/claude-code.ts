@@ -186,7 +186,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       'stdio', // Route permission requests to stdin/stdout
       '--verbose', // Enable verbose output
       '--max-turns',
-      String(options.maxTurns ?? 50),
+      String(options.maxTurns ?? 150),
     ]
 
     // Pre-approve tools at the subprocess level to avoid permission round-trips
@@ -416,9 +416,11 @@ export class ClaudeCodeBackend implements AgentBackend {
   private isResumeFailure(errorMessage: string | undefined): boolean {
     if (!errorMessage) return false
     const lower = errorMessage.toLowerCase()
-    return lower.includes('session does not exist') ||
-      lower.includes('session not found') ||
-      lower.includes('no such session')
+    return /\bsession(?:[\s_-]*id)?\b.*\bdoes not exist\b/.test(lower) ||
+      /\bsession(?:[\s_-]*id)?\b.*\bnot found\b/.test(lower) ||
+      lower.includes('no such session') ||
+      /\binvalid session(?:[\s_-]*id)?\b/.test(lower) ||
+      /\bunknown session(?:[\s_-]*id)?\b/.test(lower)
   }
 
   private createRawEvent(data: unknown, sourceType?: string): AgentEvent {
