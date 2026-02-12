@@ -12,6 +12,9 @@ export type { IEventService } from './event-service'
 export { LabelService, labelService } from './label-service'
 export type { ILabelService } from './label-service'
 
+export { MilestoneService, milestoneService } from './milestone-service'
+export type { IMilestoneService } from './milestone-service'
+
 export { ProfileService, profileService } from './profile-service'
 export type { IProfileService } from './profile-service'
 

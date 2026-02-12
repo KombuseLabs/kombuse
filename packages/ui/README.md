@@ -21,6 +21,7 @@ src/
 │   ├── agent-picker/     - Agent selector for chat sessions
 │   ├── command-palette/  - Command palette UI
 │   ├── labels/           - Label management components
+│   ├── milestones/       - Milestone management components
 │   ├── prompt-editor/    - System prompt editor with template variables
 │   ├── sidebar/          - Collapsible sidebar navigation
 │   ├── permissions/      - Permission decision log components
@@ -40,6 +41,7 @@ src/
 │   ├── use-claude-code.ts     - Claude Code project scanner hooks
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
+│   ├── use-milestones.ts      - Milestone CRUD hooks
 │   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-profile-settings.ts - Profile settings read/write hooks (single + all)
 │   ├── use-projects.ts        - Project CRUD hooks
@@ -49,7 +51,7 @@ src/
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
-    ├── api.ts                 - API client (tickets, comments, labels, attachments, permissions)
+    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions)
     ├── ticket-utils.ts        - Shared ticket display utilities (statusColors)
     └── utils.ts               - cn() class merging
 ```
@@ -401,6 +403,34 @@ import {
 <LabelForm
   label={existingLabel}  // Optional: for edit mode
   onSubmit={(data) => ...}  // { name, color, description? }
+  onCancel={() => ...}
+/>
+```
+
+### Milestone Components
+
+```typescript
+import {
+  MilestoneBadge, MilestoneForm, MilestoneSelector
+} from '@kombuse/ui/components'
+
+// Display a milestone badge with optional progress
+<MilestoneBadge milestone={milestone} size="sm" showProgress />
+
+// Single-select dropdown for assigning a milestone (with optional inline creation)
+<MilestoneSelector
+  availableMilestones={projectMilestones}
+  selectedMilestoneId={ticket.milestone_id ?? null}
+  onSelect={(milestoneId) => updateTicket({ milestone_id: milestoneId })}
+  onMilestoneCreate={(data) => createMilestone(data)}
+  isCreating={isCreating}
+  placeholder="Set milestone..."
+/>
+
+// Inline form for creating/editing milestones
+<MilestoneForm
+  milestone={existingMilestone}  // Optional: for edit mode
+  onSubmit={(data) => ...}  // { title, description?, due_date? }
   onCancel={() => ...}
 />
 ```
@@ -1078,6 +1108,48 @@ updateLabel.mutate({ id: 1, input: { name: 'Bug', color: '#ff0000' } })
 
 const deleteLabel = useDeleteLabel('project-id')
 deleteLabel.mutate(labelId)
+```
+
+### Milestone Hooks
+
+```typescript
+import {
+  useProjectMilestones,
+  useMilestone,
+  useCreateMilestone,
+  useUpdateMilestone,
+  useDeleteMilestone,
+} from '@kombuse/ui/hooks'
+
+// Fetch milestones for a project (with stats: open_count, closed_count, total_count)
+const { data: milestones } = useProjectMilestones('project-id')
+
+// Fetch a single milestone with stats
+const { data: milestone } = useMilestone(milestoneId)
+
+// CRUD for milestones
+const createMilestone = useCreateMilestone('project-id')
+createMilestone.mutate({ title: 'v1.0', due_date: '2026-03-01' })
+
+const updateMilestone = useUpdateMilestone('project-id')
+updateMilestone.mutate({ id: 1, input: { status: 'closed' } })
+
+const deleteMilestone = useDeleteMilestone('project-id')
+deleteMilestone.mutate(milestoneId)
+```
+
+```typescript
+import { useMilestoneOperations } from '@kombuse/ui/hooks'
+
+// Context-aware hook for milestone operations on the current ticket
+const {
+  projectMilestones,    // MilestoneWithStats[]
+  currentMilestone,     // MilestoneWithStats | null (for current ticket)
+  createMilestone,
+  updateMilestone,
+  deleteMilestone,
+  isLoading, isCreating, isUpdating, isDeleting,
+} = useMilestoneOperations()
 ```
 
 ```typescript

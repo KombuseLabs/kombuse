@@ -27,6 +27,7 @@ export interface Ticket {
   priority: TicketPriority | null
   external_source: string | null
   external_id: string | null
+  milestone_id: number | null
   external_url: string | null
   synced_at: string | null
   /** Timestamp when the ticket was claimed by a claimer */
@@ -87,6 +88,7 @@ export interface TicketFilters {
   expired_claims?: boolean
   /** Profile ID of the current viewer - used to compute has_unread */
   viewer_id?: string
+  milestone_id?: number
   label_ids?: number[]
   search?: string
   sort_by?: 'created_at' | 'updated_at' | 'closed_at' | 'opened_at' | 'last_activity_at'
@@ -106,6 +108,7 @@ export interface CreateTicketInput {
   status?: TicketStatus
   priority?: TicketPriority
   assignee_id?: string
+  milestone_id?: number
   label_ids?: number[]
   external_source?: string
   external_id?: string
@@ -121,6 +124,7 @@ export interface UpdateTicketInput {
   status?: TicketStatus
   priority?: TicketPriority
   assignee_id?: string | null
+  milestone_id?: number | null
   updated_by_id?: string
   external_source?: string
   external_id?: string

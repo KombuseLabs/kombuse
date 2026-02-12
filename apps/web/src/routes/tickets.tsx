@@ -30,6 +30,7 @@ import {
   useCommentOperations,
   useRealtimeUpdates,
   useProjectLabels,
+  useProjectMilestones,
   useTicketTimeline,
   useWebSocket,
   useCommentsAttachments,
@@ -41,7 +42,7 @@ import {
   useScrollToBottom,
   useScrollToComment,
 } from "@kombuse/ui/hooks";
-import { LabelBadge, StagedFilePreviews } from "@kombuse/ui/components";
+import { LabelBadge, MilestoneBadge, StagedFilePreviews } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip } from "lucide-react";
 import type { Ticket, TicketStatus, TicketFilters, CommentWithAuthor } from "@kombuse/types";
 
@@ -73,6 +74,7 @@ export function Tickets() {
     : "open";
 
   const { data: projectLabels } = useProjectLabels(projectId ?? "");
+  const { data: projectMilestones } = useProjectMilestones(projectId ?? "");
 
   const validSortByValues = new Set<TicketFilters["sort_by"]>(["created_at", "updated_at", "closed_at", "opened_at", "last_activity_at"]);
   const showClosedSort = statusFilter === "all" || statusFilter === "closed";
@@ -96,6 +98,11 @@ export function Tickets() {
       .map((l) => l.id);
   }, [searchParams, projectLabels]);
 
+  const selectedMilestoneId: number | null = useMemo(() => {
+    const raw = searchParams.get("milestone");
+    return raw ? parseInt(raw, 10) : null;
+  }, [searchParams]);
+
   // Unfiltered query for counting tickets by status
   const { data: allTickets } = useTickets({ project_id: projectId });
 
@@ -117,6 +124,7 @@ export function Tickets() {
     project_id: projectId,
     status: statusFilter === "all" ? undefined : statusFilter,
     label_ids: selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
+    milestone_id: selectedMilestoneId ?? undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
     viewer_id: "user-1", // TODO: Get from auth context
@@ -534,6 +542,38 @@ export function Tickets() {
               <button
                 type="button"
                 onClick={() => updateSearchParams({ labels: null })}
+                className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+        {projectMilestones && projectMilestones.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">Milestones:</span>
+            {projectMilestones.map((milestone) => (
+              <button
+                key={milestone.id}
+                type="button"
+                onClick={() =>
+                  updateSearchParams({
+                    milestone: selectedMilestoneId === milestone.id ? null : String(milestone.id),
+                  })
+                }
+                className={`transition-opacity ${
+                  selectedMilestoneId !== null && selectedMilestoneId !== milestone.id
+                    ? "opacity-40 hover:opacity-70"
+                    : ""
+                }`}
+              >
+                <MilestoneBadge milestone={milestone} size="sm" showProgress />
+              </button>
+            ))}
+            {selectedMilestoneId !== null && (
+              <button
+                type="button"
+                onClick={() => updateSearchParams({ milestone: null })}
                 className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
               >
                 Clear

@@ -21,6 +21,7 @@ export { projectsRepository } from './projects'
 export { eventsRepository, onEventCreated } from './events'
 export { eventSubscriptionsRepository } from './event-subscriptions'
 export { labelsRepository } from './labels'
+export { milestonesRepository } from './milestones'
 export { mentionsRepository } from './mentions'
 export { commentsRepository } from './comments'
 export {

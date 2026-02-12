@@ -652,6 +652,29 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_sessions_agent ON sessions(agent_id) WHERE agent_id IS NOT NULL;
     `,
   },
+  {
+    name: '015_milestones',
+    sql: `
+      CREATE TABLE IF NOT EXISTS milestones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        due_date TEXT,
+        status TEXT NOT NULL DEFAULT 'open'
+          CHECK (status IN ('open', 'closed')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_milestones_project ON milestones(project_id);
+      CREATE INDEX IF NOT EXISTS idx_milestones_status ON milestones(status);
+
+      ALTER TABLE tickets ADD COLUMN milestone_id INTEGER
+        REFERENCES milestones(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_tickets_milestone
+        ON tickets(milestone_id) WHERE milestone_id IS NOT NULL;
+    `,
+  },
 ]
 
 /**

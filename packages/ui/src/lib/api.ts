@@ -42,6 +42,10 @@ import type {
   PermissionLogFilters,
   ProfileSetting,
   UpsertProfileSettingInput,
+  Milestone,
+  MilestoneWithStats,
+  CreateMilestoneInput,
+  UpdateMilestoneInput,
 } from '@kombuse/types'
 
 declare global {
@@ -101,6 +105,8 @@ export const ticketsApi = {
     if (filters?.offset) params.set('offset', String(filters.offset))
     if (filters?.label_ids?.length)
       params.set('label_ids', filters.label_ids.join(','))
+    if (filters?.milestone_id)
+      params.set('milestone_id', String(filters.milestone_id))
     if (filters?.sort_by) params.set('sort_by', filters.sort_by)
     if (filters?.sort_order) params.set('sort_order', filters.sort_order)
     if (filters?.viewer_id) params.set('viewer_id', filters.viewer_id)
@@ -257,6 +263,46 @@ export const labelsApi = {
 
   async delete(id: number): Promise<void> {
     const response = await fetch(`${API_BASE}/labels/${id}`, {
+      method: 'DELETE',
+    })
+    await handleEmptyResponse(response)
+  },
+}
+
+export const milestonesApi = {
+  async listByProject(projectId: string): Promise<MilestoneWithStats[]> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/milestones`)
+    return handleResponse<MilestoneWithStats[]>(response)
+  },
+
+  async get(id: number): Promise<MilestoneWithStats> {
+    const response = await fetch(`${API_BASE}/milestones/${id}`)
+    return handleResponse<MilestoneWithStats>(response)
+  },
+
+  async create(
+    projectId: string,
+    input: Omit<CreateMilestoneInput, 'project_id'>
+  ): Promise<Milestone> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/milestones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<Milestone>(response)
+  },
+
+  async update(id: number, input: UpdateMilestoneInput): Promise<Milestone> {
+    const response = await fetch(`${API_BASE}/milestones/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<Milestone>(response)
+  },
+
+  async delete(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE}/milestones/${id}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)

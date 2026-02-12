@@ -8,11 +8,13 @@ import { Tabs, TabsList, TabsTrigger } from '../../base/tabs'
 import { X, Trash2, Pencil, Paperclip, ChevronDown, ChevronRight } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
+import { MilestoneBadge } from '../milestones/milestone-badge'
+import { MilestoneSelector } from '../milestones/milestone-selector'
 import { StatusIndicator } from '../status-indicator'
 import { Markdown } from '../markdown'
 import { ImageLightbox } from '../image-lightbox'
 import { attachmentsApi } from '../../lib/api'
-import { useTicketOperations, useLabelOperations, useTicketAgentStatus, useCurrentProject, useTicketAttachments, useUploadTicketAttachment } from '../../hooks'
+import { useTicketOperations, useLabelOperations, useMilestoneOperations, useTicketAgentStatus, useCurrentProject, useTicketAttachments, useUploadTicketAttachment } from '../../hooks'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
 import { useFileStaging } from '../../hooks/use-file-staging'
 import { StagedFilePreviews } from '../staged-file-previews'
@@ -73,6 +75,13 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
     isUpdating: isUpdatingLabel,
     isDeleting: isDeletingLabel,
   } = useLabelOperations()
+
+  const {
+    projectMilestones,
+    currentMilestone,
+    createMilestone,
+    isCreating: isCreatingMilestone,
+  } = useMilestoneOperations()
 
   const { currentProjectId } = useCurrentProject()
   const agentStatus = useTicketAgentStatus(currentTicket?.id)
@@ -265,6 +274,20 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                   isCreating={isCreatingLabel}
                   isUpdating={isUpdatingLabel}
                   isDeleting={isDeletingLabel}
+                />
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              {currentMilestone && (
+                <MilestoneBadge milestone={currentMilestone} size="sm" showProgress />
+              )}
+              {isEditable && (
+                <MilestoneSelector
+                  availableMilestones={projectMilestones}
+                  selectedMilestoneId={ticket.milestone_id ?? null}
+                  onSelect={(milestoneId) => updateCurrentTicket({ milestone_id: milestoneId })}
+                  onMilestoneCreate={(data) => createMilestone(data)}
+                  isCreating={isCreatingMilestone}
                 />
               )}
             </div>

@@ -39,6 +39,7 @@ interface RawTicketWithProfiles {
   priority: number | null
   external_source: string | null
   external_id: string | null
+  milestone_id: number | null
   external_url: string | null
   synced_at: string | null
   claimed_at: string | null
@@ -98,6 +99,7 @@ function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelat
     body: row.body,
     status: row.status as Ticket['status'],
     priority: row.priority as Ticket['priority'],
+    milestone_id: row.milestone_id,
     external_source: row.external_source,
     external_id: row.external_id,
     external_url: row.external_url,
@@ -192,6 +194,10 @@ export const ticketsRepository = {
     if (filters?.claimed_by_id) {
       conditions.push('tickets.claimed_by_id = ?')
       params.push(filters.claimed_by_id)
+    }
+    if (filters?.milestone_id) {
+      conditions.push('tickets.milestone_id = ?')
+      params.push(filters.milestone_id)
     }
     if (filters?.unclaimed) {
       conditions.push('tickets.claimed_by_id IS NULL')
@@ -374,10 +380,10 @@ export const ticketsRepository = {
     const insertTicket = db.prepare(`
       INSERT INTO tickets (
         project_id, author_id, assignee_id, title, body, status, priority,
-        external_source, external_id, external_url,
+        milestone_id, external_source, external_id, external_url,
         opened_at, closed_at, last_activity_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
     `)
 
     const insertTicketLabels = db.prepare(`
@@ -399,6 +405,7 @@ export const ticketsRepository = {
         payload.body ?? null,
         status,
         payload.priority ?? null,
+        payload.milestone_id ?? null,
         payload.external_source ?? null,
         payload.external_id ?? null,
         payload.external_url ?? null,
@@ -486,6 +493,10 @@ export const ticketsRepository = {
     if (input.assignee_id !== undefined) {
       fields.push('assignee_id = ?')
       params.push(input.assignee_id)
+    }
+    if (input.milestone_id !== undefined) {
+      fields.push('milestone_id = ?')
+      params.push(input.milestone_id)
     }
     if (input.external_source !== undefined) {
       fields.push('external_source = ?')

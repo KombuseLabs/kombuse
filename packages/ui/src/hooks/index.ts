@@ -28,6 +28,14 @@ export {
 } from './use-labels'
 export { useTicketOperations } from './use-ticket-operations'
 export { useLabelOperations } from './use-label-operations'
+export {
+  useProjectMilestones,
+  useMilestone,
+  useCreateMilestone,
+  useUpdateMilestone,
+  useDeleteMilestone,
+} from './use-milestones'
+export { useMilestoneOperations } from './use-milestone-operations'
 export { useCommentOperations } from './use-comment-operations'
 export { useWebSocket } from './use-websocket'
 export { useRealtimeUpdates } from './use-realtime-updates'

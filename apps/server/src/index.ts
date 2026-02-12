@@ -24,6 +24,7 @@ import {
   profileRoutes,
   projectRoutes,
   labelRoutes,
+  milestoneRoutes,
   commentRoutes,
   eventRoutes,
   agentRoutes,
@@ -121,6 +122,7 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(profileRoutes, { prefix: "/api" });
   fastify.register(projectRoutes, { prefix: "/api" });
   fastify.register(labelRoutes, { prefix: "/api" });
+  fastify.register(milestoneRoutes, { prefix: "/api" });
   fastify.register(commentRoutes, { prefix: "/api" });
   fastify.register(eventRoutes, { prefix: "/api" });
   fastify.register(agentRoutes, { prefix: "/api" });
