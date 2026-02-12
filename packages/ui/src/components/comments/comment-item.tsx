@@ -95,7 +95,7 @@ function CommentItem({
 
   return (
     <div id={`comment-${comment.id}`} className={cn('p-3 rounded-lg border bg-card', className)}>
-      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-border/50">
+      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-border">
         <div className="flex items-center gap-2">
           {comment.author.type === 'agent' && (() => {
             const Icon = getAvatarIcon(comment.author.avatar_url)

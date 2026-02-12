@@ -85,7 +85,7 @@ export function GlobRenderer({ toolUse, result }: GlobRendererProps) {
         </CollapsibleTrigger>
         {outputContent && !noMatches && (
           <CollapsibleContent>
-            <div className="border-t border-border/50 px-3 py-2">
+            <div className="border-t border-border px-3 py-2">
               <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs text-muted-foreground">
                 {outputContent}
               </pre>

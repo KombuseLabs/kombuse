@@ -35,7 +35,7 @@ export function ThinkingRenderer({ event }: ThinkingRendererProps) {
           </span>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="border-t border-border/50 px-3 py-2">
+          <div className="border-t border-border px-3 py-2">
             <p className="whitespace-pre-wrap text-xs text-muted-foreground">
               {thinkingText}
             </p>

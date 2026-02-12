@@ -59,8 +59,8 @@ export function CodeDiff({
   }, [heightProp, original, modified, maxHeight])
 
   return (
-    <div className={cn('overflow-hidden rounded border border-border/50', className)}>
-      <div className="flex items-center justify-end border-b border-border/50 bg-muted/30 px-2 py-1">
+    <div className={cn('overflow-hidden rounded border border-border', className)}>
+      <div className="flex items-center justify-end border-b border-border bg-muted/30 px-2 py-1">
         <button
           type="button"
           onClick={() => setSideBySide((prev) => !prev)}

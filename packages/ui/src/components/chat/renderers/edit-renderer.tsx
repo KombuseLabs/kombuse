@@ -56,7 +56,7 @@ export function EditRenderer({ toolUse, result }: EditRendererProps) {
         </CollapsibleTrigger>
         {hasDiff && (
           <CollapsibleContent>
-            <div className="border-t border-border/50 px-3 py-2">
+            <div className="border-t border-border px-3 py-2">
               <div className="mb-1 truncate font-mono text-[10px] text-muted-foreground" title={filePath}>
                 {filePath}
               </div>

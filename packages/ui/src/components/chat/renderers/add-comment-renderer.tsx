@@ -48,7 +48,7 @@ export function AddCommentRenderer({ toolUse, result }: AddCommentRendererProps)
         </CollapsibleTrigger>
         {body && (
           <CollapsibleContent>
-            <div className="border-t border-border/50 px-3 py-2">
+            <div className="border-t border-border px-3 py-2">
               <Markdown className="text-xs">{body}</Markdown>
             </div>
           </CollapsibleContent>

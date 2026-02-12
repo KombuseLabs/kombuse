@@ -50,7 +50,7 @@ export function CodeViewer({
   }, [value, maxHeight])
 
   return (
-    <div className={cn('overflow-hidden rounded border border-border/50', className)}>
+    <div className={cn('overflow-hidden rounded border border-border', className)}>
       <Suspense fallback={<ViewerSkeleton height={computedHeight} />}>
         <Editor
           height={computedHeight}

@@ -52,7 +52,7 @@ export function WriteRenderer({ toolUse, result }: WriteRendererProps) {
         </CollapsibleTrigger>
         {content && (
           <CollapsibleContent>
-            <div className="border-t border-border/50 px-3 py-2">
+            <div className="border-t border-border px-3 py-2">
               <CodeViewer value={content} filePath={filePath} maxHeight={300} />
             </div>
           </CollapsibleContent>

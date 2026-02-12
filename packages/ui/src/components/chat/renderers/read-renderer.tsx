@@ -75,7 +75,7 @@ export function ReadRenderer({ toolUse, result }: ReadRendererProps) {
         </CollapsibleTrigger>
         {outputContent && (
           <CollapsibleContent>
-            <div className="border-t border-border/50 px-3 py-2">
+            <div className="border-t border-border px-3 py-2">
               {isError ? (
                 <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs text-red-600 dark:text-red-400">
                   {outputContent}
