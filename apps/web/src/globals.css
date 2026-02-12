@@ -130,14 +130,16 @@
 }
 
 pre.shiki {
-  padding: 0.875rem 1rem;
+  padding: 0.625rem 0.875rem;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
   overflow-x: auto;
   border-radius: var(--radius);
 }
 
 pre.shiki code {
-  font-size: 0.8125rem;
-  line-height: 1.625;
+  font-size: 0.75rem;
+  line-height: 1.5;
   background-color: transparent !important;
   padding: 0;
 }
@@ -159,6 +161,11 @@ pre.shiki code {
 
 .prose :where(li + li):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
   margin-top: 0.375em;
+}
+
+.prose :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
 }
 
 .prose :where(blockquote):not(:where([class~="not-prose"], [class~="not-prose"] *)) {

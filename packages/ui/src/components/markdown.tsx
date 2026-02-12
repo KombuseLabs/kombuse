@@ -114,7 +114,7 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
         'prose-a:text-primary prose-a:no-underline hover:prose-a:underline',
         // Inline code
         'prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none',
-        'prose-pre:bg-transparent prose-pre:border-0 prose-pre:p-0',
+        'prose-pre:bg-transparent prose-pre:border-0 prose-pre:p-0 prose-pre:my-3',
         // Blockquotes
         'prose-blockquote:text-muted-foreground prose-blockquote:border-border prose-blockquote:font-light prose-blockquote:not-italic',
         // Media & tables
