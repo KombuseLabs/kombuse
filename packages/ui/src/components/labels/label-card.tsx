@@ -2,7 +2,6 @@
 
 import type { Label } from '@kombuse/types'
 import { cn } from '../../lib/utils'
-import { Card, CardContent } from '../../base/card'
 
 interface LabelCardProps {
   label: Label
@@ -12,30 +11,30 @@ interface LabelCardProps {
 
 function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
   return (
-    <Card
+    <div
       className={cn(
-        'cursor-pointer transition-all hover:border-primary/50',
-        isSelected && 'border-primary ring-1 ring-primary'
+        'px-4 py-3 cursor-pointer transition-colors border-l-2 border-l-transparent',
+        isSelected
+          ? 'bg-accent border-l-primary'
+          : 'hover:bg-accent/50'
       )}
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <div
-            className="size-8 rounded-full shrink-0 mt-0.5"
-            style={{ backgroundColor: label.color }}
-          />
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium truncate">{label.name}</h3>
-            {label.description && (
-              <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
-                {label.description}
-              </p>
-            )}
-          </div>
+      <div className="flex items-center gap-3">
+        <div
+          className="size-6 rounded-full shrink-0"
+          style={{ backgroundColor: label.color }}
+        />
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-medium truncate">{label.name}</h3>
+          {label.description && (
+            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+              {label.description}
+            </p>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

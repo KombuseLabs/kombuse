@@ -139,7 +139,7 @@ export function Labels() {
       )}
 
       {!isLoading && !error && labels && (
-        <div className="grid gap-3">
+        <div className="rounded-lg border divide-y">
           {filteredLabels.length === 0 && !isCreating ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchQuery

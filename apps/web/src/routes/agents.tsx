@@ -206,7 +206,7 @@ export function Agents() {
       )}
 
       {!isLoading && !error && agents && (
-        <div className="grid gap-4">
+        <div className="rounded-lg border divide-y">
           {agents.length === 0 && !isCreating ? (
             <div className="text-center py-8 text-muted-foreground">
               No agents yet. Create one to get started.
