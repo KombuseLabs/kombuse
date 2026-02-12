@@ -211,8 +211,8 @@ formatFileSize(1536) // => "1.5 KB"
 ```typescript
 import { useScrollToBottom } from '@kombuse/ui/hooks'
 
-// Auto-scroll container with floating scroll-to-bottom button support
-const { scrollRef, isAtBottom, scrollToBottom, onScroll } = useScrollToBottom({
+// Auto-scroll container with floating scroll navigation button support
+const { scrollRef, isAtBottom, isAtTop, scrollToBottom, scrollToTop, onScroll } = useScrollToBottom({
   deps: [items.length],                  // Auto-scroll when these change (if at bottom)
   threshold: 100,                         // Pixels from bottom to consider "at bottom" (default: 100)
   initialScrollOnChange: selectedId,      // Force-scroll when this value changes
@@ -223,7 +223,8 @@ const { scrollRef, isAtBottom, scrollToBottom, onScroll } = useScrollToBottom({
   {/* content */}
 </div>
 
-// Show floating button when not at bottom
+// Show floating buttons for scroll navigation
+{!isAtTop && <Button onClick={scrollToTop}>↑</Button>}
 {!isAtBottom && <Button onClick={scrollToBottom}>↓</Button>}
 ```
 

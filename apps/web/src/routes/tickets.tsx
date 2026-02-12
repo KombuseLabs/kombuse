@@ -155,7 +155,7 @@ export function Tickets() {
   const uploadAttachment = useUploadAttachment();
 
   // Scroll-to-bottom for ticket detail
-  const { scrollRef: ticketScrollRef, isAtBottom: ticketIsAtBottom, scrollToBottom: ticketScrollToBottom, onScroll: ticketOnScroll } = useScrollToBottom({
+  const { scrollRef: ticketScrollRef, isAtBottom: ticketIsAtBottom, isAtTop: ticketIsAtTop, scrollToBottom: ticketScrollToBottom, scrollToTop: ticketScrollToTop, onScroll: ticketOnScroll } = useScrollToBottom({
     deps: [timeline?.items.length],
     initialScrollOnChange: selectedTicket?.id,
   });
@@ -699,17 +699,32 @@ export function Tickets() {
                           </div>
                         </div>
 
-                        {/* Floating scroll-to-bottom button */}
-                        {!ticketIsAtBottom && (
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="absolute bottom-16 left-1/2 -translate-x-1/2 rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity z-10"
-                            onClick={ticketScrollToBottom}
-                            aria-label="Scroll to bottom"
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
+                        {/* Floating scroll navigation buttons */}
+                        {(!ticketIsAtTop || !ticketIsAtBottom) && (
+                          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10">
+                            {!ticketIsAtTop && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+                                onClick={ticketScrollToTop}
+                                aria-label="Scroll to top"
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {!ticketIsAtBottom && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+                                onClick={ticketScrollToBottom}
+                                aria-label="Scroll to bottom"
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         )}
 
                         {/* Fixed ChatInput at bottom */}

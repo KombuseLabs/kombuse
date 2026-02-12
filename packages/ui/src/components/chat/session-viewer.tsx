@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { useScrollToBottom } from '../../hooks/use-scroll-to-bottom'
@@ -19,7 +19,7 @@ interface SessionViewerProps {
 }
 
 function SessionViewer({ events, isLoading = false, emptyMessage = 'No events yet', viewMode = 'normal', className }: SessionViewerProps) {
-  const { scrollRef, isAtBottom, scrollToBottom, onScroll } = useScrollToBottom({
+  const { scrollRef, isAtBottom, isAtTop, scrollToBottom, scrollToTop, onScroll } = useScrollToBottom({
     deps: [events.length, isLoading],
   })
 
@@ -218,16 +218,31 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         </div>
       )}
       </div>
-      {!isAtBottom && (
-        <Button
-          variant="outline"
-          size="icon"
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
-          onClick={scrollToBottom}
-          aria-label="Scroll to bottom"
-        >
-          <ArrowDown className="h-4 w-4" />
-        </Button>
+      {(!isAtTop || !isAtBottom) && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2">
+          {!isAtTop && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+              onClick={scrollToTop}
+              aria-label="Scroll to top"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+          )}
+          {!isAtBottom && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+              onClick={scrollToBottom}
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       )}
     </div>
   )
