@@ -1617,6 +1617,7 @@ export function startAgentChatSession(
         dependencies.stateMachine.transition(persistentSessionId, 'fail', {
           kombuseSessionId: appSessionId,
           ticketId,
+          backendSessionId: existingBackend.getBackendSessionId(),
           error: error.message,
           invocationId: continuationInvocationId ?? undefined,
         })
@@ -2004,6 +2005,7 @@ export function startAgentChatSession(
           dependencies.stateMachine.transition(persistentSessionId, 'fail', {
             kombuseSessionId: appSessionId,
             ticketId,
+            backendSessionId: retryBackend.getBackendSessionId(),
             error: error.message,
             invocationId: continuationInvocationId ?? undefined,
           })
@@ -2017,6 +2019,7 @@ export function startAgentChatSession(
         dependencies.stateMachine.transition(persistentSessionId, 'fail', {
           kombuseSessionId: appSessionId,
           ticketId,
+          backendSessionId: retryBackend.getBackendSessionId(),
           error: messageText,
           invocationId: continuationInvocationId ?? undefined,
         })
@@ -2046,6 +2049,7 @@ export function startAgentChatSession(
       dependencies.stateMachine.transition(persistentSessionId, 'fail', {
         kombuseSessionId: appSessionId,
         ticketId,
+        backendSessionId: backend.getBackendSessionId(),
         error: error.message,
         invocationId: continuationInvocationId ?? undefined,
       })
@@ -2077,6 +2081,7 @@ export function startAgentChatSession(
       dependencies.stateMachine.transition(persistentSessionId, 'fail', {
         kombuseSessionId: appSessionId,
         ticketId,
+        backendSessionId: backend.getBackendSessionId(),
         error: messageText,
         invocationId: continuationInvocationId ?? undefined,
       })

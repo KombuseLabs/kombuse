@@ -17,7 +17,8 @@ export interface ISessionPersistenceService {
   markSessionRunning(sessionId: string): void
   persistEvent(sessionId: string, event: AgentEvent): void
   completeSession(sessionId: string, backendSessionId?: string): void
-  failSession(sessionId: string): void
+  failSession(sessionId: string, backendSessionId?: string): void
+  abortSession(sessionId: string, backendSessionId?: string): void
   getSession(sessionId: string): Session | null
   getSessionByKombuseId(kombuseSessionId: string): Session | null
   getSessionEvents(sessionId: string, sinceSeq?: number): SessionEvent[]
@@ -111,12 +112,23 @@ export class SessionPersistenceService implements ISessionPersistenceService {
   }
 
   /**
-   * Mark session as failed.
+   * Mark session as failed with optional backend session ID.
    */
-  failSession(sessionId: string): void {
+  failSession(sessionId: string, backendSessionId?: string): void {
     sessionsRepository.update(sessionId, {
       status: 'failed',
+      backend_session_id: backendSessionId,
       failed_at: new Date().toISOString(),
+    })
+  }
+
+  /**
+   * Mark session as aborted with optional backend session ID.
+   */
+  abortSession(sessionId: string, backendSessionId?: string): void {
+    sessionsRepository.update(sessionId, {
+      status: 'aborted',
+      backend_session_id: backendSessionId,
     })
   }
 

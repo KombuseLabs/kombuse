@@ -31,7 +31,7 @@ export interface TransitionContext {
 export interface StateMachineDeps {
   sessionPersistence: Pick<
     ISessionPersistenceService,
-    'getSession' | 'markSessionRunning' | 'completeSession' | 'failSession' | 'updateStatus' | 'getMetadata' | 'setMetadata'
+    'getSession' | 'markSessionRunning' | 'completeSession' | 'failSession' | 'abortSession' | 'updateStatus' | 'getMetadata' | 'setMetadata'
   >
   backends: {
     register(sessionId: string, backend: TransitionContext['backend']): void
@@ -138,7 +138,7 @@ export class SessionStateMachine {
 
       case 'fail': {
         // running -> failed
-        this.deps.sessionPersistence.failSession(sessionId)
+        this.deps.sessionPersistence.failSession(sessionId, ctx.backendSessionId)
         if (ctx.invocationId) {
           this.deps.invocations.markFailed(ctx.invocationId, ctx.error ?? 'Unknown error')
         }
@@ -149,7 +149,7 @@ export class SessionStateMachine {
 
       case 'abort': {
         // running|pending -> aborted
-        this.deps.sessionPersistence.updateStatus(sessionId, 'aborted')
+        this.deps.sessionPersistence.abortSession(sessionId, ctx.backendSessionId)
         this.deps.backends.unregister(ctx.kombuseSessionId)
         this.deps.backends.clearIdleTimeout(ctx.kombuseSessionId)
         if (ctx.invocationId) {
