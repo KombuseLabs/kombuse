@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { TicketFilters, TicketWithLabels, CreateTicketInput, UpdateTicketInput } from '@kombuse/types'
+import type { TicketFilters, TicketWithLabels, TicketWithRelations, CreateTicketInput, UpdateTicketInput } from '@kombuse/types'
 import { ticketsApi } from '../lib/api'
 
 export function useTickets(filters?: TicketFilters) {

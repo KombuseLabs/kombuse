@@ -1,5 +1,6 @@
 import type {
   Ticket,
+  TicketWithRelations,
   TicketWithLabels,
   TicketFilters,
   CreateTicketInput,
@@ -109,9 +110,9 @@ export const ticketsApi = {
     return handleResponse<TicketWithLabels[]>(response)
   },
 
-  async get(id: number): Promise<Ticket> {
+  async get(id: number): Promise<TicketWithRelations> {
     const response = await fetch(`${API_BASE}/tickets/${id}`)
-    return handleResponse<Ticket>(response)
+    return handleResponse<TicketWithRelations>(response)
   },
 
   async markViewed(id: number, profileId: string): Promise<void> {

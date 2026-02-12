@@ -66,7 +66,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@kombuse/ui/base'
 import { Input } from '@kombuse/ui/base'
 ```
 
-Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Resizable`, `Select`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
+Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `HoverCard`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Resizable`, `Select`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
 
 ### Resizable Panels
 
@@ -440,6 +440,7 @@ Used internally by `Markdown` to render rich ticket references. Can also be used
 import { TicketMentionChip } from '@kombuse/ui/components'
 
 // Renders an inline chip: #42 · Ticket Title [status dot]
+// Hovering shows a preview popover with title, body excerpt, status, labels, and timestamp
 <TicketMentionChip ticketId={42} href="/projects/my-project/tickets/42" />
 ```
 
@@ -447,6 +448,21 @@ Props:
 - `ticketId`: Ticket ID to fetch and display
 - `href`: Navigation URL for the chip link
 - Falls back to a plain `#ID` link while loading or on error
+- Shows a `HoverCard` popover on hover with ticket details (powered by `TicketPreviewCard`)
+
+### TicketPreviewCard
+
+Compact preview card used in the `TicketMentionChip` hover popover. Can also be used standalone:
+
+```typescript
+import { TicketPreviewCard } from '@kombuse/ui/components'
+
+// Renders a compact card with ticket title, body excerpt, status, labels, and timestamp
+<TicketPreviewCard ticket={ticketWithRelations} />
+```
+
+Props:
+- `ticket`: `TicketWithRelations` — ticket object with author, assignee, and labels
 
 ### LabelMentionChip
 
