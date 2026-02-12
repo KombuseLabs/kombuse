@@ -33,19 +33,26 @@ vi.mock('@kombuse/persistence', () => ({
   eventsRepository: {
     create: vi.fn(),
   },
-  sessionsRepository: {},
+  sessionsRepository: {
+    list: vi.fn(() => []),
+    update: vi.fn(),
+    listByTicket: vi.fn(() => []),
+  },
   profilesRepository: {
     list: vi.fn(() => []),
+    get: vi.fn(() => null),
   },
 }))
 
-import { agentInvocationsRepository, commentsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, commentsRepository, sessionsRepository } from '@kombuse/persistence'
+import { wsHub } from '../websocket/hub'
 import {
   startAgentChatSession,
   presetToAllowedTools,
   getTypePreset,
   shouldAutoApprove,
   stopAllActiveBackends,
+  cleanupOrphanedSessions,
 } from '../services/agent-execution-service'
 
 // Clean up persistent backends between tests to prevent cross-test state pollution
@@ -1463,5 +1470,74 @@ describe('persistent backend reuse', () => {
     expect(deps.createBackend).toHaveBeenCalledTimes(2)
     // send() should NOT have been called on the dead primary backend
     expect(primary.backend.send).not.toHaveBeenCalled()
+  })
+})
+
+describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
+  beforeEach(() => {
+    vi.mocked(wsHub.broadcastAgentMessage).mockClear()
+    vi.mocked(wsHub.broadcastToTopic).mockClear()
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
+    vi.mocked(sessionsRepository.update as ReturnType<typeof vi.fn>).mockReturnValue(undefined)
+    vi.mocked(sessionsRepository.listByTicket as ReturnType<typeof vi.fn>).mockReturnValue([])
+  })
+
+  it('broadcasts agent.complete for each orphaned session', () => {
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([
+      {
+        id: 'session-1',
+        kombuse_session_id: 'orphan-session-aaa',
+        ticket_id: 42,
+        status: 'running',
+      },
+      {
+        id: 'session-2',
+        kombuse_session_id: 'orphan-session-bbb',
+        ticket_id: null,
+        status: 'running',
+      },
+    ])
+
+    const cleaned = cleanupOrphanedSessions()
+
+    expect(cleaned).toBe(2)
+
+    expect(wsHub.broadcastAgentMessage).toHaveBeenCalledWith(
+      'orphan-session-aaa',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'orphan-session-aaa',
+        ticketId: 42,
+      })
+    )
+    expect(wsHub.broadcastToTopic).toHaveBeenCalledWith('*',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'orphan-session-aaa',
+        ticketId: 42,
+      })
+    )
+    expect(wsHub.broadcastAgentMessage).toHaveBeenCalledWith(
+      'orphan-session-bbb',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'orphan-session-bbb',
+      })
+    )
+    expect(wsHub.broadcastToTopic).toHaveBeenCalledWith('*',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'orphan-session-bbb',
+      })
+    )
+  })
+
+  it('does not broadcast when no orphaned sessions exist', () => {
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
+
+    const cleaned = cleanupOrphanedSessions()
+
+    expect(cleaned).toBe(0)
+    expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()
   })
 })

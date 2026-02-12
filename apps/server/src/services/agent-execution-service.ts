@@ -571,6 +571,16 @@ export function cleanupOrphanedSessions(): number {
   for (const session of runningSessions) {
     if (session.kombuse_session_id && !activeBackends.has(session.kombuse_session_id)) {
       sessionsRepository.update(session.id, { status: 'aborted' })
+
+      // Notify clients so ActiveAgentsIndicator removes this session
+      const completeMsg: ServerMessage = {
+        type: 'agent.complete',
+        kombuseSessionId: session.kombuse_session_id,
+        ticketId: session.ticket_id ?? undefined,
+      }
+      wsHub.broadcastAgentMessage(session.kombuse_session_id, completeMsg)
+      wsHub.broadcastToTopic('*', completeMsg)
+
       if (session.ticket_id) affectedTickets.add(session.ticket_id)
       cleaned++
     }
