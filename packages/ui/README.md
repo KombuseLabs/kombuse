@@ -18,6 +18,7 @@ import { useCommand } from '@kombuse/ui/hooks'
 src/
 ├── base/           - shadcn/ui primitives (button, dialog, badge, popover, etc.)
 ├── components/     - Domain components
+│   ├── agent-picker/     - Agent selector for chat sessions
 │   ├── command-palette/  - Command palette UI
 │   ├── labels/           - Label management components
 │   ├── prompt-editor/    - System prompt editor with template variables
@@ -235,6 +236,22 @@ const { scrollRef, isAtBottom, isAtTop, scrollToBottom, scrollToTop, onScroll } 
 - Used by `SessionViewer` (chat) and the ticket detail view
 - `deps`: triggers auto-scroll when values change and user is already at bottom
 - `initialScrollOnChange`: forces scroll to bottom when the value changes (e.g. switching tickets)
+- `suppressInitialScroll`: when true, skips the initial force-scroll (used when `useScrollToComment` takes priority)
+
+```typescript
+import { useScrollToComment } from '@kombuse/ui/hooks'
+
+// Scroll to and highlight a comment targeted by URL hash fragment (e.g. #comment-144)
+const { highlightedCommentId, isScrollToCommentPending } = useScrollToComment({
+  isTimelineLoaded: (timeline?.items.length ?? 0) > 0,
+})
+```
+
+- Reads `location.hash` via React Router's `useLocation()` and parses `#comment-{id}`
+- Scrolls the target comment into view (`smooth`, `center`) once the timeline is loaded
+- Returns `highlightedCommentId` for visual highlight (ring), auto-clears after 3 seconds
+- Returns `isScrollToCommentPending` to suppress `useScrollToBottom`'s initial force-scroll
+- Handles same-ticket navigation (hash change without page reload) and cross-ticket navigation
 
 ```typescript
 import { useShiki } from '@kombuse/ui/hooks'
@@ -660,6 +677,30 @@ import { PermissionEditor, PermissionRuleForm, PermissionRuleList, PermissionRul
 - `onDelete`: `() => void` — delete callback
 - `className`: Optional class name
 
+### Agent Picker
+
+```typescript
+import { AgentPicker } from '@kombuse/ui/components'
+
+// Inline agent selector for new chat sessions
+<AgentPicker
+  value={selectedAgentId}
+  onChange={(agentId) => setSelectedAgentId(agentId)}
+  disabled={!isDraft}
+/>
+```
+
+Props:
+- `value`: `string | null` — currently selected agent ID (null = no agent)
+- `onChange`: `(agentId: string | null) => void` — called when selection changes
+- `disabled`: Optional boolean — disables the picker (use for existing sessions)
+- `className`: Optional class name
+
+Features:
+- Popover with searchable agent list (only shows enabled agents with `enabled_for_chat` config)
+- Shift+Tab keyboard shortcut cycles through available agents
+- "No agent" option for plain chat sessions
+
 ### Agent Components
 
 ```typescript
@@ -827,6 +868,7 @@ Props for `ActivityTimeline`:
 - `items`: Array of `TimelineItem` (from `/tickets/:id/timeline` API)
 - `projectId`: Optional project ID — passed through to `CommentItem` → `Markdown` for ticket link rendering
 - `attachmentsByCommentId`: Optional `Record<number, Attachment[]>` mapping comment IDs to their attachments
+- `highlightedCommentId`: Optional comment ID to highlight with a ring — used by `useScrollToComment` for hash fragment navigation
 - `editingCommentId`: ID of comment being edited (or null)
 - `editBody`: Current edit text value
 - `onEditBodyChange`: Callback when edit text changes

@@ -39,6 +39,7 @@ import {
   useMarkTicketViewed,
   useFileStaging,
   useScrollToBottom,
+  useScrollToComment,
 } from "@kombuse/ui/hooks";
 import { LabelBadge, StagedFilePreviews } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip } from "lucide-react";
@@ -154,10 +155,16 @@ export function Tickets() {
   const attachmentsByCommentId = useCommentsAttachments(commentIds);
   const uploadAttachment = useUploadAttachment();
 
-  // Scroll-to-bottom for ticket detail
+  // Scroll-to-comment for hash fragment navigation (e.g. #comment-144)
+  const { highlightedCommentId, isScrollToCommentPending } = useScrollToComment({
+    isTimelineLoaded: (timeline?.items.length ?? 0) > 0,
+  });
+
+  // Scroll-to-bottom for ticket detail (suppressed when scroll-to-comment is active)
   const { scrollRef: ticketScrollRef, isAtBottom: ticketIsAtBottom, isAtTop: ticketIsAtTop, scrollToBottom: ticketScrollToBottom, scrollToTop: ticketScrollToTop, onScroll: ticketOnScroll } = useScrollToBottom({
     deps: [timeline?.items.length],
     initialScrollOnChange: selectedTicket?.id,
+    suppressInitialScroll: isScrollToCommentPending,
   });
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
@@ -659,6 +666,7 @@ export function Tickets() {
                               items={timeline?.items ?? []}
                               projectId={projectId}
                               attachmentsByCommentId={attachmentsByCommentId}
+                              highlightedCommentId={highlightedCommentId}
                               editingCommentId={editingCommentId}
                               editBody={editBody}
                               onEditBodyChange={setEditBody}

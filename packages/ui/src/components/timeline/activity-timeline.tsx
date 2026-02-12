@@ -8,6 +8,7 @@ interface ActivityTimelineProps {
   items: TimelineItem[]
   projectId?: string | null
   attachmentsByCommentId?: Record<number, Attachment[]>
+  highlightedCommentId?: number | null
   editingCommentId?: number | null
   editBody?: string
   onEditBodyChange?: (body: string) => void
@@ -26,6 +27,7 @@ function ActivityTimeline({
   items,
   projectId,
   attachmentsByCommentId,
+  highlightedCommentId,
   editingCommentId,
   editBody = '',
   onEditBodyChange,
@@ -81,6 +83,7 @@ function ActivityTimeline({
                 projectId={projectId}
                 attachments={attachmentsByCommentId?.[comment.id]}
                 isEditing={editingCommentId === comment.id}
+                className={highlightedCommentId === comment.id ? 'ring-2 ring-primary' : undefined}
                 editBody={editBody}
                 onEditBodyChange={onEditBodyChange}
                 onStartEdit={() => onStartEditComment?.(comment)}

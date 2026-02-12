@@ -97,6 +97,11 @@ export {
   type UseScrollToBottomOptions,
   type UseScrollToBottomReturn,
 } from './use-scroll-to-bottom'
+export {
+  useScrollToComment,
+  type UseScrollToCommentOptions,
+  type UseScrollToCommentReturn,
+} from './use-scroll-to-comment'
 export { useDesktop } from './use-desktop'
 export { useProfileSetting, useProfileSettings, useUpsertProfileSetting } from './use-profile-settings'
 export { useShiki } from './use-shiki'

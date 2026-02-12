@@ -9,6 +9,8 @@ interface UseScrollToBottomOptions {
   threshold?: number
   /** When this value changes, force-scroll to bottom (e.g. ticket/session id) */
   initialScrollOnChange?: unknown
+  /** When true, skip the initial force-scroll (e.g. when scroll-to-comment takes priority) */
+  suppressInitialScroll?: boolean
 }
 
 interface UseScrollToBottomReturn {
@@ -21,7 +23,7 @@ interface UseScrollToBottomReturn {
 }
 
 function useScrollToBottom(options: UseScrollToBottomOptions): UseScrollToBottomReturn {
-  const { deps, threshold = DEFAULT_SCROLL_THRESHOLD, initialScrollOnChange } = options
+  const { deps, threshold = DEFAULT_SCROLL_THRESHOLD, initialScrollOnChange, suppressInitialScroll } = options
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [isAtTop, setIsAtTop] = useState(true)
@@ -60,6 +62,7 @@ function useScrollToBottom(options: UseScrollToBottomOptions): UseScrollToBottom
   // Force-scroll to bottom when initialScrollOnChange changes
   useEffect(() => {
     if (initialScrollOnChange == null) return
+    if (suppressInitialScroll) return
     const el = scrollRef.current
     if (el) {
       // Use requestAnimationFrame to ensure DOM has rendered
