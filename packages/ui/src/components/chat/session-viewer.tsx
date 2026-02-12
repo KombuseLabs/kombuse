@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { useScrollToBottom } from '../../hooks/use-scroll-to-bottom'
 import { isValidAskUserInput } from './ask-user-types'
-import { AddCommentRenderer, AskUserRenderer, BashRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GetTicketRenderer, GlobRenderer, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, UpdateTicketRenderer, WriteRenderer } from './renderers'
+import { AddCommentRenderer, AskUserRenderer, BashRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GetTicketRenderer, GlobRenderer, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanPermissionRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, UpdateTicketRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 interface SessionViewerProps {
@@ -92,6 +92,9 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         if (event.type === 'permission_request') {
           if (event.toolName === 'AskUserQuestion' && isValidAskUserInput(event.input as Record<string, unknown>)) {
             return <AskUserRenderer key={event.eventId} event={event} />
+          }
+          if (event.toolName === 'ExitPlanMode') {
+            return <PlanPermissionRenderer key={event.eventId} event={event} />
           }
           return <PermissionRequestRenderer key={event.eventId} event={event} />
         }

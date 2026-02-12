@@ -49,6 +49,10 @@ export function extractPermissionDetail(
       }
       break
     }
+    case 'ExitPlanMode':
+    case 'AskUserQuestion': {
+      return null
+    }
   }
 
   // Fallback: show JSON of input (minus description) for unknown tools
