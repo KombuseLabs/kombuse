@@ -63,7 +63,6 @@ export class ClaudeCodeBackend implements AgentBackend {
     const jsonLineBehavior = createJsonLineBehavior({
       onMessage: (msg) => this.handleMessage(msg),
     })
-    console.log('[claude-code] spawning with args:', args.join(' '))
     this.process = new Process(
       {
         command: this.options.cliPath,
@@ -77,19 +76,15 @@ export class ClaudeCodeBackend implements AgentBackend {
       },
       {
         onSpawn: (pid) => {
-          console.log('[claude-code] spawned pid:', pid)
           this.emit(this.createRawEvent({ pid }, 'process_spawn'))
         },
         onStderr: (data) => {
-          console.error('[claude-code] stderr:', data)
           this.emit(this.createRawEvent({ stderr: data }, 'stderr'))
         },
         onExit: (code, signal) => {
-          console.log('[claude-code] process exited', { code, signal })
           this.running = false
         },
         onError: (error) => {
-          console.error('[claude-code] process error:', error.message)
           this.running = false
           this.emit(this.createErrorEvent(error.message, error))
         },

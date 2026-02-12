@@ -226,9 +226,9 @@ async function runAgentChat(
   const appSessionId = kombuseSessionId
   let didComplete = false
 
-  const finalize = () => {
+  const finalize = (keepAlive = false) => {
     unsubscribe()
-    if (backend.isRunning()) {
+    if (!keepAlive && backend.isRunning()) {
       void backend.stop().catch((stopError) => {
         options.onError?.(
           stopError instanceof Error ? stopError : new Error(String(stopError))
@@ -256,6 +256,7 @@ async function runAgentChat(
             ? `Process exited with code ${evt.exitCode}`
             : `Agent run failed (${evt.reason})`)
         options.onError?.(new Error(msg))
+        finalize()
       } else {
         const backendSessionId = backend.getBackendSessionId()
         const context: ConversationContext = {
@@ -263,8 +264,8 @@ async function runAgentChat(
           backendSessionId,
         }
         options.onComplete?.(context)
+        finalize(true) // Keep backend alive for persistent reuse
       }
-      finalize()
     } else if (evt.type === 'error') {
       options.onEvent(evt)
 
@@ -298,9 +299,89 @@ async function runAgentChat(
 }
 
 /**
+ * Send a follow-up message to a persistent backend.
+ * Subscribes to events for this turn's lifecycle, then unsubscribes on completion.
+ * The backend is NOT stopped on success — it remains alive for future messages.
+ */
+function runFollowUpChat(
+  backend: AgentBackend,
+  message: string,
+  kombuseSessionId: KombuseSessionId,
+  options: Omit<ChatRunnerOptions, 'resumeSessionId'>
+): void {
+  let didComplete = false
+
+  const unsubscribe = backend.subscribe((evt) => {
+    if (didComplete) return
+
+    if (evt.type === 'complete') {
+      didComplete = true
+      unsubscribe()
+      if (evt.success === false) {
+        const msg = evt.errorMessage
+          ?? (evt.exitCode != null
+            ? `Process exited with code ${evt.exitCode}`
+            : `Agent run failed (${evt.reason})`)
+        options.onError?.(new Error(msg))
+      } else {
+        const backendSessionId = backend.getBackendSessionId()
+        options.onComplete?.({
+          kombuseSessionId,
+          backendSessionId,
+        })
+      }
+    } else if (evt.type === 'error') {
+      options.onEvent(evt)
+      if (!backend.isRunning()) {
+        didComplete = true
+        unsubscribe()
+        options.onError?.(new Error(evt.message ?? 'Backend terminated with error'))
+      }
+    } else {
+      options.onEvent(evt)
+    }
+  })
+
+  backend.send(message)
+}
+
+/**
  * Registry of active session backends for permission response routing.
+ * Backends are kept alive after successful completion for persistent reuse.
  */
 const activeBackends = new Map<string, AgentBackend>()
+
+/** Idle timeout handles for persistent backends. */
+const backendIdleTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+
+/** Default idle timeout: 5 minutes. */
+const BACKEND_IDLE_TIMEOUT_MS = 5 * 60 * 1000
+
+/**
+ * Reset the idle timeout for a persistent backend.
+ * Called on successful completion and on each follow-up message.
+ */
+function resetBackendIdleTimeout(sessionId: string): void {
+  clearBackendIdleTimeout(sessionId)
+  const timer = setTimeout(() => {
+    const backend = activeBackends.get(sessionId)
+    if (backend?.isRunning()) {
+      void backend.stop()
+    }
+    unregisterBackend(sessionId)
+    backendIdleTimeouts.delete(sessionId)
+  }, BACKEND_IDLE_TIMEOUT_MS)
+  if (timer.unref) timer.unref()
+  backendIdleTimeouts.set(sessionId, timer)
+}
+
+function clearBackendIdleTimeout(sessionId: string): void {
+  const existing = backendIdleTimeouts.get(sessionId)
+  if (existing) {
+    clearTimeout(existing)
+    backendIdleTimeouts.delete(sessionId)
+  }
+}
 
 /**
  * Server-side tracking of pending (unresolved) permission requests.
@@ -333,12 +414,27 @@ function registerBackend(sessionId: string, backend: AgentBackend): void {
  */
 function unregisterBackend(sessionId: string): void {
   activeBackends.delete(sessionId)
+  clearBackendIdleTimeout(sessionId)
   // Clear any pending permissions for this session since the backend is gone
   for (const [requestId, perm] of serverPendingPermissions) {
     if (perm.sessionId === sessionId) {
       serverPendingPermissions.delete(requestId)
     }
   }
+}
+
+/**
+ * Stop all active backends (for graceful server shutdown).
+ */
+export function stopAllActiveBackends(): void {
+  for (const [sessionId, backend] of activeBackends) {
+    if (backend.isRunning()) {
+      void backend.stop()
+    }
+    clearBackendIdleTimeout(sessionId)
+  }
+  activeBackends.clear()
+  backendIdleTimeouts.clear()
 }
 
 /**
@@ -708,7 +804,7 @@ const defaultDependencies: AgentExecutionDependencies = {
   processEvent: (event) => agentService.processEvent(event),
   createBackend: createServerAgentBackend,
   generateSessionId: () => createSessionId('chat'),
-  resolveProjectPath: () => process.cwd(),
+  resolveProjectPath: () => resolveDefaultProjectPath(),
   sessionPersistence: sessionPersistenceService,
 }
 
@@ -845,6 +941,21 @@ function resolveProjectPathForProject(projectId: string | null): string | undefi
   }
 
   return undefined
+}
+
+/**
+ * Resolve a deterministic default project path.
+ * Uses the first project's local_path to ensure all invocations share the same cwd,
+ * regardless of how the server process was started.
+ * Falls back to process.cwd() only if no project has local_path configured.
+ */
+function resolveDefaultProjectPath(): string {
+  const projects = projectService.list()
+  for (const project of projects) {
+    const resolved = resolveProjectPathForProject(project.id)
+    if (resolved) return resolved
+  }
+  return process.cwd()
 }
 
 // Agent lifecycle events that should bypass the actor_type and session_id filters.
@@ -1195,6 +1306,120 @@ export function startAgentChatSession(
       ? existingSession.backend_session_id.trim()
       : undefined
 
+  // === PERSISTENT BACKEND REUSE PATH ===
+  // If an active backend already exists for this session, reuse it by sending
+  // the new message to the existing process instead of spawning a new one.
+  const existingBackend = activeBackends.get(appSessionId)
+  if (existingBackend && existingBackend.isRunning()) {
+    clearBackendIdleTimeout(appSessionId)
+    dependencies.sessionPersistence.markSessionRunning(persistentSessionId)
+
+    const reusedLogger = createSessionLogger({
+      kombuseSessionId: appSessionId,
+      getBackendSessionId: () => existingBackend.getBackendSessionId(),
+    })
+
+    // Persist user message before sending
+    const reusedUserEvent: AgentEvent = {
+      type: 'message',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      role: 'user',
+      content: userMessage,
+    }
+    dependencies.sessionPersistence.persistEvent(persistentSessionId, reusedUserEvent)
+
+    emit({
+      type: 'started',
+      kombuseSessionId: appSessionId,
+      ticketId,
+    })
+
+    const agentType = (agent?.config as { type?: string } | undefined)?.type
+    const preset = getTypePreset(agentType)
+    let followUpDidCallAddComment = false
+    let followUpLastAssistantMessage = ''
+
+    runFollowUpChat(existingBackend, userMessage, appSessionId, {
+      projectPath: '', // Not used for follow-up
+      onEvent: (event: AgentEvent) => {
+        reusedLogger.logEvent(event)
+        dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
+
+        if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
+          followUpDidCallAddComment = true
+        }
+        if (event.type === 'message' && event.role === 'assistant' && event.content) {
+          followUpLastAssistantMessage = event.content
+        }
+
+        if (event.type === 'permission_request') {
+          if (
+            shouldAutoApprove(event.toolName, event.input, preset) &&
+            'respondToPermission' in existingBackend &&
+            typeof existingBackend.respondToPermission === 'function'
+          ) {
+            reusedLogger.info('auto-approving', { requestId: event.requestId, toolName: event.toolName })
+            existingBackend.respondToPermission(event.requestId, 'allow', { updatedInput: event.input })
+            const resolvedMsg: ServerMessage = {
+              type: 'agent.permission_resolved',
+              sessionId: appSessionId,
+              requestId: event.requestId,
+            }
+            wsHub.broadcastToTopic('*', resolvedMsg)
+            wsHub.broadcastToTopic(`session:${appSessionId}`, resolvedMsg)
+            emit({
+              type: 'event',
+              kombuseSessionId: appSessionId,
+              event: { ...event, autoApproved: true },
+            })
+            return
+          }
+          broadcastPermissionPending(appSessionId, event, ticketId)
+        }
+
+        emit({ type: 'event', kombuseSessionId: appSessionId, event })
+      },
+      onComplete: (context: ConversationContext) => {
+        reusedLogger.close()
+        resetBackendIdleTimeout(appSessionId)
+        dependencies.sessionPersistence.completeSession(persistentSessionId, context.backendSessionId)
+
+        if (ticketId && !followUpDidCallAddComment && followUpLastAssistantMessage.trim()) {
+          const authorId = agent?.id ?? 'anonymous-agent'
+          try {
+            const sessionComments = commentsRepository.list({ ticket_id: ticketId, kombuse_session_id: appSessionId, limit: 50 })
+            const userReply = sessionComments.filter((c) => c.author_id !== authorId).pop()
+            commentsRepository.create({ ticket_id: ticketId, author_id: authorId, parent_id: userReply?.id, body: followUpLastAssistantMessage.trim(), kombuse_session_id: appSessionId })
+          } catch { /* fallback comment failed */ }
+        }
+
+        emit({ type: 'complete', kombuseSessionId: appSessionId, backendSessionId: context.backendSessionId, ticketId })
+      },
+      onError: (error: Error) => {
+        reusedLogger.close()
+        unregisterBackend(appSessionId)
+
+        const errorEvent: AgentEvent = {
+          type: 'error',
+          eventId: crypto.randomUUID(),
+          backend: existingBackend.name,
+          timestamp: Date.now(),
+          message: error.message,
+          error,
+        }
+        dependencies.sessionPersistence.persistEvent(persistentSessionId, errorEvent)
+        dependencies.sessionPersistence.failSession(persistentSessionId)
+        emit({ type: 'event', kombuseSessionId: appSessionId, event: errorEvent })
+        emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
+        if (ticketId) broadcastTicketAgentStatus(ticketId)
+      },
+    })
+
+    return // Skip normal createBackend/start path
+  }
+
   dependencies.sessionPersistence.markSessionRunning(persistentSessionId)
 
   const backend = dependencies.createBackend()
@@ -1389,8 +1614,17 @@ export function startAgentChatSession(
     },
     onComplete: (context: ConversationContext) => {
       logger.close()
-      // Clean up backend registry
-      unregisterBackend(appSessionId)
+      // Keep backend alive for persistent reuse — start idle timeout instead of unregistering.
+      // The idle timeout will clean up the backend if no follow-up message arrives.
+      resetBackendIdleTimeout(appSessionId)
+
+      // Install sentinel subscriber to catch unexpected process death between turns
+      const sentinelUnsub = backend.subscribe((evt) => {
+        if (evt.type === 'complete' && evt.reason === 'process_exit') {
+          unregisterBackend(appSessionId)
+          sentinelUnsub()
+        }
+      })
 
       // Mark session as completed
       dependencies.sessionPersistence.completeSession(
@@ -1435,8 +1669,12 @@ export function startAgentChatSession(
       })
     },
     onResumeFailed: resumeSessionId ? () => {
-      console.log('[agent-execution] Resume failed, retrying without --resume')
+      logger.info('resume failed, retrying without --resume')
       unregisterBackend(appSessionId)
+
+      // Reset state from failed primary run
+      didCallAddComment = false
+      lastAssistantMessage = ''
 
       // Build conversation summary as fallback memory
       let fallbackSystemPrompt = resolvedSystemPrompt
@@ -1464,11 +1702,46 @@ export function startAgentChatSession(
           if (event.type === 'message' && event.role === 'assistant' && event.content) {
             lastAssistantMessage = event.content
           }
+
+          // Handle permission requests - check auto-approve BEFORE emitting
+          if (event.type === 'permission_request') {
+            if (
+              shouldAutoApprove(event.toolName, event.input, preset) &&
+              'respondToPermission' in retryBackend &&
+              typeof retryBackend.respondToPermission === 'function'
+            ) {
+              logger.info('auto-approving', { requestId: event.requestId, toolName: event.toolName })
+              retryBackend.respondToPermission(event.requestId, 'allow', { updatedInput: event.input })
+              const resolvedMsg: ServerMessage = {
+                type: 'agent.permission_resolved',
+                sessionId: appSessionId,
+                requestId: event.requestId,
+              }
+              wsHub.broadcastToTopic('*', resolvedMsg)
+              wsHub.broadcastToTopic(`session:${appSessionId}`, resolvedMsg)
+              emit({
+                type: 'event',
+                kombuseSessionId: appSessionId,
+                event: { ...event, autoApproved: true },
+              })
+              return
+            }
+            // Not auto-approved - broadcast pending
+            broadcastPermissionPending(appSessionId, event, ticketId)
+          }
+
           emit({ type: 'event', kombuseSessionId: appSessionId, event })
         },
         onComplete: (context: ConversationContext) => {
           logger.close()
-          unregisterBackend(appSessionId)
+          resetBackendIdleTimeout(appSessionId)
+          // Sentinel for process death between turns
+          const retrySentinelUnsub = retryBackend.subscribe((evt) => {
+            if (evt.type === 'complete' && evt.reason === 'process_exit') {
+              unregisterBackend(appSessionId)
+              retrySentinelUnsub()
+            }
+          })
           dependencies.sessionPersistence.completeSession(persistentSessionId, context.backendSessionId)
           if (ticketId && !didCallAddComment && lastAssistantMessage.trim()) {
             const authorId = agent?.id ?? 'anonymous-agent'

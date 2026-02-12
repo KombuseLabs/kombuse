@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { AgentBackend, AgentEvent, KombuseSessionId, StartOptions } from '@kombuse/types'
 
 // Mock side-effect imports before importing the module under test
@@ -45,7 +45,13 @@ import {
   presetToAllowedTools,
   getTypePreset,
   shouldAutoApprove,
+  stopAllActiveBackends,
 } from '../services/agent-execution-service'
+
+// Clean up persistent backends between tests to prevent cross-test state pollution
+afterEach(() => {
+  stopAllActiveBackends()
+})
 
 /** Wait for async work fired by startAgentChatSession (which is sync but spawns async). */
 async function waitForBackendStart(backend: AgentBackend): Promise<void> {
@@ -1098,5 +1104,364 @@ describe('ExitPlanMode auto-approval', () => {
   it('EnterPlanMode is still auto-approved for coder agents', () => {
     const preset = getTypePreset('coder')
     expect(shouldAutoApprove('EnterPlanMode', {}, preset)).toBe(true)
+  })
+})
+
+describe('startAgentChatSession resume-failed retry', () => {
+  type EventCallback = (event: AgentEvent) => void
+
+  function createEventDrivenBackend() {
+    let eventCallback: EventCallback | undefined
+    let capturedOptions: StartOptions | undefined
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async (options: StartOptions) => {
+        capturedOptions = options
+      }),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn((cb: EventCallback) => {
+        eventCallback = cb
+        return () => {}
+      }),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+    const fireEvent = (event: AgentEvent) => {
+      eventCallback?.(event)
+    }
+    return { backend, fireEvent, getCapturedOptions: () => capturedOptions }
+  }
+
+  const testAgent = {
+    id: 'test-agent',
+    name: 'Test Agent',
+    system_prompt: 'You are helpful.',
+    is_enabled: true,
+    config: { type: 'coder' },
+    permissions: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  const mockInvocation = {
+    id: 1,
+    agent_id: 'test-agent',
+    trigger_id: 1,
+    event_id: null,
+    session_id: null,
+    kombuse_session_id: 'trigger-retry-abc',
+    status: 'completed' as const,
+    attempts: 1,
+    max_attempts: 3,
+    run_at: new Date().toISOString(),
+    context: {},
+    result: null,
+    error: null,
+    started_at: null,
+    completed_at: null,
+    created_at: new Date().toISOString(),
+  }
+
+  beforeEach(() => {
+    vi.mocked(commentsRepository.create).mockClear()
+    vi.mocked(commentsRepository.list).mockReturnValue([])
+  })
+
+  it('retries without --resume and injects conversation history on resumeFailed', async () => {
+    const primary = createEventDrivenBackend()
+    const retry = createEventDrivenBackend()
+
+    let backendCallCount = 0
+    const deps = {
+      getAgent: vi.fn(() => testAgent),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => {
+        backendCallCount++
+        return backendCallCount === 1 ? primary.backend : retry.backend
+      }),
+      generateSessionId: vi.fn(() => 'trigger-retry-abc' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => ({
+          id: 'session-1',
+          status: 'completed',
+          backend_session_id: 'backend-abc',
+          ticket_id: 42,
+        })),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => [
+          {
+            id: 1,
+            session_id: 'session-1',
+            seq: 1,
+            event_type: 'message',
+            payload: { type: 'message', role: 'user', content: 'What is the color of?' },
+            created_at: '2026-01-01T00:00:00Z',
+          },
+          {
+            id: 2,
+            session_id: 'session-1',
+            seq: 2,
+            event_type: 'message',
+            payload: { type: 'message', role: 'assistant', content: '?' },
+            created_at: '2026-01-01T00:00:01Z',
+          },
+        ]),
+      },
+    }
+
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'sky',
+        kombuseSessionId: 'trigger-retry-abc' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+      { ticketId: 42 },
+    )
+
+    await waitForBackendStart(primary.backend)
+
+    // Primary backend should have --resume
+    expect(primary.getCapturedOptions()?.resumeSessionId).toBe('backend-abc')
+
+    // Simulate resume failure
+    primary.fireEvent({
+      type: 'complete',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      reason: 'result',
+      success: false,
+      resumeFailed: true,
+      errorMessage: 'Session does not exist',
+    })
+
+    // Wait for retry backend to start
+    await waitForBackendStart(retry.backend)
+
+    // Retry backend should NOT have --resume
+    expect(
+      retry.getCapturedOptions()?.resumeSessionId,
+      'retry should not pass resumeSessionId'
+    ).toBeUndefined()
+
+    // createBackend should have been called twice (primary + retry)
+    expect(deps.createBackend).toHaveBeenCalledTimes(2)
+
+    // Retry backend should have conversation history injected
+    const retryPrompt = retry.getCapturedOptions()?.systemPrompt ?? ''
+    expect(retryPrompt).toContain('## Prior Conversation')
+    expect(retryPrompt).toContain('What is the color of?')
+    expect(retryPrompt).toContain('?')
+
+    // Complete the retry successfully
+    retry.fireEvent({
+      type: 'complete',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      reason: 'result',
+      success: true,
+    })
+
+    // Session should be marked complete
+    expect(deps.sessionPersistence.completeSession).toHaveBeenCalled()
+    // Session should NOT be marked failed
+    expect(deps.sessionPersistence.failSession).not.toHaveBeenCalled()
+  })
+})
+
+describe('persistent backend reuse', () => {
+  type EventCallback = (event: AgentEvent) => void
+
+  function createEventDrivenBackend() {
+    const subscribers: EventCallback[] = []
+    let capturedOptions: StartOptions | undefined
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async (options: StartOptions) => {
+        capturedOptions = options
+      }),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn((cb: EventCallback) => {
+        subscribers.push(cb)
+        return () => {
+          const idx = subscribers.indexOf(cb)
+          if (idx >= 0) subscribers.splice(idx, 1)
+        }
+      }),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+    const fireEvent = (event: AgentEvent) => {
+      // Copy array to avoid issues if subscribers unsubscribe during iteration
+      for (const cb of [...subscribers]) cb(event)
+    }
+    return { backend, fireEvent, getCapturedOptions: () => capturedOptions }
+  }
+
+  const testAgent = {
+    id: 'test-agent',
+    name: 'Test Agent',
+    system_prompt: 'You are helpful.',
+    is_enabled: true,
+    config: { type: 'kombuse' },
+    permissions: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  it('reuses existing active backend for same session instead of creating new one', async () => {
+    const { backend, fireEvent } = createEventDrivenBackend()
+
+    const deps = {
+      getAgent: vi.fn(() => testAgent),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'persistent-test' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+    }
+
+    // First invocation — should create a new backend
+    const emit1 = vi.fn()
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'persistent-test' as KombuseSessionId,
+      },
+      emit1,
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+    expect(deps.createBackend).toHaveBeenCalledTimes(1)
+
+    // Complete first turn — backend stays alive
+    fireEvent({
+      type: 'complete',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      reason: 'result',
+      success: true,
+    })
+
+    // Backend should still be running (mock always returns true)
+    expect(backend.isRunning()).toBe(true)
+
+    // Second invocation with same kombuseSessionId — should reuse backend
+    const emit2 = vi.fn()
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'follow-up',
+        kombuseSessionId: 'persistent-test' as KombuseSessionId,
+      },
+      emit2,
+      deps as any,
+    )
+
+    // Should NOT have created a second backend
+    expect(deps.createBackend).toHaveBeenCalledTimes(1)
+    // Should have called send() with the follow-up message
+    expect(backend.send).toHaveBeenCalledWith('follow-up')
+  })
+
+  it('creates new backend when existing backend is not running', async () => {
+    const primary = createEventDrivenBackend()
+    const secondary = createEventDrivenBackend()
+
+    let backendCallCount = 0
+    const deps = {
+      getAgent: vi.fn(() => testAgent),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => {
+        backendCallCount++
+        return backendCallCount === 1 ? primary.backend : secondary.backend
+      }),
+      generateSessionId: vi.fn(() => 'persistent-fallthrough' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+    }
+
+    // First invocation
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'persistent-fallthrough' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(primary.backend)
+
+    // Complete first turn
+    primary.fireEvent({
+      type: 'complete',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      reason: 'result',
+      success: true,
+    })
+
+    // Simulate the backend process dying — isRunning now returns false
+    vi.mocked(primary.backend.isRunning).mockReturnValue(false)
+
+    // Second invocation — backend is not running so should fall through to new backend
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'follow-up after crash',
+        kombuseSessionId: 'persistent-fallthrough' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(secondary.backend)
+
+    // Should have created a second backend
+    expect(deps.createBackend).toHaveBeenCalledTimes(2)
+    // send() should NOT have been called on the dead primary backend
+    expect(primary.backend.send).not.toHaveBeenCalled()
   })
 })
