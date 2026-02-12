@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Copy, Check, Eye, Edit2, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Textarea } from '../../base/textarea'
@@ -42,15 +42,6 @@ function PromptEditor({
   const [isPreview, setIsPreview] = useState(false)
   const [variablesOpen, setVariablesOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  // Auto-resize textarea
-  useEffect(() => {
-    const textarea = textareaRef.current
-    if (textarea) {
-      textarea.style.height = 'auto'
-      textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight)}px`
-    }
-  }, [value, minHeight, maxHeight])
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(value)
@@ -162,8 +153,8 @@ function PromptEditor({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className="font-mono text-sm resize-none"
-          style={{ minHeight }}
+          className="font-mono text-sm resize-none overflow-y-auto"
+          style={{ minHeight, maxHeight }}
         />
       )}
 
