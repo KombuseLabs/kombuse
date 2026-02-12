@@ -1354,6 +1354,21 @@ export function startAgentChatSession(
     }
   }
 
+  // For resumed sessions without explicit agentId, resolve from session.agent_id.
+  // This handles user-initiated agent chats where the agent was selected at session creation.
+  if (!agent && kombuseSessionId) {
+    const existingSessionRecord = dependencies.sessionPersistence.getSessionByKombuseId(kombuseSessionId)
+    if (existingSessionRecord?.agent_id) {
+      const resolvedAgent = dependencies.getAgent(existingSessionRecord.agent_id)
+      if (resolvedAgent?.is_enabled) {
+        agent = resolvedAgent
+        console.log(
+          `[Server] Resolved agent ${resolvedAgent.id} from session.agent_id for ${kombuseSessionId}`
+        )
+      }
+    }
+  }
+
   // Use client-provided session ID or generate a new one
   let appSessionId: KombuseSessionId
   if (typeof kombuseSessionId === 'string' && isValidSessionId(kombuseSessionId.trim())) {
@@ -1366,7 +1381,8 @@ export function startAgentChatSession(
   const persistentSessionId = dependencies.sessionPersistence.ensureSession(
     appSessionId,
     'claude-code',
-    options?.ticketId
+    options?.ticketId,
+    agent?.id
   )
   const existingSession = dependencies.sessionPersistence.getSession(
     persistentSessionId
@@ -1426,6 +1442,11 @@ export function startAgentChatSession(
       projectPath: '', // Not used for follow-up
       onEvent: (event: AgentEvent) => {
         reusedLogger.logEvent(event)
+
+        if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
+          return
+        }
+
         dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
 
         if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
@@ -1596,6 +1617,10 @@ export function startAgentChatSession(
     onEvent: (event: AgentEvent) => {
 
       logger.logEvent(event)
+
+      if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
+        return
+      }
 
       // Persist event to database
       dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
@@ -1778,6 +1803,11 @@ export function startAgentChatSession(
         permissionMode: preset.permissionMode,
         onEvent: (event: AgentEvent) => {
           logger.logEvent(event)
+
+          if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
+            return
+          }
+
           dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
           if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
             didCallAddComment = true

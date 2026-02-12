@@ -45,6 +45,7 @@ vi.mock('@kombuse/persistence', () => ({
 }))
 
 import { agentInvocationsRepository, commentsRepository, sessionsRepository } from '@kombuse/persistence'
+import { createSessionLogger } from '../logger'
 import { wsHub } from '../websocket/hub'
 import {
   startAgentChatSession,
@@ -1539,5 +1540,187 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
 
     expect(cleaned).toBe(0)
     expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()
+  })
+})
+
+describe('cli_pre_normalization event filtering', () => {
+  type EventCallback = (event: AgentEvent) => void
+
+  function createEventDrivenBackend() {
+    let eventCallback: EventCallback | undefined
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn((cb: EventCallback) => {
+        eventCallback = cb
+        return () => {}
+      }),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+    const fireEvent = (event: AgentEvent) => {
+      eventCallback?.(event)
+    }
+    return { backend, fireEvent }
+  }
+
+  const testAgent = {
+    id: 'test-agent',
+    name: 'Test Agent',
+    system_prompt: '',
+    is_enabled: true,
+    config: { type: 'kombuse' },
+    permissions: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  function createDeps(backend: AgentBackend) {
+    return {
+      getAgent: vi.fn(() => testAgent),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'chat-pre-norm-id' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+    }
+  }
+
+  function makePreNormEvent(): AgentEvent {
+    return {
+      type: 'raw',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      sourceType: 'cli_pre_normalization',
+      data: { big: 'payload' },
+    }
+  }
+
+  function makeOtherRawEvent(): AgentEvent {
+    return {
+      type: 'raw',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      sourceType: 'thinking',
+      data: { thought: 'something' },
+    }
+  }
+
+  const originalLogLevel = process.env.KOMBUSE_LOG_LEVEL
+
+  afterEach(() => {
+    if (originalLogLevel === undefined) {
+      delete process.env.KOMBUSE_LOG_LEVEL
+    } else {
+      process.env.KOMBUSE_LOG_LEVEL = originalLogLevel
+    }
+  })
+
+  beforeEach(() => {
+    vi.mocked(createSessionLogger).mockClear()
+  })
+
+  it('logs cli_pre_normalization events but does not persist or emit them', async () => {
+    delete process.env.KOMBUSE_LOG_LEVEL
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+    const emitSpy = vi.fn()
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'chat-pre-norm-id' as KombuseSessionId,
+      },
+      emitSpy,
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    // Reset after setup (user message is persisted before onEvent is wired)
+    deps.sessionPersistence.persistEvent.mockClear()
+    emitSpy.mockClear()
+
+    fireEvent(makePreNormEvent())
+
+    const loggerInstance = vi.mocked(createSessionLogger).mock.results[0]?.value
+    expect(loggerInstance.logEvent).toHaveBeenCalled()
+    expect(deps.sessionPersistence.persistEvent).not.toHaveBeenCalled()
+    expect(emitSpy).not.toHaveBeenCalled()
+  })
+
+  it('passes raw events with other sourceTypes through normally', async () => {
+    delete process.env.KOMBUSE_LOG_LEVEL
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+    const emitSpy = vi.fn()
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'chat-pre-norm-id' as KombuseSessionId,
+      },
+      emitSpy,
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    deps.sessionPersistence.persistEvent.mockClear()
+    emitSpy.mockClear()
+
+    fireEvent(makeOtherRawEvent())
+
+    const loggerInstance = vi.mocked(createSessionLogger).mock.results[0]?.value
+    expect(loggerInstance.logEvent).toHaveBeenCalled()
+    expect(deps.sessionPersistence.persistEvent).toHaveBeenCalledOnce()
+    expect(emitSpy).toHaveBeenCalledOnce()
+  })
+
+  it('persists cli_pre_normalization events when KOMBUSE_LOG_LEVEL=debug', async () => {
+    process.env.KOMBUSE_LOG_LEVEL = 'debug'
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+    const emitSpy = vi.fn()
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'chat-pre-norm-id' as KombuseSessionId,
+      },
+      emitSpy,
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    deps.sessionPersistence.persistEvent.mockClear()
+    emitSpy.mockClear()
+
+    fireEvent(makePreNormEvent())
+
+    const loggerInstance = vi.mocked(createSessionLogger).mock.results[0]?.value
+    expect(loggerInstance.logEvent).toHaveBeenCalled()
+    expect(deps.sessionPersistence.persistEvent).toHaveBeenCalledOnce()
+    expect(emitSpy).toHaveBeenCalledOnce()
   })
 })
