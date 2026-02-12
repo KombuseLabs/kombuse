@@ -30,6 +30,7 @@ function createMockDeps(sessionOverrides: Partial<Session> = {}): StateMachineDe
       markSessionRunning: vi.fn(),
       completeSession: vi.fn(),
       failSession: vi.fn(),
+      abortSession: vi.fn(),
       updateStatus: vi.fn(),
       getMetadata: vi.fn(() => session.metadata),
       setMetadata: vi.fn((id: string, patch: Partial<SessionMetadata>) => {
@@ -90,10 +91,24 @@ describe('SessionStateMachine', () => {
         invocationId: 42,
       }))
 
-      expect(deps.sessionPersistence.failSession).toHaveBeenCalledWith('session-1')
+      expect(deps.sessionPersistence.failSession).toHaveBeenCalledWith('session-1', undefined)
       expect(deps.invocations.markFailed).toHaveBeenCalledWith(42, 'something broke')
       expect(deps.backends.unregister).toHaveBeenCalledWith('chat-abc')
       expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
+    })
+
+    it('running -> failed via fail with backendSessionId', () => {
+      const deps = createMockDeps({ status: 'running' })
+      const sm = new SessionStateMachine(deps)
+
+      sm.transition('session-1', 'fail', baseCtx({
+        backendSessionId: 'backend-456',
+        error: 'something broke',
+        invocationId: 42,
+      }))
+
+      expect(deps.sessionPersistence.failSession).toHaveBeenCalledWith('session-1', 'backend-456')
+      expect(deps.invocations.markFailed).toHaveBeenCalledWith(42, 'something broke')
     })
 
     it('running -> aborted via abort', () => {
@@ -102,9 +117,22 @@ describe('SessionStateMachine', () => {
 
       sm.transition('session-1', 'abort', baseCtx({ invocationId: 42 }))
 
-      expect(deps.sessionPersistence.updateStatus).toHaveBeenCalledWith('session-1', 'aborted')
+      expect(deps.sessionPersistence.abortSession).toHaveBeenCalledWith('session-1', undefined)
       expect(deps.backends.unregister).toHaveBeenCalledWith('chat-abc')
       expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
+      expect(deps.invocations.markFailed).toHaveBeenCalledWith(42, 'session_aborted')
+    })
+
+    it('running -> aborted via abort with backendSessionId', () => {
+      const deps = createMockDeps({ status: 'running' })
+      const sm = new SessionStateMachine(deps)
+
+      sm.transition('session-1', 'abort', baseCtx({
+        backendSessionId: 'backend-789',
+        invocationId: 42,
+      }))
+
+      expect(deps.sessionPersistence.abortSession).toHaveBeenCalledWith('session-1', 'backend-789')
       expect(deps.invocations.markFailed).toHaveBeenCalledWith(42, 'session_aborted')
     })
 
@@ -114,7 +142,7 @@ describe('SessionStateMachine', () => {
 
       sm.transition('session-1', 'abort', baseCtx())
 
-      expect(deps.sessionPersistence.updateStatus).toHaveBeenCalledWith('session-1', 'aborted')
+      expect(deps.sessionPersistence.abortSession).toHaveBeenCalledWith('session-1', undefined)
       expect(deps.backends.unregister).toHaveBeenCalledWith('chat-abc')
     })
 
