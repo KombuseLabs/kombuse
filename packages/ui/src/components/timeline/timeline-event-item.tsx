@@ -124,38 +124,46 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
       <Icon className="size-3.5 shrink-0" />
       <span>
         <span className="font-medium text-foreground">{actorLabel}</span>
-        {sessionUrl && linkedSession && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {onSessionClick ? (
-                <button
-                  type="button"
-                  onClick={() => onSessionClick(linkedSession.kombuse_session_id!)}
-                  className="inline-flex ml-1 text-muted-foreground hover:text-foreground transition-colors align-middle"
-                >
-                  {sessionOrigin === 'trigger' ? (
-                    <Zap className="size-3" />
-                  ) : (
-                    <MessageSquare className="size-3" />
-                  )}
-                </button>
-              ) : (
-                <Link
-                  to={sessionUrl}
-                  className="inline-flex ml-1 text-muted-foreground hover:text-foreground transition-colors align-middle"
-                >
-                  {sessionOrigin === 'trigger' ? (
-                    <Zap className="size-3" />
-                  ) : (
-                    <MessageSquare className="size-3" />
-                  )}
-                </Link>
-              )}
-            </TooltipTrigger>
-            <TooltipContent>View session</TooltipContent>
-          </Tooltip>
+        {sessionUrl && linkedSession ? (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {onSessionClick ? (
+                  <button
+                    type="button"
+                    onClick={() => onSessionClick(linkedSession.kombuse_session_id!)}
+                    className="inline-flex items-center gap-1 ml-1 text-muted-foreground hover:text-foreground transition-colors align-middle"
+                  >
+                    {sessionOrigin === 'trigger' ? (
+                      <Zap className="size-3" />
+                    ) : (
+                      <MessageSquare className="size-3" />
+                    )}
+                    {' '}{eventLabel}
+                  </button>
+                ) : (
+                  <Link
+                    to={sessionUrl}
+                    className="inline-flex items-center gap-1 ml-1 text-muted-foreground hover:text-foreground transition-colors align-middle"
+                  >
+                    {sessionOrigin === 'trigger' ? (
+                      <Zap className="size-3" />
+                    ) : (
+                      <MessageSquare className="size-3" />
+                    )}
+                    {' '}{eventLabel}
+                  </Link>
+                )}
+              </TooltipTrigger>
+              <TooltipContent>View session</TooltipContent>
+            </Tooltip>
+            {eventSuffix}
+          </>
+        ) : (
+          <>
+            {' '}{eventLabel}{eventSuffix}
+          </>
         )}
-        {' '}{eventLabel}{eventSuffix}
       </span>
       <span className="text-xs">
         {new Date(event.created_at).toLocaleString()}
