@@ -281,6 +281,17 @@ import { ProfileButton } from '@kombuse/ui/components'
 // - onNavigateHome: Optional callback when the "Kombuse" logo is clicked
 // - children: rendered in the right nav area
 
+// Active agents indicator — shows running agent count with popover details
+import { ActiveAgentsIndicator } from '@kombuse/ui/components'
+<Header center={...}>
+  <ActiveAgentsIndicator onNavigate={navigate} />
+  <NotificationBell onNavigate={navigate} />
+  <ProfileButton onNavigate={navigate} />
+</Header>
+// Shows Bot icon with green badge count of running agents
+// Popover lists each session with agent name, status, ticket link, and duration
+// Props: onNavigate?: (path: string) => void
+
 // CommandPalette supports #ticket search and navigation
 // Type # followed by a number or search term to find tickets
 // Includes a SearchBar trigger showing "Search commands and tickets..." with ⌘K badge

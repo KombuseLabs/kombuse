@@ -1,7 +1,7 @@
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette } from "@kombuse/ui/components";
+import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { getWsUrl } from "@kombuse/ui/lib/api";
 import { useDesktop } from "@kombuse/ui/hooks";
@@ -46,6 +46,7 @@ function AppContent() {
             <CommandPalette open={open} onOpenChange={setOpen} onNavigate={navigate} />
           }
         >
+          <ActiveAgentsIndicator onNavigate={navigate} />
           <NotificationBell onNavigate={navigate} />
           <ProfileButton onNavigate={navigate} />
         </Header>

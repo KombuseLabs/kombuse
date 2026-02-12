@@ -579,6 +579,12 @@ export interface SyncState {
     status: AgentActivityStatus
     sessionCount: number
   }>
+  activeSessions: Array<{
+    kombuseSessionId: string
+    agentName: string
+    ticketId?: number
+    startedAt: string
+  }>
 }
 
 export interface ClaudeCodeSessionEntry {

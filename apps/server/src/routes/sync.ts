@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { sessionsRepository } from '@kombuse/persistence'
-import { getPendingPermissions, computeTicketAgentStatus } from '../services/agent-execution-service'
+import { getPendingPermissions, computeTicketAgentStatus, getActiveSessions } from '../services/agent-execution-service'
 
 export async function syncRoutes(fastify: FastifyInstance) {
   /**
@@ -37,6 +37,8 @@ export async function syncRoutes(fastify: FastifyInstance) {
       }
     }
 
-    return { pendingPermissions, ticketAgentStatuses }
+    const activeSessions = getActiveSessions()
+
+    return { pendingPermissions, ticketAgentStatuses, activeSessions }
   })
 }

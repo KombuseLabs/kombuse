@@ -40,6 +40,16 @@ export interface TicketAgentStatus {
 }
 
 /**
+ * Info about a currently active agent session, for the Active Agents Indicator.
+ */
+export interface ActiveSessionInfo {
+  kombuseSessionId: string
+  agentName: string
+  ticketId?: number
+  startedAt: string
+}
+
+/**
  * Application state managed by AppProvider
  */
 export interface AppState {
@@ -57,6 +67,8 @@ export interface AppState {
   pendingPermissions: Map<string, PendingPermission>
   /** Map of ticketId -> agent activity status */
   ticketAgentStatus: Map<number, TicketAgentStatus>
+  /** Map of kombuseSessionId -> active session info */
+  activeSessions: Map<string, ActiveSessionInfo>
 }
 
 /**
@@ -75,6 +87,10 @@ export interface AppActions {
   updateTicketAgentStatus: (ticketId: number, status: TicketAgentStatus) => void
   /** Get agent activity status for a ticket */
   getTicketAgentStatus: (ticketId: number) => TicketAgentStatus | undefined
+  /** Add an active agent session */
+  addActiveSession: (session: ActiveSessionInfo) => void
+  /** Remove an active agent session */
+  removeActiveSession: (kombuseSessionId: string) => void
 }
 
 /**

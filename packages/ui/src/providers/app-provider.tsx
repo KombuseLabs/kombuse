@@ -10,6 +10,7 @@ import type {
   ServerMessage,
   PendingPermission,
   TicketAgentStatus,
+  ActiveSessionInfo,
 } from '@kombuse/types'
 import { AppCtx } from './app-context'
 import { useWebSocket } from '../hooks/use-websocket'
@@ -45,6 +46,9 @@ export function AppProvider({
   >(() => new Map())
   const [ticketAgentStatus, setTicketAgentStatus] = useState<
     Map<number, TicketAgentStatus>
+  >(() => new Map())
+  const [activeSessions, setActiveSessions] = useState<
+    Map<string, ActiveSessionInfo>
   >(() => new Map())
 
   // Wrap setters in useCallback for stable references
@@ -116,11 +120,35 @@ export function AppProvider({
     [ticketAgentStatus]
   )
 
+  const addActiveSession = useCallback((session: ActiveSessionInfo) => {
+    setActiveSessions((prev) => {
+      if (prev.has(session.kombuseSessionId)) return prev
+      const next = new Map(prev)
+      next.set(session.kombuseSessionId, session)
+      return next
+    })
+  }, [])
+
+  const removeActiveSession = useCallback((kombuseSessionId: string) => {
+    setActiveSessions((prev) => {
+      if (!prev.has(kombuseSessionId)) return prev
+      const next = new Map(prev)
+      next.delete(kombuseSessionId)
+      return next
+    })
+  }, [])
+
   // Global WebSocket handler to track pending permissions and ticket agent status
   const handleMessage = useCallback(
     (message: ServerMessage) => {
       switch (message.type) {
         case 'agent.started': {
+          addActiveSession({
+            kombuseSessionId: message.kombuseSessionId,
+            agentName: message.agentName ?? 'Agent',
+            ticketId: message.ticketId,
+            startedAt: message.startedAt ?? new Date().toISOString(),
+          })
           void queryClient.invalidateQueries({ queryKey: ['sessions'] })
           break
         }
@@ -142,6 +170,7 @@ export function AppProvider({
         }
         case 'agent.complete': {
           clearPendingPermissionsForSession(message.kombuseSessionId)
+          removeActiveSession(message.kombuseSessionId)
           void queryClient.invalidateQueries({ queryKey: ['sessions'] })
           break
         }
@@ -154,7 +183,7 @@ export function AppProvider({
         }
       }
     },
-    [queryClient, addPendingPermission, removePendingPermission, clearPendingPermissionsForSession, updateTicketAgentStatus]
+    [queryClient, addPendingPermission, removePendingPermission, clearPendingPermissionsForSession, updateTicketAgentStatus, addActiveSession, removeActiveSession]
   )
 
   useWebSocket({ topics: ['*'], onMessage: handleMessage })
@@ -173,11 +202,14 @@ export function AppProvider({
           sessionCount: tas.sessionCount,
         })
       }
+      for (const session of state.activeSessions) {
+        addActiveSession(session)
+      }
     }).catch((err) => {
       console.error('[app-provider] Failed to fetch sync state:', err)
     })
     return () => { cancelled = true }
-  }, [addPendingPermission, updateTicketAgentStatus])
+  }, [addPendingPermission, updateTicketAgentStatus, addActiveSession])
 
   const value = useMemo<AppContextValue>(
     () => ({
@@ -189,6 +221,7 @@ export function AppProvider({
       currentSession,
       pendingPermissions,
       ticketAgentStatus,
+      activeSessions,
       // Actions
       setCurrentTicket,
       setCurrentProjectId,
@@ -200,6 +233,8 @@ export function AppProvider({
       clearPendingPermissionsForSession,
       updateTicketAgentStatus,
       getTicketAgentStatus,
+      addActiveSession,
+      removeActiveSession,
     }),
     [
       currentTicket,
@@ -209,6 +244,7 @@ export function AppProvider({
       currentSession,
       pendingPermissions,
       ticketAgentStatus,
+      activeSessions,
       setCurrentTicket,
       setCurrentProjectId,
       setView,
@@ -219,6 +255,8 @@ export function AppProvider({
       clearPendingPermissionsForSession,
       updateTicketAgentStatus,
       getTicketAgentStatus,
+      addActiveSession,
+      removeActiveSession,
     ]
   )
 
