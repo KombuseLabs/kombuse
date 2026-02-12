@@ -211,6 +211,43 @@ export function AppProvider({
     return () => { cancelled = true }
   }, [addPendingPermission, updateTicketAgentStatus, addActiveSession])
 
+  // Periodic sync poll to reconcile stale client state (e.g. after idle timeout or server restart)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncApi.getState().then((state) => {
+        const serverSessionIds = new Set(state.activeSessions.map((s) => s.kombuseSessionId))
+
+        // Remove stale client sessions not on server
+        setActiveSessions((prev) => {
+          let changed = false
+          const next = new Map(prev)
+          for (const key of prev.keys()) {
+            if (!serverSessionIds.has(key)) {
+              next.delete(key)
+              changed = true
+            }
+          }
+          if (!changed) return prev
+          return next
+        })
+
+        // Add missing server sessions
+        for (const session of state.activeSessions) {
+          addActiveSession(session)
+        }
+
+        // Reconcile ticket agent statuses
+        for (const tas of state.ticketAgentStatuses) {
+          updateTicketAgentStatus(tas.ticketId, {
+            status: tas.status,
+            sessionCount: tas.sessionCount,
+          })
+        }
+      }).catch(() => {})
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [addActiveSession, updateTicketAgentStatus])
+
   const value = useMemo<AppContextValue>(
     () => ({
       // State

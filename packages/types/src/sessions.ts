@@ -1,6 +1,23 @@
 import type { KombuseSessionId } from './session-id'
 
 /**
+ * All possible session lifecycle states.
+ */
+export type SessionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'aborted' | 'stopped'
+
+/**
+ * Persisted workflow state that survives process restarts.
+ * Stored as JSON in sessions.metadata column.
+ */
+export interface SessionMetadata {
+  planCommentId?: number
+  didCallAddComment?: boolean
+  lastAssistantMessage?: string
+  exitPlanModeToolUseId?: string
+  [key: string]: unknown
+}
+
+/**
  * Session entity - stores agent conversation history
  */
 export interface Session {
@@ -10,7 +27,8 @@ export interface Session {
   backend_session_id: string | null
   ticket_id: number | null
   agent_id: string | null
-  status: 'running' | 'completed' | 'failed' | 'aborted'
+  status: SessionStatus
+  metadata: SessionMetadata
   started_at: string
   completed_at: string | null
   failed_at: string | null
@@ -37,6 +55,7 @@ export interface CreateSessionInput {
   backend_session_id?: string
   ticket_id?: number
   agent_id?: string
+  metadata?: SessionMetadata
 }
 
 /**
@@ -44,7 +63,7 @@ export interface CreateSessionInput {
  */
 export interface SessionFilters {
   ticket_id?: number
-  status?: 'running' | 'completed' | 'failed' | 'aborted'
+  status?: SessionStatus
   sort_by?: 'created_at' | 'updated_at'
   limit?: number
   offset?: number
@@ -55,10 +74,12 @@ export interface SessionFilters {
  */
 export interface UpdateSessionInput {
   backend_session_id?: string
-  status?: 'running' | 'completed' | 'failed' | 'aborted'
+  status?: SessionStatus
+  metadata?: SessionMetadata
   completed_at?: string
   failed_at?: string
   last_event_seq?: number
+  agent_id?: string
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { AgentEvent, Session, SessionEvent, KombuseSessionId } from '@kombuse/types'
+import type { AgentEvent, Session, SessionEvent, SessionMetadata, SessionStatus, KombuseSessionId } from '@kombuse/types'
 import { sessionsRepository, sessionEventsRepository } from '@kombuse/persistence'
 
 /**
@@ -21,6 +21,9 @@ export interface ISessionPersistenceService {
   getSession(sessionId: string): Session | null
   getSessionByKombuseId(kombuseSessionId: string): Session | null
   getSessionEvents(sessionId: string, sinceSeq?: number): SessionEvent[]
+  getMetadata(sessionId: string): SessionMetadata
+  setMetadata(sessionId: string, patch: Partial<SessionMetadata>): void
+  updateStatus(sessionId: string, status: SessionStatus): void
 }
 
 /**
@@ -56,6 +59,8 @@ export class SessionPersistenceService implements ISessionPersistenceService {
         ticket_id: ticketId,
         agent_id: agentId,
       })
+    } else if (agentId && !session.agent_id) {
+      sessionsRepository.update(session.id, { agent_id: agentId })
     }
 
     // Initialize sequence counter from database if not cached
@@ -135,6 +140,30 @@ export class SessionPersistenceService implements ISessionPersistenceService {
    */
   getSessionEvents(sessionId: string, sinceSeq?: number): SessionEvent[] {
     return sessionEventsRepository.getBySession(sessionId, sinceSeq)
+  }
+
+  /**
+   * Get persisted workflow metadata for a session.
+   */
+  getMetadata(sessionId: string): SessionMetadata {
+    const session = sessionsRepository.get(sessionId)
+    return session?.metadata ?? {}
+  }
+
+  /**
+   * Merge a partial metadata patch into the session's metadata.
+   */
+  setMetadata(sessionId: string, patch: Partial<SessionMetadata>): void {
+    const current = this.getMetadata(sessionId)
+    const merged = { ...current, ...patch }
+    sessionsRepository.update(sessionId, { metadata: merged })
+  }
+
+  /**
+   * Update session status directly.
+   */
+  updateStatus(sessionId: string, status: SessionStatus): void {
+    sessionsRepository.update(sessionId, { status })
   }
 
   /**

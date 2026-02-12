@@ -7,6 +7,23 @@ import type {
 import { getDatabase } from './database'
 
 /**
+ * Parse a raw database row into a Session, deserializing the JSON metadata field.
+ */
+function parseSessionRow(row: Record<string, unknown>): Session {
+  return {
+    ...row,
+    metadata:
+      typeof row.metadata === 'string'
+        ? JSON.parse(row.metadata)
+        : (row.metadata ?? {}),
+  } as Session
+}
+
+function parseSessionRows(rows: Record<string, unknown>[]): Session[] {
+  return rows.map(parseSessionRow)
+}
+
+/**
  * Data access layer for sessions
  */
 export const sessionsRepository = {
@@ -54,7 +71,7 @@ export const sessionsRepository = {
       LIMIT ? OFFSET ?
     `)
 
-    return stmt.all(...params) as Session[]
+    return parseSessionRows(stmt.all(...params) as Record<string, unknown>[])
   },
 
   /**
@@ -64,8 +81,8 @@ export const sessionsRepository = {
     const db = getDatabase()
     const row = db
       .prepare('SELECT * FROM sessions WHERE id = ?')
-      .get(id) as Session | undefined
-    return row ?? null
+      .get(id) as Record<string, unknown> | undefined
+    return row ? parseSessionRow(row) : null
   },
 
   /**
@@ -74,12 +91,13 @@ export const sessionsRepository = {
   create(input?: CreateSessionInput): Session {
     const db = getDatabase()
     const id = input?.id || crypto.randomUUID()
+    const metadata = input?.metadata ? JSON.stringify(input.metadata) : '{}'
 
     db
       .prepare(
         `
-        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id, ticket_id, agent_id)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id, ticket_id, agent_id, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -88,7 +106,8 @@ export const sessionsRepository = {
         input?.backend_type ?? null,
         input?.backend_session_id ?? null,
         input?.ticket_id ?? null,
-        input?.agent_id ?? null
+        input?.agent_id ?? null,
+        metadata
       )
 
     return this.get(id) as Session
@@ -115,7 +134,7 @@ export const sessionsRepository = {
   },
 
   /**
-   * Update session metadata
+   * Update session fields
    */
   update(id: string, input: UpdateSessionInput): Session | null {
     const db = getDatabase()
@@ -131,6 +150,10 @@ export const sessionsRepository = {
       fields.push('status = ?')
       params.push(input.status)
     }
+    if (input.metadata !== undefined) {
+      fields.push('metadata = ?')
+      params.push(JSON.stringify(input.metadata))
+    }
     if (input.completed_at !== undefined) {
       fields.push('completed_at = ?')
       params.push(input.completed_at)
@@ -142,6 +165,10 @@ export const sessionsRepository = {
     if (input.last_event_seq !== undefined) {
       fields.push('last_event_seq = ?')
       params.push(input.last_event_seq)
+    }
+    if (input.agent_id !== undefined) {
+      fields.push('agent_id = ?')
+      params.push(input.agent_id)
     }
 
     if (fields.length === 0) return this.get(id)
@@ -164,8 +191,8 @@ export const sessionsRepository = {
     const db = getDatabase()
     const row = db
       .prepare('SELECT * FROM sessions WHERE kombuse_session_id = ?')
-      .get(kombuseSessionId) as Session | undefined
-    return row ?? null
+      .get(kombuseSessionId) as Record<string, unknown> | undefined
+    return row ? parseSessionRow(row) : null
   },
 
   /**
@@ -207,11 +234,11 @@ export const sessionsRepository = {
       LIMIT ? OFFSET ?
     `)
 
-    return stmt.all(...params) as Session[]
+    return parseSessionRows(stmt.all(...params) as Record<string, unknown>[])
   },
 
   /**
-   * Abort all sessions currently in 'running' status.
+   * Abort all sessions currently in 'running' or 'pending' status.
    * Used at server startup to clean up orphaned sessions from prior runs.
    * Returns the number of sessions aborted.
    */
@@ -219,7 +246,7 @@ export const sessionsRepository = {
     const db = getDatabase()
     const result = db
       .prepare(
-        "UPDATE sessions SET status = 'aborted', updated_at = datetime('now') WHERE status = 'running'"
+        "UPDATE sessions SET status = 'aborted', updated_at = datetime('now') WHERE status IN ('running', 'pending')"
       )
       .run()
     return result.changes

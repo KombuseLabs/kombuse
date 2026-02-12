@@ -55,6 +55,7 @@ function makeSession(overrides: Partial<PublicSession> = {}): PublicSession {
     ticket_id: null,
     agent_id: null,
     status: 'completed',
+    metadata: {},
     started_at: new Date().toISOString(),
     completed_at: new Date().toISOString(),
     failed_at: null,

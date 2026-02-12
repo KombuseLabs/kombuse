@@ -48,6 +48,13 @@ export type { IFileStorage } from './file-storage'
 export { ClaudeCodeScanner, claudeCodeScanner } from './claude-code-scanner'
 export type { IClaudeCodeScanner, SessionEntry } from './claude-code-scanner'
 
+export { SessionStateMachine } from './session-state-machine'
+export type {
+  SessionTransitionEvent,
+  TransitionContext,
+  StateMachineDeps,
+} from './session-state-machine'
+
 // Template rendering
 export {
   renderTemplate,

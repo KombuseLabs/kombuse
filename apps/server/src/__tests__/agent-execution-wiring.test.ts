@@ -24,6 +24,8 @@ vi.mock('../logger', () => ({
 vi.mock('@kombuse/persistence', () => ({
   agentInvocationsRepository: {
     list: vi.fn(() => []),
+    create: vi.fn((input: Record<string, unknown>) => ({ id: 100, ...input, status: 'pending', attempts: 0, max_attempts: 3, run_at: new Date().toISOString(), result: null, error: null, started_at: null, completed_at: null, created_at: new Date().toISOString() })),
+    update: vi.fn(() => null),
   },
   commentsRepository: {
     list: vi.fn(() => []),
@@ -54,6 +56,7 @@ import {
   shouldAutoApprove,
   stopAllActiveBackends,
   cleanupOrphanedSessions,
+  registerBackend,
 } from '../services/agent-execution-service'
 
 // Clean up persistent backends between tests to prevent cross-test state pollution
@@ -110,6 +113,11 @@ describe('startAgentChatSession allowedTools wiring', () => {
         failSession: vi.fn(),
         getSessionByKombuseId: vi.fn(() => null),
         getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
       },
     }
 
@@ -170,6 +178,11 @@ describe('startAgentChatSession allowedTools wiring', () => {
         getSessionByKombuseId: vi.fn(() => null),
         getSessionEvents: vi.fn(() => []),
       },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
     }
 
     startAgentChatSession(
@@ -225,6 +238,11 @@ describe('startAgentChatSession agent resolution from session context', () => {
         failSession: vi.fn(),
         getSessionByKombuseId: vi.fn(() => null),
         getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
       },
     }
   }
@@ -685,6 +703,11 @@ describe('startAgentChatSession fallback comment on complete', () => {
         getSessionByKombuseId: vi.fn(() => null),
         getSessionEvents: vi.fn(() => []),
       },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
     }
   }
 
@@ -931,6 +954,11 @@ describe('startAgentChatSession plan-to-comment bridge', () => {
         failSession: vi.fn(),
         getSessionByKombuseId: vi.fn(() => null),
         getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
       },
     }
   }
@@ -1263,6 +1291,11 @@ describe('startAgentChatSession resume-failed retry', () => {
           },
         ]),
       },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
     }
 
     ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([mockInvocation])
@@ -1324,10 +1357,10 @@ describe('startAgentChatSession resume-failed retry', () => {
       success: true,
     })
 
-    // Session should be marked complete
-    expect(deps.sessionPersistence.completeSession).toHaveBeenCalled()
-    // Session should NOT be marked failed
-    expect(deps.sessionPersistence.failSession).not.toHaveBeenCalled()
+    // Session should be transitioned to complete via state machine
+    expect(deps.stateMachine.transition).toHaveBeenCalledWith(
+      'session-1', 'complete', expect.objectContaining({ kombuseSessionId: 'trigger-retry-abc' })
+    )
   })
 })
 
@@ -1391,6 +1424,11 @@ describe('persistent backend reuse', () => {
         getSessionByKombuseId: vi.fn(() => null),
         getSessionEvents: vi.fn(() => []),
       },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
     }
 
     // First invocation — should create a new backend
@@ -1408,6 +1446,9 @@ describe('persistent backend reuse', () => {
 
     await waitForBackendStart(backend)
     expect(deps.createBackend).toHaveBeenCalledTimes(1)
+
+    // Manually register backend in activeBackends (state machine mock is no-op)
+    registerBackend('persistent-test', backend)
 
     // Complete first turn — backend stays alive
     fireEvent({
@@ -1464,6 +1505,11 @@ describe('persistent backend reuse', () => {
         failSession: vi.fn(),
         getSessionByKombuseId: vi.fn(() => null),
         getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
       },
     }
 
@@ -1525,7 +1571,7 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
   })
 
   it('broadcasts agent.complete for each orphaned session', () => {
-    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([
+    const orphanedSessions = [
       {
         id: 'session-1',
         kombuse_session_id: 'orphan-session-aaa',
@@ -1538,7 +1584,11 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
         ticket_id: null,
         status: 'running',
       },
-    ])
+    ]
+    // cleanupOrphanedSessions calls list() for 'running' then 'pending'
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce(orphanedSessions)
+      .mockReturnValueOnce([])
 
     const cleaned = cleanupOrphanedSessions()
 
@@ -1634,6 +1684,11 @@ describe('cli_pre_normalization event filtering', () => {
         failSession: vi.fn(),
         getSessionByKombuseId: vi.fn(() => null),
         getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
       },
     }
   }
@@ -1763,5 +1818,333 @@ describe('cli_pre_normalization event filtering', () => {
     expect(loggerInstance.logEvent).toHaveBeenCalled()
     expect(deps.sessionPersistence.persistEvent).toHaveBeenCalledOnce()
     expect(emitSpy).toHaveBeenCalledOnce()
+  })
+})
+
+describe('continuation invocation tracking', () => {
+  type EventCallback = (event: AgentEvent) => void
+
+  function createEventDrivenBackend() {
+    const subscribers: EventCallback[] = []
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn((cb: EventCallback) => {
+        subscribers.push(cb)
+        return () => {
+          const idx = subscribers.indexOf(cb)
+          if (idx >= 0) subscribers.splice(idx, 1)
+        }
+      }),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+    const fireEvent = (event: AgentEvent) => {
+      for (const cb of [...subscribers]) cb(event)
+    }
+    return { backend, fireEvent }
+  }
+
+  const testAgent = {
+    id: 'test-agent',
+    name: 'Test Agent',
+    system_prompt: '',
+    is_enabled: true,
+    config: { type: 'kombuse' },
+    permissions: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  const failedInvocation = {
+    id: 1,
+    agent_id: 'test-agent',
+    trigger_id: 5,
+    event_id: 10,
+    session_id: null,
+    kombuse_session_id: 'trigger-continue-test',
+    status: 'failed' as const,
+    attempts: 1,
+    max_attempts: 3,
+    run_at: new Date().toISOString(),
+    context: { ticket_id: 42, project_id: '1' },
+    result: null,
+    error: 'error_max_turns',
+    started_at: new Date().toISOString(),
+    completed_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+  }
+
+  function createDeps(backend: AgentBackend) {
+    return {
+      getAgent: vi.fn(() => testAgent),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'trigger-continue-test' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+  }
+
+  beforeEach(() => {
+    vi.mocked(agentInvocationsRepository.list).mockReset()
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([])
+    vi.mocked(agentInvocationsRepository.create).mockClear()
+    vi.mocked(agentInvocationsRepository.update).mockClear()
+  })
+
+  it('creates a continuation invocation when last invocation is failed', async () => {
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([failedInvocation])
+
+    const { backend } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'continue',
+        kombuseSessionId: 'trigger-continue-test' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(agentInvocationsRepository.create).toHaveBeenCalledOnce()
+    expect(agentInvocationsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_id: 'test-agent',
+        trigger_id: 5,
+        event_id: 10,
+        session_id: 'session-1',
+        context: { ticket_id: 42, project_id: '1' },
+      })
+    )
+    // Should be updated to running
+    expect(agentInvocationsRepository.update).toHaveBeenCalledWith(
+      100, // mock create returns id: 100
+      expect.objectContaining({
+        kombuse_session_id: 'trigger-continue-test',
+        status: 'running',
+      })
+    )
+  })
+
+  it('creates a continuation invocation when last invocation is completed', async () => {
+    const completedInvocation = { ...failedInvocation, status: 'completed' as const, error: null }
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([completedInvocation])
+
+    const { backend } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'follow up',
+        kombuseSessionId: 'trigger-continue-test' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(agentInvocationsRepository.create).toHaveBeenCalledOnce()
+  })
+
+  it('marks continuation invocation completed when agent completes', async () => {
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([failedInvocation])
+
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'continue',
+        kombuseSessionId: 'trigger-continue-test' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    // Clear setup transitions
+    deps.stateMachine.transition.mockClear()
+
+    // Fire complete event
+    fireEvent({
+      type: 'complete',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      reason: 'result',
+      success: true,
+    })
+
+    // State machine handles invocation completion via its invocations dep
+    expect(deps.stateMachine.transition).toHaveBeenCalledWith(
+      'session-1', 'complete', expect.objectContaining({ invocationId: 100 })
+    )
+  })
+
+  it('marks continuation invocation failed when agent errors', async () => {
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([failedInvocation])
+
+    const { backend, fireEvent } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'continue',
+        kombuseSessionId: 'trigger-continue-test' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    deps.stateMachine.transition.mockClear()
+
+    // Fire error event
+    fireEvent({
+      type: 'complete',
+      eventId: crypto.randomUUID(),
+      backend: 'claude-code',
+      timestamp: Date.now(),
+      reason: 'result',
+      success: false,
+      errorMessage: 'error_max_turns',
+    })
+
+    // State machine handles invocation failure via its invocations dep
+    expect(deps.stateMachine.transition).toHaveBeenCalledWith(
+      'session-1', 'fail', expect.objectContaining({ invocationId: 100 })
+    )
+  })
+
+  it('does not create continuation when no prior invocations exist', async () => {
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([])
+
+    const { backend } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'trigger-continue-test' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(agentInvocationsRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('does not create continuation when last invocation is still running', async () => {
+    const runningInvocation = { ...failedInvocation, status: 'running' as const, error: null, completed_at: null }
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([runningInvocation])
+
+    const { backend } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'trigger-continue-test' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(agentInvocationsRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('backfills session_id on invocations with null session_id', async () => {
+    const invocationWithNullSessionId = { ...failedInvocation, status: 'running' as const, session_id: null }
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([invocationWithNullSessionId])
+
+    const { backend } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'trigger-continue-test' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(agentInvocationsRepository.update).toHaveBeenCalledWith(
+      1, // original invocation id
+      expect.objectContaining({
+        session_id: 'session-1',
+      })
+    )
+  })
+
+  it('does not backfill session_id when already set', async () => {
+    const invocationWithSessionId = { ...failedInvocation, status: 'running' as const, session_id: 'existing-session' }
+    vi.mocked(agentInvocationsRepository.list).mockReturnValue([invocationWithSessionId])
+
+    const { backend } = createEventDrivenBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'test-agent',
+        message: 'hello',
+        kombuseSessionId: 'trigger-continue-test' as KombuseSessionId,
+      },
+      vi.fn(),
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    // Should NOT have been called with session_id (only running invocation, no continuation)
+    const updateCalls = vi.mocked(agentInvocationsRepository.update).mock.calls
+    const sessionIdUpdates = updateCalls.filter(
+      ([id, input]) => id === 1 && (input as Record<string, unknown>).session_id !== undefined
+    )
+    expect(sessionIdUpdates).toHaveLength(0)
   })
 })

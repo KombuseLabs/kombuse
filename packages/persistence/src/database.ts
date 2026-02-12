@@ -675,6 +675,49 @@ const migrations = [
         ON tickets(milestone_id) WHERE milestone_id IS NOT NULL;
     `,
   },
+  {
+    name: '016_session_state_machine',
+    sql: `
+      PRAGMA foreign_keys = OFF;
+
+      CREATE TABLE sessions_new (
+        id TEXT PRIMARY KEY,
+        kombuse_session_id TEXT UNIQUE,
+        backend_type TEXT,
+        backend_session_id TEXT,
+        ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL,
+        agent_id TEXT REFERENCES agents(id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'running', 'completed', 'failed', 'aborted', 'stopped')),
+        metadata TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(metadata)),
+        started_at TEXT NOT NULL DEFAULT (datetime('now')),
+        completed_at TEXT,
+        failed_at TEXT,
+        last_event_seq INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      INSERT INTO sessions_new (id, kombuse_session_id, backend_type, backend_session_id,
+        ticket_id, agent_id, status, metadata, started_at, completed_at, failed_at,
+        last_event_seq, created_at, updated_at)
+        SELECT id, kombuse_session_id, backend_type, backend_session_id,
+          ticket_id, agent_id, status, '{}', started_at, completed_at, failed_at,
+          last_event_seq, created_at, updated_at
+        FROM sessions;
+
+      DROP TABLE sessions;
+      ALTER TABLE sessions_new RENAME TO sessions;
+
+      CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_sessions_backend_ref ON sessions(backend_type, backend_session_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_kombuse ON sessions(kombuse_session_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_ticket ON sessions(ticket_id, status) WHERE ticket_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_sessions_agent ON sessions(agent_id) WHERE agent_id IS NOT NULL;
+
+      PRAGMA foreign_keys = ON;
+    `,
+  },
 ]
 
 /**

@@ -168,10 +168,12 @@ import {
   agentService,
   projectService,
   sessionPersistenceService,
+  SessionStateMachine,
   renderTemplate,
   buildTemplateContext,
   buildConversationSummary,
   type ISessionPersistenceService,
+  type StateMachineDeps,
 } from '@kombuse/services'
 import { agentInvocationsRepository, commentsRepository, eventsRepository, profilesRepository, sessionsRepository } from '@kombuse/persistence'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type PermissionMode, type ServerMessage } from '@kombuse/types'
@@ -370,8 +372,28 @@ function resetBackendIdleTimeout(sessionId: string): void {
     if (backend?.isRunning()) {
       void backend.stop()
     }
+
+    // Look up session info before unregistering (need ticket_id for broadcast)
+    const session = sessionPersistenceService.getSessionByKombuseId(sessionId)
+
     unregisterBackend(sessionId)
     backendIdleTimeouts.delete(sessionId)
+
+    // Update DB status to 'stopped' and broadcast completion so clients
+    // can remove this session from activeSessions (fixes ghost agent bug)
+    if (session) {
+      sessionPersistenceService.updateStatus(session.id, 'stopped')
+    }
+    const completeMsg: ServerMessage = {
+      type: 'agent.complete',
+      kombuseSessionId: sessionId,
+      ticketId: session?.ticket_id ?? undefined,
+    }
+    wsHub.broadcastAgentMessage(sessionId, completeMsg)
+    wsHub.broadcastToTopic('*', completeMsg)
+    if (session?.ticket_id) {
+      broadcastTicketAgentStatus(session.ticket_id)
+    }
   }, BACKEND_IDLE_TIMEOUT_MS)
   if (timer.unref) timer.unref()
   backendIdleTimeouts.set(sessionId, timer)
@@ -407,7 +429,7 @@ export function getPendingPermissions(): ServerPendingPermission[] {
 /**
  * Register a backend for permission response routing.
  */
-function registerBackend(sessionId: string, backend: AgentBackend): void {
+export function registerBackend(sessionId: string, backend: AgentBackend): void {
   activeBackends.set(sessionId, backend)
 }
 
@@ -493,7 +515,9 @@ export function computeTicketAgentStatus(ticketId: number): {
   status: AgentActivityStatus
   sessionCount: number
 } {
-  const activeSessions = sessionsRepository.listByTicket(ticketId, { status: 'running' })
+  const runningSessions = sessionsRepository.listByTicket(ticketId, { status: 'running' })
+  const pendingSessions = sessionsRepository.listByTicket(ticketId, { status: 'pending' })
+  const activeSessions = [...runningSessions, ...pendingSessions]
   const failedSessions = sessionsRepository.listByTicket(ticketId, { status: 'failed' })
 
   // Only count failures that are more recent than the last completed session
@@ -542,9 +566,10 @@ export function broadcastTicketAgentStatus(ticketId: number): void {
  */
 export function getActiveSessions(): ActiveSessionInfo[] {
   const runningSessions = sessionsRepository.list({ status: 'running' })
+  const pendingSessions = sessionsRepository.list({ status: 'pending' })
   const results: ActiveSessionInfo[] = []
 
-  for (const session of runningSessions) {
+  for (const session of [...runningSessions, ...pendingSessions]) {
     if (!session.kombuse_session_id || !activeBackends.has(session.kombuse_session_id)) {
       continue
     }
@@ -565,10 +590,11 @@ export function getActiveSessions(): ActiveSessionInfo[] {
  */
 export function cleanupOrphanedSessions(): number {
   const runningSessions = sessionsRepository.list({ status: 'running' })
+  const pendingSessions = sessionsRepository.list({ status: 'pending' })
   let cleaned = 0
   const affectedTickets = new Set<number>()
 
-  for (const session of runningSessions) {
+  for (const session of [...runningSessions, ...pendingSessions]) {
     if (session.kombuse_session_id && !activeBackends.has(session.kombuse_session_id)) {
       sessionsRepository.update(session.id, { status: 'aborted' })
 
@@ -862,6 +888,7 @@ interface AgentExecutionDependencies {
   generateSessionId: () => KombuseSessionId
   resolveProjectPath: () => string
   sessionPersistence: ISessionPersistenceService
+  stateMachine: SessionStateMachine
 }
 
 /**
@@ -871,6 +898,31 @@ export function createServerAgentBackend(): AgentBackend {
   return new ClaudeCodeBackend()
 }
 
+const defaultStateMachine = new SessionStateMachine({
+  sessionPersistence: sessionPersistenceService,
+  backends: {
+    register: registerBackend,
+    unregister: unregisterBackend,
+    resetIdleTimeout: resetBackendIdleTimeout,
+    clearIdleTimeout: clearBackendIdleTimeout,
+  },
+  invocations: {
+    markCompleted(invocationId) {
+      agentInvocationsRepository.update(invocationId, {
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      })
+    },
+    markFailed(invocationId, error) {
+      agentInvocationsRepository.update(invocationId, {
+        status: 'failed',
+        error,
+        completed_at: new Date().toISOString(),
+      })
+    },
+  },
+})
+
 const defaultDependencies: AgentExecutionDependencies = {
   getAgent: (agentId) => agentService.getAgent(agentId),
   processEvent: (event) => agentService.processEvent(event),
@@ -878,6 +930,7 @@ const defaultDependencies: AgentExecutionDependencies = {
   generateSessionId: () => createSessionId('chat'),
   resolveProjectPath: () => resolveDefaultProjectPath(),
   sessionPersistence: sessionPersistenceService,
+  stateMachine: defaultStateMachine,
 }
 
 /**
@@ -1401,13 +1454,49 @@ export function startAgentChatSession(
     ? (profilesRepository.get(agent.id)?.name ?? agent.id)
     : undefined
 
+  // --- Invocation lifecycle: backfill session_id + create continuation ---
+  // When a session is resumed (e.g. user sends "continue" after error_max_turns),
+  // the prior invocation may be terminal (failed/completed). We create a new
+  // invocation to track the continued work. Also backfill session_id on any
+  // invocations that were created before the persistent session existed.
+  let continuationInvocationId: number | null = null
+  const existingInvocations = agentInvocationsRepository.list({
+    kombuse_session_id: appSessionId,
+  })
+  for (const inv of existingInvocations) {
+    if (!inv.session_id) {
+      agentInvocationsRepository.update(inv.id, { session_id: persistentSessionId })
+    }
+  }
+  const lastInvocation = existingInvocations[0] // Most recent (ORDER BY created_at DESC)
+  if (
+    lastInvocation &&
+    (lastInvocation.status === 'failed' || lastInvocation.status === 'completed')
+  ) {
+    const continuation = agentInvocationsRepository.create({
+      agent_id: lastInvocation.agent_id,
+      trigger_id: lastInvocation.trigger_id,
+      event_id: lastInvocation.event_id ?? undefined,
+      session_id: persistentSessionId,
+      context: lastInvocation.context,
+    })
+    agentInvocationsRepository.update(continuation.id, {
+      kombuse_session_id: appSessionId,
+      status: 'running',
+      started_at: new Date().toISOString(),
+    })
+    continuationInvocationId = continuation.id
+  }
+
   // === PERSISTENT BACKEND REUSE PATH ===
   // If an active backend already exists for this session, reuse it by sending
   // the new message to the existing process instead of spawning a new one.
   const existingBackend = activeBackends.get(appSessionId)
   if (existingBackend && existingBackend.isRunning()) {
-    clearBackendIdleTimeout(appSessionId)
-    dependencies.sessionPersistence.markSessionRunning(persistentSessionId)
+    dependencies.stateMachine.transition(persistentSessionId, 'continue', {
+      kombuseSessionId: appSessionId,
+      ticketId,
+    })
 
     const reusedLogger = createSessionLogger({
       kombuseSessionId: appSessionId,
@@ -1485,8 +1574,12 @@ export function startAgentChatSession(
       },
       onComplete: (context: ConversationContext) => {
         reusedLogger.close()
-        resetBackendIdleTimeout(appSessionId)
-        dependencies.sessionPersistence.completeSession(persistentSessionId, context.backendSessionId)
+        dependencies.stateMachine.transition(persistentSessionId, 'complete', {
+          kombuseSessionId: appSessionId,
+          ticketId,
+          backendSessionId: context.backendSessionId,
+          invocationId: continuationInvocationId ?? undefined,
+        })
 
         if (ticketId && !followUpDidCallAddComment && followUpLastAssistantMessage.trim()) {
           const authorId = agent?.id ?? 'anonymous-agent'
@@ -1501,7 +1594,6 @@ export function startAgentChatSession(
       },
       onError: (error: Error) => {
         reusedLogger.close()
-        unregisterBackend(appSessionId)
 
         const errorEvent: AgentEvent = {
           type: 'error',
@@ -1512,7 +1604,12 @@ export function startAgentChatSession(
           error,
         }
         dependencies.sessionPersistence.persistEvent(persistentSessionId, errorEvent)
-        dependencies.sessionPersistence.failSession(persistentSessionId)
+        dependencies.stateMachine.transition(persistentSessionId, 'fail', {
+          kombuseSessionId: appSessionId,
+          ticketId,
+          error: error.message,
+          invocationId: continuationInvocationId ?? undefined,
+        })
         emit({ type: 'event', kombuseSessionId: appSessionId, event: errorEvent })
         emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
         if (ticketId) broadcastTicketAgentStatus(ticketId)
@@ -1522,19 +1619,22 @@ export function startAgentChatSession(
     return // Skip normal createBackend/start path
   }
 
-  dependencies.sessionPersistence.markSessionRunning(persistentSessionId)
-
   const backend = dependencies.createBackend()
+
+  // Transition to running: updates DB, registers backend, resets idle timeout.
+  // Determine correct event based on current session status.
+  const sessionForTransition = dependencies.sessionPersistence.getSession(persistentSessionId)
+  const transitionEvent = sessionForTransition?.status === 'pending' ? 'start' as const : 'continue' as const
+  dependencies.stateMachine.transition(persistentSessionId, transitionEvent, {
+    kombuseSessionId: appSessionId,
+    ticketId,
+    backend,
+  })
 
   const logger = createSessionLogger({
     kombuseSessionId: appSessionId,
     getBackendSessionId: () => backend.getBackendSessionId(),
   })
-
-  // Register backend before emitting 'started' so that
-  // broadcastTicketAgentStatus (triggered by the emit callback)
-  // finds this session in activeBackends and reports 'running'.
-  registerBackend(appSessionId, backend)
 
   emit({
     type: 'started',
@@ -1597,16 +1697,12 @@ export function startAgentChatSession(
   // Compute allowed tools for subprocess-level pre-approval
   const allowedTools = presetToAllowedTools(preset)
 
-  // Track whether the agent posted a comment via add_comment during this session.
-  // Used for fallback: if the agent produces text but never calls add_comment,
-  // we auto-post its last assistant message as a comment on the ticket.
-  let didCallAddComment = false
-  let lastAssistantMessage = ''
-
-  // Plan-to-comment bridge: when the agent uses ExitPlanMode, post/update
-  // a plan comment on the ticket so stakeholders can review the approach.
-  let planCommentId: number | undefined
-  let exitPlanModeToolUseId: string | undefined
+  // Restore workflow state from persisted metadata (survives process restarts).
+  const restoredMetadata = dependencies.stateMachine.getMetadata(persistentSessionId)
+  let didCallAddComment = restoredMetadata.didCallAddComment ?? false
+  let lastAssistantMessage = restoredMetadata.lastAssistantMessage ?? ''
+  let planCommentId = restoredMetadata.planCommentId
+  let exitPlanModeToolUseId = restoredMetadata.exitPlanModeToolUseId
 
   runAgentChat(backend, userMessage, appSessionId, {
     projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
@@ -1628,15 +1724,18 @@ export function startAgentChatSession(
       // Track add_comment tool calls and assistant messages for fallback
       if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
         didCallAddComment = true
+        dependencies.stateMachine.setMetadata(persistentSessionId, { didCallAddComment: true })
       }
       if (event.type === 'message' && event.role === 'assistant' && event.content) {
         lastAssistantMessage = event.content
+        dependencies.stateMachine.setMetadata(persistentSessionId, { lastAssistantMessage: event.content })
       }
 
       // Plan-to-comment bridge: capture ExitPlanMode tool_use ID, then post
       // the plan content as a ticket comment when the result arrives.
       if (event.type === 'tool_use' && event.name === 'ExitPlanMode') {
         exitPlanModeToolUseId = event.id
+        dependencies.stateMachine.setMetadata(persistentSessionId, { exitPlanModeToolUseId: event.id })
       }
       if (
         event.type === 'tool_result' &&
@@ -1646,6 +1745,7 @@ export function startAgentChatSession(
         !event.isError
       ) {
         exitPlanModeToolUseId = undefined
+        dependencies.stateMachine.setMetadata(persistentSessionId, { exitPlanModeToolUseId: undefined })
         const planText = typeof event.content === 'string'
           ? event.content
           : Array.isArray(event.content)
@@ -1677,6 +1777,7 @@ export function startAgentChatSession(
                 kombuse_session_id: appSessionId,
               })
               planCommentId = created.id
+              dependencies.stateMachine.setMetadata(persistentSessionId, { planCommentId: created.id })
               logger.info('plan comment created', { commentId: planCommentId, ticketId })
             }
           } catch (planCommentError) {
@@ -1722,9 +1823,6 @@ export function startAgentChatSession(
     },
     onComplete: (context: ConversationContext) => {
       logger.close()
-      // Keep backend alive for persistent reuse — start idle timeout instead of unregistering.
-      // The idle timeout will clean up the backend if no follow-up message arrives.
-      resetBackendIdleTimeout(appSessionId)
 
       // Install sentinel subscriber to catch unexpected process death between turns
       const sentinelUnsub = backend.subscribe((evt) => {
@@ -1734,11 +1832,13 @@ export function startAgentChatSession(
         }
       })
 
-      // Mark session as completed
-      dependencies.sessionPersistence.completeSession(
-        persistentSessionId,
-        context.backendSessionId
-      )
+      // Transition to completed: updates DB, marks invocation, resets idle timeout
+      dependencies.stateMachine.transition(persistentSessionId, 'complete', {
+        kombuseSessionId: appSessionId,
+        ticketId,
+        backendSessionId: context.backendSessionId,
+        invocationId: continuationInvocationId ?? undefined,
+      })
 
       // Fallback: if the agent produced text but never called add_comment,
       // auto-post the last assistant message as a comment on the ticket.
@@ -1778,11 +1878,21 @@ export function startAgentChatSession(
     },
     onResumeFailed: resumeSessionId ? () => {
       logger.info('resume failed, retrying without --resume')
-      unregisterBackend(appSessionId)
+
+      // Transition to failed then back to running with a new backend
+      dependencies.stateMachine.transition(persistentSessionId, 'fail', {
+        kombuseSessionId: appSessionId,
+        ticketId,
+        error: 'resume_failed',
+      })
 
       // Reset state from failed primary run
       didCallAddComment = false
       lastAssistantMessage = ''
+      dependencies.stateMachine.setMetadata(persistentSessionId, {
+        didCallAddComment: false,
+        lastAssistantMessage: '',
+      })
 
       // Build conversation summary as fallback memory
       let fallbackSystemPrompt = resolvedSystemPrompt
@@ -1794,7 +1904,11 @@ export function startAgentChatSession(
       }
 
       const retryBackend = dependencies.createBackend()
-      registerBackend(appSessionId, retryBackend)
+      dependencies.stateMachine.transition(persistentSessionId, 'continue', {
+        kombuseSessionId: appSessionId,
+        ticketId,
+        backend: retryBackend,
+      })
 
       runAgentChat(retryBackend, userMessage, appSessionId, {
         projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
@@ -1847,7 +1961,6 @@ export function startAgentChatSession(
         },
         onComplete: (context: ConversationContext) => {
           logger.close()
-          resetBackendIdleTimeout(appSessionId)
           // Sentinel for process death between turns
           const retrySentinelUnsub = retryBackend.subscribe((evt) => {
             if (evt.type === 'complete' && evt.reason === 'process_exit') {
@@ -1855,7 +1968,12 @@ export function startAgentChatSession(
               retrySentinelUnsub()
             }
           })
-          dependencies.sessionPersistence.completeSession(persistentSessionId, context.backendSessionId)
+          dependencies.stateMachine.transition(persistentSessionId, 'complete', {
+            kombuseSessionId: appSessionId,
+            ticketId,
+            backendSessionId: context.backendSessionId,
+            invocationId: continuationInvocationId ?? undefined,
+          })
           if (ticketId && !didCallAddComment && lastAssistantMessage.trim()) {
             const authorId = agent?.id ?? 'anonymous-agent'
             try {
@@ -1868,27 +1986,34 @@ export function startAgentChatSession(
         },
         onError: (error: Error) => {
           logger.close()
-          unregisterBackend(appSessionId)
           const errorEvent: AgentEvent = { type: 'error', eventId: crypto.randomUUID(), backend: retryBackend.name, timestamp: Date.now(), message: error.message, error }
           dependencies.sessionPersistence.persistEvent(persistentSessionId, errorEvent)
-          dependencies.sessionPersistence.failSession(persistentSessionId)
+          dependencies.stateMachine.transition(persistentSessionId, 'fail', {
+            kombuseSessionId: appSessionId,
+            ticketId,
+            error: error.message,
+            invocationId: continuationInvocationId ?? undefined,
+          })
           emit({ type: 'event', kombuseSessionId: appSessionId, event: errorEvent })
           emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
           if (ticketId) broadcastTicketAgentStatus(ticketId)
         },
       }).catch((retryError: unknown) => {
         logger.close()
-        unregisterBackend(appSessionId)
-        dependencies.sessionPersistence.failSession(persistentSessionId)
-        emit({ type: 'error', message: `Failed to start agent (retry): ${retryError instanceof Error ? retryError.message : String(retryError)}` })
+        const messageText = retryError instanceof Error ? retryError.message : String(retryError)
+        dependencies.stateMachine.transition(persistentSessionId, 'fail', {
+          kombuseSessionId: appSessionId,
+          ticketId,
+          error: messageText,
+          invocationId: continuationInvocationId ?? undefined,
+        })
+        emit({ type: 'error', message: `Failed to start agent (retry): ${messageText}` })
         emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
         if (ticketId) broadcastTicketAgentStatus(ticketId)
       })
     } : undefined,
     onError: (error: Error) => {
       logger.close()
-      // Clean up backend registry
-      unregisterBackend(appSessionId)
 
       // Persist error event
       const errorEvent: AgentEvent = {
@@ -1904,8 +2029,13 @@ export function startAgentChatSession(
         errorEvent
       )
 
-      // Mark session as failed
-      dependencies.sessionPersistence.failSession(persistentSessionId)
+      // Transition to failed: updates DB, unregisters backend, marks invocation
+      dependencies.stateMachine.transition(persistentSessionId, 'fail', {
+        kombuseSessionId: appSessionId,
+        ticketId,
+        error: error.message,
+        invocationId: continuationInvocationId ?? undefined,
+      })
 
       emit({
         type: 'event',
@@ -1926,14 +2056,17 @@ export function startAgentChatSession(
     },
   }).catch((error: unknown) => {
       logger.close()
-      // Clean up backend registry
-      unregisterBackend(appSessionId)
 
       const messageText =
         error instanceof Error ? error.message : String(error)
 
-      // Mark session as failed on startup error
-      dependencies.sessionPersistence.failSession(persistentSessionId)
+      // Transition to failed via state machine (handles DB, backend cleanup, invocation)
+      dependencies.stateMachine.transition(persistentSessionId, 'fail', {
+        kombuseSessionId: appSessionId,
+        ticketId,
+        error: messageText,
+        invocationId: continuationInvocationId ?? undefined,
+      })
 
       emit({
         type: 'error',
