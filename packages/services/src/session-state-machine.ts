@@ -9,7 +9,7 @@ export type SessionTransitionEvent =
   | 'complete'    // running -> completed
   | 'fail'        // running -> failed
   | 'abort'       // running|pending -> aborted
-  | 'stop'        // completed|failed -> stopped (idle timeout)
+  | 'stop'        // completed -> stopped (idle timeout)
   | 'continue'    // completed|failed|running -> running (resume/retry/reuse)
 
 /**

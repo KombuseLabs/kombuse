@@ -365,7 +365,7 @@ const BACKEND_IDLE_TIMEOUT_MS = 5 * 60 * 1000
  * Reset the idle timeout for a persistent backend.
  * Called on successful completion and on each follow-up message.
  */
-function resetBackendIdleTimeout(sessionId: string): void {
+export function resetBackendIdleTimeout(sessionId: string): void {
   clearBackendIdleTimeout(sessionId)
   const timer = setTimeout(() => {
     const backend = activeBackends.get(sessionId)
@@ -373,17 +373,27 @@ function resetBackendIdleTimeout(sessionId: string): void {
       void backend.stop()
     }
 
-    // Look up session info before unregistering (need ticket_id for broadcast)
+    // Look up session info for state machine transition and broadcast
     const session = sessionPersistenceService.getSessionByKombuseId(sessionId)
 
-    unregisterBackend(sessionId)
+    // Use state machine for state management (DB update, unregister, clear timeout)
+    if (session) {
+      try {
+        defaultStateMachine.transition(session.id, 'stop', {
+          kombuseSessionId: sessionId,
+          ticketId: session.ticket_id ?? undefined,
+        })
+      } catch {
+        // Session may already be in a terminal state (aborted, stopped) — just clean up in-memory
+        unregisterBackend(sessionId)
+      }
+    } else {
+      // No persistent session found — still clean up in-memory state
+      unregisterBackend(sessionId)
+    }
     backendIdleTimeouts.delete(sessionId)
 
-    // Update DB status to 'stopped' and broadcast completion so clients
-    // can remove this session from activeSessions (fixes ghost agent bug)
-    if (session) {
-      sessionPersistenceService.updateStatus(session.id, 'stopped')
-    }
+    // Broadcast completion so clients remove this session from activeSessions
     const completeMsg: ServerMessage = {
       type: 'agent.complete',
       kombuseSessionId: sessionId,
@@ -1824,7 +1834,9 @@ export function startAgentChatSession(
     onComplete: (context: ConversationContext) => {
       logger.close()
 
-      // Install sentinel subscriber to catch unexpected process death between turns
+      // Sentinel: catch unexpected process death between turns (intentional state machine bypass).
+      // The 'complete' transition already fired, so the session is in 'completed' state.
+      // This is in-memory cleanup only — removes the dead backend from activeBackends.
       const sentinelUnsub = backend.subscribe((evt) => {
         if (evt.type === 'complete' && evt.reason === 'process_exit') {
           unregisterBackend(appSessionId)
@@ -1961,7 +1973,8 @@ export function startAgentChatSession(
         },
         onComplete: (context: ConversationContext) => {
           logger.close()
-          // Sentinel for process death between turns
+          // Sentinel: catch unexpected process death between turns (intentional state machine bypass).
+          // The 'complete' transition already fired — this is in-memory cleanup only.
           const retrySentinelUnsub = retryBackend.subscribe((evt) => {
             if (evt.type === 'complete' && evt.reason === 'process_exit') {
               unregisterBackend(appSessionId)

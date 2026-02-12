@@ -36,6 +36,8 @@ vi.mock('@kombuse/persistence', () => ({
     create: vi.fn(),
   },
   sessionsRepository: {
+    get: vi.fn(() => null),
+    getByKombuseSessionId: vi.fn(() => null),
     list: vi.fn(() => []),
     update: vi.fn(),
     listByTicket: vi.fn(() => []),
@@ -57,6 +59,7 @@ import {
   stopAllActiveBackends,
   cleanupOrphanedSessions,
   registerBackend,
+  resetBackendIdleTimeout,
 } from '../services/agent-execution-service'
 
 // Clean up persistent backends between tests to prevent cross-test state pollution
@@ -2146,5 +2149,147 @@ describe('continuation invocation tracking', () => {
       ([id, input]) => id === 1 && (input as Record<string, unknown>).session_id !== undefined
     )
     expect(sessionIdUpdates).toHaveLength(0)
+  })
+})
+
+describe('backend idle timeout broadcasts agent.complete', () => {
+  const BACKEND_IDLE_TIMEOUT_MS = 5 * 60 * 1000
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.mocked(wsHub.broadcastAgentMessage).mockClear()
+    vi.mocked(wsHub.broadcastToTopic).mockClear()
+    vi.mocked(sessionsRepository.update as ReturnType<typeof vi.fn>).mockClear()
+    vi.mocked((sessionsRepository as any).get as ReturnType<typeof vi.fn>).mockReturnValue(null)
+    vi.mocked((sessionsRepository as any).getByKombuseSessionId as ReturnType<typeof vi.fn>).mockReturnValue(null)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    stopAllActiveBackends()
+  })
+
+  it('broadcasts agent.complete when idle timeout fires', () => {
+    const mockSession = {
+      id: 'session-1',
+      kombuse_session_id: 'test-session',
+      ticket_id: 42,
+      status: 'completed',
+      backend_session_id: null,
+      backend_type: 'claude-code',
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    // State machine's getSession needs this for the 'stop' transition
+    vi.mocked((sessionsRepository as any).get as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+    // Idle timeout callback looks up session by kombuse ID
+    vi.mocked((sessionsRepository as any).getByKombuseSessionId as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+
+    const mockBackend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => false),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+    registerBackend('test-session', mockBackend)
+    resetBackendIdleTimeout('test-session')
+
+    vi.advanceTimersByTime(BACKEND_IDLE_TIMEOUT_MS)
+
+    expect(wsHub.broadcastAgentMessage).toHaveBeenCalledWith(
+      'test-session',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'test-session',
+        ticketId: 42,
+      })
+    )
+    expect(wsHub.broadcastToTopic).toHaveBeenCalledWith(
+      '*',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'test-session',
+        ticketId: 42,
+      })
+    )
+  })
+
+  it('transitions session to stopped via state machine', () => {
+    const mockSession = {
+      id: 'session-1',
+      kombuse_session_id: 'test-session',
+      ticket_id: 42,
+      status: 'completed',
+      backend_session_id: null,
+      backend_type: 'claude-code',
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    vi.mocked((sessionsRepository as any).get as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+    vi.mocked((sessionsRepository as any).getByKombuseSessionId as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+
+    const mockBackend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => false),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+    registerBackend('test-session', mockBackend)
+    resetBackendIdleTimeout('test-session')
+
+    vi.advanceTimersByTime(BACKEND_IDLE_TIMEOUT_MS)
+
+    // State machine's stop handler calls updateStatus with 'stopped'
+    expect(sessionsRepository.update).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({ status: 'stopped' })
+    )
+  })
+
+  it('still broadcasts when session is already in terminal state', () => {
+    const mockSession = {
+      id: 'session-1',
+      kombuse_session_id: 'test-session',
+      ticket_id: 42,
+      status: 'aborted',
+      backend_session_id: null,
+      backend_type: 'claude-code',
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    vi.mocked((sessionsRepository as any).get as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+    vi.mocked((sessionsRepository as any).getByKombuseSessionId as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+
+    const mockBackend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => false),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+    registerBackend('test-session', mockBackend)
+    resetBackendIdleTimeout('test-session')
+
+    vi.advanceTimersByTime(BACKEND_IDLE_TIMEOUT_MS)
+
+    // Should still broadcast even though the state machine transition threw
+    expect(wsHub.broadcastAgentMessage).toHaveBeenCalledWith(
+      'test-session',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'test-session',
+      })
+    )
   })
 })
