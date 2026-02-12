@@ -13,15 +13,15 @@ export const ACTION_OPTIONS = [
 ] as const
 
 export const COMMON_RESOURCES = [
-  { value: '*', label: 'All Resources' },
-  { value: 'ticket', label: 'Tickets' },
-  { value: 'ticket.*', label: 'All Ticket Fields' },
-  { value: 'ticket.status', label: 'Ticket Status' },
-  { value: 'ticket.body', label: 'Ticket Body' },
-  { value: 'ticket.labels', label: 'Ticket Labels' },
-  { value: 'comment', label: 'Comments' },
-  { value: 'label', label: 'Labels' },
-  { value: 'profile', label: 'Profiles' },
+  { value: '*', label: 'All Resources', description: 'Full access to all resources' },
+  { value: 'ticket', label: 'Tickets', description: 'Ticket entity (title, body, status)' },
+  { value: 'ticket.*', label: 'All Ticket Fields', description: 'All fields on a ticket' },
+  { value: 'ticket.status', label: 'Ticket Status', description: 'Open, closed, in progress, blocked' },
+  { value: 'ticket.body', label: 'Ticket Body', description: 'Ticket description content' },
+  { value: 'ticket.labels', label: 'Ticket Labels', description: 'Add or remove labels on tickets' },
+  { value: 'comment', label: 'Comments', description: 'Ticket comments' },
+  { value: 'label', label: 'Label Definitions', description: 'Create or manage label types (not yet enforced)' },
+  { value: 'profile', label: 'Profiles', description: 'User and agent profiles' },
 ] as const
 
 export const COMMON_TOOLS = [

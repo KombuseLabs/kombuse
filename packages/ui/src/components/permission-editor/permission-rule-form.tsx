@@ -149,7 +149,7 @@ function PermissionRuleForm({ permission, onSubmit, onCancel }: PermissionRuleFo
               <SelectContent>
                 {COMMON_RESOURCES.map((r) => (
                   <SelectItem key={r.value} value={r.value}>
-                    {r.label} ({r.value})
+                    {r.label} — {r.description}
                   </SelectItem>
                 ))}
                 <SelectItem value={CUSTOM_VALUE}>Custom pattern...</SelectItem>
