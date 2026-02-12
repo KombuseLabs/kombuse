@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
 import { cn } from '../../lib/utils'
 import { useSessionByKombuseId } from '../../hooks/use-sessions'
+import { TicketMentionChip } from '../ticket-mention-chip'
 import {
   Tag,
   Plus,
@@ -80,9 +81,7 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
           : `/tickets/${payload.source_ticket_id}`
         eventLabel = 'mentioned this ticket in'
         eventSuffix = (
-          <Link to={ticketHref} className="font-medium text-primary hover:underline">
-            {` #${payload.source_ticket_id}`}
-          </Link>
+          <TicketMentionChip ticketId={payload.source_ticket_id} href={ticketHref} />
         )
       } else if (payload?.mention_type === 'ticket' && payload?.mentioned_ticket_id) {
         const ticketHref = projectId
@@ -90,9 +89,7 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
           : `/tickets/${payload.mentioned_ticket_id}`
         eventLabel = 'mentioned'
         eventSuffix = (
-          <Link to={ticketHref} className="font-medium text-primary hover:underline">
-            {` #${payload.mentioned_ticket_id}`}
-          </Link>
+          <TicketMentionChip ticketId={payload.mentioned_ticket_id} href={ticketHref} />
         )
       } else if (payload?.mention_type === 'profile' && payload?.mention_text) {
         eventLabel = `mentioned ${payload.mention_text}`

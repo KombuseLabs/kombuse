@@ -1,7 +1,7 @@
 import type { EventWithActor, ActorType } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Badge } from '../../base/badge'
-import { Link } from 'react-router-dom'
+import { TicketMentionChip } from '../ticket-mention-chip'
 import {
   Ticket,
   MessageSquare,
@@ -163,12 +163,10 @@ function EventItem({ event, className }: EventItemProps) {
           </Badge>
 
           {event.ticket_id && event.project_id && (
-            <Link
-              to={`/projects/${event.project_id}/tickets/${event.ticket_id}`}
-              className="text-xs text-primary hover:underline"
-            >
-              Ticket #{event.ticket_id}
-            </Link>
+            <TicketMentionChip
+              ticketId={event.ticket_id}
+              href={`/projects/${event.project_id}/tickets/${event.ticket_id}`}
+            />
           )}
 
           {event.project_id && !event.ticket_id && (
