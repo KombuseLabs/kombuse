@@ -74,13 +74,13 @@ export function PlanApprovalBar({ permission, onRespond }: PlanApprovalBarProps)
   }, [showRevision, handleApprove])
 
   return (
-    <div className={cn('border-t border-indigo-500/30 bg-indigo-500/10 p-3')}>
+    <div className={cn('border-t border-border bg-muted/40 p-3')}>
       <div className="flex items-start gap-3">
-        <FileCheck className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+        <FileCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
-            <span className="text-xs font-medium uppercase text-indigo-600 dark:text-indigo-400">
+            <span className="text-xs font-medium uppercase text-muted-foreground">
               Plan Review Required
             </span>
           </div>
@@ -98,7 +98,7 @@ export function PlanApprovalBar({ permission, onRespond }: PlanApprovalBarProps)
                 {allowedPrompts.map((ap, i) => (
                   <span
                     key={i}
-                    className="rounded bg-indigo-500/20 px-1.5 py-0.5 font-mono text-xs text-indigo-700 dark:text-indigo-300"
+                    className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground"
                   >
                     {ap.prompt}
                   </span>
@@ -146,7 +146,6 @@ export function PlanApprovalBar({ permission, onRespond }: PlanApprovalBarProps)
               <Button
                 size="sm"
                 variant="default"
-                className="bg-green-600 hover:bg-green-700"
                 onClick={handleApprove}
               >
                 <Check className="mr-1 size-3" />

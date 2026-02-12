@@ -21,11 +21,11 @@ export function AskUserRenderer({ event }: AskUserRendererProps) {
   return (
     <EventCard
       timestamp={timestamp}
-      className="border border-blue-500/30 bg-blue-500/10"
+      className="border border-border bg-muted/40"
       header={
         <>
-          <HelpCircle className="size-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-xs font-medium uppercase text-blue-600 dark:text-blue-400">
+          <HelpCircle className="size-4 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase text-muted-foreground">
             Question
           </span>
         </>
@@ -35,7 +35,7 @@ export function AskUserRenderer({ event }: AskUserRendererProps) {
         {questions.map((q, index) => (
           <div key={index}>
             <div className="mb-1 flex items-center gap-2">
-              <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+              <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground">
                 {q.header}
               </span>
               <span className="text-sm text-foreground">{q.question}</span>

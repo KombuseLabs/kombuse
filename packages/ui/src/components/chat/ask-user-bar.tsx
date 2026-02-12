@@ -67,15 +67,15 @@ export function AskUserBar({ permission, onRespond }: AskUserBarProps) {
   }
 
   return (
-    <div className={cn('border-t border-blue-500/30 bg-blue-500/10 p-3')}>
+    <div className={cn('border-t border-border bg-muted/40 p-3')}>
       <div className="flex items-start gap-3">
-        <HelpCircle className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+        <HelpCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 
         <div className="min-w-0 flex-1 space-y-3">
           {questions.map((q, index) => (
             <div key={index}>
               <div className="mb-1.5 flex items-center gap-2">
-                <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground">
                   {q.header}
                 </span>
                 <span className="text-sm text-foreground">{q.question}</span>
@@ -93,12 +93,12 @@ export function AskUserBar({ permission, onRespond }: AskUserBarProps) {
                       className={cn(
                         'group relative rounded-md border px-3 py-1.5 text-left text-sm transition-colors',
                         isSelected
-                          ? 'border-blue-500 bg-blue-500/20 text-blue-700 dark:text-blue-300'
-                          : 'border-border bg-background text-foreground hover:border-blue-500/50 hover:bg-blue-500/5'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-primary/5'
                       )}
                     >
                       <div className="flex items-center gap-1.5">
-                        {isSelected && <Check className="size-3 text-blue-600 dark:text-blue-400" />}
+                        {isSelected && <Check className="size-3 text-primary" />}
                         <span className="font-medium">{opt.label}</span>
                       </div>
                       {opt.description && (
@@ -115,8 +115,8 @@ export function AskUserBar({ permission, onRespond }: AskUserBarProps) {
                   className={cn(
                     'rounded-md border px-3 py-1.5 text-sm transition-colors',
                     otherActive[q.header]
-                      ? 'border-blue-500 bg-blue-500/20 text-blue-700 dark:text-blue-300'
-                      : 'border-border bg-background text-muted-foreground hover:border-blue-500/50 hover:bg-blue-500/5'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:bg-primary/5'
                   )}
                 >
                   Other...
@@ -143,7 +143,7 @@ export function AskUserBar({ permission, onRespond }: AskUserBarProps) {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700"
+              variant="default"
               onClick={handleSubmit}
               disabled={!allAnswered}
             >

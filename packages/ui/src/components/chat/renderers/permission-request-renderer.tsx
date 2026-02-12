@@ -15,14 +15,14 @@ export function PermissionRequestRenderer({ event }: PermissionRequestRendererPr
   return (
     <EventCard
       timestamp={timestamp}
-      className="border border-amber-500/30 bg-amber-500/10"
+      className="border border-border bg-muted/40"
       header={
         <>
-          <Shield className="size-4 text-amber-600 dark:text-amber-400" />
-          <span className="text-xs font-medium uppercase text-amber-600 dark:text-amber-400">
+          <Shield className="size-4 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase text-muted-foreground">
             Permission Request
           </span>
-          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-xs text-amber-700 dark:text-amber-300">
+          <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground">
             {toolName}
           </span>
         </>

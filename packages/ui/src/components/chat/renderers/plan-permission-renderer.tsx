@@ -25,11 +25,11 @@ export function PlanPermissionRenderer({ event }: PlanPermissionRendererProps) {
   return (
     <EventCard
       timestamp={timestamp}
-      className="border border-indigo-500/30 bg-indigo-500/10"
+      className="border border-border bg-muted/40"
       header={
         <>
-          <FileCheck className="size-4 text-indigo-600 dark:text-indigo-400" />
-          <span className="text-xs font-medium uppercase text-indigo-600 dark:text-indigo-400">
+          <FileCheck className="size-4 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase text-muted-foreground">
             Plan Review
           </span>
         </>
@@ -47,7 +47,7 @@ export function PlanPermissionRenderer({ event }: PlanPermissionRendererProps) {
             {allowedPrompts.map((ap, i) => (
               <span
                 key={i}
-                className="rounded bg-indigo-500/20 px-1.5 py-0.5 font-mono text-xs text-indigo-700 dark:text-indigo-300"
+                className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground"
               >
                 {ap.prompt}
               </span>

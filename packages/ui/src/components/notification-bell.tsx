@@ -78,11 +78,11 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       return (
         <div
           key={permission.requestId}
-          className="border-b border-indigo-500/30 bg-indigo-500/5 p-3 last:border-0"
+          className="border-b border-border bg-muted/40 p-3 last:border-0"
         >
           <div className="mb-1 flex items-center gap-2">
-            <FileCheck className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-xs font-medium uppercase text-indigo-600 dark:text-indigo-400">
+            <FileCheck className="size-4 shrink-0 text-muted-foreground" />
+            <span className="text-xs font-medium uppercase text-muted-foreground">
               Plan Review
             </span>
           </div>
@@ -97,7 +97,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                 {allowedPrompts.map((ap, i) => (
                   <span
                     key={i}
-                    className="rounded bg-indigo-500/20 px-1.5 py-0.5 font-mono text-xs text-indigo-700 dark:text-indigo-300"
+                    className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground"
                   >
                     {ap.prompt}
                   </span>
@@ -108,7 +108,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              className="bg-green-600 hover:bg-green-700"
+              variant="default"
               onClick={() => handleAllow(permission)}
             >
               <Check className="mr-1 size-3" />
@@ -148,11 +148,11 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       return (
         <div
           key={permission.requestId}
-          className="border-b border-blue-500/30 bg-blue-500/5 p-3 last:border-0"
+          className="border-b border-border bg-muted/40 p-3 last:border-0"
         >
           <div className="mb-1 flex items-center gap-2">
-            <HelpCircle className="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
-            <span className="text-xs font-medium uppercase text-blue-600 dark:text-blue-400">
+            <HelpCircle className="size-4 shrink-0 text-muted-foreground" />
+            <span className="text-xs font-medium uppercase text-muted-foreground">
               Input Required
             </span>
           </div>
@@ -207,14 +207,14 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
     return (
       <div
         key={permission.requestId}
-        className="border-b border-amber-500/30 bg-amber-500/5 p-3 last:border-0"
+        className="border-b border-border bg-muted/40 p-3 last:border-0"
       >
         <div className="mb-1 flex items-center gap-2">
-          <Shield className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-          <span className="text-xs font-medium uppercase text-amber-600 dark:text-amber-400">
+          <Shield className="size-4 shrink-0 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase text-muted-foreground">
             Permission
           </span>
-          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-xs text-amber-700 dark:text-amber-300">
+          <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground">
             {permission.toolName}
           </span>
         </div>
@@ -238,7 +238,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            className="bg-green-600 hover:bg-green-700"
+            variant="default"
             onClick={() => handleAllow(permission)}
           >
             <Check className="mr-1 size-3" />

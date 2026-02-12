@@ -38,16 +38,16 @@ export function PermissionBar({ permission, onRespond }: PermissionBarProps) {
   }
 
   return (
-    <div className={cn('border-t border-amber-500/30 bg-amber-500/10 p-3')}>
+    <div className={cn('border-t border-border bg-muted/40 p-3')}>
       <div className="flex items-start gap-3">
-        <Shield className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+        <Shield className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
-            <span className="text-xs font-medium uppercase text-amber-600 dark:text-amber-400">
+            <span className="text-xs font-medium uppercase text-muted-foreground">
               Permission Request
             </span>
-            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-xs text-amber-700 dark:text-amber-300">
+            <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground">
               {toolName}
             </span>
           </div>
@@ -97,7 +97,6 @@ export function PermissionBar({ permission, onRespond }: PermissionBarProps) {
               <Button
                 size="sm"
                 variant="default"
-                className="bg-green-600 hover:bg-green-700"
                 onClick={handleAllow}
               >
                 <Check className="mr-1 size-3" />
