@@ -9,6 +9,7 @@ export interface Session {
   backend_type: string | null
   backend_session_id: string | null
   ticket_id: number | null
+  agent_id: string | null
   status: 'running' | 'completed' | 'failed' | 'aborted'
   started_at: string
   completed_at: string | null
@@ -35,6 +36,7 @@ export interface CreateSessionInput {
   backend_type?: string
   backend_session_id?: string
   ticket_id?: number
+  agent_id?: string
 }
 
 /**

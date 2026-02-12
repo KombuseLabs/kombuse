@@ -9,6 +9,7 @@ export const sessionFiltersSchema = z.object({
 
 export const createSessionSchema = z.object({
   backend_type: z.string().min(1).optional(),
+  agent_id: z.string().min(1).optional(),
 })
 
 export const sessionEventFiltersSchema = z.object({

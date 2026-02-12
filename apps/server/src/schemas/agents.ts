@@ -63,6 +63,7 @@ export const updateAgentSchema = z.object({
 
 export const agentFiltersSchema = z.object({
   is_enabled: z.coerce.boolean().optional(),
+  enabled_for_chat: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 })

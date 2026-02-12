@@ -13,7 +13,7 @@ export interface SessionPersistenceOptions {
  * Service interface for session persistence operations
  */
 export interface ISessionPersistenceService {
-  ensureSession(kombuseSessionId: KombuseSessionId, backendType?: string, ticketId?: number): string
+  ensureSession(kombuseSessionId: KombuseSessionId, backendType?: string, ticketId?: number, agentId?: string): string
   markSessionRunning(sessionId: string): void
   persistEvent(sessionId: string, event: AgentEvent): void
   completeSession(sessionId: string, backendSessionId?: string): void
@@ -45,7 +45,7 @@ export class SessionPersistenceService implements ISessionPersistenceService {
    * Create or get a session for the given kombuseSessionId.
    * Returns the internal session ID (not the kombuse session ID).
    */
-  ensureSession(kombuseSessionId: KombuseSessionId, backendType?: string, ticketId?: number): string {
+  ensureSession(kombuseSessionId: KombuseSessionId, backendType?: string, ticketId?: number, agentId?: string): string {
     let session = sessionsRepository.getByKombuseSessionId(kombuseSessionId)
 
     if (!session) {
@@ -54,6 +54,7 @@ export class SessionPersistenceService implements ISessionPersistenceService {
         kombuse_session_id: kombuseSessionId,
         backend_type: backendType,
         ticket_id: ticketId,
+        agent_id: agentId,
       })
     }
 

@@ -37,10 +37,12 @@ export const sessionsRepository = {
 
     const stmt = db.prepare(`
       SELECT s.*,
-        (SELECT p2.name FROM agent_invocations ai2
-         JOIN profiles p2 ON p2.id = ai2.agent_id
-         WHERE ai2.kombuse_session_id = s.kombuse_session_id
-         ORDER BY ai2.created_at DESC LIMIT 1
+        COALESCE(
+          (SELECT p1.name FROM profiles p1 WHERE p1.id = s.agent_id),
+          (SELECT p2.name FROM agent_invocations ai2
+           JOIN profiles p2 ON p2.id = ai2.agent_id
+           WHERE ai2.kombuse_session_id = s.kombuse_session_id
+           ORDER BY ai2.created_at DESC LIMIT 1)
         ) AS agent_name,
         (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
          FROM session_events se
@@ -76,8 +78,8 @@ export const sessionsRepository = {
     db
       .prepare(
         `
-        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id, ticket_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id, ticket_id, agent_id)
+        VALUES (?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -85,7 +87,8 @@ export const sessionsRepository = {
         input?.kombuse_session_id ?? null,
         input?.backend_type ?? null,
         input?.backend_session_id ?? null,
-        input?.ticket_id ?? null
+        input?.ticket_id ?? null,
+        input?.agent_id ?? null
       )
 
     return this.get(id) as Session
@@ -187,10 +190,12 @@ export const sessionsRepository = {
 
     const stmt = db.prepare(`
       SELECT s.*,
-        (SELECT p2.name FROM agent_invocations ai2
-         JOIN profiles p2 ON p2.id = ai2.agent_id
-         WHERE ai2.kombuse_session_id = s.kombuse_session_id
-         ORDER BY ai2.created_at DESC LIMIT 1
+        COALESCE(
+          (SELECT p1.name FROM profiles p1 WHERE p1.id = s.agent_id),
+          (SELECT p2.name FROM agent_invocations ai2
+           JOIN profiles p2 ON p2.id = ai2.agent_id
+           WHERE ai2.kombuse_session_id = s.kombuse_session_id
+           ORDER BY ai2.created_at DESC LIMIT 1)
         ) AS agent_name,
         (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
          FROM session_events se

@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Chat, SessionList } from "@kombuse/ui/components";
-import { useCreateSession, useSessions, useAppContext, useDeleteSession } from "@kombuse/ui/hooks";
+import { AgentPicker, Chat, SessionList } from "@kombuse/ui/components";
+import { useCreateSession, useSessions, useSessionByKombuseId, useAppContext, useDeleteSession } from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
 
@@ -13,11 +13,19 @@ export function Chats() {
   }>();
   const isProjectContext = Boolean(projectId);
   const selectedSessionId = sessionId ?? null;
+  const isDraft = !selectedSessionId;
 
   const { data: sessions, isLoading: sessionsLoading } = useSessions({ sort_by: 'updated_at' });
   const createSession = useCreateSession();
   const deleteSession = useDeleteSession();
   const { pendingPermissions } = useAppContext();
+
+  // Agent picker state (only used for draft/new chats)
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
+  // Resolve agent_id for existing sessions
+  const { data: currentSession } = useSessionByKombuseId(selectedSessionId);
+  const effectiveAgentId = isDraft ? selectedAgentId : (currentSession?.agent_id ?? null);
 
   // Helper to check if a session has pending permissions
   const sessionHasPendingPermission = (kombuseSessionId: string | null) => {
@@ -31,6 +39,7 @@ export function Chats() {
   }, [projectId]);
 
   const handleNewChat = () => {
+    setSelectedAgentId(null);
     navigate(chatsBasePath);
   };
 
@@ -41,6 +50,7 @@ export function Chats() {
   const ensureSessionForDraft = async () => {
     const session = await createSession.mutateAsync({
       backend_type: "claude-code",
+      agent_id: selectedAgentId ?? undefined,
     });
     navigate(`${chatsBasePath}/${session.kombuse_session_id}`);
     return session.kombuse_session_id;
@@ -102,12 +112,18 @@ export function Chats() {
           <h1 className="text-2xl font-bold">
             {isProjectContext ? "Chats" : "Chat"}
           </h1>
+          <AgentPicker
+            value={effectiveAgentId}
+            onChange={setSelectedAgentId}
+            disabled={!isDraft}
+          />
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <ChatProvider
             key={chatKey}
             sessionId={selectedSessionId}
+            agentId={effectiveAgentId ?? undefined}
             projectId={projectId ?? null}
             onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
           >

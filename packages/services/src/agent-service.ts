@@ -1,5 +1,6 @@
 import type {
   Agent,
+  AgentFilters,
   AgentTrigger,
   AgentInvocation,
   CreateAgentInput,
@@ -33,7 +34,7 @@ export interface TriggerMatchResult {
  */
 export interface IAgentService {
   // Agent CRUD
-  listAgents(filters?: { is_enabled?: boolean }): Agent[]
+  listAgents(filters?: AgentFilters): Agent[]
   getAgent(id: string): Agent | null
   createAgent(input: CreateAgentInput): Agent
   updateAgent(id: string, input: UpdateAgentInput): Agent
@@ -129,7 +130,7 @@ export class AgentService implements IAgentService {
   // Agent CRUD
   // ============================================
 
-  listAgents(filters?: { is_enabled?: boolean }): Agent[] {
+  listAgents(filters?: AgentFilters): Agent[] {
     return agentsRepository.list(filters)
   }
 

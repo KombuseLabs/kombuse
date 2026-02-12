@@ -36,6 +36,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       id: crypto.randomUUID(),
       kombuse_session_id: kombuseId,
       backend_type: parseResult.data.backend_type ?? 'claude-code',
+      agent_id: parseResult.data.agent_id,
     })
 
     return reply.status(201).send(toPublicSession(createdSession))

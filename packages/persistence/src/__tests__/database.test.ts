@@ -75,6 +75,7 @@ const EXPECTED_MIGRATIONS = [
   '011_cleanup_legacy_session_ids',
   '012_comments_fts_search',
   '013_comments_parent_set_null',
+  '014_session_agent_id',
 ]
 
 describe('database', () => {

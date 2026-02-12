@@ -71,6 +71,9 @@ export interface AgentConfig {
   /** Timeout in milliseconds */
   timeout_ms?: number
 
+  /** Whether this agent appears in the chat agent picker */
+  enabled_for_chat?: boolean
+
   /** Additional custom settings */
   [key: string]: unknown
 }
@@ -122,6 +125,7 @@ export interface UpdateAgentInput {
  */
 export interface AgentFilters {
   is_enabled?: boolean
+  enabled_for_chat?: boolean
   limit?: number
   offset?: number
 }

@@ -53,6 +53,7 @@ function makeSession(overrides: Partial<PublicSession> = {}): PublicSession {
     backend_type: 'mock',
     backend_session_id: null,
     ticket_id: null,
+    agent_id: null,
     status: 'completed',
     started_at: new Date().toISOString(),
     completed_at: new Date().toISOString(),

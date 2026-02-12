@@ -590,6 +590,47 @@ describe('startAgentChatSession agent resolution from session context', () => {
     const systemPrompt = getCapturedOptions()?.systemPrompt ?? ''
     expect(systemPrompt).not.toContain('## Prior Conversation')
   })
+
+  it('resolves agent from session.agent_id when no invocations exist', async () => {
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
+
+    const { backend, getCapturedOptions } = createMockBackend()
+    const deps = createMockDependencies(backend, { 'ticket-analyzer': coderAgent })
+
+    // Mock getSessionByKombuseId to return a session with agent_id
+    ;(deps.sessionPersistence.getSessionByKombuseId as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'session-1',
+      agent_id: 'ticket-analyzer',
+      status: 'completed',
+      backend_session_id: null,
+      ticket_id: null,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'hello from user chat',
+        kombuseSessionId: 'chat-user-session' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(deps.getAgent).toHaveBeenCalledWith('ticket-analyzer')
+
+    const expectedTools = presetToAllowedTools(getTypePreset('coder'))
+    expect(
+      getCapturedOptions()?.allowedTools,
+      'should use coder preset tools from session.agent_id resolution'
+    ).toEqual(expectedTools)
+
+    expect(
+      getCapturedOptions()?.systemPrompt,
+      'should render preamble for agent resolved from session.agent_id'
+    ).toBeDefined()
+  })
 })
 
 describe('startAgentChatSession fallback comment on complete', () => {

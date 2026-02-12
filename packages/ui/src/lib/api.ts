@@ -268,6 +268,8 @@ export const agentsApi = {
     const params = new URLSearchParams()
     if (filters?.is_enabled !== undefined)
       params.set('is_enabled', String(filters.is_enabled))
+    if (filters?.enabled_for_chat !== undefined)
+      params.set('enabled_for_chat', String(filters.enabled_for_chat))
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
@@ -496,7 +498,7 @@ export const sessionsApi = {
     return handleResponse<PublicSession>(response)
   },
 
-  async create(input?: { backend_type?: string }): Promise<PublicSession> {
+  async create(input?: { backend_type?: string; agent_id?: string }): Promise<PublicSession> {
     const response = await fetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

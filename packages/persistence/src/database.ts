@@ -645,6 +645,13 @@ const migrations = [
       PRAGMA foreign_keys = ON;
     `,
   },
+  {
+    name: '014_session_agent_id',
+    sql: `
+      ALTER TABLE sessions ADD COLUMN agent_id TEXT REFERENCES agents(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_sessions_agent ON sessions(agent_id) WHERE agent_id IS NOT NULL;
+    `,
+  },
 ]
 
 /**

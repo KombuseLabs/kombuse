@@ -32,6 +32,11 @@ export const agentsRepository = {
       params.push(filters.is_enabled ? 1 : 0)
     }
 
+    if (filters?.enabled_for_chat !== undefined) {
+      conditions.push("json_extract(config, '$.enabled_for_chat') = ?")
+      params.push(filters.enabled_for_chat ? 1 : 0)
+    }
+
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 

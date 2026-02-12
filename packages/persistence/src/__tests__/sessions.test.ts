@@ -64,6 +64,35 @@ describe('sessionsRepository', () => {
       expect(session.status).toBe('running')
     })
 
+    it('should create session with agent_id', () => {
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt')
+      `).run(TEST_AGENT_ID)
+
+      const session = sessionsRepository.create({
+        agent_id: TEST_AGENT_ID,
+      })
+
+      expect(session.agent_id).toBe(TEST_AGENT_ID)
+      expect(session.status).toBe('running')
+    })
+
+    it('should create session with agent_id and ticket_id', () => {
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt')
+      `).run(TEST_AGENT_ID)
+
+      const session = sessionsRepository.create({
+        agent_id: TEST_AGENT_ID,
+        ticket_id: testTicketId,
+      })
+
+      expect(session.agent_id).toBe(TEST_AGENT_ID)
+      expect(session.ticket_id).toBe(testTicketId)
+    })
+
     it('should create session with kombuse_session_id and ticket_id', () => {
       const kombuseSessionId = createSessionId('trigger')
       const session = sessionsRepository.create({
@@ -381,6 +410,58 @@ describe('sessionsRepository', () => {
       const ticketSessions = sessionsRepository.listByTicket(testTicketId)
       expect(ticketSessions, 'listByTicket should not duplicate sessions').toHaveLength(1)
       expect(ticketSessions[0]!.agent_name).toBe('Second Agent')
+    })
+
+    it('should return agent_name from sessions.agent_id (direct link)', () => {
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt')
+      `).run(TEST_AGENT_ID)
+
+      sessionsRepository.create({ agent_id: TEST_AGENT_ID })
+
+      const sessions = sessionsRepository.list()
+
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0]!.agent_name).toBe('Test Agent')
+    })
+
+    it('should prefer sessions.agent_id over agent_invocations for agent_name', () => {
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt')
+      `).run(TEST_AGENT_ID)
+
+      const secondAgentId = 'test-agent-2'
+      db.prepare(`
+        INSERT OR IGNORE INTO profiles (id, type, name)
+        VALUES (?, 'agent', 'Second Agent')
+      `).run(secondAgentId)
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt 2')
+      `).run(secondAgentId)
+
+      const kombuseSessionId = createSessionId('chat')
+      sessionsRepository.create({
+        kombuse_session_id: kombuseSessionId,
+        agent_id: TEST_AGENT_ID,
+      })
+
+      // Seed invocation pointing to second agent (legacy path)
+      const trigger = db.prepare(`
+        INSERT INTO agent_triggers (agent_id, event_type)
+        VALUES (?, 'ticket.created')
+      `).run(secondAgentId)
+      db.prepare(`
+        INSERT INTO agent_invocations (agent_id, trigger_id, context, kombuse_session_id)
+        VALUES (?, ?, '{}', ?)
+      `).run(secondAgentId, trigger.lastInsertRowid, kombuseSessionId)
+
+      const sessions = sessionsRepository.list()
+
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0]!.agent_name, 'direct link should win over invocation lookup').toBe('Test Agent')
     })
 
     it('should return metadata in listByTicket()', () => {
