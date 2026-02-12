@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
 import { useFileStaging } from '../../hooks/use-file-staging'
 import { StagedFilePreviews } from '../staged-file-previews'
-import { Send, Loader2, X, Paperclip } from 'lucide-react'
+import { Send, Loader2, X, Paperclip, Square } from 'lucide-react'
 
 export interface ReplyTarget {
   commentId: number
@@ -22,6 +22,7 @@ interface ChatInputProps {
   disabled?: boolean
   replyTarget?: ReplyTarget | null
   onCancelReply?: () => void
+  onStop?: () => void
   className?: string
 }
 
@@ -32,6 +33,7 @@ function ChatInput({
   disabled = false,
   replyTarget,
   onCancelReply,
+  onStop,
   className,
 }: ChatInputProps) {
   const [message, setMessage] = useState('')
@@ -140,9 +142,15 @@ function ChatInput({
           >
             <Paperclip className="size-4" />
           </Button>
-          <Button type="submit" disabled={!canSubmit} size="icon">
-            {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          </Button>
+          {isLoading && onStop ? (
+            <Button type="button" size="icon" variant="destructive" onClick={onStop}>
+              <Square className="size-3" />
+            </Button>
+          ) : (
+            <Button type="submit" disabled={!canSubmit} size="icon">
+              {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            </Button>
+          )}
         </div>
       </form>
       <AutocompletePortal />

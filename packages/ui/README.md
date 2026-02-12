@@ -894,6 +894,7 @@ Props for `ChatInput`:
 - `isLoading`, `disabled`: Loading/disabled states
 - `replyTarget`: Optional `ReplyTarget` object (`{ commentId, authorId, isAgentSession }`) — shows reply indicator when set
 - `onCancelReply`: Callback to dismiss reply mode
+- `onStop`: Optional callback — when provided and `isLoading` is true, replaces the spinner with a destructive stop button
 - Supports file attachments via paperclip button and drag-and-drop (images only, max 10 MB)
 - Supports `@mention` autocomplete — typing `@` triggers a dropdown of agent profiles with keyboard navigation (Arrow keys, Enter/Tab to select, Escape to dismiss)
 - Supports `#ticket` autocomplete — typing `#` triggers a dropdown of matching tickets (by title or ID) with the same keyboard navigation

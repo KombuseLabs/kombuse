@@ -2,11 +2,9 @@
 
 import { useContext, useState } from 'react'
 import type { SerializedAgentEvent } from '@kombuse/types'
-import { Square } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { ChatCtx } from '../../providers/chat-context'
 import { useWebSocket } from '../../hooks/use-websocket'
-import { Button } from '../../base/button'
 import { ChatInput } from '../chat-input'
 import { AskUserBar } from './ask-user-bar'
 import { isValidAskUserInput } from './ask-user-types'
@@ -89,20 +87,12 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
           />
         )
       )}
-      {isLoading && !pendingPermission && ctx?.kombuseSessionId && (
-        <div className="flex justify-center border-t px-4 py-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => wsSend({ type: 'agent.stop', kombuseSessionId: ctx.kombuseSessionId! })}
-          >
-            <Square className="mr-1 size-3" />
-            Stop
-          </Button>
-        </div>
-      )}
       <div className="border-t p-4">
-        <ChatInput onSubmit={onSubmit} isLoading={isLoading} />
+        <ChatInput
+          onSubmit={onSubmit}
+          isLoading={isLoading}
+          onStop={!pendingPermission && ctx?.kombuseSessionId ? () => wsSend({ type: 'agent.stop', kombuseSessionId: ctx.kombuseSessionId! }) : undefined}
+        />
       </div>
     </div>
   )
