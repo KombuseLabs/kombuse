@@ -15,6 +15,9 @@ import { Database, RefreshCw } from 'lucide-react'
 
 const DEFAULT_LIMIT = 100
 const MAX_LIMIT = 500
+const NO_SORT_VALUE = '__kombuse_no_sort__'
+
+type SortDirection = 'asc' | 'desc'
 
 function quoteIdentifier(name: string): string {
   return `"${name.replace(/"/g, '""')}"`
@@ -32,6 +35,9 @@ function formatCellValue(value: unknown): string {
 export function DatabasePage() {
   const [selectedTable, setSelectedTable] = useState('')
   const [limit, setLimit] = useState(DEFAULT_LIMIT)
+  const [page, setPage] = useState(1)
+  const [sortColumn, setSortColumn] = useState('')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const {
     data: tablesResponse,
     isLoading: isLoadingTables,
@@ -50,17 +56,25 @@ export function DatabasePage() {
 
     if (!selectedTable || !tables.some((table) => table.name === selectedTable)) {
       setSelectedTable(tables[0]?.name ?? '')
+      setPage(1)
+      setSortColumn('')
+      setSortDirection('asc')
     }
   }, [tables, selectedTable])
+
+  const offset = (page - 1) * limit
+  const orderByClause = sortColumn
+    ? ` ORDER BY ${quoteIdentifier(sortColumn)} ${sortDirection.toUpperCase()}`
+    : ''
 
   const queryInput = useMemo(
     () =>
       selectedTable
         ? {
-            sql: `SELECT * FROM ${quoteIdentifier(selectedTable)} LIMIT ${limit}`,
+            sql: `SELECT * FROM ${quoteIdentifier(selectedTable)}${orderByClause} LIMIT ${limit} OFFSET ${offset}`,
           }
         : undefined,
-    [selectedTable, limit]
+    [selectedTable, orderByClause, limit, offset]
   )
 
   const {
@@ -82,7 +96,15 @@ export function DatabasePage() {
     return [...keys]
   }, [rows])
 
+  useEffect(() => {
+    if (sortColumn && !columns.includes(sortColumn)) {
+      setSortColumn('')
+    }
+  }, [columns, sortColumn])
+
   const isFetching = isFetchingTables || isFetchingRows
+  const canGoPreviousPage = page > 1
+  const canGoNextPage = rows.length === limit
 
   const handleRefresh = () => {
     void refetchTables()
@@ -111,7 +133,15 @@ export function DatabasePage() {
             <Label htmlFor="database-table" className="mb-2 block text-sm">
               Table
             </Label>
-            <Select value={selectedTable || undefined} onValueChange={setSelectedTable}>
+            <Select
+              value={selectedTable || undefined}
+              onValueChange={(value) => {
+                setSelectedTable(value)
+                setPage(1)
+                setSortColumn('')
+                setSortDirection('asc')
+              }}
+            >
               <SelectTrigger id="database-table">
                 <SelectValue placeholder="Select a table" />
               </SelectTrigger>
@@ -140,8 +170,57 @@ export function DatabasePage() {
                 if (!Number.isFinite(value)) return
                 const normalized = Math.min(Math.max(Math.floor(value), 1), MAX_LIMIT)
                 setLimit(normalized)
+                setPage(1)
               }}
             />
+          </div>
+
+          <div className="w-[220px]">
+            <Label htmlFor="database-sort-column" className="mb-2 block text-sm">
+              Sort Column
+            </Label>
+            <Select
+              value={sortColumn || NO_SORT_VALUE}
+              onValueChange={(value) => {
+                setSortColumn(value === NO_SORT_VALUE ? '' : value)
+                setPage(1)
+              }}
+              disabled={columns.length === 0}
+            >
+              <SelectTrigger id="database-sort-column">
+                <SelectValue placeholder="No sorting" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_SORT_VALUE}>No sorting</SelectItem>
+                {columns.map((column) => (
+                  <SelectItem key={column} value={column}>
+                    {column}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-[160px]">
+            <Label htmlFor="database-sort-direction" className="mb-2 block text-sm">
+              Sort Direction
+            </Label>
+            <Select
+              value={sortDirection}
+              onValueChange={(value) => {
+                setSortDirection(value as SortDirection)
+                setPage(1)
+              }}
+              disabled={columns.length === 0 || !sortColumn}
+            >
+              <SelectTrigger id="database-sort-direction">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">Ascending</SelectItem>
+                <SelectItem value="desc">Descending</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -175,6 +254,9 @@ export function DatabasePage() {
           <>
             <div className="mb-3 text-sm text-muted-foreground">
               Showing {rows.length} row{rows.length === 1 ? '' : 's'} from {selectedTable}
+              {' · '}Page {page}
+              {' · '}Offset {offset}
+              {sortColumn ? ` · Sorted by ${sortColumn} (${sortDirection})` : ''}
             </div>
             {rows.length === 0 ? (
               <div className="text-sm text-muted-foreground">
@@ -209,6 +291,29 @@ export function DatabasePage() {
                 </table>
               </div>
             )}
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Page {page}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                  disabled={!canGoPreviousPage || isFetchingRows}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((current) => current + 1)}
+                  disabled={!canGoNextPage || isFetchingRows}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </>
         )}
       </div>
