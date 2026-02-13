@@ -25,6 +25,7 @@ import {
   useImportClaudeCodeProjects,
   useDesktop,
 } from "@kombuse/ui/hooks";
+import { deriveProjectNameFromPath } from "./projects-path";
 
 export function Projects() {
   const { data: projects, isLoading, error } = useProjects();
@@ -416,11 +417,4 @@ function ImportDialog({ onDone }: { onDone: () => void }) {
       </DialogFooter>
     </>
   );
-}
-
-function deriveProjectNameFromPath(path: string) {
-  const normalized = path.trim().replace(/[\\/]+$/, "");
-  if (!normalized) return "";
-  const parts = normalized.split(/[\\/]/);
-  return parts[parts.length - 1] ?? "";
 }

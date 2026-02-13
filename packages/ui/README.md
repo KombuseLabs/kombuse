@@ -112,9 +112,10 @@ const { registry, context } = useCommandContext()
 import { useDesktop } from '@kombuse/ui/hooks'
 
 // Detect if running inside the Electron shell
-const { isDesktop, platform } = useDesktop()
+const { isDesktop, platform, selectDirectory } = useDesktop()
 // isDesktop: true when window.electron exists
 // platform: 'darwin' | 'win32' | 'linux' | null
+// selectDirectory: async native directory picker in desktop mode; resolves to `string | null`
 ```
 
 ```typescript
