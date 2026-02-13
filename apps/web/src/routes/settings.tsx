@@ -22,17 +22,20 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 const USER_PROFILE_ID = 'user-1'
 const SIDEBAR_EVENTS_SETTING_KEY = 'sidebar.hidden.events'
 const SIDEBAR_PERMISSIONS_SETTING_KEY = 'sidebar.hidden.permissions'
+const SIDEBAR_DATABASE_SETTING_KEY = 'sidebar.hidden.database'
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
   const { data: eventsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_EVENTS_SETTING_KEY)
   const { data: permissionsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PERMISSIONS_SETTING_KEY)
+  const { data: databaseSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_DATABASE_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const upsertSetting = useUpsertProfileSetting()
 
   const showEvents = eventsSetting?.setting_value !== 'true'
   const showPermissions = permissionsSetting?.setting_value !== 'true'
+  const showDatabase = databaseSetting?.setting_value !== 'true'
   const codexMcpEnabled = codexMcpStatus?.enabled === true
 
   return (
@@ -103,6 +106,20 @@ export function Settings() {
                   upsertSetting.mutate({
                     profile_id: USER_PROFILE_ID,
                     setting_key: SIDEBAR_PERMISSIONS_SETTING_KEY,
+                    setting_value: checked ? 'false' : 'true',
+                  })
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="sidebar-database" className="font-normal">Show Database</Label>
+              <Switch
+                id="sidebar-database"
+                checked={showDatabase}
+                onCheckedChange={(checked) => {
+                  upsertSetting.mutate({
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: SIDEBAR_DATABASE_SETTING_KEY,
                     setting_value: checked ? 'false' : 'true',
                   })
                 }}

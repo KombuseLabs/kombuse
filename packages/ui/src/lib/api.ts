@@ -48,6 +48,9 @@ import type {
   UpdateMilestoneInput,
   BackendType,
   CodexMcpStatus,
+  DatabaseTablesResponse,
+  DatabaseQueryInput,
+  DatabaseQueryResponse,
 } from '@kombuse/types'
 
 declare global {
@@ -518,6 +521,22 @@ export const permissionsApi = {
     const url = `${API_BASE}/projects/${projectId}/permissions${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<PermissionLogEntry[]>(response)
+  },
+}
+
+export const databaseApi = {
+  async listTables(): Promise<DatabaseTablesResponse> {
+    const response = await fetch(`${API_BASE}/database/tables`)
+    return handleResponse<DatabaseTablesResponse>(response)
+  },
+
+  async query(input: DatabaseQueryInput): Promise<DatabaseQueryResponse> {
+    const response = await fetch(`${API_BASE}/database/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<DatabaseQueryResponse>(response)
   },
 }
 

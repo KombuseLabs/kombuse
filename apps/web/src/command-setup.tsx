@@ -16,6 +16,7 @@ import type { CommandContext } from "@kombuse/types";
 const USER_PROFILE_ID = "user-1";
 const SIDEBAR_EVENTS_SETTING_KEY = "sidebar.hidden.events";
 const SIDEBAR_PERMISSIONS_SETTING_KEY = "sidebar.hidden.permissions";
+const SIDEBAR_DATABASE_SETTING_KEY = "sidebar.hidden.database";
 
 interface PaletteState {
   open: boolean;
@@ -43,9 +44,11 @@ export function CommandSetup({ children }: CommandSetupProps) {
 
   const { data: eventsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_EVENTS_SETTING_KEY);
   const { data: permissionsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PERMISSIONS_SETTING_KEY);
+  const { data: databaseSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_DATABASE_SETTING_KEY);
   const { data: codexMcpStatus } = useCodexMcpStatus();
   const eventsVisible = eventsSetting?.setting_value === "false";
   const permissionsVisible = permissionsSetting?.setting_value === "false";
+  const databaseVisible = databaseSetting?.setting_value === "false";
   const codexMcpEnabled = codexMcpStatus?.enabled === true;
   const setCodexMcpEnabled = useSetCodexMcpEnabled();
   const upsertSetting = useUpsertProfileSetting();
@@ -154,6 +157,18 @@ export function CommandSetup({ children }: CommandSetupProps) {
         },
       }),
       registry.register({
+        id: "sidebar.toggleDatabase",
+        title: databaseVisible ? "Hide Database in Sidebar" : "Show Database in Sidebar",
+        category: "Sidebar",
+        handler: () => {
+          upsertSetting.mutate({
+            profile_id: USER_PROFILE_ID,
+            setting_key: SIDEBAR_DATABASE_SETTING_KEY,
+            setting_value: databaseVisible ? "true" : "false",
+          });
+        },
+      }),
+      registry.register({
         id: "codex.toggleMcp",
         title: codexMcpEnabled ? "Disable MCP for Codex" : "Enable MCP for Codex",
         category: "Codex",
@@ -189,10 +204,19 @@ export function CommandSetup({ children }: CommandSetupProps) {
           navigate(`/projects/${currentProjectId}/permissions`);
         },
       }),
+      registry.register({
+        id: "nav.database",
+        title: "Go to Database",
+        category: "Navigation",
+        when: (ctx) => ctx.currentProjectId != null,
+        handler: () => {
+          navigate(`/projects/${currentProjectId}/database`);
+        },
+      }),
     ];
 
     return () => unregisterFns.forEach((fn) => fn());
-  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting]);
+  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, databaseVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting]);
 
   const context: CommandContext = useMemo(
     () => ({

@@ -32,6 +32,7 @@ import {
   updateRoutes,
   attachmentRoutes,
   permissionRoutes,
+  databaseRoutes,
   syncRoutes,
   claudeCodeRoutes,
   profileSettingsRoutes,
@@ -131,6 +132,7 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(updateRoutes, { prefix: "/api" });
   fastify.register(attachmentRoutes, { prefix: "/api" });
   fastify.register(permissionRoutes, { prefix: "/api" });
+  fastify.register(databaseRoutes, { prefix: "/api" });
   fastify.register(syncRoutes, { prefix: "/api" });
   fastify.register(claudeCodeRoutes, { prefix: "/api" });
   fastify.register(profileSettingsRoutes, { prefix: "/api" });

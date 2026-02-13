@@ -8,6 +8,21 @@ export {
   seedDatabase,
 } from './database'
 export type { DatabaseType } from './database'
+export {
+  DEFAULT_QUERY_LIMIT,
+  MAX_QUERY_LIMIT,
+  ensureLimit,
+  queryDatabaseReadOnly,
+  listDatabaseTables,
+  describeDatabaseTable,
+} from './database-query'
+export type {
+  DatabaseQueryParam,
+  DatabaseRow,
+  DatabaseQueryResult,
+  DatabaseTableInfo,
+  DatabaseTableDescription,
+} from './database-query'
 
 // Well-known profile IDs
 export { ANONYMOUS_AGENT_ID } from '@kombuse/types'

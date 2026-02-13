@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useParams, Link } from "react-router-dom";
 import { Sidebar, SidebarItem } from "@kombuse/ui/components";
 import { useProject, useProfileSetting, useAppContext } from "@kombuse/ui/hooks";
-import { Ticket, Bot, Folder, MessageSquare, History, Tags, Shield } from "lucide-react";
+import { Ticket, Bot, Folder, MessageSquare, History, Tags, Shield, Database } from "lucide-react";
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
@@ -22,8 +22,10 @@ export function ProjectLayout() {
 
   const { data: eventsSetting } = useProfileSetting("user-1", "sidebar.hidden.events");
   const { data: permissionsSetting } = useProfileSetting("user-1", "sidebar.hidden.permissions");
+  const { data: databaseSetting } = useProfileSetting("user-1", "sidebar.hidden.database");
   const showEvents = eventsSetting?.setting_value === "false";
   const showPermissions = permissionsSetting?.setting_value === "false";
+  const showDatabase = databaseSetting?.setting_value === "false";
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(isCollapsed));
@@ -89,6 +91,14 @@ export function ProjectLayout() {
             icon={<Shield className="size-4" />}
             label="Permissions"
             to={`/projects/${projectId}/permissions`}
+            isCollapsed={isCollapsed}
+          />
+        )}
+        {showDatabase && (
+          <SidebarItem
+            icon={<Database className="size-4" />}
+            label="Database"
+            to={`/projects/${projectId}/database`}
             isCollapsed={isCollapsed}
           />
         )}

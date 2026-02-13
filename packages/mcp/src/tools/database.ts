@@ -1,8 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { getDatabase } from '@kombuse/persistence'
+import {
+  describeDatabaseTable,
+  listDatabaseTables,
+  queryDatabaseReadOnly,
+} from '@kombuse/persistence'
 import { z } from 'zod'
-
-const DEFAULT_LIMIT = 100
 
 function errorResponse(message: string) {
   return {
@@ -15,18 +17,6 @@ function successResponse(data: unknown) {
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
   }
-}
-
-/**
- * Add a LIMIT clause if the query doesn't already have one.
- * Intentionally conservative — if LIMIT appears anywhere in the SQL, we leave it alone.
- */
-function ensureLimit(sql: string, limit: number = DEFAULT_LIMIT): string {
-  const trimmed = sql.trim().replace(/;+$/, '')
-  if (/\bLIMIT\b/i.test(trimmed)) {
-    return trimmed
-  }
-  return `${trimmed} LIMIT ${limit}`
 }
 
 /**
@@ -51,28 +41,10 @@ export function registerDatabaseTools(server: McpServer): void {
       },
     },
     async ({ sql, params }) => {
-      const db = getDatabase()
-
-      const safeSql = ensureLimit(sql)
-
-      let stmt
       try {
-        stmt = db.prepare(safeSql)
+        return successResponse(queryDatabaseReadOnly(sql, params))
       } catch (err) {
-        return errorResponse(`SQL syntax error: ${(err as Error).message}`)
-      }
-
-      if (!stmt.readonly) {
-        return errorResponse(
-          'Only read-only queries are allowed. Write operations (INSERT, UPDATE, DELETE, DROP, ALTER, etc.) are rejected.'
-        )
-      }
-
-      try {
-        const rows = params ? stmt.all(...params) : stmt.all()
-        return successResponse({ rows, count: rows.length, sql: safeSql })
-      } catch (err) {
-        return errorResponse(`Query execution error: ${(err as Error).message}`)
+        return errorResponse((err as Error).message)
       }
     }
   )
@@ -85,17 +57,7 @@ export function registerDatabaseTools(server: McpServer): void {
       inputSchema: {},
     },
     async () => {
-      const db = getDatabase()
-      const tables = db
-        .prepare(
-          `SELECT name, type FROM sqlite_master
-           WHERE type IN ('table', 'view')
-             AND name NOT LIKE 'sqlite_%'
-           ORDER BY type, name`
-        )
-        .all() as { name: string; type: string }[]
-
-      return successResponse({ tables })
+      return successResponse({ tables: listDatabaseTables() })
     }
   )
 
@@ -112,29 +74,11 @@ export function registerDatabaseTools(server: McpServer): void {
       },
     },
     async ({ table_name }) => {
-      const db = getDatabase()
-
-      // Validate table exists to prevent PRAGMA injection
-      const tableExists = db
-        .prepare(
-          `SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?`
-        )
-        .get(table_name) as { name: string } | undefined
-
-      if (!tableExists) {
-        return errorResponse(`Table '${table_name}' not found`)
+      try {
+        return successResponse(describeDatabaseTable(table_name))
+      } catch (err) {
+        return errorResponse((err as Error).message)
       }
-
-      const columns = db.pragma(`table_info("${table_name}")`)
-      const foreignKeys = db.pragma(`foreign_key_list("${table_name}")`)
-      const indexes = db.pragma(`index_list("${table_name}")`)
-
-      return successResponse({
-        table: table_name,
-        columns,
-        foreign_keys: foreignKeys,
-        indexes,
-      })
     }
   )
 }

@@ -11,6 +11,7 @@ export { updateRoutes, setAutoUpdater, type AutoUpdaterInterface } from './updat
 export { attachmentRoutes } from './attachments'
 export { syncRoutes } from './sync'
 export { permissionRoutes } from './permissions'
+export { databaseRoutes } from './database'
 export { claudeCodeRoutes } from './claude-code'
 export { profileSettingsRoutes } from './profile-settings'
 export { codexMcpRoutes } from './codex-mcp'
