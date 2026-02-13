@@ -64,12 +64,9 @@ afterEach(() => {
   rmSync(mockUploadsRoot, { recursive: true, force: true })
 })
 
-function getAllBlocks(result: any) {
-  return result.content as Array<{ type: string; text?: string; data?: string; mimeType?: string }>
-}
-
-function getImageBlocks(result: any) {
-  return getAllBlocks(result).filter((b: any) => b.type === 'image')
+function countImageBlocks(result: any): number {
+  const blocks = result.content as Array<{ type: string }>
+  return blocks.filter((b) => b.type === 'image').length
 }
 
 function writeTestFile(storagePath: string, data: Buffer) {
@@ -80,7 +77,7 @@ function writeTestFile(storagePath: string, data: Buffer) {
 }
 
 describe('get_ticket', () => {
-  it('should return ticket with empty ticket_attachments when none exist', async () => {
+  it('should return ticket with comments by default and no image sections', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
@@ -91,7 +88,10 @@ describe('get_ticket', () => {
     const data = parseContent(result) as any
 
     expect(data.ticket.id).toBe(ticket.id)
-    expect(data.ticket_attachments).toEqual([])
+    expect(data.comments).toEqual([])
+    expect(data.ticket_attachments).toBeUndefined()
+    expect(data.comment_attachments).toBeUndefined()
+    expect(countImageBlocks(result)).toBe(0)
   })
 
   it('should return error for non-existent ticket', async () => {
@@ -102,7 +102,7 @@ describe('get_ticket', () => {
     expect(data.error).toContain('9999')
   })
 
-  it('should return ticket description attachment metadata with file_path', async () => {
+  it('should return ticket image attachment metadata when config.images is true', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
@@ -120,7 +120,10 @@ describe('get_ticket', () => {
       uploaded_by_id: TEST_USER_ID,
     })
 
-    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { ticket_id: ticket.id, config: { images: true } },
+    })
     const data = parseContent(result) as any
 
     expect(data.ticket_attachments).toHaveLength(1)
@@ -128,9 +131,10 @@ describe('get_ticket', () => {
     expect(data.ticket_attachments[0].mime_type).toBe('image/png')
     expect(data.ticket_attachments[0].size_bytes).toBe(TINY_PNG.length)
     expect(data.ticket_attachments[0].file_path).toContain(storagePath)
+    expect(countImageBlocks(result)).toBe(0)
   })
 
-  it('should return comment attachment metadata with file_path', async () => {
+  it('should return comment image attachment metadata in comments when both sections are enabled', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
@@ -153,42 +157,279 @@ describe('get_ticket', () => {
       uploaded_by_id: TEST_USER_ID,
     })
 
-    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { ticket_id: ticket.id, config: { images: true, comments: true } },
+    })
     const data = parseContent(result) as any
 
     const commentData = data.comments.find((c: any) => c.id === comment.id)
-    expect(commentData.attachments).toHaveLength(1)
-    expect(commentData.attachments[0].filename).toBe('error.png')
-    expect(commentData.attachments[0].file_path).toContain(storagePath)
+    expect(commentData.attachments).toBeUndefined()
+    expect(data.comment_attachments).toHaveLength(1)
+    expect(data.comment_attachments[0].comment_id).toBe(comment.id)
+    expect(data.comment_attachments[0].attachments).toHaveLength(1)
+    expect(data.comment_attachments[0].attachments[0].filename).toBe('error.png')
+    expect(data.comment_attachments[0].attachments[0].file_path).toContain(storagePath)
+    expect(countImageBlocks(result)).toBe(0)
   })
 
-  it('should return image content blocks for ticket description images', async () => {
+  it('should include overview participants by default', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Overview test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const analyzerId = `analyzer-${Date.now()}`
+    profilesRepository.create({ id: analyzerId, type: 'agent', name: 'Analyzer', description: 'Investigates issues' })
+    agentsRepository.create({
+      id: analyzerId,
+      system_prompt: 'Analyze',
+      permissions: [],
+      config: { type: 'analyzer' },
+    })
+
+    commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'User context',
+    })
+    commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: analyzerId,
+      body: 'Analyzer findings',
+    })
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { ticket_id: ticket.id },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.overview).toBeDefined()
+    expect(data.overview.total_comments).toBe(2)
+    expect(data.overview.participant_count).toBe(2)
+    const analyzer = data.overview.participants.find((p: any) => p.author_id === analyzerId)
+    expect(analyzer.actor_type).toBe('agent')
+    expect(analyzer.agent_type).toBe('analyzer')
+  })
+
+  it('should filter comments to user plus coder agents', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Filter test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const coderId = `coder-${Date.now()}`
+    const analyzerId = `analyzer-${Date.now()}`
+    profilesRepository.create({ id: coderId, type: 'agent', name: 'Coder' })
+    profilesRepository.create({ id: analyzerId, type: 'agent', name: 'Analyzer' })
+    agentsRepository.create({ id: coderId, system_prompt: 'Code', permissions: [], config: { type: 'coder' } })
+    agentsRepository.create({ id: analyzerId, system_prompt: 'Analyze', permissions: [], config: { type: 'analyzer' } })
+
+    commentsRepository.create({ ticket_id: ticket.id, author_id: TEST_USER_ID, body: 'user comment' })
+    commentsRepository.create({ ticket_id: ticket.id, author_id: coderId, body: 'coder comment' })
+    commentsRepository.create({ ticket_id: ticket.id, author_id: analyzerId, body: 'analyzer comment' })
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        config: {
+          overview: false,
+          comments: true,
+          comment_filters: {
+            actor_types: ['user', 'agent'],
+            agent_types: ['coder'],
+          },
+        },
+      },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.comments).toHaveLength(2)
+    const authorIds = new Set(data.comments.map((c: any) => c.author_id))
+    expect(authorIds.has(TEST_USER_ID)).toBe(true)
+    expect(authorIds.has(coderId)).toBe(true)
+    expect(authorIds.has(analyzerId)).toBe(false)
+  })
+
+  it('should default comments to false for triage/orchestration callers', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Triage default test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Should be hidden by default for triage',
+    })
+
+    const triageId = `triage-${Date.now()}`
+    const kombuseSessionId = `session-${triageId}`
+    profilesRepository.create({ id: triageId, type: 'agent', name: 'Triage Bot' })
+    agentsRepository.create({
+      id: triageId,
+      system_prompt: 'Triage',
+      permissions: [],
+      config: { type: 'triage' },
+    })
+    const trigger = agentTriggersRepository.create({
+      agent_id: triageId,
+      event_type: 'ticket.created',
+    })
+    const invocation = agentInvocationsRepository.create({
+      agent_id: triageId,
+      trigger_id: trigger.id,
+      context: {},
+    })
+    agentInvocationsRepository.update(invocation.id, { kombuse_session_id: kombuseSessionId })
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        kombuse_session_id: kombuseSessionId,
+      },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.comments).toBeUndefined()
+    expect(data.overview.total_comments).toBe(1)
+  })
+
+  it('should return comments in newest-first order and page from newest', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Ordering test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const c1 = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'first',
+    })
+    const c2 = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'second',
+    })
+    const c3 = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'third',
+    })
+
+    const page1 = await client.callTool({
+      name: 'get_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        config: {
+          overview: false,
+          comments: true,
+          comment_filters: { limit: 2, offset: 0, include_bodies: true },
+        },
+      },
+    })
+    const data1 = parseContent(page1) as any
+    expect(data1.comments).toHaveLength(2)
+    expect(data1.comments[0].id).toBe(c3.id)
+    expect(data1.comments[1].id).toBe(c2.id)
+    expect(data1.comments_page ?? data1.meta?.comments_page).toBeDefined()
+    expect(data1.meta.comments_page.has_more).toBe(true)
+
+    const page2 = await client.callTool({
+      name: 'get_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        config: {
+          overview: false,
+          comments: true,
+          comment_filters: { limit: 2, offset: 2, include_bodies: true },
+        },
+      },
+    })
+    const data2 = parseContent(page2) as any
+    expect(data2.comments).toHaveLength(1)
+    expect(data2.comments[0].id).toBe(c1.id)
+    expect(data2.meta.comments_page.has_more).toBe(false)
+  })
+
+  it('should enforce a hard 25k byte cap on response payload', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Cap test',
+      body: 'X'.repeat(120_000),
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    for (let i = 0; i < 60; i += 1) {
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: TEST_USER_ID,
+        body: `comment-${i}: ${'Y'.repeat(4000)}`,
+      })
+    }
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        config: {
+          comments: true,
+          overview: true,
+          comment_filters: { include_bodies: true, max_body_chars: 4000, limit: 100 },
+        },
+      },
+    })
+
+    const textBlock = (result.content as Array<{ type: string; text?: string }>)[0]
+    expect(textBlock?.type).toBe('text')
+    const text = textBlock?.text ?? ''
+    expect(Buffer.byteLength(text, 'utf8')).toBeLessThanOrEqual(25_000)
+  })
+
+  it('should return comments only when config.images is false and config.comments is true', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
       author_id: TEST_USER_ID,
     })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Only comment text',
+    })
 
     const storagePath = '2026/02/test-img.png'
     writeTestFile(storagePath, TINY_PNG)
     attachmentsRepository.create({
-      ticket_id: ticket.id,
-      filename: 'img.png',
+      comment_id: comment.id,
+      filename: 'secret.png',
       mime_type: 'image/png',
       size_bytes: TINY_PNG.length,
       storage_path: storagePath,
       uploaded_by_id: TEST_USER_ID,
     })
 
-    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
-    const imageBlocks = getImageBlocks(result)
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { ticket_id: ticket.id, config: { images: false, comments: true } },
+    })
+    const data = parseContent(result) as any
 
-    expect(imageBlocks).toHaveLength(1)
-    expect(imageBlocks[0]!.mimeType).toBe('image/png')
-    expect(imageBlocks[0]!.data).toBe(TINY_PNG.toString('base64'))
+    const commentData = data.comments.find((c: any) => c.id === comment.id)
+    expect(commentData).toBeDefined()
+    expect(commentData.attachments).toBeUndefined()
+    expect(data.ticket_attachments).toBeUndefined()
+    expect(data.comment_attachments).toBeUndefined()
+    expect(countImageBlocks(result)).toBe(0)
   })
 
-  it('should return image content blocks for comment images', async () => {
+  it('should return images only when config.images is true and config.comments is false', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
@@ -204,21 +445,38 @@ describe('get_ticket', () => {
     writeTestFile(storagePath, TINY_PNG)
     attachmentsRepository.create({
       comment_id: comment.id,
-      filename: 'photo.jpeg',
+      filename: 'comment-photo.jpeg',
       mime_type: 'image/jpeg',
       size_bytes: TINY_PNG.length,
       storage_path: storagePath,
       uploaded_by_id: TEST_USER_ID,
     })
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'ticket-photo.png',
+      mime_type: 'image/png',
+      size_bytes: TINY_PNG.length,
+      storage_path: '2026/02/ticket-photo.png',
+      uploaded_by_id: TEST_USER_ID,
+    })
 
-    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
-    const imageBlocks = getImageBlocks(result)
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { ticket_id: ticket.id, config: { images: true, comments: false } },
+    })
+    const data = parseContent(result) as any
 
-    expect(imageBlocks).toHaveLength(1)
-    expect(imageBlocks[0]!.mimeType).toBe('image/jpeg')
+    expect(data.comments).toBeUndefined()
+    expect(data.ticket_attachments).toHaveLength(1)
+    expect(data.ticket_attachments[0].filename).toBe('ticket-photo.png')
+    expect(data.comment_attachments).toHaveLength(1)
+    expect(data.comment_attachments[0].comment_id).toBe(comment.id)
+    expect(data.comment_attachments[0].attachments).toHaveLength(1)
+    expect(data.comment_attachments[0].attachments[0].filename).toBe('comment-photo.jpeg')
+    expect(countImageBlocks(result)).toBe(0)
   })
 
-  it('should skip non-image attachments from image blocks', async () => {
+  it('should exclude non-image attachments from image metadata', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
@@ -235,18 +493,27 @@ describe('get_ticket', () => {
       storage_path: storagePath,
       uploaded_by_id: TEST_USER_ID,
     })
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'notes.txt',
+      mime_type: 'text/plain',
+      size_bytes: 10,
+      storage_path: '2026/02/notes.txt',
+      uploaded_by_id: TEST_USER_ID,
+    })
 
-    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
-    const imageBlocks = getImageBlocks(result)
-
-    expect(imageBlocks).toHaveLength(0)
-    // But metadata should still be in the text block
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { ticket_id: ticket.id, config: { images: true, comments: false } },
+    })
     const data = parseContent(result) as any
+
+    expect(countImageBlocks(result)).toBe(0)
     expect(data.ticket_attachments).toHaveLength(1)
     expect(data.ticket_attachments[0].filename).toBe('diagram.svg')
   })
 
-  it('should handle missing files gracefully', async () => {
+  it('should not read files from disk when returning attachment metadata', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
@@ -263,16 +530,16 @@ describe('get_ticket', () => {
       uploaded_by_id: TEST_USER_ID,
     })
 
-    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
-    const imageBlocks = getImageBlocks(result)
-    const allBlocks = getAllBlocks(result)
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { ticket_id: ticket.id, config: { images: true } },
+    })
+    const data = parseContent(result) as any
 
-    expect(imageBlocks).toHaveLength(0)
-    // Should have a skipped note
-    const skippedBlock = allBlocks.find(b => b.type === 'text' && b.text?.includes('skipped'))
-    expect(skippedBlock).toBeDefined()
-    expect(skippedBlock!.text).toContain('missing.png')
-    expect(skippedBlock!.text).toContain('file not found on disk')
+    expect(countImageBlocks(result)).toBe(0)
+    expect(data.ticket_attachments).toHaveLength(1)
+    expect(data.ticket_attachments[0].filename).toBe('missing.png')
+    expect(data.ticket_attachments[0].file_path).toContain('2026/02/nonexistent.png')
   })
 })
 

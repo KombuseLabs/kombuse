@@ -1,70 +1,302 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository, agentsRepository } from '@kombuse/persistence'
-import type { Ticket, Project, Label, CommentWithAuthorAndAttachments, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Attachment } from '@kombuse/types'
+import type { Ticket, Project, Label, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Attachment, CommentWithAuthor } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import { agentService, fileStorage } from '@kombuse/services'
 import { z } from 'zod'
-import { existsSync, readFileSync } from 'fs'
 
-const SUPPORTED_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024   // 5 MB per image
-const MAX_TOTAL_IMAGE_BYTES = 20 * 1024 * 1024  // 20 MB total
+const MAX_GET_TICKET_RESPONSE_BYTES = 25_000
+const DEFAULT_COMMENT_LIMIT = 20
+const MAX_COMMENT_LIMIT = 100
+const DEFAULT_COMMENT_BODY_CHARS = 400
+const MAX_COMMENT_BODY_CHARS = 4_000
+const DEFAULT_TICKET_BODY_PREVIEW_CHARS = 1_000
+const TRIAGE_LIKE_AGENT_TYPES = new Set(['triage', 'orchestration'])
 
-type ContentBlock = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
+const getTicketCommentFiltersSchema = z.object({
+  author_ids: z.array(z.string().min(1)).optional(),
+  actor_types: z.array(z.enum(['user', 'agent'])).optional(),
+  agent_types: z.array(z.string().min(1)).optional(),
+  limit: z.number().int().positive().max(MAX_COMMENT_LIMIT).optional(),
+  offset: z.number().int().nonnegative().optional(),
+  include_bodies: z.boolean().optional(),
+  max_body_chars: z.number().int().positive().max(MAX_COMMENT_BODY_CHARS).optional(),
+}).optional()
 
-interface ImageCollectionResult {
-  blocks: ContentBlock[]
-  totalBytes: number
-  skippedImages: string[]
+const getTicketConfigSchema = z.object({
+  images: z
+    .boolean()
+    .optional()
+    .describe('Include image attachment metadata with file paths (default: false)'),
+  comments: z
+    .boolean()
+    .optional()
+    .describe('Include comments (default: false for triage/orchestration, true otherwise)'),
+  overview: z
+    .boolean()
+    .optional()
+    .describe('Include actor/participant overview (default: true)'),
+  comment_filters: getTicketCommentFiltersSchema,
+  ticket_body_preview_chars: z
+    .number()
+    .int()
+    .positive()
+    .max(10_000)
+    .optional()
+    .describe('Max chars for ticket body preview (default: 1000)'),
+}).optional()
+
+interface GetTicketCommentFilters {
+  authorIds: Set<string> | null
+  actorTypes: Set<'user' | 'agent'> | null
+  agentTypes: Set<string> | null
+  limit: number
+  offset: number
+  includeBodies: boolean
+  maxBodyChars: number
 }
 
-function collectImageBlocks(
-  attachments: Attachment[],
-  sourceLabel: string,
-  runningTotalBytes: number
-): ImageCollectionResult {
-  const blocks: ContentBlock[] = []
-  let totalBytes = runningTotalBytes
-  const skippedImages: string[] = []
+interface GetTicketPruneStats {
+  commentsDropped: number
+  commentAttachmentGroupsDropped: number
+  ticketAttachmentsDropped: number
+  overviewParticipantsDropped: number
+  commentBodiesRemoved: boolean
+}
 
-  for (const attachment of attachments) {
-    if (!(SUPPORTED_IMAGE_MIME_TYPES as readonly string[]).includes(attachment.mime_type)) {
-      continue
-    }
+interface GetTicketPruneResult {
+  payload: Record<string, unknown>
+  bytes: number
+  truncated: boolean
+  stats: GetTicketPruneStats
+}
 
-    if (attachment.size_bytes > MAX_IMAGE_SIZE_BYTES) {
-      skippedImages.push(`${attachment.filename} (${sourceLabel}): exceeds ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB limit`)
-      continue
-    }
+function utf8ByteLength(value: string): number {
+  return Buffer.byteLength(value, 'utf8')
+}
 
-    if (totalBytes + attachment.size_bytes > MAX_TOTAL_IMAGE_BYTES) {
-      skippedImages.push(`${attachment.filename} (${sourceLabel}): would exceed ${MAX_TOTAL_IMAGE_BYTES / 1024 / 1024}MB total limit`)
-      continue
-    }
+function truncateText(value: string, maxChars: number): { value: string; truncated: boolean } {
+  if (value.length <= maxChars) {
+    return { value, truncated: false }
+  }
+  if (maxChars <= 16) {
+    return { value: value.slice(0, maxChars), truncated: true }
+  }
+  return { value: `${value.slice(0, maxChars - 16)}...[truncated]`, truncated: true }
+}
 
-    const absolutePath = fileStorage.getAbsolutePath(attachment.storage_path)
-    if (!existsSync(absolutePath)) {
-      skippedImages.push(`${attachment.filename} (${sourceLabel}): file not found on disk`)
-      continue
-    }
+function isImageAttachment(attachment: Attachment): boolean {
+  return attachment.mime_type.startsWith('image/')
+}
 
-    const buffer = readFileSync(absolutePath)
-    const base64Data = buffer.toString('base64')
-    totalBytes += buffer.length
+function toAttachmentMetaWithPath(attachment: Attachment) {
+  return {
+    id: attachment.id,
+    filename: attachment.filename,
+    mime_type: attachment.mime_type,
+    size_bytes: attachment.size_bytes,
+    file_path: fileStorage.getAbsolutePath(attachment.storage_path),
+  }
+}
 
-    blocks.push({
-      type: 'text' as const,
-      text: `Image from ${sourceLabel}: ${attachment.filename} (id: ${attachment.id})`,
-    })
+function buildTicketSummary(
+  ticket: NonNullable<ReturnType<typeof ticketsRepository.getWithRelations>>,
+  bodyPreviewChars: number
+) {
+  const bodyPreview = ticket.body
+    ? truncateText(ticket.body, bodyPreviewChars)
+    : null
 
-    blocks.push({
-      type: 'image' as const,
-      data: base64Data,
-      mimeType: attachment.mime_type,
-    })
+  return {
+    id: ticket.id,
+    project_id: ticket.project_id,
+    title: ticket.title,
+    status: ticket.status,
+    priority: ticket.priority,
+    author_id: ticket.author_id,
+    assignee_id: ticket.assignee_id,
+    created_at: ticket.created_at,
+    updated_at: ticket.updated_at,
+    last_activity_at: ticket.last_activity_at,
+    body_preview: bodyPreview?.value ?? null,
+    body_preview_truncated: bodyPreview?.truncated ?? false,
+    labels: ticket.labels.map((label) => ({
+      id: label.id,
+      name: label.name,
+      color: label.color,
+    })),
+    assignee: ticket.assignee
+      ? {
+        id: ticket.assignee.id,
+        type: ticket.assignee.type,
+        name: ticket.assignee.name,
+      }
+      : null,
+    author: {
+      id: ticket.author.id,
+      type: ticket.author.type,
+      name: ticket.author.name,
+    },
+  }
+}
+
+function parseGetTicketCommentFilters(
+  config: z.infer<typeof getTicketConfigSchema>
+): GetTicketCommentFilters {
+  const filters = config?.comment_filters
+  const authorIds = filters?.author_ids && filters.author_ids.length > 0
+    ? new Set(filters.author_ids)
+    : null
+  const actorTypes = filters?.actor_types && filters.actor_types.length > 0
+    ? new Set(filters.actor_types)
+    : null
+  const agentTypes = filters?.agent_types && filters.agent_types.length > 0
+    ? new Set(filters.agent_types)
+    : null
+
+  return {
+    authorIds,
+    actorTypes,
+    agentTypes,
+    limit: filters?.limit ?? DEFAULT_COMMENT_LIMIT,
+    offset: filters?.offset ?? 0,
+    includeBodies: filters?.include_bodies ?? true,
+    maxBodyChars: filters?.max_body_chars ?? DEFAULT_COMMENT_BODY_CHARS,
+  }
+}
+
+function pruneGetTicketPayloadToHardCap(
+  payload: Record<string, unknown>,
+  maxBytes: number
+): GetTicketPruneResult {
+  const working = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>
+  const stats: GetTicketPruneStats = {
+    commentsDropped: 0,
+    commentAttachmentGroupsDropped: 0,
+    ticketAttachmentsDropped: 0,
+    overviewParticipantsDropped: 0,
+    commentBodiesRemoved: false,
   }
 
-  return { blocks, totalBytes, skippedImages }
+  const measure = () => utf8ByteLength(JSON.stringify(working))
+  let bytes = measure()
+  if (bytes <= maxBytes) {
+    return { payload: working, bytes, truncated: false, stats }
+  }
+
+  const comments = Array.isArray(working.comments) ? working.comments as Array<Record<string, unknown>> : null
+  if (comments) {
+    for (const comment of comments) {
+      if ('body' in comment) {
+        delete comment.body
+        comment.body_omitted = true
+        stats.commentBodiesRemoved = true
+      }
+    }
+    bytes = measure()
+  }
+
+  while (comments && comments.length > 0 && bytes > maxBytes) {
+    comments.pop()
+    stats.commentsDropped += 1
+    bytes = measure()
+  }
+
+  const commentAttachments = Array.isArray(working.comment_attachments)
+    ? working.comment_attachments as Array<unknown>
+    : null
+  while (commentAttachments && commentAttachments.length > 0 && bytes > maxBytes) {
+    commentAttachments.pop()
+    stats.commentAttachmentGroupsDropped += 1
+    bytes = measure()
+  }
+
+  const ticketAttachments = Array.isArray(working.ticket_attachments)
+    ? working.ticket_attachments as Array<unknown>
+    : null
+  while (ticketAttachments && ticketAttachments.length > 0 && bytes > maxBytes) {
+    ticketAttachments.pop()
+    stats.ticketAttachmentsDropped += 1
+    bytes = measure()
+  }
+
+  const overview = (
+    working.overview
+    && typeof working.overview === 'object'
+    && !Array.isArray(working.overview)
+  )
+    ? working.overview as Record<string, unknown>
+    : null
+
+  const participants = overview && Array.isArray(overview.participants)
+    ? overview.participants as Array<Record<string, unknown>>
+    : null
+
+  if (participants && bytes > maxBytes) {
+    for (const participant of participants) {
+      if ('description' in participant) {
+        delete participant.description
+      }
+    }
+    bytes = measure()
+  }
+
+  while (participants && participants.length > 0 && bytes > maxBytes) {
+    participants.pop()
+    stats.overviewParticipantsDropped += 1
+    bytes = measure()
+  }
+
+  const ticket = (
+    working.ticket
+    && typeof working.ticket === 'object'
+    && !Array.isArray(working.ticket)
+  )
+    ? working.ticket as Record<string, unknown>
+    : null
+  if (ticket && bytes > maxBytes) {
+    delete ticket.body_preview
+    delete ticket.body_preview_truncated
+    bytes = measure()
+  }
+
+  if (bytes > maxBytes) {
+    const minimal = (
+      payload.ticket
+      && typeof payload.ticket === 'object'
+      && !Array.isArray(payload.ticket)
+    )
+      ? payload.ticket as Record<string, unknown>
+      : {}
+
+    const fallback = {
+      ticket: {
+        id: minimal.id ?? null,
+        project_id: minimal.project_id ?? null,
+        title: minimal.title ?? null,
+        status: minimal.status ?? null,
+      },
+      meta: {
+        cap_bytes: maxBytes,
+        truncated: true,
+        fallback_minimal: true,
+      },
+    }
+
+    return {
+      payload: fallback,
+      bytes: utf8ByteLength(JSON.stringify(fallback)),
+      truncated: true,
+      stats,
+    }
+  }
+
+  return {
+    payload: working,
+    bytes,
+    truncated: true,
+    stats,
+  }
 }
 
 /**
@@ -127,16 +359,36 @@ export function registerTicketTools(server: McpServer): void {
     'get_ticket',
     {
       description:
-        'Get a ticket by ID including all its comments. Returns the ticket details and an array of comments in chronological order. Each comment includes attachment metadata (filename, mime_type, size_bytes, file_path) if any files are attached. Raster images (PNG, JPEG, GIF, WebP) are also returned as image content blocks with base64 data.',
+        'Get a ticket by ID with a hard byte cap sized for <=25k tokens. Supports overview, filtered comments, and image attachment metadata (file paths only).',
       inputSchema: {
         ticket_id: z
           .number()
           .int()
           .positive()
           .describe('The ID of the ticket to retrieve'),
+        kombuse_session_id: z
+          .string()
+          .optional()
+          .describe('Optional caller session ID for caller-aware defaults'),
+        config: getTicketConfigSchema
+          .describe('Optional sections and comment filters'),
       },
     },
-    async ({ ticket_id }) => {
+    async ({ ticket_id, kombuse_session_id, config }) => {
+      const agentContext = resolveAgentContext(kombuse_session_id)
+      const callerAgentType = typeof agentContext?.agent.config?.type === 'string'
+        ? agentContext.agent.config.type
+        : undefined
+      const isTriageLikeCaller = callerAgentType
+        ? TRIAGE_LIKE_AGENT_TYPES.has(callerAgentType)
+        : false
+
+      const includeOverview = config?.overview ?? true
+      const includeImages = config?.images ?? false
+      const includeComments = config?.comments ?? !isTriageLikeCaller
+      const ticketBodyPreviewChars = config?.ticket_body_preview_chars ?? DEFAULT_TICKET_BODY_PREVIEW_CHARS
+      const parsedFilters = parseGetTicketCommentFilters(config)
+
       const ticket = ticketsRepository.getWithRelations(ticket_id)
 
       if (!ticket) {
@@ -151,70 +403,243 @@ export function registerTicketTools(server: McpServer): void {
         }
       }
 
-      const comments = commentsRepository.getByTicket(ticket_id)
-      const ticketAttachments = attachmentsRepository.getByTicket(ticket_id)
-      const attachmentsByComment = attachmentsRepository.getByTicketComments(ticket_id)
-
-      const ticketAttachmentsMeta = ticketAttachments.map((a) => ({
-        id: a.id,
-        filename: a.filename,
-        mime_type: a.mime_type,
-        size_bytes: a.size_bytes,
-        file_path: fileStorage.getAbsolutePath(a.storage_path),
-      }))
-
-      const commentsWithAttachments = comments.map((comment) => ({
-        ...comment,
-        attachments: (attachmentsByComment[comment.id] ?? []).map((a) => ({
-          id: a.id,
-          filename: a.filename,
-          mime_type: a.mime_type,
-          size_bytes: a.size_bytes,
-          file_path: fileStorage.getAbsolutePath(a.storage_path),
-        })),
-      }))
-
-      const result = {
-        ticket,
-        ticket_attachments: ticketAttachmentsMeta,
-        comments: commentsWithAttachments,
+      const response: Record<string, unknown> = {
+        ticket: buildTicketSummary(ticket, ticketBodyPreviewChars),
       }
 
-      const content: ContentBlock[] = [
-        { type: 'text' as const, text: JSON.stringify(result, null, 2) },
-      ]
+      const commentsNeeded = includeOverview || includeComments || includeImages
+      const allComments = commentsNeeded
+        ? commentsRepository.getByTicket(ticket_id).slice().reverse()
+        : []
+      const agentTypeCache = new Map<string, string | null>()
 
-      // Collect image content blocks from ticket description attachments
-      const ticketImages = collectImageBlocks(ticketAttachments, 'ticket description', 0)
-      content.push(...ticketImages.blocks)
-
-      // Collect image content blocks from comment attachments
-      let runningTotal = ticketImages.totalBytes
-      const allSkipped = [...ticketImages.skippedImages]
-
-      for (const comment of comments) {
-        const commentAttachments = attachmentsByComment[comment.id] ?? []
-        if (commentAttachments.length === 0) continue
-
-        const commentImages = collectImageBlocks(
-          commentAttachments,
-          `comment #${comment.id}`,
-          runningTotal
-        )
-        content.push(...commentImages.blocks)
-        runningTotal = commentImages.totalBytes
-        allSkipped.push(...commentImages.skippedImages)
+      const resolveCommentAgentType = (comment: CommentWithAuthor): string | null => {
+        if (comment.author.type !== 'agent') return null
+        if (agentTypeCache.has(comment.author_id)) {
+          return agentTypeCache.get(comment.author_id) ?? null
+        }
+        const agent = agentsRepository.get(comment.author_id)
+        const agentType = typeof agent?.config?.type === 'string' ? agent.config.type : null
+        agentTypeCache.set(comment.author_id, agentType)
+        return agentType
       }
 
-      // Add skipped images summary if any
-      if (allSkipped.length > 0) {
-        content.push({
-          type: 'text' as const,
-          text: `Note: ${allSkipped.length} image(s) skipped:\n${allSkipped.map(s => `- ${s}`).join('\n')}`,
+      if (includeOverview) {
+        const participantMap = new Map<string, {
+          author_id: string
+          actor_type: 'user' | 'agent'
+          name: string
+          description: string | null
+          agent_type: string | null
+          comment_count: number
+          first_commented_at: string
+          last_commented_at: string
+        }>()
+
+        for (const comment of allComments) {
+          const existing = participantMap.get(comment.author_id)
+          const description = comment.author.description
+            ? truncateText(comment.author.description, 240).value
+            : null
+
+          if (!existing) {
+            participantMap.set(comment.author_id, {
+              author_id: comment.author_id,
+              actor_type: comment.author.type,
+              name: comment.author.name,
+              description,
+              agent_type: resolveCommentAgentType(comment),
+              comment_count: 1,
+              first_commented_at: comment.created_at,
+              last_commented_at: comment.created_at,
+            })
+            continue
+          }
+
+          existing.comment_count += 1
+          if (comment.created_at < existing.first_commented_at) {
+            existing.first_commented_at = comment.created_at
+          }
+          if (comment.created_at > existing.last_commented_at) {
+            existing.last_commented_at = comment.created_at
+          }
+        }
+
+        const participants = [...participantMap.values()].sort((a, b) => {
+          if (b.comment_count !== a.comment_count) return b.comment_count - a.comment_count
+          return b.last_commented_at.localeCompare(a.last_commented_at)
+        })
+
+        response.overview = {
+          total_comments: allComments.length,
+          participant_count: participants.length,
+          participants,
+        }
+      }
+
+      const matchesCommentFilters = (comment: CommentWithAuthor): boolean => {
+        if (parsedFilters.authorIds && !parsedFilters.authorIds.has(comment.author_id)) {
+          return false
+        }
+        if (parsedFilters.actorTypes && !parsedFilters.actorTypes.has(comment.author.type)) {
+          return false
+        }
+        if (parsedFilters.agentTypes) {
+          if (comment.author.type === 'agent') {
+            const commentAgentType = resolveCommentAgentType(comment)
+            if (!commentAgentType || !parsedFilters.agentTypes.has(commentAgentType)) {
+              return false
+            }
+          } else if (!parsedFilters.actorTypes || !parsedFilters.actorTypes.has('user')) {
+            // With agent_types present and no explicit user actor filter, default to agent-only.
+            return false
+          }
+        }
+        return true
+      }
+
+      const filteredComments = allComments.filter(matchesCommentFilters)
+      const pagedComments = filteredComments.slice(
+        parsedFilters.offset,
+        parsedFilters.offset + parsedFilters.limit
+      )
+      const pagedCommentIds = new Set(pagedComments.map((comment) => comment.id))
+
+      if (includeComments) {
+        response.comments = pagedComments.map((comment) => {
+          const commentPayload: Record<string, unknown> = {
+            id: comment.id,
+            ticket_id: comment.ticket_id,
+            author_id: comment.author_id,
+            author_name: comment.author.name,
+            actor_type: comment.author.type,
+            agent_type: resolveCommentAgentType(comment),
+            parent_id: comment.parent_id,
+            is_edited: comment.is_edited,
+            created_at: comment.created_at,
+            updated_at: comment.updated_at,
+          }
+
+          if (parsedFilters.includeBodies) {
+            const body = truncateText(comment.body, parsedFilters.maxBodyChars)
+            commentPayload.body = body.value
+            commentPayload.body_truncated = body.truncated
+          }
+
+          return commentPayload
         })
       }
 
-      return { content }
+      if (includeImages) {
+        const ticketAttachments = attachmentsRepository.getByTicket(ticket_id)
+        const attachmentsByComment = attachmentsRepository.getByTicketComments(ticket_id)
+
+        response.ticket_attachments = ticketAttachments
+          .filter(isImageAttachment)
+          .map(toAttachmentMetaWithPath)
+
+        response.comment_attachments = Object.entries(attachmentsByComment)
+          .filter(([commentId]) => pagedCommentIds.has(Number(commentId)))
+          .map(([commentId, commentAttachments]) => ({
+            comment_id: Number(commentId),
+            attachments: commentAttachments
+              .filter(isImageAttachment)
+              .map(toAttachmentMetaWithPath),
+          }))
+          .filter((entry) => entry.attachments.length > 0)
+      }
+
+      response.meta = {
+        cap_bytes: MAX_GET_TICKET_RESPONSE_BYTES,
+        caller_agent_type: callerAgentType ?? null,
+        section_flags: {
+          overview: includeOverview,
+          comments: includeComments,
+          images: includeImages,
+        },
+        defaults_applied: {
+          comments: config?.comments === undefined,
+          overview: config?.overview === undefined,
+          images: config?.images === undefined,
+        },
+        comments_page: {
+          total_filtered: filteredComments.length,
+          returned: includeComments ? pagedComments.length : 0,
+          offset: parsedFilters.offset,
+          limit: parsedFilters.limit,
+          has_more: parsedFilters.offset + pagedComments.length < filteredComments.length,
+          filters: {
+            author_ids: parsedFilters.authorIds ? [...parsedFilters.authorIds] : undefined,
+            actor_types: parsedFilters.actorTypes ? [...parsedFilters.actorTypes] : undefined,
+            agent_types: parsedFilters.agentTypes ? [...parsedFilters.agentTypes] : undefined,
+          },
+        },
+        truncated: false,
+      }
+
+      const prune = pruneGetTicketPayloadToHardCap(response, MAX_GET_TICKET_RESPONSE_BYTES)
+      const finalPayload = prune.payload
+
+      const finalMeta = (
+        finalPayload.meta
+        && typeof finalPayload.meta === 'object'
+        && !Array.isArray(finalPayload.meta)
+      )
+        ? finalPayload.meta as Record<string, unknown>
+        : {}
+
+      finalMeta.truncated = prune.truncated
+      finalMeta.prune_stats = prune.stats
+      finalPayload.meta = finalMeta
+
+      let serialized = JSON.stringify(finalPayload)
+      let bytes = utf8ByteLength(serialized)
+      if (bytes > MAX_GET_TICKET_RESPONSE_BYTES) {
+        const minimalTicket = (
+          finalPayload.ticket
+          && typeof finalPayload.ticket === 'object'
+          && !Array.isArray(finalPayload.ticket)
+        )
+          ? finalPayload.ticket as Record<string, unknown>
+          : {}
+        const fallback = {
+          ticket: {
+            id: minimalTicket.id ?? null,
+            project_id: minimalTicket.project_id ?? null,
+            title: minimalTicket.title ?? null,
+            status: minimalTicket.status ?? null,
+          },
+          meta: {
+            cap_bytes: MAX_GET_TICKET_RESPONSE_BYTES,
+            truncated: true,
+            fallback_minimal: true,
+          },
+        }
+        serialized = JSON.stringify(fallback)
+        bytes = utf8ByteLength(serialized)
+      }
+
+      const payloadWithBytes = JSON.parse(serialized) as Record<string, unknown>
+      const payloadWithBytesMeta = (
+        payloadWithBytes.meta
+        && typeof payloadWithBytes.meta === 'object'
+        && !Array.isArray(payloadWithBytes.meta)
+      )
+        ? payloadWithBytes.meta as Record<string, unknown>
+        : {}
+      payloadWithBytesMeta.bytes_used = bytes
+      payloadWithBytes.meta = payloadWithBytesMeta
+      serialized = JSON.stringify(payloadWithBytes)
+      if (utf8ByteLength(serialized) > MAX_GET_TICKET_RESPONSE_BYTES) {
+        delete payloadWithBytesMeta.prune_stats
+        serialized = JSON.stringify(payloadWithBytes)
+      }
+
+      return {
+        content: [
+          { type: 'text' as const, text: serialized },
+        ],
+      }
     }
   )
 
