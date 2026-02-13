@@ -16,6 +16,7 @@ import { Database, RefreshCw } from 'lucide-react'
 const DEFAULT_LIMIT = 100
 const MAX_LIMIT = 500
 const NO_SORT_VALUE = '__kombuse_no_sort__'
+const NO_FILTER_VALUE = '__kombuse_no_filter__'
 
 type SortDirection = 'asc' | 'desc'
 
@@ -38,6 +39,9 @@ export function DatabasePage() {
   const [page, setPage] = useState(1)
   const [sortColumn, setSortColumn] = useState('')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [filterColumn, setFilterColumn] = useState('')
+  const [filterValue, setFilterValue] = useState('')
+  const [availableColumns, setAvailableColumns] = useState<string[]>([])
   const {
     data: tablesResponse,
     isLoading: isLoadingTables,
@@ -59,23 +63,40 @@ export function DatabasePage() {
       setPage(1)
       setSortColumn('')
       setSortDirection('asc')
+      setFilterColumn('')
+      setFilterValue('')
+      setAvailableColumns([])
     }
   }, [tables, selectedTable])
 
   const offset = (page - 1) * limit
-  const orderByClause = sortColumn
-    ? ` ORDER BY ${quoteIdentifier(sortColumn)} ${sortDirection.toUpperCase()}`
-    : ''
+  const normalizedFilterValue = filterValue.trim()
+  const hasActiveFilter = !!filterColumn && normalizedFilterValue.length > 0
 
-  const queryInput = useMemo(
-    () =>
-      selectedTable
-        ? {
-            sql: `SELECT * FROM ${quoteIdentifier(selectedTable)}${orderByClause} LIMIT ${limit} OFFSET ${offset}`,
-          }
-        : undefined,
-    [selectedTable, orderByClause, limit, offset]
-  )
+  const queryInput = useMemo(() => {
+    if (!selectedTable) return undefined
+
+    const whereClause = hasActiveFilter
+      ? ` WHERE CAST(${quoteIdentifier(filterColumn)} AS TEXT) LIKE ?`
+      : ''
+    const orderByClause = sortColumn
+      ? ` ORDER BY ${quoteIdentifier(sortColumn)} ${sortDirection.toUpperCase()}`
+      : ''
+
+    return {
+      sql: `SELECT * FROM ${quoteIdentifier(selectedTable)}${whereClause}${orderByClause} LIMIT ${limit} OFFSET ${offset}`,
+      params: hasActiveFilter ? [`%${normalizedFilterValue}%`] : undefined,
+    }
+  }, [
+    selectedTable,
+    hasActiveFilter,
+    filterColumn,
+    normalizedFilterValue,
+    sortColumn,
+    sortDirection,
+    limit,
+    offset,
+  ])
 
   const {
     data: queryResult,
@@ -86,7 +107,7 @@ export function DatabasePage() {
   } = useDatabaseQuery(queryInput)
 
   const rows = useMemo(() => queryResult?.rows ?? [], [queryResult])
-  const columns = useMemo(() => {
+  const rowColumns = useMemo(() => {
     const keys = new Set<string>()
     for (const row of rows) {
       for (const key of Object.keys(row)) {
@@ -97,10 +118,32 @@ export function DatabasePage() {
   }, [rows])
 
   useEffect(() => {
+    if (rowColumns.length === 0) return
+
+    setAvailableColumns((previous) => {
+      if (
+        previous.length === rowColumns.length &&
+        previous.every((column, index) => column === rowColumns[index])
+      ) {
+        return previous
+      }
+      return rowColumns
+    })
+  }, [rowColumns])
+
+  const columns = availableColumns.length > 0 ? availableColumns : rowColumns
+
+  useEffect(() => {
     if (sortColumn && !columns.includes(sortColumn)) {
       setSortColumn('')
     }
   }, [columns, sortColumn])
+
+  useEffect(() => {
+    if (filterColumn && !columns.includes(filterColumn)) {
+      setFilterColumn('')
+    }
+  }, [columns, filterColumn])
 
   const isFetching = isFetchingTables || isFetchingRows
   const canGoPreviousPage = page > 1
@@ -140,6 +183,9 @@ export function DatabasePage() {
                 setPage(1)
                 setSortColumn('')
                 setSortDirection('asc')
+                setFilterColumn('')
+                setFilterValue('')
+                setAvailableColumns([])
               }}
             >
               <SelectTrigger id="database-table">
@@ -222,6 +268,48 @@ export function DatabasePage() {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="w-[220px]">
+            <Label htmlFor="database-filter-column" className="mb-2 block text-sm">
+              Filter Column
+            </Label>
+            <Select
+              value={filterColumn || NO_FILTER_VALUE}
+              onValueChange={(value) => {
+                setFilterColumn(value === NO_FILTER_VALUE ? '' : value)
+                setPage(1)
+              }}
+              disabled={columns.length === 0}
+            >
+              <SelectTrigger id="database-filter-column">
+                <SelectValue placeholder="No filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_FILTER_VALUE}>No filter</SelectItem>
+                {columns.map((column) => (
+                  <SelectItem key={column} value={column}>
+                    {column}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-[260px]">
+            <Label htmlFor="database-filter-value" className="mb-2 block text-sm">
+              Filter Value
+            </Label>
+            <Input
+              id="database-filter-value"
+              value={filterValue}
+              onChange={(event) => {
+                setFilterValue(event.target.value)
+                setPage(1)
+              }}
+              placeholder="Contains text..."
+              disabled={!filterColumn}
+            />
+          </div>
         </div>
       </div>
 
@@ -257,6 +345,7 @@ export function DatabasePage() {
               {' · '}Page {page}
               {' · '}Offset {offset}
               {sortColumn ? ` · Sorted by ${sortColumn} (${sortDirection})` : ''}
+              {hasActiveFilter ? ` · Filter ${filterColumn} contains "${normalizedFilterValue}"` : ''}
             </div>
             {rows.length === 0 ? (
               <div className="text-sm text-muted-foreground">
