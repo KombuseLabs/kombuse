@@ -707,6 +707,8 @@ import { PermissionEditor, PermissionRuleForm, PermissionRuleList, PermissionRul
 - `onDelete`: `() => void` — delete callback
 - `className`: Optional class name
 
+Tool presets in `PermissionRuleForm` include Kombuse MCP actions such as `Get Ticket`, `Get Ticket Comment`, `Add Comment`, and `Update Ticket`.
+
 ### Agent Picker
 
 ```typescript
@@ -746,8 +748,7 @@ import { AgentCard, AgentDetail } from '@kombuse/ui/components'
   isToggling={false}
 />
 
-// Detail panel — shows agent config with copyable agent ID in the header
-// Includes "Available in chat" toggle to control whether the agent appears in AgentPicker
+// Detail panel — tabbed editor with copyable agent ID in the header
 <AgentDetail
   agent={agent}
   profile={profile}
@@ -759,6 +760,11 @@ import { AgentCard, AgentDetail } from '@kombuse/ui/components'
 ```
 
 Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users can easily reference it in trigger conditions. `AgentDetail` includes a click-to-copy button next to the ID.
+
+`AgentDetail` is split into two tabs:
+- `Basic Info`: name, description, avatar
+- `Configuration`: available-in-chat toggle, backend override, model override, system prompt, permissions, triggers
+- Save action: rendered in a persistent footer and shown only when there are unsaved changes
 
 ### Prompt Editor
 

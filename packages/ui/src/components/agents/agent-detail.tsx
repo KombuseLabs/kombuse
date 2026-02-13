@@ -4,11 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { BACKEND_TYPES, type Agent, type AgentConfig, type AgentTrigger, type BackendType, type Permission, type Profile, type UpdateAgentInput, type UpdateProfileInput } from '@kombuse/types'
 import { X, Trash2, Save, Copy, Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Label } from '../../base/label'
 import { Switch } from '../../base/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../base/tabs'
 import { Textarea } from '../../base/textarea'
 import { PromptEditor } from '../prompt-editor'
 import { AvatarPicker, getAvatarIcon } from './avatar-picker'
@@ -80,6 +81,7 @@ function AgentDetail({
   const [modelPreference, setModelPreference] = useState(
     typeof agent.config?.model === 'string' ? agent.config.model : ''
   )
+  const [activeTab, setActiveTab] = useState('basic-info')
 
   const [idCopied, setIdCopied] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -118,6 +120,7 @@ function AgentDetail({
     setEnabledForChat(agent.config?.enabled_for_chat ?? false)
     setBackendChoice(normalizeBackendChoice(agent.config?.backend_type))
     setModelPreference(typeof agent.config?.model === 'string' ? agent.config.model : '')
+    setActiveTab('basic-info')
   }, [agent, profile])
 
   const handleSave = async () => {
@@ -210,129 +213,143 @@ function AgentDetail({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto space-y-6">
-        {/* Name */}
-        <div className="space-y-2">
-          <Label htmlFor="agent-name">Name</Label>
-          <Input
-            id="agent-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Agent name"
-          />
-        </div>
+        <CardContent className="flex-1 min-h-0 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="basic-info">Basic Info</TabsTrigger>
+              <TabsTrigger value="configuration">Configuration</TabsTrigger>
+            </TabsList>
 
-        {/* Description */}
-        <div className="space-y-2">
-          <Label htmlFor="agent-description">Description</Label>
-          <Textarea
-            id="agent-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="What does this agent do?"
-            className="min-h-20"
-          />
-        </div>
+            <TabsContent value="basic-info" className="min-h-0 overflow-y-auto pr-1">
+              <div className="space-y-6">
+                {/* Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="agent-name">Name</Label>
+                  <Input
+                    id="agent-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Agent name"
+                  />
+                </div>
 
-        {/* Avatar */}
-        <div className="space-y-2">
-          <Label>Avatar</Label>
-          <AvatarPicker value={avatar} onChange={setAvatar} />
-        </div>
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="agent-description">Description</Label>
+                  <Textarea
+                    id="agent-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="What does this agent do?"
+                    className="min-h-20"
+                  />
+                </div>
 
-        {/* Available in chat */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="enabled-for-chat">Available in chat</Label>
-            <p className="text-xs text-muted-foreground">Show this agent in the chat agent picker</p>
-          </div>
-          <Switch
-            id="enabled-for-chat"
-            checked={enabledForChat}
-            onCheckedChange={setEnabledForChat}
-          />
-        </div>
+                {/* Avatar */}
+                <div className="space-y-2">
+                  <Label>Avatar</Label>
+                  <AvatarPicker value={avatar} onChange={setAvatar} />
+                </div>
+              </div>
+            </TabsContent>
 
-        {/* Execution Preferences */}
-        <div className="space-y-4 border-t pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="agent-backend-override">Backend Override</Label>
-            <select
-              id="agent-backend-override"
-              value={backendChoice}
-              onChange={(event) => setBackendChoice(event.target.value as BackendChoice)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="global">Use global default</option>
-              <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
-              <option value={BACKEND_TYPES.CODEX}>Codex</option>
-              {backendChoice === BACKEND_TYPES.MOCK ? (
-                <option value={BACKEND_TYPES.MOCK}>Mock</option>
-              ) : null}
-            </select>
-          </div>
+            <TabsContent value="configuration" className="min-h-0 overflow-y-auto pr-1">
+              <div className="space-y-6">
+                {/* Available in chat */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="enabled-for-chat">Available in chat</Label>
+                    <p className="text-xs text-muted-foreground">Show this agent in the chat agent picker</p>
+                  </div>
+                  <Switch
+                    id="enabled-for-chat"
+                    checked={enabledForChat}
+                    onCheckedChange={setEnabledForChat}
+                  />
+                </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="agent-model-override">Model Override</Label>
-            <Input
-              id="agent-model-override"
-              value={modelPreference}
-              onChange={(event) => setModelPreference(event.target.value)}
-              placeholder="Leave empty to use global default"
-            />
-            <p className="text-xs text-muted-foreground">
-              Stored as a preference and applied when the selected backend supports explicit model selection.
-            </p>
-          </div>
-        </div>
+                {/* Execution Preferences */}
+                <div className="space-y-4 border-t pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="agent-backend-override">Backend Override</Label>
+                    <select
+                      id="agent-backend-override"
+                      value={backendChoice}
+                      onChange={(event) => setBackendChoice(event.target.value as BackendChoice)}
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="global">Use global default</option>
+                      <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
+                      <option value={BACKEND_TYPES.CODEX}>Codex</option>
+                      {backendChoice === BACKEND_TYPES.MOCK ? (
+                        <option value={BACKEND_TYPES.MOCK}>Mock</option>
+                      ) : null}
+                    </select>
+                  </div>
 
-        {/* System Prompt */}
-        <div className="space-y-2">
-          <Label>System Prompt</Label>
-          <PromptEditor
-            value={systemPrompt}
-            onChange={setSystemPrompt}
-            placeholder="Enter the agent's system prompt..."
-            showAvailableVariables
-          />
-        </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="agent-model-override">Model Override</Label>
+                    <Input
+                      id="agent-model-override"
+                      value={modelPreference}
+                      onChange={(event) => setModelPreference(event.target.value)}
+                      placeholder="Leave empty to use global default"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Stored as a preference and applied when the selected backend supports explicit model selection.
+                    </p>
+                  </div>
+                </div>
 
-        {/* Permissions */}
-        <div className="pt-4 border-t">
-          <PermissionEditor permissions={permissions} onChange={setPermissions} />
-        </div>
+                {/* System Prompt */}
+                <div className="space-y-2">
+                  <Label>System Prompt</Label>
+                  <PromptEditor
+                    value={systemPrompt}
+                    onChange={setSystemPrompt}
+                    placeholder="Enter the agent's system prompt..."
+                    showAvailableVariables
+                  />
+                </div>
 
-        {/* Triggers */}
-        {onCreateTrigger && onUpdateTrigger && onDeleteTrigger && onToggleTrigger && (
-          <div className="pt-4 border-t">
-            <TriggerEditor
-              agentId={agent.id}
-              triggers={triggers}
-              onCreateTrigger={onCreateTrigger}
-              onUpdateTrigger={onUpdateTrigger}
-              onDeleteTrigger={onDeleteTrigger}
-              onToggleTrigger={onToggleTrigger}
-              isCreating={isCreatingTrigger}
-              isUpdating={isUpdatingTrigger}
-              deletingId={deletingTriggerId}
-              togglingId={togglingTriggerId}
-            />
-          </div>
-        )}
+                {/* Permissions */}
+                <div className="pt-4 border-t">
+                  <PermissionEditor permissions={permissions} onChange={setPermissions} />
+                </div>
 
-        {/* Save Button */}
-        {onSave && hasChanges && (
-          <div className="flex justify-end pt-4 border-t">
+                {/* Triggers */}
+                {onCreateTrigger && onUpdateTrigger && onDeleteTrigger && onToggleTrigger && (
+                  <div className="pt-4 border-t">
+                    <TriggerEditor
+                      agentId={agent.id}
+                      triggers={triggers}
+                      onCreateTrigger={onCreateTrigger}
+                      onUpdateTrigger={onUpdateTrigger}
+                      onDeleteTrigger={onDeleteTrigger}
+                      onToggleTrigger={onToggleTrigger}
+                      isCreating={isCreatingTrigger}
+                      isUpdating={isUpdatingTrigger}
+                      deletingId={deletingTriggerId}
+                      togglingId={togglingTriggerId}
+                    />
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+
+        <CardFooter className="shrink-0 justify-end border-t">
+          {onSave && hasChanges && (
             <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
               <Save className="size-4 mr-2" />
               {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
+          )}
+        </CardFooter>
+      </Card>
+    )
+  }
 
 export { AgentDetail }
 export type { AgentDetailProps }
