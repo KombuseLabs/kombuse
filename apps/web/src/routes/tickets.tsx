@@ -15,6 +15,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
@@ -192,6 +193,7 @@ export function Tickets() {
   const [editBody, setEditBody] = useState("");
   const [newTicketTitle, setNewTicketTitle] = useState("");
   const [newTicketBody, setNewTicketBody] = useState("");
+  const [newTicketTriggersEnabled, setNewTicketTriggersEnabled] = useState(true);
   const newTicketBodyRef = useRef<HTMLTextAreaElement>(null);
   const { textareaProps: newTicketAutocomplete, AutocompletePortal: NewTicketAutocomplete } = useTextareaAutocomplete({
     value: newTicketBody,
@@ -351,6 +353,7 @@ export function Tickets() {
   const handleStartCreate = () => {
     setNewTicketTitle("");
     setNewTicketBody("");
+    setNewTicketTriggersEnabled(true);
     navigate({ pathname: `/projects/${projectId}/tickets/new`, search: searchParams.toString() });
   };
 
@@ -360,6 +363,7 @@ export function Tickets() {
       {
         title: newTicketTitle.trim(),
         body: newTicketBody.trim() || undefined,
+        triggers_enabled: newTicketTriggersEnabled,
         project_id: projectId,
         author_id: "user-1", // TODO: Get from auth context
       },
@@ -379,6 +383,7 @@ export function Tickets() {
           createClearFiles();
           setNewTicketTitle("");
           setNewTicketBody("");
+          setNewTicketTriggersEnabled(true);
           navigate({ pathname: `/projects/${projectId}/tickets/${newTicket.id}`, search: searchParams.toString() });
         },
       }
@@ -657,6 +662,22 @@ export function Tickets() {
                             onChange={createHandleFileInputChange}
                           />
                         </div>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="new-ticket-triggers">Agent Triggers</Label>
+                          <p className="text-xs text-muted-foreground">
+                            {newTicketTriggersEnabled
+                              ? "Enabled: creation and updates can trigger agents."
+                              : "Disabled: no agents will be triggered for this ticket."}
+                          </p>
+                        </div>
+                        <Switch
+                          id="new-ticket-triggers"
+                          checked={newTicketTriggersEnabled}
+                          onCheckedChange={setNewTicketTriggersEnabled}
+                        />
                       </div>
 
                       {/* Create Button */}

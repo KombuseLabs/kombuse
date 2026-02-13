@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Textarea } from '../../base/textarea'
+import { Switch } from '../../base/switch'
 import { Tabs, TabsList, TabsTrigger } from '../../base/tabs'
 import { X, Trash2, Pencil, Paperclip, ChevronDown, ChevronRight } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
@@ -215,6 +216,24 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                   <span className="text-xs text-muted-foreground">
                     {new Date(ticket.created_at).toLocaleDateString()}
                   </span>
+                  {isEditable && (
+                    <>
+                      <span className="text-muted-foreground">·</span>
+                      <div className="flex items-center gap-1.5">
+                        <Switch
+                          checked={ticket.triggers_enabled}
+                          onCheckedChange={(checked) => {
+                            void updateCurrentTicket({ triggers_enabled: checked })
+                          }}
+                          disabled={isUpdating}
+                          aria-label="Toggle ticket triggers"
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {ticket.triggers_enabled ? 'Triggers on' : 'Triggers off'}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="text-lg font-semibold leading-none">{ticket.title}</div>
               </>

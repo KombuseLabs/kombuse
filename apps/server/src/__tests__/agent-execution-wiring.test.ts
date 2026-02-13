@@ -54,6 +54,9 @@ vi.mock('@kombuse/persistence', () => ({
     update: vi.fn(),
     listByTicket: vi.fn(() => []),
   },
+  ticketsRepository: {
+    get: vi.fn(() => null),
+  },
   profilesRepository: {
     list: vi.fn(() => []),
     get: vi.fn(() => null),
@@ -64,6 +67,7 @@ import {
   agentInvocationsRepository,
   commentsRepository,
   sessionsRepository,
+  ticketsRepository,
 } from '@kombuse/persistence'
 import { getCodexMcpStatus } from '../services/codex-mcp-config'
 import { createSessionLogger } from '../logger'
@@ -78,6 +82,7 @@ import {
   cleanupOrphanedSessions,
   registerBackend,
   resetBackendIdleTimeout,
+  processEventAndRunAgents,
 } from '../services/agent-execution-service'
 
 // Clean up persistent backends between tests to prevent cross-test state pollution
@@ -93,6 +98,66 @@ async function waitForBackendStart(backend: AgentBackend): Promise<void> {
   }
   throw new Error('backend.start() was not called within timeout')
 }
+
+describe('processEventAndRunAgents ticket trigger suppression', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('skips processing when triggers are disabled on the ticket', async () => {
+    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 42,
+      triggers_enabled: false,
+    })
+
+    const processEvent = vi.fn(() => [])
+    await processEventAndRunAgents(
+      {
+        id: 1,
+        event_type: 'ticket.updated',
+        project_id: '1',
+        ticket_id: 42,
+        comment_id: null,
+        actor_id: 'user-1',
+        actor_type: 'user',
+        kombuse_session_id: null,
+        payload: '{}',
+        created_at: new Date().toISOString(),
+        actor: null,
+      },
+      { processEvent } as any
+    )
+
+    expect(processEvent).not.toHaveBeenCalled()
+  })
+
+  it('continues processing when triggers are enabled on the ticket', async () => {
+    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 42,
+      triggers_enabled: true,
+    })
+
+    const processEvent = vi.fn(() => [])
+    const event = {
+      id: 2,
+      event_type: 'ticket.updated',
+      project_id: '1',
+      ticket_id: 42,
+      comment_id: null,
+      actor_id: 'user-1',
+      actor_type: 'user' as const,
+      kombuse_session_id: null,
+      payload: '{}',
+      created_at: new Date().toISOString(),
+      actor: null,
+    }
+
+    await processEventAndRunAgents(event, { processEvent } as any)
+
+    expect(processEvent).toHaveBeenCalledTimes(1)
+    expect(processEvent).toHaveBeenCalledWith(event)
+  })
+})
 
 describe('startAgentChatSession backend selection', () => {
   function createPassiveBackend(name: AgentBackend['name']): AgentBackend {

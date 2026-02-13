@@ -65,6 +65,7 @@ describe('ticketsRepository', () => {
       expect(ticket.author_id).toBe(TEST_USER_ID)
       expect(ticket.status, 'Default status should be open').toBe('open')
       expect(ticket.body, 'Body should be null when not provided').toBeNull()
+      expect(ticket.triggers_enabled, 'Default triggers_enabled should be true').toBe(true)
     })
 
     it('should create a ticket with all optional fields', () => {
@@ -108,6 +109,19 @@ describe('ticketsRepository', () => {
       expect(rows).toHaveLength(1)
       expect(rows[0]?.label_id).toBe(labelId)
       expect(rows[0]?.added_by_id).toBe(TEST_USER_ID)
+    })
+
+    it('should create a ticket with triggers disabled and suppress ticket.created event', () => {
+      db.prepare('DELETE FROM events').run()
+
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        triggers_enabled: false,
+      })
+
+      expect(ticket.triggers_enabled).toBe(false)
+      const events = eventsRepository.list({ event_type: 'ticket.created' })
+      expect(events).toHaveLength(0)
     })
   })
 
@@ -756,6 +770,17 @@ describe('ticketsRepository', () => {
 
       expect(updated?.title).toBe('Changed')
       // Note: timestamps may be equal if executed in same second
+    })
+
+    it('should update triggers_enabled', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      expect(ticket.triggers_enabled).toBe(true)
+
+      const disabled = ticketsRepository.update(ticket.id, { triggers_enabled: false })
+      expect(disabled?.triggers_enabled).toBe(false)
+
+      const enabled = ticketsRepository.update(ticket.id, { triggers_enabled: true })
+      expect(enabled?.triggers_enabled).toBe(true)
     })
   })
 

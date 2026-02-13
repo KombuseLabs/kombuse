@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '@kombuse/persistence/test-utils'
-import { ticketsRepository, projectsRepository, labelsRepository, profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository, commentsRepository, attachmentsRepository } from '@kombuse/persistence'
+import { ticketsRepository, projectsRepository, labelsRepository, profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository, commentsRepository, attachmentsRepository, eventsRepository } from '@kombuse/persistence'
 import type { Permission } from '@kombuse/types'
 import { registerTicketTools } from '../index'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs'
@@ -937,5 +937,48 @@ describe('permission enforcement', () => {
     expect(result.isError).toBeFalsy()
     const data = parseContent(result) as { title: string }
     expect(data.title).toBe('New ticket')
+  })
+
+  it('should default MCP create_ticket to triggers disabled', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['create'], scope: 'global' },
+    ])
+    const existingCreatedEvents = eventsRepository.list({ event_type: 'ticket.created' }).length
+
+    const result = await client.callTool({
+      name: 'create_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, title: 'MCP default no trigger', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { title: string; triggers_enabled: boolean }
+    expect(data.title).toBe('MCP default no trigger')
+    expect(data.triggers_enabled).toBe(false)
+    const createdEvents = eventsRepository.list({ event_type: 'ticket.created' }).length
+    expect(createdEvents).toBe(existingCreatedEvents)
+  })
+
+  it('should allow create_ticket to opt in and enable triggers', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['create'], scope: 'global' },
+    ])
+    const existingCreatedEvents = eventsRepository.list({ event_type: 'ticket.created' }).length
+
+    const result = await client.callTool({
+      name: 'create_ticket',
+      arguments: {
+        project_id: TEST_PROJECT_ID,
+        title: 'MCP explicit trigger',
+        triggers_enabled: true,
+        kombuse_session_id: sessionId,
+      },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { title: string; triggers_enabled: boolean }
+    expect(data.title).toBe('MCP explicit trigger')
+    expect(data.triggers_enabled).toBe(true)
+    const createdEvents = eventsRepository.list({ event_type: 'ticket.created' }).length
+    expect(createdEvents).toBe(existingCreatedEvents + 1)
   })
 })

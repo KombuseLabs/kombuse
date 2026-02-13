@@ -13,6 +13,7 @@ export const createTicketSchema = z.object({
   author_id: z.string().min(1),
   title: z.string().min(1),
   body: z.string().optional(),
+  triggers_enabled: z.boolean().optional(),
   status: z.enum(['open', 'closed', 'in_progress', 'blocked']).optional(),
   priority: prioritySchema.optional(),
   assignee_id: z.string().optional(),
@@ -26,6 +27,7 @@ export const createTicketSchema = z.object({
 export const updateTicketSchema = z.object({
   title: z.string().min(1).optional(),
   body: z.string().optional(),
+  triggers_enabled: z.boolean().optional(),
   status: z.enum(['open', 'closed', 'in_progress', 'blocked']).optional(),
   priority: prioritySchema.optional(),
   assignee_id: z.string().nullable().optional(),

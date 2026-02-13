@@ -23,6 +23,8 @@ export interface Ticket {
   claimed_by_id: string | null
   title: string
   body: string | null
+  /** Whether agent triggers are enabled for this ticket */
+  triggers_enabled: boolean
   status: TicketStatus
   priority: TicketPriority | null
   external_source: string | null
@@ -105,6 +107,7 @@ export interface CreateTicketInput {
   author_id: string
   title: string
   body?: string
+  triggers_enabled?: boolean
   status?: TicketStatus
   priority?: TicketPriority
   assignee_id?: string
@@ -121,6 +124,7 @@ export interface CreateTicketInput {
 export interface UpdateTicketInput {
   title?: string
   body?: string
+  triggers_enabled?: boolean
   status?: TicketStatus
   priority?: TicketPriority
   assignee_id?: string | null

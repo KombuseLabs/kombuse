@@ -42,14 +42,19 @@ const EXPECTED_TICKET_COLUMNS = [
   'claimed_by_id',
   'title',
   'body',
+  'triggers_enabled',
   'status',
   'priority',
   'claimed_at',
   'claim_expires_at',
+  'milestone_id',
   'external_source',
   'external_id',
   'external_url',
   'synced_at',
+  'opened_at',
+  'closed_at',
+  'last_activity_at',
   'created_at',
   'updated_at',
 ]
@@ -76,6 +81,9 @@ const EXPECTED_MIGRATIONS = [
   '012_comments_fts_search',
   '013_comments_parent_set_null',
   '014_session_agent_id',
+  '015_milestones',
+  '016_session_state_machine',
+  '017_ticket_triggers_enabled',
 ]
 
 describe('database', () => {

@@ -182,6 +182,7 @@ import {
   eventsRepository,
   profilesRepository,
   sessionsRepository,
+  ticketsRepository,
 } from '@kombuse/persistence'
 import { BACKEND_TYPES, EVENT_TYPES, createSessionId, isValidSessionId, type PermissionMode, type ServerMessage } from '@kombuse/types'
 import { getCodexMcpStatus, resolveKombuseBridgeCommandConfig } from './codex-mcp-config'
@@ -1244,6 +1245,16 @@ export async function processEventAndRunAgents(
       `[Server] Skipping event #${event.id} — session ${event.kombuse_session_id} already active`
     )
     return
+  }
+
+  if (typeof event.ticket_id === 'number') {
+    const ticket = ticketsRepository.get(event.ticket_id)
+    if (ticket && !ticket.triggers_enabled) {
+      console.log(
+        `[Server] Skipping event #${event.id} — triggers disabled on ticket #${event.ticket_id}`
+      )
+      return
+    }
   }
 
   const invocations = dependencies.processEvent(event)

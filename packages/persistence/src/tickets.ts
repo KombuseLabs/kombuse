@@ -26,6 +26,17 @@ function sanitizeFtsQuery(input: string): string | null {
   return tokens.map((t) => `"${t}"*`).join(' ')
 }
 
+interface RawTicketRow extends Omit<Ticket, 'triggers_enabled'> {
+  triggers_enabled: number
+}
+
+function mapTicketRow(row: RawTicketRow): Ticket {
+  return {
+    ...row,
+    triggers_enabled: row.triggers_enabled === 1,
+  }
+}
+
 // Raw ticket row with joined author and assignee profile columns
 interface RawTicketWithProfiles {
   id: number
@@ -35,6 +46,7 @@ interface RawTicketWithProfiles {
   claimed_by_id: string | null
   title: string
   body: string | null
+  triggers_enabled: number
   status: string
   priority: number | null
   external_source: string | null
@@ -97,6 +109,7 @@ function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelat
     claimed_by_id: row.claimed_by_id,
     title: row.title,
     body: row.body,
+    triggers_enabled: row.triggers_enabled === 1,
     status: row.status as Ticket['status'],
     priority: row.priority as Ticket['priority'],
     milestone_id: row.milestone_id,
@@ -287,22 +300,34 @@ export const ticketsRepository = {
       LIMIT ? OFFSET ?
     `)
 
-    const rows = stmt.all(...selectParams, ...joinParams, ...params, ...orderByParams, limit, offset) as Ticket[]
+    const rows = stmt.all(
+      ...selectParams,
+      ...joinParams,
+      ...params,
+      ...orderByParams,
+      limit,
+      offset
+    ) as (RawTicketRow & {
+      body_snippet?: string | null
+      comment_snippet?: string | null
+    })[]
 
     if (hasSnippets) {
       return rows.map((row) => {
-        const raw = row as Ticket & { body_snippet?: string | null; comment_snippet?: string | null }
-        const match_context = raw.body_snippet ?? raw.comment_snippet ?? null
+        const match_context = row.body_snippet ?? row.comment_snippet ?? null
         let match_source: 'body' | 'comment' | null = null
-        if (raw.body_snippet) match_source = 'body'
-        else if (raw.comment_snippet) match_source = 'comment'
-        delete raw.body_snippet
-        delete raw.comment_snippet
-        return Object.assign(raw, { match_context, match_source })
+        if (row.body_snippet) match_source = 'body'
+        else if (row.comment_snippet) match_source = 'comment'
+
+        const { body_snippet, comment_snippet, ...ticketRow } = row
+        const ticket = mapTicketRow(ticketRow)
+        void body_snippet
+        void comment_snippet
+        return { ...ticket, match_context, match_source }
       })
     }
 
-    return rows
+    return rows.map((row) => mapTicketRow(row))
   },
 
   /**
@@ -354,8 +379,8 @@ export const ticketsRepository = {
     const db = getDatabase()
     const ticket = db
       .prepare('SELECT * FROM tickets WHERE id = ?')
-      .get(id) as Ticket | undefined
-    return ticket ?? null
+      .get(id) as RawTicketRow | undefined
+    return ticket ? mapTicketRow(ticket) : null
   },
 
   /**
@@ -379,11 +404,11 @@ export const ticketsRepository = {
     const db = getDatabase()
     const insertTicket = db.prepare(`
       INSERT INTO tickets (
-        project_id, author_id, assignee_id, title, body, status, priority,
+        project_id, author_id, assignee_id, title, body, triggers_enabled, status, priority,
         milestone_id, external_source, external_id, external_url,
         opened_at, closed_at, last_activity_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
     `)
 
     const insertTicketLabels = db.prepare(`
@@ -403,6 +428,7 @@ export const ticketsRepository = {
         payload.assignee_id ?? null,
         payload.title,
         payload.body ?? null,
+        payload.triggers_enabled === false ? 0 : 1,
         status,
         payload.priority ?? null,
         payload.milestone_id ?? null,
@@ -437,17 +463,19 @@ export const ticketsRepository = {
     const ticketId = createTicket(input)
     const ticket = this.get(ticketId) as Ticket
 
-    // Emit ticket.created event
-    const authorProfile = ticket.author_id ? profilesRepository.get(ticket.author_id) : null
-    const authorActorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
-    eventsRepository.create({
-      event_type: EVENT_TYPES.TICKET_CREATED,
-      project_id: ticket.project_id,
-      ticket_id: ticket.id,
-      actor_id: ticket.author_id,
-      actor_type: authorActorType,
-      payload: { title: ticket.title },
-    })
+    if (ticket.triggers_enabled) {
+      // Emit ticket.created event
+      const authorProfile = ticket.author_id ? profilesRepository.get(ticket.author_id) : null
+      const authorActorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
+      eventsRepository.create({
+        event_type: EVENT_TYPES.TICKET_CREATED,
+        project_id: ticket.project_id,
+        ticket_id: ticket.id,
+        actor_id: ticket.author_id,
+        actor_type: authorActorType,
+        payload: { title: ticket.title },
+      })
+    }
 
     return ticket
   },
@@ -472,6 +500,10 @@ export const ticketsRepository = {
     if (input.body !== undefined) {
       fields.push('body = ?')
       params.push(input.body)
+    }
+    if (input.triggers_enabled !== undefined) {
+      fields.push('triggers_enabled = ?')
+      params.push(input.triggers_enabled ? 1 : 0)
     }
     if (input.status !== undefined) {
       fields.push('status = ?')
@@ -728,7 +760,7 @@ export const ticketsRepository = {
    */
   findExpiredClaims(): Ticket[] {
     const db = getDatabase()
-    return db
+    const rows = db
       .prepare(
         `
         SELECT * FROM tickets
@@ -738,6 +770,8 @@ export const ticketsRepository = {
         ORDER BY claim_expires_at ASC
       `
       )
-      .all() as Ticket[]
+      .all() as RawTicketRow[]
+
+    return rows.map((row) => mapTicketRow(row))
   },
 }

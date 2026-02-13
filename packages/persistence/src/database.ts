@@ -718,6 +718,12 @@ const migrations = [
       PRAGMA foreign_keys = ON;
     `,
   },
+  {
+    name: '017_ticket_triggers_enabled',
+    sql: `
+      ALTER TABLE tickets ADD COLUMN triggers_enabled INTEGER NOT NULL DEFAULT 1;
+    `,
+  },
 ]
 
 /**

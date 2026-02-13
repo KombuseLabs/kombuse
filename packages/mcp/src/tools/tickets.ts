@@ -323,13 +323,17 @@ export function registerTicketTools(server: McpServer): void {
           .string()
           .optional()
           .describe('Optional body/description for the ticket'),
+        triggers_enabled: z
+          .boolean()
+          .optional()
+          .describe('Whether agent triggers are enabled for the ticket (default: false for MCP-created tickets)'),
         kombuse_session_id: z
           .string()
           .optional()
           .describe('Optional session ID linking this ticket to the agent session that created it'),
       },
     },
-    async ({ project_id, title, body, kombuse_session_id }) => {
+    async ({ project_id, title, body, triggers_enabled, kombuse_session_id }) => {
       // Resolve author from session — single source of truth
       let authorId = ANONYMOUS_AGENT_ID
       if (kombuse_session_id) {
@@ -358,6 +362,7 @@ export function registerTicketTools(server: McpServer): void {
         author_id: authorId,
         title,
         body,
+        triggers_enabled: triggers_enabled ?? false,
       })
 
       const ticketWithRelations = ticketsRepository.getWithRelations(ticket.id)
