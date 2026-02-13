@@ -66,6 +66,19 @@ export function Tickets() {
 
   // Filter state synced to URL search params
   const [searchParams, setSearchParams] = useSearchParams();
+  const updateSearchParams = useCallback((updates: Record<string, string | null>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+      }
+      return next;
+    });
+  }, [setSearchParams]);
 
   const validStatuses = new Set<string>(["all", "open", "closed", "in_progress", "blocked"]);
   const rawStatus = searchParams.get("status");
@@ -270,7 +283,7 @@ export function Tickets() {
       lastViewedTicketIdRef.current = selectedTicket.id;
       markViewedMutate({ id: selectedTicket.id, profileId: "user-1" }); // TODO: Get from auth context
     }
-  }, [selectedTicket, setCurrentTicket, markViewedMutate]);
+  }, [selectedTicket, setCurrentTicket, markViewedMutate, updateSearchParams]);
 
   const handleReplyToComment = useCallback((comment: CommentWithAuthor) => {
     setReplyTarget({
@@ -381,20 +394,6 @@ export function Tickets() {
   const handleCloseDetail = () => {
     navigate({ pathname: `/projects/${projectId}/tickets`, search: searchParams.toString() });
   };
-
-  const updateSearchParams = useCallback((updates: Record<string, string | null>) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null) {
-          next.delete(key);
-        } else {
-          next.set(key, value);
-        }
-      }
-      return next;
-    });
-  }, [setSearchParams]);
 
   const toggleLabelFilter = (labelId: number) => {
     const nextIds = selectedLabelIds.includes(labelId)
@@ -598,7 +597,7 @@ export function Tickets() {
 
             <ResizableHandle withHandle />
 
-            <ResizablePanel id="detail" defaultSize={50} minSize={25}>
+            <ResizablePanel id="detail" defaultSize={50} minSize={25} className="min-h-0">
               <div className="flex flex-col h-full">
                 {isCreating ? (
                   // Create Form
@@ -776,7 +775,7 @@ export function Tickets() {
                         )}
 
                         {/* Fixed ChatInput at bottom */}
-                        <div className="border-t p-4">
+                        <div className="border-t p-4 shrink-0">
                           {agentReplySessionId && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 animate-pulse">
                               <span className="inline-block size-2 rounded-full bg-primary" />
@@ -801,8 +800,8 @@ export function Tickets() {
             {chatSessionId && (
               <>
                 <ResizableHandle withHandle />
-                <ResizablePanel id="chat" defaultSize={40} minSize={25}>
-                  <div className="flex flex-col h-full">
+                <ResizablePanel id="chat" defaultSize={40} minSize={25} className="min-h-0">
+                  <div className="flex flex-col h-full min-h-0">
                     <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
                       <h3 className="text-sm font-medium">Session</h3>
                       <Button

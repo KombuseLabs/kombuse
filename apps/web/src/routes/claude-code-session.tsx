@@ -134,7 +134,7 @@ function SessionContent({ projectPath, sessionId }: { projectPath: string; sessi
   const errorsByIndex = new Map(validation?.errors.map((e) => [e.index, e.issues]))
 
   return (
-    <div className="flex h-[calc(100vh-var(--header-height))] flex-col">
+    <div className="flex h-[calc(100dvh-var(--header-height))] flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <button

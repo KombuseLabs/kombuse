@@ -128,7 +128,7 @@ function ChatInput({
           onPaste={handlePaste}
           placeholder={effectivePlaceholder}
           disabled={isDisabled}
-          className="min-h-[80px] resize-none"
+          className="h-20 min-h-[80px] resize-none"
           rows={3}
         />
         <div className="flex flex-col gap-1 shrink-0">

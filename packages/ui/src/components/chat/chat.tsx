@@ -51,7 +51,7 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
   }
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full min-h-0', className)}>
       <SessionHeader
         isConnected={isConnected}
         isLoading={isLoading}
@@ -62,7 +62,7 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
         sessionId={ctx?.kombuseSessionId}
         backendSessionId={ctx?.backendSessionId}
       />
-      <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} viewMode={viewMode} className="flex-1" />
+      <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} viewMode={viewMode} className="flex-1 min-h-0" />
       {pendingPermission && respondToPermission && (
         pendingPermission.toolName === 'AskUserQuestion' && isValidAskUserInput(pendingPermission.input as Record<string, unknown>) ? (
           <AskUserBar
@@ -87,7 +87,7 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
           />
         )
       )}
-      <div className="border-t p-4">
+      <div className="border-t p-4 shrink-0">
         <ChatInput
           onSubmit={onSubmit}
           isLoading={isLoading}
