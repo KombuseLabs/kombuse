@@ -256,6 +256,7 @@ const { highlightedCommentId, isScrollToCommentPending } = useScrollToComment({
 - Returns `highlightedCommentId` for visual highlight (ring), auto-clears after 3 seconds
 - Returns `isScrollToCommentPending` to suppress `useScrollToBottom`'s initial force-scroll
 - Handles same-ticket navigation (hash change without page reload) and cross-ticket navigation
+- Invalid hashes (anything other than `#comment-{id}`) are treated as idle: no pending state, no scrolling
 
 ```typescript
 import { useShiki } from '@kombuse/ui/hooks'
