@@ -1,16 +1,34 @@
 import type { FastifyInstance } from 'fastify'
 import type { Session, PublicSession } from '@kombuse/types'
 import { BACKEND_TYPES, createSessionId } from '@kombuse/types'
-import { sessionsRepository, sessionEventsRepository } from '@kombuse/persistence'
+import { agentsRepository, sessionsRepository, sessionEventsRepository } from '@kombuse/persistence'
 import {
   createSessionSchema,
   sessionFiltersSchema,
   sessionEventFiltersSchema,
   sessionDiagnosticsQuerySchema,
 } from '../schemas/sessions'
+import {
+  normalizeModelPreference,
+  readUserDefaultBackendType,
+  resolveBackendType,
+  resolveConfiguredBackendType,
+} from '../services/session-preferences'
 
 function toPublicSession({ id, ...rest }: Session): PublicSession {
-  return rest
+  const metadata = rest.metadata ?? {}
+  const effectiveBackend = resolveBackendType({
+    sessionBackendType:
+      resolveConfiguredBackendType(metadata.effective_backend)
+      ?? rest.backend_type,
+    fallbackBackendType: BACKEND_TYPES.CLAUDE_CODE,
+  })
+  return {
+    ...rest,
+    effective_backend: effectiveBackend,
+    model_preference: normalizeModelPreference(metadata.model_preference) ?? null,
+    applied_model: normalizeModelPreference(metadata.applied_model) ?? null,
+  }
 }
 
 export async function sessionRoutes(fastify: FastifyInstance) {
@@ -42,12 +60,33 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
+    const agent = parseResult.data.agent_id
+      ? agentsRepository.get(parseResult.data.agent_id)
+      : null
+    const backendTypeFromAgentConfig = resolveConfiguredBackendType(
+      (agent?.config as { backend_type?: unknown } | undefined)?.backend_type
+    )
+    const userDefaultBackendType = readUserDefaultBackendType()
+    const resolvedBackendType = resolveBackendType({
+      sessionBackendType: parseResult.data.backend_type,
+      agentBackendType: backendTypeFromAgentConfig,
+      userDefaultBackendType,
+      fallbackBackendType: BACKEND_TYPES.CLAUDE_CODE,
+    })
+
+    const modelPreference = normalizeModelPreference(parseResult.data.model_preference)
+
     const kombuseId = createSessionId('chat')
     const createdSession = sessionsRepository.create({
       id: crypto.randomUUID(),
       kombuse_session_id: kombuseId,
-      backend_type: parseResult.data.backend_type ?? BACKEND_TYPES.CLAUDE_CODE,
+      backend_type: resolvedBackendType,
       agent_id: parseResult.data.agent_id,
+      metadata: {
+        effective_backend: resolvedBackendType,
+        model_preference: modelPreference ?? null,
+        applied_model: null,
+      },
     })
 
     return reply.status(201).send(toPublicSession(createdSession))

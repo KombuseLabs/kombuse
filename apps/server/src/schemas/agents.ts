@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { BACKEND_TYPES } from '@kombuse/types'
 
 // Permission schemas
 const resourcePermissionSchema = z.object({
@@ -34,6 +35,13 @@ const openaiConfigSchema = z.object({
 
 const agentConfigSchema = z
   .object({
+    backend_type: z
+      .enum([
+        BACKEND_TYPES.CLAUDE_CODE,
+        BACKEND_TYPES.CODEX,
+        BACKEND_TYPES.MOCK,
+      ])
+      .optional(),
     model: z.string().optional(),
     max_tokens: z.number().int().positive().optional(),
     temperature: z.number().min(0).max(1).optional(),

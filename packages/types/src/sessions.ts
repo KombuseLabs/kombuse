@@ -15,6 +15,12 @@ export interface SessionMetadata {
   didCallAddComment?: boolean
   lastAssistantMessage?: string
   exitPlanModeToolUseId?: string
+  /** Effective backend resolved for this session at execution time. */
+  effective_backend?: BackendType | null
+  /** Sticky model preference snapshot resolved for this session. */
+  model_preference?: string | null
+  /** Model effectively applied by backend (null when backend cannot enforce). */
+  applied_model?: string | null
   terminal_reason?: string
   terminal_source?: string
   terminal_at?: string
@@ -43,6 +49,12 @@ export interface Session {
   updated_at: string
   agent_name?: string | null
   prompt_preview?: string | null
+  /** API convenience field, derived from backend_type/metadata (not stored column). */
+  effective_backend?: BackendType | null
+  /** API convenience field, derived from metadata (not stored column). */
+  model_preference?: string | null
+  /** API convenience field, derived from metadata (not stored column). */
+  applied_model?: string | null
 }
 
 /**
@@ -81,7 +93,8 @@ export interface SessionFilters {
  * Input for updating a session
  */
 export interface UpdateSessionInput {
-  backend_session_id?: string
+  backend_type?: BackendType
+  backend_session_id?: string | null
   status?: SessionStatus
   metadata?: SessionMetadata
   completed_at?: string | null

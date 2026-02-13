@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import type { Agent, AgentTrigger, Permission, Profile, UpdateAgentInput, UpdateProfileInput } from '@kombuse/types'
+import { BACKEND_TYPES, type Agent, type AgentConfig, type AgentTrigger, type BackendType, type Permission, type Profile, type UpdateAgentInput, type UpdateProfileInput } from '@kombuse/types'
 import { X, Trash2, Save, Copy, Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
@@ -14,6 +14,19 @@ import { PromptEditor } from '../prompt-editor'
 import { AvatarPicker, getAvatarIcon } from './avatar-picker'
 import { TriggerEditor, type TriggerFormData } from '../triggers'
 import { PermissionEditor } from '../permission-editor'
+
+type BackendChoice = 'global' | BackendType
+
+function normalizeBackendChoice(value: unknown): BackendChoice {
+  if (
+    value === BACKEND_TYPES.CLAUDE_CODE
+    || value === BACKEND_TYPES.CODEX
+    || value === BACKEND_TYPES.MOCK
+  ) {
+    return value
+  }
+  return 'global'
+}
 
 interface AgentDetailProps {
   agent: Agent
@@ -61,6 +74,12 @@ function AgentDetail({
   const [systemPrompt, setSystemPrompt] = useState(agent.system_prompt)
   const [permissions, setPermissions] = useState<Permission[]>(agent.permissions)
   const [enabledForChat, setEnabledForChat] = useState(agent.config?.enabled_for_chat ?? false)
+  const [backendChoice, setBackendChoice] = useState<BackendChoice>(
+    normalizeBackendChoice(agent.config?.backend_type)
+  )
+  const [modelPreference, setModelPreference] = useState(
+    typeof agent.config?.model === 'string' ? agent.config.model : ''
+  )
 
   const [idCopied, setIdCopied] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -85,7 +104,9 @@ function AgentDetail({
     avatar !== (profile.avatar_url || 'bot') ||
     systemPrompt !== agent.system_prompt ||
     JSON.stringify(permissions) !== JSON.stringify(agent.permissions) ||
-    enabledForChat !== (agent.config?.enabled_for_chat ?? false)
+    enabledForChat !== (agent.config?.enabled_for_chat ?? false) ||
+    backendChoice !== normalizeBackendChoice(agent.config?.backend_type) ||
+    modelPreference.trim() !== (typeof agent.config?.model === 'string' ? agent.config.model.trim() : '')
 
   // Reset form when agent changes
   useEffect(() => {
@@ -95,13 +116,32 @@ function AgentDetail({
     setSystemPrompt(agent.system_prompt)
     setPermissions(agent.permissions)
     setEnabledForChat(agent.config?.enabled_for_chat ?? false)
+    setBackendChoice(normalizeBackendChoice(agent.config?.backend_type))
+    setModelPreference(typeof agent.config?.model === 'string' ? agent.config.model : '')
   }, [agent, profile])
 
   const handleSave = async () => {
     if (!onSave) return
+    const nextConfig: AgentConfig = {
+      ...agent.config,
+      enabled_for_chat: enabledForChat,
+    }
+    if (backendChoice === 'global') {
+      delete (nextConfig as Record<string, unknown>).backend_type
+    } else {
+      nextConfig.backend_type = backendChoice
+    }
+
+    const trimmedModelPreference = modelPreference.trim()
+    if (trimmedModelPreference.length === 0) {
+      delete (nextConfig as Record<string, unknown>).model
+    } else {
+      nextConfig.model = trimmedModelPreference
+    }
+
     await onSave({
       profile: { name, description: description || undefined, avatar_url: avatar },
-      agent: { system_prompt: systemPrompt, permissions, config: { ...agent.config, enabled_for_chat: enabledForChat } },
+      agent: { system_prompt: systemPrompt, permissions, config: nextConfig },
     })
   }
 
@@ -211,6 +251,39 @@ function AgentDetail({
             checked={enabledForChat}
             onCheckedChange={setEnabledForChat}
           />
+        </div>
+
+        {/* Execution Preferences */}
+        <div className="space-y-4 border-t pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="agent-backend-override">Backend Override</Label>
+            <select
+              id="agent-backend-override"
+              value={backendChoice}
+              onChange={(event) => setBackendChoice(event.target.value as BackendChoice)}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="global">Use global default</option>
+              <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
+              <option value={BACKEND_TYPES.CODEX}>Codex</option>
+              {backendChoice === BACKEND_TYPES.MOCK ? (
+                <option value={BACKEND_TYPES.MOCK}>Mock</option>
+              ) : null}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="agent-model-override">Model Override</Label>
+            <Input
+              id="agent-model-override"
+              value={modelPreference}
+              onChange={(event) => setModelPreference(event.target.value)}
+              placeholder="Leave empty to use global default"
+            />
+            <p className="text-xs text-muted-foreground">
+              Stored as a preference and applied when the selected backend supports explicit model selection.
+            </p>
+          </div>
         </div>
 
         {/* System Prompt */}

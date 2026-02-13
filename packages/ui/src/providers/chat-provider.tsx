@@ -28,6 +28,8 @@ interface ChatProviderProps {
   projectId?: string | null
   /** Optional explicit backend type for new turns */
   backendType?: BackendType
+  /** Optional per-session model preference for first invocation. */
+  modelPreference?: string
   /** Create/resolve a session ID when sending from a draft chat */
   onEnsureSession?: () => Promise<string>
 }
@@ -61,6 +63,7 @@ export function ChatProvider({
   sessionId,
   projectId,
   backendType,
+  modelPreference,
   onEnsureSession,
 }: ChatProviderProps) {
   const queryClient = useQueryClient()
@@ -307,6 +310,10 @@ export function ChatProvider({
         kombuseSessionId: targetSessionId,
         projectId: projectId ?? undefined,
         backendType,
+        modelPreference:
+          typeof modelPreference === 'string' && modelPreference.trim().length > 0
+            ? modelPreference.trim()
+            : undefined,
       })
     },
     [
@@ -314,6 +321,7 @@ export function ChatProvider({
       effectiveKombuseSessionId,
       projectId,
       backendType,
+      modelPreference,
       isConnected,
       isLoading,
       wsSend,

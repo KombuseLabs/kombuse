@@ -1,3 +1,5 @@
+import type { BackendType } from './agent'
+
 /**
  * Permission types for agents
  */
@@ -52,6 +54,8 @@ export interface OpenAIConfig {
  * Flexible agent configuration
  */
 export interface AgentConfig {
+  /** Preferred execution backend for this agent. */
+  backend_type?: BackendType
   /** Model identifier: 'claude-sonnet-4-20250514', 'gpt-4o', etc. */
   model?: string
   /** Token limit for responses */

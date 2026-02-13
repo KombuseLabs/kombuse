@@ -186,6 +186,14 @@ import {
 } from '@kombuse/persistence'
 import { BACKEND_TYPES, EVENT_TYPES, createSessionId, isValidSessionId, type PermissionMode, type ServerMessage } from '@kombuse/types'
 import { getCodexMcpStatus, resolveKombuseBridgeCommandConfig } from './codex-mcp-config'
+import {
+  normalizeModelPreference,
+  readUserDefaultBackendType,
+  readUserDefaultModelPreference,
+  resolveBackendType,
+  resolveConfiguredBackendType,
+  resolveModelPreference,
+} from './session-preferences'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
@@ -219,6 +227,8 @@ interface ChatRunnerOptions {
   allowedTools?: string[]
   /** Permission mode for the CLI session (e.g. 'plan' forces plan-first workflow) */
   permissionMode?: PermissionMode
+  /** Model to apply when backend supports explicit model selection. */
+  model?: string
   /** Callback for each agent event */
   onEvent: (event: AgentEvent) => void
   /** Callback when complete, receives backend session context if available */
@@ -301,6 +311,7 @@ async function runAgentChat(
   await backend.start({
     kombuseSessionId: appSessionId,
     resumeSessionId: options.resumeSessionId,
+    model: options.model,
     projectPath: options.projectPath,
     systemPrompt: options.systemPrompt,
     allowedTools: options.allowedTools,
@@ -1083,19 +1094,6 @@ interface AgentExecutionDependencies {
   stateMachine: SessionStateMachine
 }
 
-function isSupportedBackendType(value: unknown): value is BackendType {
-  return value === BACKEND_TYPES.CLAUDE_CODE
-    || value === BACKEND_TYPES.CODEX
-    || value === BACKEND_TYPES.MOCK
-}
-
-function resolveConfiguredBackendType(value: unknown): BackendType | undefined {
-  if (typeof value !== 'string') {
-    return undefined
-  }
-  return isSupportedBackendType(value) ? value : undefined
-}
-
 function isCodexMcpEnabled(): boolean {
   try {
     return getCodexMcpStatus().enabled
@@ -1636,7 +1634,14 @@ export function startAgentChatSession(
   dependencies: AgentExecutionDependencies = defaultDependencies,
   options?: { projectPath?: string; ticketId?: number; systemPromptOverride?: string }
 ): void {
-  const { agentId, message: userMessage, kombuseSessionId, projectId, backendType: backendTypeOverride } = message
+  const {
+    agentId,
+    message: userMessage,
+    kombuseSessionId,
+    projectId,
+    backendType: backendTypeOverride,
+    modelPreference: modelPreferenceOverride,
+  } = message
 
   const normalizedAgentId =
     typeof agentId === 'string' && agentId.trim().length > 0
@@ -1709,10 +1714,34 @@ export function startAgentChatSession(
   const backendTypeFromAgentConfig = resolveConfiguredBackendType(
     (agent?.config as { backend_type?: unknown } | undefined)?.backend_type
   )
-  const resolvedBackendType = resolveConfiguredBackendType(backendTypeOverride)
-    ?? resolveConfiguredBackendType(existingSessionByKombuse?.backend_type)
-    ?? backendTypeFromAgentConfig
-    ?? BACKEND_TYPES.CLAUDE_CODE
+  const userDefaultBackendType = readUserDefaultBackendType()
+  const resolvedBackendType = resolveBackendType({
+    sessionBackendType:
+      resolveConfiguredBackendType(backendTypeOverride)
+      ?? existingSessionByKombuse?.backend_type,
+    agentBackendType: backendTypeFromAgentConfig,
+    userDefaultBackendType,
+    fallbackBackendType: BACKEND_TYPES.CLAUDE_CODE,
+  })
+
+  const persistedSessionModelPreference = normalizeModelPreference(
+    existingSessionByKombuse?.metadata?.model_preference
+  )
+  const sessionModelPreference = persistedSessionModelPreference
+    ?? normalizeModelPreference(modelPreferenceOverride)
+  const agentModelPreference = normalizeModelPreference(
+    (agent?.config as { model?: unknown } | undefined)?.model
+  )
+  const userDefaultModelPreference = readUserDefaultModelPreference()
+  const {
+    modelPreference: resolvedModelPreference,
+    appliedModel: resolvedAppliedModel,
+  } = resolveModelPreference({
+    sessionModelPreference,
+    agentModelPreference,
+    userDefaultModelPreference,
+    backendType: resolvedBackendType,
+  })
 
   // Create/get persistent session record
   const persistentSessionId = dependencies.sessionPersistence.ensureSession(
@@ -1724,6 +1753,21 @@ export function startAgentChatSession(
   const existingSession = dependencies.sessionPersistence.getSession(
     persistentSessionId
   )
+
+  const metadataPatch: Partial<SessionMetadata> = {}
+  if ((existingSession?.metadata?.effective_backend ?? null) !== resolvedBackendType) {
+    metadataPatch.effective_backend = resolvedBackendType
+  }
+  if ((existingSession?.metadata?.model_preference ?? null) !== (resolvedModelPreference ?? null)) {
+    metadataPatch.model_preference = resolvedModelPreference ?? null
+  }
+  if ((existingSession?.metadata?.applied_model ?? null) !== (resolvedAppliedModel ?? null)) {
+    metadataPatch.applied_model = resolvedAppliedModel ?? null
+  }
+  if (Object.keys(metadataPatch).length > 0) {
+    dependencies.stateMachine.setMetadata(persistentSessionId, metadataPatch)
+  }
+
   // Use provided ticketId, or fall back to the existing session's ticket_id
   // (important for resumed sessions where the client doesn't pass ticketId)
   const ticketId = options?.ticketId ?? existingSession?.ticket_id ?? undefined
@@ -2007,6 +2051,7 @@ export function startAgentChatSession(
   runAgentChat(backend, userMessage, appSessionId, {
     projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
     resumeSessionId,
+    model: resolvedAppliedModel,
     systemPrompt: resolvedSystemPrompt,
     allowedTools,
     permissionMode: preset.permissionMode,

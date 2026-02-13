@@ -69,11 +69,15 @@ vi.mock('@kombuse/persistence', () => ({
     list: vi.fn(() => []),
     get: vi.fn(() => null),
   },
+  profileSettingsRepository: {
+    get: vi.fn(() => null),
+  },
 }))
 
 import {
   agentInvocationsRepository,
   commentsRepository,
+  profileSettingsRepository,
   sessionsRepository,
   ticketsRepository,
 } from '@kombuse/persistence'
@@ -288,6 +292,11 @@ describe('processEventAndRunAgents lifecycle session isolation', () => {
 })
 
 describe('startAgentChatSession backend selection', () => {
+  beforeEach(() => {
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockReset()
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue(null)
+  })
+
   function createPassiveBackend(name: AgentBackend['name']): AgentBackend {
     return {
       name,
@@ -416,6 +425,73 @@ describe('startAgentChatSession backend selection', () => {
 
     expect(existingBackend.stop).toHaveBeenCalled()
     expect(createBackend).toHaveBeenCalledWith(BACKEND_TYPES.CODEX)
+  })
+
+  it('uses user global default backend when session and agent backend are absent', async () => {
+    const backend = createPassiveBackend(BACKEND_TYPES.CODEX)
+    const createBackend = vi.fn(() => backend)
+    const deps = createDependencies(createBackend)
+
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockImplementation(
+      (_profileId: string, key: string) => {
+        if (key === 'chat.default_backend_type') {
+          return { setting_value: BACKEND_TYPES.CODEX }
+        }
+        return null
+      }
+    )
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'hello',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(createBackend).toHaveBeenCalledWith(BACKEND_TYPES.CODEX)
+  })
+
+  it('passes resolved model to codex backend and stores session snapshot metadata', async () => {
+    const backend = createPassiveBackend(BACKEND_TYPES.CODEX)
+    const createBackend = vi.fn(() => backend)
+    const deps = createDependencies(createBackend)
+
+    ;(deps.getAgent as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'agent-1',
+      is_enabled: true,
+      system_prompt: 'You are helpful',
+      config: {
+        backend_type: BACKEND_TYPES.CODEX,
+        model: 'gpt-5-mini',
+      },
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'agent-1',
+        message: 'hello',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const startOptions = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
+    expect(startOptions.model).toBe('gpt-5-mini')
+    expect(deps.stateMachine.setMetadata).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        effective_backend: BACKEND_TYPES.CODEX,
+        model_preference: 'gpt-5-mini',
+        applied_model: 'gpt-5-mini',
+      })
+    )
   })
 })
 

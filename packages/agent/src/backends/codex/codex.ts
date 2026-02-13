@@ -271,11 +271,15 @@ export class CodexBackend implements AgentBackend {
 
   private async startOrResumeThread(options: StartOptions): Promise<void> {
     const systemPrompt = this.normalizeSystemPrompt(options.systemPrompt)
+    const model = typeof options.model === 'string' && options.model.trim().length > 0
+      ? options.model.trim()
+      : undefined
 
     if (options.resumeSessionId && options.resumeSessionId.trim().length > 0) {
       const params: CodexThreadResumeParams = {
         threadId: options.resumeSessionId.trim(),
         cwd: options.projectPath,
+        ...(model ? { model } : {}),
         ...(systemPrompt ? { developerInstructions: systemPrompt } : {}),
       }
       const response = await this.sendRequest<CodexThreadResumeResponse>(
@@ -289,6 +293,7 @@ export class CodexBackend implements AgentBackend {
     const params: CodexThreadStartParams = {
       cwd: options.projectPath,
       experimentalRawEvents: false,
+      ...(model ? { model } : {}),
       ...(systemPrompt ? { developerInstructions: systemPrompt } : {}),
     }
     const response = await this.sendRequest<CodexThreadStartResponse>('thread/start', params)

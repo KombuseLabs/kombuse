@@ -107,6 +107,23 @@ describe('sessionsRepository', () => {
     })
   })
 
+  describe('update', () => {
+    it('should update backend_type and backend_session_id', () => {
+      const session = sessionsRepository.create({
+        backend_type: 'claude-code',
+        backend_session_id: 'backend-old',
+      })
+
+      const updated = sessionsRepository.update(session.id, {
+        backend_type: 'codex',
+        backend_session_id: null,
+      })
+
+      expect(updated?.backend_type).toBe('codex')
+      expect(updated?.backend_session_id).toBeNull()
+    })
+  })
+
   /*
    * LIST BY TICKET TESTS
    * Verify querying sessions by ticket ID

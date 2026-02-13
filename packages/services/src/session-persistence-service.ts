@@ -61,8 +61,23 @@ export class SessionPersistenceService implements ISessionPersistenceService {
         ticket_id: ticketId,
         agent_id: agentId,
       })
-    } else if (agentId && !session.agent_id) {
-      sessionsRepository.update(session.id, { agent_id: agentId })
+    } else {
+      const patch: Parameters<typeof sessionsRepository.update>[1] = {}
+
+      if (agentId && !session.agent_id) {
+        patch.agent_id = agentId
+      }
+
+      // Persist backend selection changes for this session and clear stale
+      // backend-native session ID so resume starts from a clean provider context.
+      if (backendType && session.backend_type !== backendType) {
+        patch.backend_type = backendType
+        patch.backend_session_id = null
+      }
+
+      if (Object.keys(patch).length > 0) {
+        session = sessionsRepository.update(session.id, patch) ?? session
+      }
     }
 
     // Initialize sequence counter from database if not cached

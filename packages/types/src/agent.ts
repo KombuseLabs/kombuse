@@ -16,6 +16,8 @@ export interface StartOptions {
   kombuseSessionId: KombuseSessionId
   /** Optional backend-native session ID to resume conversation context. */
   resumeSessionId?: string
+  /** Optional model preference to apply when backend supports explicit model selection. */
+  model?: string
   projectPath: string
   systemPrompt?: string
   permissions?: PermissionConfig

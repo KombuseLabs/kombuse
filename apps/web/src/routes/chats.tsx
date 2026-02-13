@@ -1,10 +1,21 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AgentPicker, Chat, SessionList } from "@kombuse/ui/components";
-import { useCreateSession, useSessions, useSessionByKombuseId, useAppContext, useDeleteSession } from "@kombuse/ui/hooks";
+import {
+  useCreateSession,
+  useSessions,
+  useSessionByKombuseId,
+  useAppContext,
+  useDeleteSession,
+  useProfileSetting,
+} from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
 import { BACKEND_TYPES, type BackendType } from "@kombuse/types";
+
+const USER_PROFILE_ID = "user-1";
+const CHAT_DEFAULT_BACKEND_SETTING_KEY = "chat.default_backend_type";
+const CHAT_DEFAULT_MODEL_SETTING_KEY = "chat.default_model";
 
 export function Chats() {
   const navigate = useNavigate();
@@ -20,14 +31,9 @@ export function Chats() {
   const createSession = useCreateSession();
   const deleteSession = useDeleteSession();
   const { pendingPermissions } = useAppContext();
+  const { data: defaultBackendSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_BACKEND_SETTING_KEY);
+  const { data: defaultModelSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_MODEL_SETTING_KEY);
 
-  // Agent picker state (only used for draft/new chats)
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [selectedBackendType, setSelectedBackendType] = useState<BackendType>(BACKEND_TYPES.CLAUDE_CODE);
-
-  // Resolve agent_id for existing sessions
-  const { data: currentSession } = useSessionByKombuseId(selectedSessionId);
-  const effectiveAgentId = isDraft ? selectedAgentId : (currentSession?.agent_id ?? null);
   const normalizeBackendType = (value?: string | null): BackendType => {
     if (
       value === BACKEND_TYPES.CLAUDE_CODE
@@ -38,9 +44,26 @@ export function Chats() {
     }
     return BACKEND_TYPES.CLAUDE_CODE;
   };
+
+  // Agent picker state (only used for draft/new chats)
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedBackendTypeOverride, setSelectedBackendTypeOverride] = useState<BackendType | null>(null);
+  const [selectedModelPreferenceOverride, setSelectedModelPreferenceOverride] = useState<string | null>(null);
+
+  const globalDefaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value);
+  const globalDefaultModelPreference = (defaultModelSetting?.setting_value ?? "").trim();
+  const draftBackendType = selectedBackendTypeOverride ?? globalDefaultBackendType;
+  const draftModelPreference = selectedModelPreferenceOverride ?? globalDefaultModelPreference;
+
+  // Resolve agent_id for existing sessions
+  const { data: currentSession } = useSessionByKombuseId(selectedSessionId);
+  const effectiveAgentId = isDraft ? selectedAgentId : (currentSession?.agent_id ?? null);
   const effectiveBackendType = isDraft
-    ? selectedBackendType
-    : normalizeBackendType(currentSession?.backend_type);
+    ? draftBackendType
+    : normalizeBackendType(currentSession?.effective_backend ?? currentSession?.backend_type);
+  const effectiveModelPreference = isDraft
+    ? draftModelPreference
+    : (currentSession?.model_preference ?? "");
 
   // Helper to check if a session has pending permissions
   const sessionHasPendingPermission = (kombuseSessionId: string | null) => {
@@ -55,7 +78,8 @@ export function Chats() {
 
   const handleNewChat = () => {
     setSelectedAgentId(null);
-    setSelectedBackendType(BACKEND_TYPES.CLAUDE_CODE);
+    setSelectedBackendTypeOverride(null);
+    setSelectedModelPreferenceOverride(null);
     navigate(chatsBasePath);
   };
 
@@ -65,8 +89,9 @@ export function Chats() {
 
   const ensureSessionForDraft = async () => {
     const session = await createSession.mutateAsync({
-      backend_type: selectedBackendType,
+      backend_type: draftBackendType,
       agent_id: selectedAgentId ?? undefined,
+      model_preference: draftModelPreference.trim().length > 0 ? draftModelPreference.trim() : undefined,
     });
     navigate(`${chatsBasePath}/${session.kombuse_session_id}`);
     return session.kombuse_session_id;
@@ -133,7 +158,7 @@ export function Chats() {
             <select
               id="chat-backend-select"
               value={effectiveBackendType}
-              onChange={(event) => setSelectedBackendType(event.target.value as BackendType)}
+              onChange={(event) => setSelectedBackendTypeOverride(event.target.value as BackendType)}
               disabled={!isDraft}
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             >
@@ -143,6 +168,17 @@ export function Chats() {
                 <option value={BACKEND_TYPES.MOCK}>Mock</option>
               ) : null}
             </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="chat-model-input" className="text-sm text-muted-foreground">Model</label>
+            <input
+              id="chat-model-input"
+              value={effectiveModelPreference}
+              onChange={(event) => setSelectedModelPreferenceOverride(event.target.value)}
+              disabled={!isDraft}
+              placeholder="Use backend default"
+              className="h-9 w-52 rounded-md border border-input bg-background px-3 text-sm"
+            />
           </div>
           <AgentPicker
             value={effectiveAgentId}
@@ -158,6 +194,7 @@ export function Chats() {
             agentId={effectiveAgentId ?? undefined}
             projectId={projectId ?? null}
             backendType={effectiveBackendType}
+            modelPreference={isDraft ? draftModelPreference : undefined}
             onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
           >
             <Chat

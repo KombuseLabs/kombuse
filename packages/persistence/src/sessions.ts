@@ -152,6 +152,10 @@ export const sessionsRepository = {
     const fields: string[] = []
     const params: unknown[] = []
 
+    if (input.backend_type !== undefined) {
+      fields.push('backend_type = ?')
+      params.push(input.backend_type)
+    }
     if (input.backend_session_id !== undefined) {
       fields.push('backend_session_id = ?')
       params.push(input.backend_session_id)

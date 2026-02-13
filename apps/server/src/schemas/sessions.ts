@@ -24,6 +24,7 @@ export const createSessionSchema = z.object({
     BACKEND_TYPES.CODEX,
     BACKEND_TYPES.MOCK,
   ]).optional(),
+  model_preference: z.string().trim().optional(),
   agent_id: z.string().min(1).optional(),
 })
 

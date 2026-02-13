@@ -39,6 +39,8 @@ export type ClientMessage =
       kombuseSessionId?: string
       projectId?: string
       backendType?: BackendType
+      /** Optional per-session model preference override for first invocation. */
+      modelPreference?: string
     }
   | {
       type: 'permission.response'
