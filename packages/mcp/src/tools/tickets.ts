@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository, agentsRepository } from '@kombuse/persistence'
-import type { Ticket, Project, Label, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Attachment, CommentWithAuthor } from '@kombuse/types'
+import type { Ticket, Project, Label, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Attachment, CommentWithAuthor, CommentFilters } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import { agentService, fileStorage } from '@kombuse/services'
 import { z } from 'zod'
@@ -69,6 +69,93 @@ interface GetTicketPruneResult {
   bytes: number
   truncated: boolean
   stats: GetTicketPruneStats
+}
+
+function getMetaObject(payload: Record<string, unknown>): Record<string, unknown> {
+  if (
+    payload.meta
+    && typeof payload.meta === 'object'
+    && !Array.isArray(payload.meta)
+  ) {
+    return payload.meta as Record<string, unknown>
+  }
+
+  const meta: Record<string, unknown> = {}
+  payload.meta = meta
+  return meta
+}
+
+function buildMinimalTicketFallbackPayload(
+  ticket: unknown,
+  maxBytes: number
+): Record<string, unknown> {
+  const normalizedTicket = (
+    ticket
+    && typeof ticket === 'object'
+    && !Array.isArray(ticket)
+  )
+    ? ticket as Record<string, unknown>
+    : {}
+
+  return {
+    ticket: {
+      id: normalizedTicket.id ?? null,
+      project_id: normalizedTicket.project_id ?? null,
+      title: normalizedTicket.title ?? null,
+      status: normalizedTicket.status ?? null,
+    },
+    meta: {
+      cap_bytes: maxBytes,
+      truncated: true,
+      fallback_minimal: true,
+    },
+  }
+}
+
+function serializeGetTicketPayloadWithinCap(
+  payload: Record<string, unknown>,
+  maxBytes: number
+): string {
+  let working = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    let serialized = JSON.stringify(working)
+    let bytes = utf8ByteLength(serialized)
+
+    const meta = getMetaObject(working)
+    meta.bytes_used = bytes
+    serialized = JSON.stringify(working)
+    bytes = utf8ByteLength(serialized)
+
+    if (bytes <= maxBytes) {
+      return serialized
+    }
+
+    const commentsPage = (
+      meta.comments_page
+      && typeof meta.comments_page === 'object'
+      && !Array.isArray(meta.comments_page)
+    )
+      ? meta.comments_page as Record<string, unknown>
+      : null
+
+    // Drop optional diagnostic metadata first.
+    if ('prune_stats' in meta) {
+      delete meta.prune_stats
+      continue
+    }
+    if (commentsPage && 'filters' in commentsPage) {
+      delete commentsPage.filters
+      continue
+    }
+
+    // If we still exceed cap, collapse to minimal payload.
+    working = buildMinimalTicketFallbackPayload(working.ticket, maxBytes)
+  }
+
+  // Last-resort guaranteed-small payload.
+  const fallback = buildMinimalTicketFallbackPayload(null, maxBytes)
+  return JSON.stringify(fallback)
 }
 
 function utf8ByteLength(value: string): number {
@@ -359,7 +446,7 @@ export function registerTicketTools(server: McpServer): void {
     'get_ticket',
     {
       description:
-        'Get a ticket by ID with a hard byte cap sized for <=25k tokens. Supports overview, filtered comments, and image attachment metadata (file paths only).',
+        'Get a ticket by ID with a hard byte cap (25,000 UTF-8 bytes). Supports overview, filtered comments, and image attachment metadata (file paths only).',
       inputSchema: {
         ticket_id: z
           .number()
@@ -407,8 +494,7 @@ export function registerTicketTools(server: McpServer): void {
         ticket: buildTicketSummary(ticket, ticketBodyPreviewChars),
       }
 
-      const commentsNeeded = includeOverview || includeComments || includeImages
-      const allComments = commentsNeeded
+      const allOverviewComments = includeOverview
         ? commentsRepository.getByTicket(ticket_id).slice().reverse()
         : []
       const agentTypeCache = new Map<string, string | null>()
@@ -436,7 +522,7 @@ export function registerTicketTools(server: McpServer): void {
           last_commented_at: string
         }>()
 
-        for (const comment of allComments) {
+        for (const comment of allOverviewComments) {
           const existing = participantMap.get(comment.author_id)
           const description = comment.author.description
             ? truncateText(comment.author.description, 240).value
@@ -471,38 +557,30 @@ export function registerTicketTools(server: McpServer): void {
         })
 
         response.overview = {
-          total_comments: allComments.length,
+          total_comments: allOverviewComments.length,
           participant_count: participants.length,
           participants,
         }
       }
 
-      const matchesCommentFilters = (comment: CommentWithAuthor): boolean => {
-        if (parsedFilters.authorIds && !parsedFilters.authorIds.has(comment.author_id)) {
-          return false
-        }
-        if (parsedFilters.actorTypes && !parsedFilters.actorTypes.has(comment.author.type)) {
-          return false
-        }
-        if (parsedFilters.agentTypes) {
-          if (comment.author.type === 'agent') {
-            const commentAgentType = resolveCommentAgentType(comment)
-            if (!commentAgentType || !parsedFilters.agentTypes.has(commentAgentType)) {
-              return false
-            }
-          } else if (!parsedFilters.actorTypes || !parsedFilters.actorTypes.has('user')) {
-            // With agent_types present and no explicit user actor filter, default to agent-only.
-            return false
-          }
-        }
-        return true
+      const commentsRequested = includeComments || includeImages
+      const commentFilterBase: CommentFilters = {
+        ticket_id,
+        author_ids: parsedFilters.authorIds ? [...parsedFilters.authorIds] : undefined,
+        actor_types: parsedFilters.actorTypes ? [...parsedFilters.actorTypes] : undefined,
+        agent_types: parsedFilters.agentTypes ? [...parsedFilters.agentTypes] : undefined,
       }
-
-      const filteredComments = allComments.filter(matchesCommentFilters)
-      const pagedComments = filteredComments.slice(
-        parsedFilters.offset,
-        parsedFilters.offset + parsedFilters.limit
-      )
+      const pagedComments = commentsRequested
+        ? commentsRepository.list({
+          ...commentFilterBase,
+          sort_order: 'desc',
+          limit: parsedFilters.limit,
+          offset: parsedFilters.offset,
+        })
+        : []
+      const totalFiltered = commentsRequested
+        ? commentsRepository.count(commentFilterBase)
+        : 0
       const pagedCommentIds = new Set(pagedComments.map((comment) => comment.id))
 
       if (includeComments) {
@@ -563,11 +641,15 @@ export function registerTicketTools(server: McpServer): void {
           images: config?.images === undefined,
         },
         comments_page: {
-          total_filtered: filteredComments.length,
-          returned: includeComments ? pagedComments.length : 0,
+          total_filtered: totalFiltered,
+          returned: pagedComments.length,
           offset: parsedFilters.offset,
           limit: parsedFilters.limit,
-          has_more: parsedFilters.offset + pagedComments.length < filteredComments.length,
+          has_more: parsedFilters.offset + pagedComments.length < totalFiltered,
+          next_offset:
+            parsedFilters.offset + pagedComments.length < totalFiltered
+              ? parsedFilters.offset + pagedComments.length
+              : null,
           filters: {
             author_ids: parsedFilters.authorIds ? [...parsedFilters.authorIds] : undefined,
             actor_types: parsedFilters.actorTypes ? [...parsedFilters.actorTypes] : undefined,
@@ -592,48 +674,7 @@ export function registerTicketTools(server: McpServer): void {
       finalMeta.prune_stats = prune.stats
       finalPayload.meta = finalMeta
 
-      let serialized = JSON.stringify(finalPayload)
-      let bytes = utf8ByteLength(serialized)
-      if (bytes > MAX_GET_TICKET_RESPONSE_BYTES) {
-        const minimalTicket = (
-          finalPayload.ticket
-          && typeof finalPayload.ticket === 'object'
-          && !Array.isArray(finalPayload.ticket)
-        )
-          ? finalPayload.ticket as Record<string, unknown>
-          : {}
-        const fallback = {
-          ticket: {
-            id: minimalTicket.id ?? null,
-            project_id: minimalTicket.project_id ?? null,
-            title: minimalTicket.title ?? null,
-            status: minimalTicket.status ?? null,
-          },
-          meta: {
-            cap_bytes: MAX_GET_TICKET_RESPONSE_BYTES,
-            truncated: true,
-            fallback_minimal: true,
-          },
-        }
-        serialized = JSON.stringify(fallback)
-        bytes = utf8ByteLength(serialized)
-      }
-
-      const payloadWithBytes = JSON.parse(serialized) as Record<string, unknown>
-      const payloadWithBytesMeta = (
-        payloadWithBytes.meta
-        && typeof payloadWithBytes.meta === 'object'
-        && !Array.isArray(payloadWithBytes.meta)
-      )
-        ? payloadWithBytes.meta as Record<string, unknown>
-        : {}
-      payloadWithBytesMeta.bytes_used = bytes
-      payloadWithBytes.meta = payloadWithBytesMeta
-      serialized = JSON.stringify(payloadWithBytes)
-      if (utf8ByteLength(serialized) > MAX_GET_TICKET_RESPONSE_BYTES) {
-        delete payloadWithBytesMeta.prune_stats
-        serialized = JSON.stringify(payloadWithBytes)
-      }
+      const serialized = serializeGetTicketPayloadWithinCap(finalPayload, MAX_GET_TICKET_RESPONSE_BYTES)
 
       return {
         content: [

@@ -821,6 +821,122 @@ describe('commentsRepository', () => {
       expect(comments[0]?.author_id).toBe(TEST_USER_ID)
     })
 
+    it('should filter comments by author_ids', () => {
+      const otherTicket = ticketsRepository.create({
+        title: 'Other ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      commentsRepository.create({
+        ticket_id: otherTicket.id,
+        author_id: TEST_USER_ID,
+        body: 'Unrelated user comment',
+      })
+
+      const comments = commentsRepository.list({
+        ticket_id: testTicketId,
+        author_ids: [TEST_AGENT_ID],
+      })
+
+      expect(comments).toHaveLength(1)
+      expect(comments[0]?.author_id).toBe(TEST_AGENT_ID)
+    })
+
+    it('should filter comments by actor_types', () => {
+      const agentOnly = commentsRepository.list({
+        ticket_id: testTicketId,
+        actor_types: ['agent'],
+      })
+      const userOnly = commentsRepository.list({
+        ticket_id: testTicketId,
+        actor_types: ['user'],
+      })
+
+      expect(agentOnly).toHaveLength(1)
+      expect(agentOnly[0]?.author.type).toBe('agent')
+      expect(userOnly).toHaveLength(1)
+      expect(userOnly[0]?.author.type).toBe('user')
+    })
+
+    it('should filter comments by agent_types', () => {
+      const coderId = `coder-${Date.now()}`
+      const analyzerId = `analyzer-${Date.now()}`
+
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run(coderId, 'agent', 'Coder Agent')
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run(analyzerId, 'agent', 'Analyzer Agent')
+
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt, permissions, config, is_enabled) VALUES (?, 'x', '[]', ?, 1)"
+      ).run(coderId, JSON.stringify({ type: 'coder' }))
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt, permissions, config, is_enabled) VALUES (?, 'x', '[]', ?, 1)"
+      ).run(analyzerId, JSON.stringify({ type: 'analyzer' }))
+
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: coderId,
+        body: 'Coder note',
+      })
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: analyzerId,
+        body: 'Analyzer note',
+      })
+
+      const coderComments = commentsRepository.list({
+        ticket_id: testTicketId,
+        agent_types: ['coder'],
+      })
+
+      expect(coderComments).toHaveLength(1)
+      expect(coderComments[0]?.author_id).toBe(coderId)
+    })
+
+    it('should include users plus matching agent_types when actor_types includes user and agent', () => {
+      const coderId = `coder-mix-${Date.now()}`
+      const analyzerId = `analyzer-mix-${Date.now()}`
+
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run(coderId, 'agent', 'Coder Mix')
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run(analyzerId, 'agent', 'Analyzer Mix')
+
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt, permissions, config, is_enabled) VALUES (?, 'x', '[]', ?, 1)"
+      ).run(coderId, JSON.stringify({ type: 'coder' }))
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt, permissions, config, is_enabled) VALUES (?, 'x', '[]', ?, 1)"
+      ).run(analyzerId, JSON.stringify({ type: 'analyzer' }))
+
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: coderId,
+        body: 'Coder mix',
+      })
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: analyzerId,
+        body: 'Analyzer mix',
+      })
+
+      const filtered = commentsRepository.list({
+        ticket_id: testTicketId,
+        actor_types: ['user', 'agent'],
+        agent_types: ['coder'],
+      })
+
+      const authorIds = new Set(filtered.map((c) => c.author_id))
+      expect(authorIds.has(TEST_USER_ID)).toBe(true)
+      expect(authorIds.has(coderId)).toBe(true)
+      expect(authorIds.has(analyzerId)).toBe(false)
+    })
+
     it('should filter root comments (parent_id = null)', () => {
       const parent = commentsRepository.create({
         ticket_id: testTicketId,
@@ -876,6 +992,34 @@ describe('commentsRepository', () => {
       expect(page1).toHaveLength(1)
       expect(page2).toHaveLength(1)
       expect(page1[0]?.id).not.toBe(page2[0]?.id)
+    })
+
+    it('should support descending sort order', () => {
+      const oldest = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'oldest',
+      })
+      const newest = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'newest',
+      })
+
+      // Make timestamps deterministic for ordering assertions.
+      db.prepare("UPDATE comments SET created_at = ? WHERE id = ?").run('2026-01-01 00:00:00', oldest.id)
+      db.prepare("UPDATE comments SET created_at = ? WHERE id = ?").run('2026-01-02 00:00:00', newest.id)
+
+      const desc = commentsRepository.list({
+        ticket_id: testTicketId,
+        sort_order: 'desc',
+      })
+
+      const oldestIndex = desc.findIndex((c) => c.id === oldest.id)
+      const newestIndex = desc.findIndex((c) => c.id === newest.id)
+      expect(newestIndex).toBeGreaterThanOrEqual(0)
+      expect(oldestIndex).toBeGreaterThanOrEqual(0)
+      expect(newestIndex).toBeLessThan(oldestIndex)
     })
   })
 

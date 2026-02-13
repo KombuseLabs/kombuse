@@ -340,6 +340,7 @@ describe('get_ticket', () => {
     expect(data1.comments[1].id).toBe(c2.id)
     expect(data1.comments_page ?? data1.meta?.comments_page).toBeDefined()
     expect(data1.meta.comments_page.has_more).toBe(true)
+    expect(data1.meta.comments_page.next_offset).toBe(2)
 
     const page2 = await client.callTool({
       name: 'get_ticket',
@@ -356,6 +357,7 @@ describe('get_ticket', () => {
     expect(data2.comments).toHaveLength(1)
     expect(data2.comments[0].id).toBe(c1.id)
     expect(data2.meta.comments_page.has_more).toBe(false)
+    expect(data2.meta.comments_page.next_offset).toBeNull()
   })
 
   it('should enforce a hard 25k byte cap on response payload', async () => {

@@ -1,4 +1,4 @@
-import type { Profile } from './profiles'
+import type { Profile, ProfileType } from './profiles'
 import type { AttachmentMeta } from './attachments'
 
 /**
@@ -59,8 +59,12 @@ export interface UpdateCommentInput {
 export interface CommentFilters {
   ticket_id?: number
   author_id?: string
+  author_ids?: string[]
+  actor_types?: ProfileType[]
+  agent_types?: string[]
   parent_id?: number | null
   kombuse_session_id?: string
+  sort_order?: 'asc' | 'desc'
   limit?: number
   offset?: number
 }

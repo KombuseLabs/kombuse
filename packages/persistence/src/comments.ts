@@ -49,6 +49,12 @@ interface RawCommentWithAuthor extends RawComment {
   author_updated_at: string
 }
 
+const COMMENT_WITH_AUTHOR_FROM = `
+  FROM comments c
+  JOIN profiles p ON p.id = c.author_id
+  LEFT JOIN agents a ON a.id = c.author_id
+`
+
 const COMMENT_WITH_AUTHOR_SELECT = `
   SELECT c.*,
     p.type AS author_type, p.name AS author_name, p.email AS author_email,
@@ -56,9 +62,74 @@ const COMMENT_WITH_AUTHOR_SELECT = `
     p.external_source AS author_external_source, p.external_id AS author_external_id,
     p.is_active AS author_is_active, p.created_at AS author_created_at,
     p.updated_at AS author_updated_at
-  FROM comments c
-  JOIN profiles p ON p.id = c.author_id
+  ${COMMENT_WITH_AUTHOR_FROM}
 `
+
+function buildCommentFilterWhereClause(filters?: CommentFilters): {
+  whereClause: string
+  params: unknown[]
+} {
+  const conditions: string[] = []
+  const params: unknown[] = []
+
+  if (filters?.ticket_id) {
+    conditions.push('c.ticket_id = ?')
+    params.push(filters.ticket_id)
+  }
+
+  if (filters?.author_id) {
+    conditions.push('c.author_id = ?')
+    params.push(filters.author_id)
+  }
+
+  if (filters?.author_ids && filters.author_ids.length > 0) {
+    const placeholders = filters.author_ids.map(() => '?').join(', ')
+    conditions.push(`c.author_id IN (${placeholders})`)
+    params.push(...filters.author_ids)
+  }
+
+  if (filters?.agent_types && filters.agent_types.length > 0) {
+    const includesUser = filters.actor_types?.includes('user') ?? false
+    const includesAgent = filters.actor_types
+      ? filters.actor_types.includes('agent')
+      : true
+
+    if (includesUser && includesAgent) {
+      const placeholders = filters.agent_types.map(() => '?').join(', ')
+      conditions.push(`(p.type = 'user' OR (p.type = 'agent' AND json_extract(a.config, '$.type') IN (${placeholders})))`)
+      params.push(...filters.agent_types)
+    } else if (includesUser && !includesAgent) {
+      conditions.push(`p.type = 'user'`)
+    } else {
+      const placeholders = filters.agent_types.map(() => '?').join(', ')
+      conditions.push(`(p.type = 'agent' AND json_extract(a.config, '$.type') IN (${placeholders}))`)
+      params.push(...filters.agent_types)
+    }
+  } else if (filters?.actor_types && filters.actor_types.length > 0) {
+    const placeholders = filters.actor_types.map(() => '?').join(', ')
+    conditions.push(`p.type IN (${placeholders})`)
+    params.push(...filters.actor_types)
+  }
+
+  if (filters?.parent_id !== undefined) {
+    if (filters.parent_id === null) {
+      conditions.push('c.parent_id IS NULL')
+    } else {
+      conditions.push('c.parent_id = ?')
+      params.push(filters.parent_id)
+    }
+  }
+
+  if (filters?.kombuse_session_id) {
+    conditions.push('c.kombuse_session_id = ?')
+    params.push(filters.kombuse_session_id)
+  }
+
+  return {
+    whereClause: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
+    params,
+  }
+}
 
 // Map database row with joined profile to CommentWithAuthor type
 function mapCommentWithAuthor(row: RawCommentWithAuthor): CommentWithAuthor {
@@ -136,45 +207,39 @@ export const commentsRepository = {
    */
   list(filters?: CommentFilters): CommentWithAuthor[] {
     const db = getDatabase()
-    const conditions: string[] = []
-    const params: unknown[] = []
-
-    if (filters?.ticket_id) {
-      conditions.push('c.ticket_id = ?')
-      params.push(filters.ticket_id)
-    }
-    if (filters?.author_id) {
-      conditions.push('c.author_id = ?')
-      params.push(filters.author_id)
-    }
-    if (filters?.parent_id !== undefined) {
-      if (filters.parent_id === null) {
-        conditions.push('c.parent_id IS NULL')
-      } else {
-        conditions.push('c.parent_id = ?')
-        params.push(filters.parent_id)
-      }
-    }
-    if (filters?.kombuse_session_id) {
-      conditions.push('c.kombuse_session_id = ?')
-      params.push(filters.kombuse_session_id)
-    }
-
-    const whereClause =
-      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+    const { whereClause, params } = buildCommentFilterWhereClause(filters)
 
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
+    const sortOrder = filters?.sort_order === 'desc' ? 'DESC' : 'ASC'
 
     const stmt = db.prepare(`
       ${COMMENT_WITH_AUTHOR_SELECT}
       ${whereClause}
-      ORDER BY c.created_at ASC
+      ORDER BY c.created_at ${sortOrder}
       LIMIT ? OFFSET ?
     `)
 
     const rows = stmt.all(...params, limit, offset) as RawCommentWithAuthor[]
     return rows.map(mapCommentWithAuthor)
+  },
+
+  /**
+   * Count comments matching optional filters.
+   */
+  count(filters?: CommentFilters): number {
+    const db = getDatabase()
+    const { whereClause, params } = buildCommentFilterWhereClause(filters)
+
+    const row = db
+      .prepare(`
+        SELECT COUNT(*) as count
+        ${COMMENT_WITH_AUTHOR_FROM}
+        ${whereClause}
+      `)
+      .get(...params) as { count: number }
+
+    return row.count
   },
 
   /**
