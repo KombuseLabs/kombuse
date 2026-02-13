@@ -747,6 +747,7 @@ import { AgentCard, AgentDetail } from '@kombuse/ui/components'
 />
 
 // Detail panel — shows agent config with copyable agent ID in the header
+// Includes "Available in chat" toggle to control whether the agent appears in AgentPicker
 <AgentDetail
   agent={agent}
   profile={profile}

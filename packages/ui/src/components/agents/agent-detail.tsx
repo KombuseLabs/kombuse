@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Label } from '../../base/label'
+import { Switch } from '../../base/switch'
 import { Textarea } from '../../base/textarea'
 import { PromptEditor } from '../prompt-editor'
 import { AvatarPicker, getAvatarIcon } from './avatar-picker'
@@ -59,6 +60,7 @@ function AgentDetail({
   const [avatar, setAvatar] = useState(profile.avatar_url || 'bot')
   const [systemPrompt, setSystemPrompt] = useState(agent.system_prompt)
   const [permissions, setPermissions] = useState<Permission[]>(agent.permissions)
+  const [enabledForChat, setEnabledForChat] = useState(agent.config?.enabled_for_chat ?? false)
 
   const [idCopied, setIdCopied] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -82,7 +84,8 @@ function AgentDetail({
     description !== (profile.description || '') ||
     avatar !== (profile.avatar_url || 'bot') ||
     systemPrompt !== agent.system_prompt ||
-    JSON.stringify(permissions) !== JSON.stringify(agent.permissions)
+    JSON.stringify(permissions) !== JSON.stringify(agent.permissions) ||
+    enabledForChat !== (agent.config?.enabled_for_chat ?? false)
 
   // Reset form when agent changes
   useEffect(() => {
@@ -91,13 +94,14 @@ function AgentDetail({
     setAvatar(profile.avatar_url || 'bot')
     setSystemPrompt(agent.system_prompt)
     setPermissions(agent.permissions)
+    setEnabledForChat(agent.config?.enabled_for_chat ?? false)
   }, [agent, profile])
 
   const handleSave = async () => {
     if (!onSave) return
     await onSave({
       profile: { name, description: description || undefined, avatar_url: avatar },
-      agent: { system_prompt: systemPrompt, permissions },
+      agent: { system_prompt: systemPrompt, permissions, config: { ...agent.config, enabled_for_chat: enabledForChat } },
     })
   }
 
@@ -194,6 +198,19 @@ function AgentDetail({
         <div className="space-y-2">
           <Label>Avatar</Label>
           <AvatarPicker value={avatar} onChange={setAvatar} />
+        </div>
+
+        {/* Available in chat */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="enabled-for-chat">Available in chat</Label>
+            <p className="text-xs text-muted-foreground">Show this agent in the chat agent picker</p>
+          </div>
+          <Switch
+            id="enabled-for-chat"
+            checked={enabledForChat}
+            onCheckedChange={setEnabledForChat}
+          />
         </div>
 
         {/* System Prompt */}
