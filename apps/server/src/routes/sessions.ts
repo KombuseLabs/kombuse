@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import type { Session, PublicSession } from '@kombuse/types'
-import { createSessionId } from '@kombuse/types'
+import { BACKEND_TYPES, createSessionId } from '@kombuse/types'
 import { sessionsRepository, sessionEventsRepository } from '@kombuse/persistence'
 import {
   createSessionSchema,
@@ -35,7 +35,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     const createdSession = sessionsRepository.create({
       id: crypto.randomUUID(),
       kombuse_session_id: kombuseId,
-      backend_type: parseResult.data.backend_type ?? 'claude-code',
+      backend_type: parseResult.data.backend_type ?? BACKEND_TYPES.CLAUDE_CODE,
       agent_id: parseResult.data.agent_id,
     })
 

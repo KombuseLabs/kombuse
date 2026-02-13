@@ -4,6 +4,7 @@ import { AgentPicker, Chat, SessionList } from "@kombuse/ui/components";
 import { useCreateSession, useSessions, useSessionByKombuseId, useAppContext, useDeleteSession } from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
+import { BACKEND_TYPES, type BackendType } from "@kombuse/types";
 
 export function Chats() {
   const navigate = useNavigate();
@@ -22,10 +23,24 @@ export function Chats() {
 
   // Agent picker state (only used for draft/new chats)
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedBackendType, setSelectedBackendType] = useState<BackendType>(BACKEND_TYPES.CLAUDE_CODE);
 
   // Resolve agent_id for existing sessions
   const { data: currentSession } = useSessionByKombuseId(selectedSessionId);
   const effectiveAgentId = isDraft ? selectedAgentId : (currentSession?.agent_id ?? null);
+  const normalizeBackendType = (value?: string | null): BackendType => {
+    if (
+      value === BACKEND_TYPES.CLAUDE_CODE
+      || value === BACKEND_TYPES.CODEX
+      || value === BACKEND_TYPES.MOCK
+    ) {
+      return value;
+    }
+    return BACKEND_TYPES.CLAUDE_CODE;
+  };
+  const effectiveBackendType = isDraft
+    ? selectedBackendType
+    : normalizeBackendType(currentSession?.backend_type);
 
   // Helper to check if a session has pending permissions
   const sessionHasPendingPermission = (kombuseSessionId: string | null) => {
@@ -40,6 +55,7 @@ export function Chats() {
 
   const handleNewChat = () => {
     setSelectedAgentId(null);
+    setSelectedBackendType(BACKEND_TYPES.CLAUDE_CODE);
     navigate(chatsBasePath);
   };
 
@@ -49,7 +65,7 @@ export function Chats() {
 
   const ensureSessionForDraft = async () => {
     const session = await createSession.mutateAsync({
-      backend_type: "claude-code",
+      backend_type: selectedBackendType,
       agent_id: selectedAgentId ?? undefined,
     });
     navigate(`${chatsBasePath}/${session.kombuse_session_id}`);
@@ -112,6 +128,22 @@ export function Chats() {
           <h1 className="text-2xl font-bold">
             {isProjectContext ? "Chats" : "Chat"}
           </h1>
+          <div className="flex items-center gap-2">
+            <label htmlFor="chat-backend-select" className="text-sm text-muted-foreground">Backend</label>
+            <select
+              id="chat-backend-select"
+              value={effectiveBackendType}
+              onChange={(event) => setSelectedBackendType(event.target.value as BackendType)}
+              disabled={!isDraft}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
+              <option value={BACKEND_TYPES.CODEX}>Codex</option>
+              {effectiveBackendType === BACKEND_TYPES.MOCK ? (
+                <option value={BACKEND_TYPES.MOCK}>Mock</option>
+              ) : null}
+            </select>
+          </div>
           <AgentPicker
             value={effectiveAgentId}
             onChange={setSelectedAgentId}
@@ -125,6 +157,7 @@ export function Chats() {
             sessionId={selectedSessionId}
             agentId={effectiveAgentId ?? undefined}
             projectId={projectId ?? null}
+            backendType={effectiveBackendType}
             onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
           >
             <Chat

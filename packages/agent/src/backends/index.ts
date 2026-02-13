@@ -27,4 +27,11 @@ export {
   type ClaudeJsonlProgressMessage,
   transformJsonlToAgentEvents,
 } from './claude-code'
+export {
+  CodexBackend,
+  type CodexBackendOptions,
+  resolveCodexPath,
+  createJsonRpcLineBehavior,
+  type JsonRpcLineCallbacks,
+} from './codex'
 export { MockAgentClient, type MockClientOptions } from './mock'

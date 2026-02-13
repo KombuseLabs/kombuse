@@ -1,6 +1,6 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
-import { ClaudeCodeBackend } from '@kombuse/agent'
+import { ClaudeCodeBackend, CodexBackend, MockAgentClient } from '@kombuse/agent'
 import { createSessionLogger } from '../logger'
 
 /**
@@ -176,7 +176,7 @@ import {
   type StateMachineDeps,
 } from '@kombuse/services'
 import { agentInvocationsRepository, commentsRepository, eventsRepository, profilesRepository, sessionsRepository } from '@kombuse/persistence'
-import { EVENT_TYPES, createSessionId, isValidSessionId, type PermissionMode, type ServerMessage } from '@kombuse/types'
+import { BACKEND_TYPES, EVENT_TYPES, createSessionId, isValidSessionId, type PermissionMode, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
@@ -184,6 +184,7 @@ import type {
   AgentBackend,
   AgentActivityStatus,
   AgentEvent,
+  BackendType,
   ClientMessage,
   ConversationContext,
   EventWithActor,
@@ -894,18 +895,39 @@ export type AgentExecutionEvent =
 interface AgentExecutionDependencies {
   getAgent: (agentId: string) => ReturnType<typeof agentService.getAgent>
   processEvent: (event: EventWithActor) => ReturnType<typeof agentService.processEvent>
-  createBackend: () => AgentBackend
+  createBackend: (backendType: BackendType) => AgentBackend
   generateSessionId: () => KombuseSessionId
   resolveProjectPath: () => string
   sessionPersistence: ISessionPersistenceService
   stateMachine: SessionStateMachine
 }
 
+function isSupportedBackendType(value: unknown): value is BackendType {
+  return value === BACKEND_TYPES.CLAUDE_CODE
+    || value === BACKEND_TYPES.CODEX
+    || value === BACKEND_TYPES.MOCK
+}
+
+function resolveConfiguredBackendType(value: unknown): BackendType | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  return isSupportedBackendType(value) ? value : undefined
+}
+
 /**
  * Server-standard backend factory for all agent execution paths.
  */
-export function createServerAgentBackend(): AgentBackend {
-  return new ClaudeCodeBackend()
+export function createServerAgentBackend(backendType: BackendType): AgentBackend {
+  switch (backendType) {
+    case BACKEND_TYPES.CODEX:
+      return new CodexBackend()
+    case BACKEND_TYPES.MOCK:
+      return new MockAgentClient()
+    case BACKEND_TYPES.CLAUDE_CODE:
+    default:
+      return new ClaudeCodeBackend()
+  }
 }
 
 const defaultStateMachine = new SessionStateMachine({
@@ -1371,7 +1393,7 @@ export function startAgentChatSession(
   dependencies: AgentExecutionDependencies = defaultDependencies,
   options?: { projectPath?: string; ticketId?: number; systemPromptOverride?: string }
 ): void {
-  const { agentId, message: userMessage, kombuseSessionId, projectId } = message
+  const { agentId, message: userMessage, kombuseSessionId, projectId, backendType: backendTypeOverride } = message
 
   const normalizedAgentId =
     typeof agentId === 'string' && agentId.trim().length > 0
@@ -1440,10 +1462,19 @@ export function startAgentChatSession(
     appSessionId = dependencies.generateSessionId()
   }
 
+  const existingSessionByKombuse = dependencies.sessionPersistence.getSessionByKombuseId(appSessionId)
+  const backendTypeFromAgentConfig = resolveConfiguredBackendType(
+    (agent?.config as { backend_type?: unknown } | undefined)?.backend_type
+  )
+  const resolvedBackendType = resolveConfiguredBackendType(backendTypeOverride)
+    ?? resolveConfiguredBackendType(existingSessionByKombuse?.backend_type)
+    ?? backendTypeFromAgentConfig
+    ?? BACKEND_TYPES.CLAUDE_CODE
+
   // Create/get persistent session record
   const persistentSessionId = dependencies.sessionPersistence.ensureSession(
     appSessionId,
-    'claude-code',
+    resolvedBackendType,
     options?.ticketId,
     agent?.id
   )
@@ -1501,7 +1532,22 @@ export function startAgentChatSession(
   // === PERSISTENT BACKEND REUSE PATH ===
   // If an active backend already exists for this session, reuse it by sending
   // the new message to the existing process instead of spawning a new one.
-  const existingBackend = activeBackends.get(appSessionId)
+  let existingBackend = activeBackends.get(appSessionId)
+  if (
+    existingBackend
+    && existingBackend.isRunning()
+    && existingBackend.name !== resolvedBackendType
+  ) {
+    console.log(
+      `[Server] Backend mismatch for session ${appSessionId}; replacing ${existingBackend.name} with ${resolvedBackendType}`
+    )
+    void existingBackend.stop().catch(() => {
+      // Best effort stop when swapping backend type.
+    })
+    unregisterBackend(appSessionId)
+    existingBackend = undefined
+  }
+
   if (existingBackend && existingBackend.isRunning()) {
     dependencies.stateMachine.transition(persistentSessionId, 'continue', {
       kombuseSessionId: appSessionId,
@@ -1517,7 +1563,7 @@ export function startAgentChatSession(
     const reusedUserEvent: AgentEvent = {
       type: 'message',
       eventId: crypto.randomUUID(),
-      backend: 'claude-code',
+      backend: existingBackend.name,
       timestamp: Date.now(),
       role: 'user',
       content: userMessage,
@@ -1630,7 +1676,7 @@ export function startAgentChatSession(
     return // Skip normal createBackend/start path
   }
 
-  const backend = dependencies.createBackend()
+  const backend = dependencies.createBackend(resolvedBackendType)
 
   // Transition to running: updates DB, registers backend, resets idle timeout.
   // Determine correct event based on current session status.
@@ -1659,7 +1705,7 @@ export function startAgentChatSession(
   const userMessageEvent: AgentEvent = {
     type: 'message',
     eventId: crypto.randomUUID(),
-    backend: 'claude-code',
+    backend: backend.name,
     timestamp: Date.now(),
     role: 'user',
     content: userMessage,
@@ -1916,7 +1962,7 @@ export function startAgentChatSession(
           `\n\n## Prior Conversation\nThe following is the conversation history from a previous session. Use this context to maintain continuity.\n\n${conversationHistory}`
       }
 
-      const retryBackend = dependencies.createBackend()
+      const retryBackend = dependencies.createBackend(resolvedBackendType)
       dependencies.stateMachine.transition(persistentSessionId, 'continue', {
         kombuseSessionId: appSessionId,
         ticketId,

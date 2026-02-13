@@ -46,6 +46,7 @@ import type {
   MilestoneWithStats,
   CreateMilestoneInput,
   UpdateMilestoneInput,
+  BackendType,
 } from '@kombuse/types'
 
 declare global {
@@ -544,7 +545,7 @@ export const sessionsApi = {
     return handleResponse<PublicSession>(response)
   },
 
-  async create(input?: { backend_type?: string; agent_id?: string }): Promise<PublicSession> {
+  async create(input?: { backend_type?: BackendType; agent_id?: string }): Promise<PublicSession> {
     const response = await fetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -2,6 +2,7 @@ import type { ActorType } from './events'
 import type { UpdateStatus } from './updates'
 import type { SerializedAgentEvent } from './agent'
 import type { AgentActivityStatus } from './app-context'
+import type { BackendType } from './agent'
 
 /**
  * Agent events streamed over websocket.
@@ -37,6 +38,7 @@ export type ClientMessage =
       message: string
       kombuseSessionId?: string
       projectId?: string
+      backendType?: BackendType
     }
   | {
       type: 'permission.response'

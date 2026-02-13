@@ -11,6 +11,7 @@ import type {
   PublicSession,
   PendingPermission,
   JsonObject,
+  BackendType,
 } from '@kombuse/types'
 import { useWebSocket } from '../hooks/use-websocket'
 import { useSessionByKombuseId, useSessionEvents } from '../hooks/use-sessions'
@@ -25,6 +26,8 @@ interface ChatProviderProps {
   sessionId?: string | null
   /** Optional project context for resolving workspace paths */
   projectId?: string | null
+  /** Optional explicit backend type for new turns */
+  backendType?: BackendType
   /** Create/resolve a session ID when sending from a draft chat */
   onEnsureSession?: () => Promise<string>
 }
@@ -57,6 +60,7 @@ export function ChatProvider({
   agentId,
   sessionId,
   projectId,
+  backendType,
   onEnsureSession,
 }: ChatProviderProps) {
   const queryClient = useQueryClient()
@@ -302,12 +306,14 @@ export function ChatProvider({
         message,
         kombuseSessionId: targetSessionId,
         projectId: projectId ?? undefined,
+        backendType,
       })
     },
     [
       agentId,
       effectiveKombuseSessionId,
       projectId,
+      backendType,
       isConnected,
       isLoading,
       wsSend,

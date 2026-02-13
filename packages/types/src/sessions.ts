@@ -1,4 +1,5 @@
 import type { KombuseSessionId } from './session-id'
+import type { BackendType } from './agent'
 
 /**
  * All possible session lifecycle states.
@@ -23,7 +24,7 @@ export interface SessionMetadata {
 export interface Session {
   id: string
   kombuse_session_id: KombuseSessionId | null
-  backend_type: string | null
+  backend_type: BackendType | null
   backend_session_id: string | null
   ticket_id: number | null
   agent_id: string | null
@@ -51,7 +52,7 @@ export type PublicSession = Omit<Session, 'id'>
 export interface CreateSessionInput {
   id?: string
   kombuse_session_id?: KombuseSessionId
-  backend_type?: string
+  backend_type?: BackendType
   backend_session_id?: string
   ticket_id?: number
   agent_id?: string

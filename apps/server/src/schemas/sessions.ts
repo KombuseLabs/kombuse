@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { BACKEND_TYPES } from '@kombuse/types'
 
 export const sessionFiltersSchema = z.object({
   status: z.enum(['running', 'completed', 'failed', 'aborted']).optional(),
@@ -8,7 +9,11 @@ export const sessionFiltersSchema = z.object({
 })
 
 export const createSessionSchema = z.object({
-  backend_type: z.string().min(1).optional(),
+  backend_type: z.enum([
+    BACKEND_TYPES.CLAUDE_CODE,
+    BACKEND_TYPES.CODEX,
+    BACKEND_TYPES.MOCK,
+  ]).optional(),
   agent_id: z.string().min(1).optional(),
 })
 

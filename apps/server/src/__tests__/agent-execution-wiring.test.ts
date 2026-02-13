@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { AgentBackend, AgentEvent, KombuseSessionId, StartOptions } from '@kombuse/types'
+import { BACKEND_TYPES, type AgentBackend, type AgentEvent, type KombuseSessionId, type StartOptions } from '@kombuse/types'
 
 // Mock side-effect imports before importing the module under test
 vi.mock('../websocket/hub', () => ({
@@ -75,6 +75,138 @@ async function waitForBackendStart(backend: AgentBackend): Promise<void> {
   }
   throw new Error('backend.start() was not called within timeout')
 }
+
+describe('startAgentChatSession backend selection', () => {
+  function createPassiveBackend(name: AgentBackend['name']): AgentBackend {
+    return {
+      name,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+  }
+
+  function createDependencies(createBackend: ReturnType<typeof vi.fn>) {
+    return {
+      getAgent: vi.fn(() => null),
+      processEvent: vi.fn(() => []),
+      createBackend,
+      generateSessionId: vi.fn(() => 'chat-backend-id' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => ({
+          id: 'session-1',
+          kombuse_session_id: 'chat-backend-id',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          backend_session_id: null,
+          ticket_id: null,
+          agent_id: null,
+          status: 'pending',
+          metadata: {},
+          started_at: new Date().toISOString(),
+          completed_at: null,
+          failed_at: null,
+          last_event_seq: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+  }
+
+  it('uses persisted session backend type when resuming', async () => {
+    const backend = createPassiveBackend(BACKEND_TYPES.CODEX)
+    const createBackend = vi.fn(() => backend)
+    const deps = createDependencies(createBackend)
+
+    ;(deps.sessionPersistence.getSessionByKombuseId as ReturnType<typeof vi.fn>).mockReturnValue({
+      backend_type: BACKEND_TYPES.CODEX,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'hello',
+        kombuseSessionId: 'chat-backend-id' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(createBackend).toHaveBeenCalledWith(BACKEND_TYPES.CODEX)
+  })
+
+  it('prefers explicit backendType override over persisted session backend', async () => {
+    const backend = createPassiveBackend(BACKEND_TYPES.CODEX)
+    const createBackend = vi.fn(() => backend)
+    const deps = createDependencies(createBackend)
+
+    ;(deps.sessionPersistence.getSessionByKombuseId as ReturnType<typeof vi.fn>).mockReturnValue({
+      backend_type: BACKEND_TYPES.CLAUDE_CODE,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'hello',
+        kombuseSessionId: 'chat-backend-id' as KombuseSessionId,
+        backendType: BACKEND_TYPES.CODEX,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(createBackend).toHaveBeenCalledWith(BACKEND_TYPES.CODEX)
+  })
+
+  it('stops running backend when switching backend type for the same session', async () => {
+    const existingBackend = createPassiveBackend(BACKEND_TYPES.CLAUDE_CODE)
+    registerBackend('chat-backend-id', existingBackend)
+
+    const newBackend = createPassiveBackend(BACKEND_TYPES.CODEX)
+    const createBackend = vi.fn(() => newBackend)
+    const deps = createDependencies(createBackend)
+
+    ;(deps.sessionPersistence.getSessionByKombuseId as ReturnType<typeof vi.fn>).mockReturnValue({
+      backend_type: BACKEND_TYPES.CLAUDE_CODE,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'switch backend',
+        kombuseSessionId: 'chat-backend-id' as KombuseSessionId,
+        backendType: BACKEND_TYPES.CODEX,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(newBackend)
+
+    expect(existingBackend.stop).toHaveBeenCalled()
+    expect(createBackend).toHaveBeenCalledWith(BACKEND_TYPES.CODEX)
+  })
+})
 
 describe('startAgentChatSession allowedTools wiring', () => {
   it('passes preset allowedTools through to backend.start()', async () => {

@@ -50,6 +50,7 @@ export interface ConversationContext {
 /** Backend type identifiers */
 export const BACKEND_TYPES = {
   CLAUDE_CODE: 'claude-code',
+  CODEX: 'codex',
   MOCK: 'mock',
 } as const
 
