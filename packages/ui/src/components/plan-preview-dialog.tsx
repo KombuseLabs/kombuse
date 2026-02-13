@@ -1,14 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import type { PendingPermission } from '@kombuse/types'
-import { Check, X, MessageSquare, ExternalLink, Loader2 } from 'lucide-react'
+import { Check, X, MessageSquare, ExternalLink } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../base/dialog'
 import { Button } from '../base/button'
 import { Input } from '../base/input'
 import { Markdown } from './markdown'
-import { useSessionEvents } from '../hooks/use-sessions'
-import { useCurrentProject } from '../hooks/use-app-context'
 
 export interface PlanPreviewDialogProps {
   permission: PendingPermission | null
@@ -30,36 +28,6 @@ function isAllowedPromptsArray(value: unknown): value is { tool: string; prompt:
   )
 }
 
-function extractPlanFromEvents(events: { payload: Record<string, unknown> }[]): string {
-  // Find the last ExitPlanMode tool_use event
-  let exitPlanIdx = -1
-  for (let i = events.length - 1; i >= 0; i--) {
-    const payload = events[i]!.payload
-    if (payload.type === 'tool_use' && payload.name === 'ExitPlanMode') {
-      exitPlanIdx = i
-      break
-    }
-  }
-
-  if (exitPlanIdx === -1) return ''
-
-  // Walk backwards collecting assistant message content
-  const parts: string[] = []
-  for (let i = exitPlanIdx - 1; i >= 0; i--) {
-    const payload = events[i]!.payload
-    if (payload.type === 'message' && payload.role === 'assistant') {
-      const content = payload.content
-      if (typeof content === 'string') {
-        parts.unshift(content)
-      }
-    } else {
-      break
-    }
-  }
-
-  return parts.join('\n')
-}
-
 export function PlanPreviewDialog({
   permission,
   onOpenChange,
@@ -70,14 +38,8 @@ export function PlanPreviewDialog({
 }: PlanPreviewDialogProps) {
   const [showRevision, setShowRevision] = useState(false)
   const [revisionMessage, setRevisionMessage] = useState('')
-  const { currentProjectId } = useCurrentProject()
 
-  const { data, isLoading, isError } = useSessionEvents(permission?.sessionId ?? null)
-
-  const planContent = useMemo(() => {
-    if (!data?.events) return ''
-    return extractPlanFromEvents(data.events)
-  }, [data?.events])
+  const planContent = typeof permission?.input?.plan === 'string' ? permission.input.plan : ''
 
   const allowedPrompts = permission && isAllowedPromptsArray(permission.input?.allowedPrompts)
     ? permission.input.allowedPrompts as { tool: string; prompt: string }[]
@@ -117,20 +79,11 @@ export function PlanPreviewDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto min-h-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-sm text-muted-foreground">Loading plan...</span>
-            </div>
-          ) : isError ? (
-            <p className="py-4 text-sm text-destructive">
-              Failed to load plan content. Try opening the session directly.
-            </p>
-          ) : planContent ? (
-            <Markdown projectId={currentProjectId}>{planContent}</Markdown>
+          {planContent ? (
+            <Markdown>{planContent}</Markdown>
           ) : (
             <p className="py-4 text-sm text-muted-foreground italic">
-              No plan content found in session events.
+              No plan content available.
             </p>
           )}
         </div>
