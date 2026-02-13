@@ -224,6 +224,7 @@ const { scrollRef, isAtBottom, isAtTop, scrollToBottom, scrollToTop, onScroll } 
   deps: [items.length],                  // Auto-scroll when these change (if at bottom)
   threshold: 100,                         // Pixels from bottom to consider "at bottom" (default: 100)
   initialScrollOnChange: selectedId,      // Force-scroll when this value changes
+  suppressInitialScroll: pendingScrollToComment, // Skip force-scroll when hash-target scroll should win
 })
 
 // Attach to scrollable container
@@ -709,6 +710,7 @@ import { PermissionEditor, PermissionRuleForm, PermissionRuleList, PermissionRul
 - `className`: Optional class name
 
 Tool presets in `PermissionRuleForm` include Kombuse MCP actions such as `Get Ticket`, `Get Ticket Comment`, `Add Comment`, and `Update Ticket`.
+The `Get Ticket Comment` option maps to tool rule `mcp__kombuse__get_ticket_comment`.
 
 ### Agent Picker
 

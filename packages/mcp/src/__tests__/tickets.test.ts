@@ -593,6 +593,124 @@ describe('get_ticket', () => {
   })
 })
 
+describe('get_ticket_comment', () => {
+  it('should return a single comment payload', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Comment lookup test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Single comment payload',
+    })
+
+    const result = await client.callTool({
+      name: 'get_ticket_comment',
+      arguments: { comment_id: comment.id },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.id).toBe(comment.id)
+    expect(data.ticket_id).toBe(ticket.id)
+    expect(data.author_id).toBe(TEST_USER_ID)
+    expect(data.author_name).toBeDefined()
+    expect(data.body).toBe('Single comment payload')
+    expect(data.body_truncated).toBe(false)
+    expect(data.attachments).toBeUndefined()
+    expect(countImageBlocks(result)).toBe(0)
+  })
+
+  it('should return error for missing comment id', async () => {
+    const result = await client.callTool({
+      name: 'get_ticket_comment',
+      arguments: { comment_id: 9999 },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('9999')
+  })
+
+  it('should not return attachment metadata when config.images is false', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Comment attachment test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'See attachment',
+    })
+
+    const storagePath = '2026/02/comment-only-image.png'
+    writeTestFile(storagePath, TINY_PNG)
+    attachmentsRepository.create({
+      comment_id: comment.id,
+      filename: 'comment-only-image.png',
+      mime_type: 'image/png',
+      size_bytes: TINY_PNG.length,
+      storage_path: storagePath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'get_ticket_comment',
+      arguments: { comment_id: comment.id, config: { images: false } },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.attachments).toBeUndefined()
+    expect(countImageBlocks(result)).toBe(0)
+  })
+
+  it('should return only image attachment metadata when config.images is true', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Comment image filtering test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'See files',
+    })
+
+    const imageStoragePath = '2026/02/comment-image.png'
+    writeTestFile(imageStoragePath, TINY_PNG)
+    attachmentsRepository.create({
+      comment_id: comment.id,
+      filename: 'comment-image.png',
+      mime_type: 'image/png',
+      size_bytes: TINY_PNG.length,
+      storage_path: imageStoragePath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+    attachmentsRepository.create({
+      comment_id: comment.id,
+      filename: 'comment-notes.txt',
+      mime_type: 'text/plain',
+      size_bytes: 12,
+      storage_path: '2026/02/comment-notes.txt',
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'get_ticket_comment',
+      arguments: { comment_id: comment.id, config: { images: true } },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.attachments).toHaveLength(1)
+    expect(data.attachments[0].filename).toBe('comment-image.png')
+    expect(data.attachments[0].mime_type).toBe('image/png')
+    expect(data.attachments[0].file_path).toContain(imageStoragePath)
+    expect(countImageBlocks(result)).toBe(0)
+  })
+})
+
 describe('list_tickets', () => {
   it('should return empty array when no tickets exist', async () => {
     const result = await client.callTool({ name: 'list_tickets', arguments: {} })

@@ -19,6 +19,7 @@ export interface AgentTypePreset {
 
 const KOMBUSE_TOOLS: string[] = [
   'mcp__kombuse__get_ticket',
+  'mcp__kombuse__get_ticket_comment',
   'mcp__kombuse__add_comment',
   'mcp__kombuse__create_ticket',
   'mcp__kombuse__update_comment',
@@ -52,6 +53,7 @@ const SHARED_PREAMBLE_SECTION = `You are working on ticket #{{ ticket_id }}{% if
 ## Kombuse Tools
 You have these MCP tools for ticket communication:
 - get_ticket — read a ticket and its comments
+- get_ticket_comment — read one comment by ID
 - add_comment — post a comment (always include kombuse_session_id: "{{ kombuse_session_id }}")
 - create_ticket — create a new ticket (always include kombuse_session_id: "{{ kombuse_session_id }}")
 - update_comment — edit a previous comment
@@ -851,6 +853,7 @@ export function shouldAutoApprove(
 const TOOL_DESCRIPTIONS: Record<string, string> = {
   // MCP Kombuse tools
   'mcp__kombuse__get_ticket': 'Read ticket details',
+  'mcp__kombuse__get_ticket_comment': 'Read a single ticket comment',
   'mcp__kombuse__add_comment': 'Add a comment to a ticket',
   'mcp__kombuse__create_ticket': 'Create a new ticket',
   'mcp__kombuse__update_comment': 'Update a comment',

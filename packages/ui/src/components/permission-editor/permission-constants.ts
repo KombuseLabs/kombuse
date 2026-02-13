@@ -28,6 +28,7 @@ export const COMMON_TOOLS = [
   { value: '*', label: 'All Tools' },
   { value: 'mcp__kombuse__*', label: 'All Kombuse Tools' },
   { value: 'mcp__kombuse__get_ticket', label: 'Get Ticket' },
+  { value: 'mcp__kombuse__get_ticket_comment', label: 'Get Ticket Comment' },
   { value: 'mcp__kombuse__add_comment', label: 'Add Comment' },
   { value: 'mcp__kombuse__update_ticket', label: 'Update Ticket' },
   { value: 'mcp__kombuse__create_ticket', label: 'Create Ticket' },

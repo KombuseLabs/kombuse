@@ -10,6 +10,7 @@ describe('getTypePreset', () => {
   it('returns kombuse preset for "kombuse"', () => {
     const preset = getTypePreset('kombuse')
     expect(preset.autoApprovedTools).toContain('mcp__kombuse__get_ticket')
+    expect(preset.autoApprovedTools).toContain('mcp__kombuse__get_ticket_comment')
     expect(preset.autoApprovedBashCommands).toContain('git show')
     expect(preset.preambleTemplate).toContain('Kombuse Tools')
   })
@@ -64,6 +65,7 @@ describe('shouldAutoApprove', () => {
 
   it('approves tool in preset autoApprovedTools list', () => {
     expect(shouldAutoApprove('mcp__kombuse__get_ticket', undefined, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('mcp__kombuse__get_ticket_comment', undefined, kombusePreset)).toBe(true)
     expect(shouldAutoApprove('Grep', undefined, kombusePreset)).toBe(true)
     expect(shouldAutoApprove('Read', undefined, kombusePreset)).toBe(true)
   })
@@ -135,6 +137,7 @@ describe('preset contents', () => {
     const preset = getTypePreset('kombuse')
     const expectedTools = [
       'mcp__kombuse__get_ticket',
+      'mcp__kombuse__get_ticket_comment',
       'mcp__kombuse__add_comment',
       'mcp__kombuse__create_ticket',
       'mcp__kombuse__update_comment',
@@ -231,6 +234,7 @@ describe('presetToAllowedTools', () => {
     const tools = presetToAllowedTools(preset)
 
     expect(tools).toContain('mcp__kombuse__get_ticket')
+    expect(tools).toContain('mcp__kombuse__get_ticket_comment')
     expect(tools).toContain('Grep')
     expect(tools).toContain('Glob')
     expect(tools).toContain('Read')

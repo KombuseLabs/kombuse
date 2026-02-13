@@ -50,6 +50,13 @@ const getTicketConfigSchema = z.object({
     .describe('Max chars for ticket body preview (default: 1000)'),
 }).optional()
 
+const getTicketCommentConfigSchema = z.object({
+  images: z
+    .boolean()
+    .optional()
+    .describe('Include image attachment metadata with file paths (default: false)'),
+}).optional()
+
 interface GetTicketCommentFilters {
   authorIds: Set<string> | null
   actorTypes: Set<'user' | 'agent'> | null
@@ -726,7 +733,79 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 2: add_comment
+  // Tool 2: get_ticket_comment
+  server.registerTool(
+    'get_ticket_comment',
+    {
+      description:
+        'Get a single ticket comment by ID. Optionally include image attachment metadata with file paths.',
+      inputSchema: {
+        comment_id: z
+          .number()
+          .int()
+          .positive()
+          .describe('The ID of the comment to retrieve'),
+        kombuse_session_id: z
+          .string()
+          .optional()
+          .describe('Optional caller session ID for caller-aware defaults'),
+        config: getTicketCommentConfigSchema
+          .describe('Optional sections to include'),
+      },
+    },
+    async ({ comment_id, config }) => {
+      const comment = commentsRepository.get(comment_id)
+
+      if (!comment) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({ error: `Comment ${comment_id} not found` }),
+            },
+          ],
+          isError: true,
+        }
+      }
+
+      const commentAgentType = comment.author.type === 'agent'
+        ? (() => {
+          const agent = agentsRepository.get(comment.author_id)
+          return typeof agent?.config?.type === 'string' ? agent.config.type : null
+        })()
+        : null
+
+      const response: Record<string, unknown> = {
+        id: comment.id,
+        ticket_id: comment.ticket_id,
+        author_id: comment.author_id,
+        author_name: comment.author.name,
+        actor_type: comment.author.type,
+        agent_type: commentAgentType,
+        parent_id: comment.parent_id,
+        is_edited: comment.is_edited,
+        created_at: comment.created_at,
+        updated_at: comment.updated_at,
+        body: comment.body,
+        body_truncated: false,
+      }
+
+      const includeImages = config?.images ?? false
+      if (includeImages) {
+        response.attachments = attachmentsRepository.getByComment(comment_id)
+          .filter(isImageAttachment)
+          .map(toAttachmentMetaWithPath)
+      }
+
+      return {
+        content: [
+          { type: 'text' as const, text: JSON.stringify(response) },
+        ],
+      }
+    }
+  )
+
+  // Tool 3: add_comment
   server.registerTool(
     'add_comment',
     {
@@ -812,7 +891,7 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 3: create_ticket
+  // Tool 4: create_ticket
   server.registerTool(
     'create_ticket',
     {
@@ -886,7 +965,7 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 4: update_comment
+  // Tool 5: update_comment
   server.registerTool(
     'update_comment',
     {
@@ -927,7 +1006,7 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 5: list_tickets
+  // Tool 6: list_tickets
   server.registerTool(
     'list_tickets',
     {
@@ -996,7 +1075,7 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 6: search_tickets
+  // Tool 7: search_tickets
   server.registerTool(
     'search_tickets',
     {
@@ -1065,7 +1144,7 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 7: list_projects
+  // Tool 8: list_projects
   server.registerTool(
     'list_projects',
     {
@@ -1109,7 +1188,7 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 8: list_labels
+  // Tool 9: list_labels
   server.registerTool(
     'list_labels',
     {
@@ -1136,7 +1215,7 @@ export function registerTicketTools(server: McpServer): void {
     }
   )
 
-  // Tool 9: update_ticket
+  // Tool 10: update_ticket
   server.registerTool(
     'update_ticket',
     {
