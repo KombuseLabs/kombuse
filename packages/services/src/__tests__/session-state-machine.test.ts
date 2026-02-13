@@ -191,6 +191,18 @@ describe('SessionStateMachine', () => {
       expect(deps.sessionPersistence.markSessionRunning).not.toHaveBeenCalled()
       expect(deps.backends.register).not.toHaveBeenCalled()
     })
+
+    it('running -> running via continue re-registers backend when provided', () => {
+      const deps = createMockDeps({ status: 'running' })
+      const sm = new SessionStateMachine(deps)
+      const mockBackend = { name: 'claude-code', isRunning: () => true }
+
+      sm.transition('session-1', 'continue', baseCtx({ backend: mockBackend }))
+
+      expect(deps.backends.register).toHaveBeenCalledWith('chat-abc', mockBackend)
+      expect(deps.backends.resetIdleTimeout).toHaveBeenCalledWith('chat-abc')
+      expect(deps.sessionPersistence.markSessionRunning).not.toHaveBeenCalled()
+    })
   })
 
   describe('invalid transitions', () => {

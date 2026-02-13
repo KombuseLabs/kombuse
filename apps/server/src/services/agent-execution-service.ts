@@ -648,7 +648,15 @@ interface CleanupOrphanedSessionsOptions {
   source?: ForcedAbortSource
   reason?: string
   includeAllSessions?: boolean
+  minInactiveMs?: number
 }
+
+/**
+ * Orphan cleanup only aborts sessions that have been inactive for this long.
+ * This avoids false positives when another process (or a freshly re-registered
+ * backend) is actively streaming events but not present in this process map yet.
+ */
+const DEFAULT_ORPHAN_MIN_INACTIVE_MS = 10 * 60 * 1000
 
 function getSessionBackendForEvent(session: Session): BackendType {
   return session.backend_type ?? BACKEND_TYPES.CLAUDE_CODE
@@ -752,6 +760,10 @@ export function cleanupOrphanedSessions(
   const source = options.source ?? 'orphan_cleanup'
   const reason = options.reason ?? 'backend_unavailable'
   const includeAllSessions = options.includeAllSessions ?? false
+  const minInactiveMs = includeAllSessions
+    ? 0
+    : Math.max(0, options.minInactiveMs ?? DEFAULT_ORPHAN_MIN_INACTIVE_MS)
+  const nowMs = Date.now()
   const runningSessions = sessionsRepository.list({ status: 'running' })
   const pendingSessions = sessionsRepository.list({ status: 'pending' })
   let cleaned = 0
@@ -761,23 +773,35 @@ export function cleanupOrphanedSessions(
     const isOrphaned = includeAllSessions
       || !session.kombuse_session_id
       || !activeBackends.has(session.kombuse_session_id)
-    if (isOrphaned) {
-      abortSessionWithDiagnostics(session, dependencies, source, reason)
-
-      // Notify clients so ActiveAgentsIndicator removes this session
-      if (session.kombuse_session_id) {
-        const completeMsg: ServerMessage = {
-          type: 'agent.complete',
-          kombuseSessionId: session.kombuse_session_id,
-          ticketId: session.ticket_id ?? undefined,
-        }
-        wsHub.broadcastAgentMessage(session.kombuse_session_id, completeMsg)
-        wsHub.broadcastToTopic('*', completeMsg)
-      }
-
-      if (session.ticket_id) affectedTickets.add(session.ticket_id)
-      cleaned++
+    if (!isOrphaned) {
+      continue
     }
+
+    if (!includeAllSessions) {
+      const lastUpdateMs = Date.parse(session.updated_at)
+      const inactivityMs = Number.isFinite(lastUpdateMs)
+        ? Math.max(0, nowMs - lastUpdateMs)
+        : Number.POSITIVE_INFINITY
+      if (inactivityMs < minInactiveMs) {
+        continue
+      }
+    }
+
+    abortSessionWithDiagnostics(session, dependencies, source, reason)
+
+    // Notify clients so ActiveAgentsIndicator removes this session
+    if (session.kombuse_session_id) {
+      const completeMsg: ServerMessage = {
+        type: 'agent.complete',
+        kombuseSessionId: session.kombuse_session_id,
+        ticketId: session.ticket_id ?? undefined,
+      }
+      wsHub.broadcastAgentMessage(session.kombuse_session_id, completeMsg)
+      wsHub.broadcastToTopic('*', completeMsg)
+    }
+
+    if (session.ticket_id) affectedTickets.add(session.ticket_id)
+    cleaned++
   }
 
   for (const ticketId of affectedTickets) {

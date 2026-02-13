@@ -168,7 +168,12 @@ export class SessionStateMachine {
 
       case 'continue': {
         if (from === 'running') {
-          // No-op re-entry: just reset idle timeout
+          // Re-entry while already running.
+          // If a backend is provided, (re)register it so cleanup can track
+          // this process as the active owner for the session.
+          if (ctx.backend) {
+            this.deps.backends.register(ctx.kombuseSessionId, ctx.backend)
+          }
           this.deps.backends.resetIdleTimeout(ctx.kombuseSessionId)
         } else {
           // completed|failed -> running (resume/retry)

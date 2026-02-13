@@ -1915,6 +1915,38 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
     expect(cleaned).toBe(0)
     expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()
   })
+
+  it('skips recently updated orphaned sessions until inactivity threshold', () => {
+    const recentSession = {
+      id: 'session-recent',
+      kombuse_session_id: 'recent-session-aaa',
+      ticket_id: 99,
+      status: 'running',
+      updated_at: new Date().toISOString(),
+    }
+
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([recentSession])
+      .mockReturnValueOnce([])
+
+    const deps = {
+      sessionPersistence: {
+        persistEvent: vi.fn(),
+        abortSession: vi.fn(),
+        setMetadata: vi.fn(),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+      },
+    }
+
+    const cleaned = cleanupOrphanedSessions({ minInactiveMs: 60_000 }, deps as any)
+
+    expect(cleaned).toBe(0)
+    expect(deps.stateMachine.transition).not.toHaveBeenCalled()
+    expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()
+    expect(wsHub.broadcastToTopic).not.toHaveBeenCalled()
+  })
 })
 
 describe('cli_pre_normalization event filtering', () => {
