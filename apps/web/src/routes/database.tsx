@@ -157,7 +157,7 @@ export function DatabasePage() {
   }
 
   return (
-    <main className="flex flex-col h-[calc(100dvh-var(--header-height))]">
+    <main className="flex flex-col h-full">
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center gap-4">
           <Database className="size-6" />

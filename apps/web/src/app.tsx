@@ -37,7 +37,7 @@ function AppContent() {
 
   return (
     <div
-      className="min-h-screen"
+      className="h-dvh flex flex-col overflow-hidden"
       style={isDesktop ? { "--header-height": "2.5rem" } as React.CSSProperties : undefined}
     >
       {!isHome ? (
@@ -54,38 +54,40 @@ function AppContent() {
       ) : isDesktop ? (
         <div className="electron-drag h-10 absolute inset-x-0 top-0 z-50" />
       ) : null}
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/chats" element={<Chats />} />
-        <Route path="/chats/:sessionId" element={<Chats />} />
-        <Route path="/projects" element={<Projects />} />
+      <div className="flex-1 min-h-0">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/chats" element={<Chats />} />
+          <Route path="/chats/:sessionId" element={<Chats />} />
+          <Route path="/projects" element={<Projects />} />
 
-        {/* Project routes with sidebar */}
-        <Route path="/projects/:projectId" element={<ProjectLayout />}>
-          <Route path="tickets" element={<Tickets />} />
-          <Route path="tickets/:ticketId" element={<Tickets />} />
-          <Route path="chats" element={<Chats />} />
-          <Route path="chats/:sessionId" element={<Chats />} />
-          <Route path="agents" element={<Agents />} />
-          <Route path="agents/:agentId" element={<Agents />} />
-          <Route path="labels" element={<Labels />} />
-          <Route path="labels/:labelId" element={<Labels />} />
-          <Route path="events" element={<Events />} />
-          <Route path="permissions" element={<Permissions />} />
-          <Route path="database" element={<DatabasePage />} />
-        </Route>
+          {/* Project routes with sidebar */}
+          <Route path="/projects/:projectId" element={<ProjectLayout />}>
+            <Route path="tickets" element={<Tickets />} />
+            <Route path="tickets/:ticketId" element={<Tickets />} />
+            <Route path="chats" element={<Chats />} />
+            <Route path="chats/:sessionId" element={<Chats />} />
+            <Route path="agents" element={<Agents />} />
+            <Route path="agents/:agentId" element={<Agents />} />
+            <Route path="labels" element={<Labels />} />
+            <Route path="labels/:labelId" element={<Labels />} />
+            <Route path="events" element={<Events />} />
+            <Route path="permissions" element={<Permissions />} />
+            <Route path="database" element={<DatabasePage />} />
+          </Route>
 
-        {/* Global agents (outside project context) */}
-        <Route path="/agents" element={<Agents />} />
-        <Route path="/agents/:agentId" element={<Agents />} />
+          {/* Global agents (outside project context) */}
+          <Route path="/agents" element={<Agents />} />
+          <Route path="/agents/:agentId" element={<Agents />} />
 
-        {/* Claude Code session viewer */}
-        <Route path="/claude-code" element={<ClaudeCodeSessionViewer />} />
-        <Route path="/claude-code/:projectPath" element={<ClaudeCodeSessionViewer />} />
-        <Route path="/claude-code/:projectPath/sessions/:sessionId" element={<ClaudeCodeSessionViewer />} />
-      </Routes>
+          {/* Claude Code session viewer */}
+          <Route path="/claude-code" element={<ClaudeCodeSessionViewer />} />
+          <Route path="/claude-code/:projectPath" element={<ClaudeCodeSessionViewer />} />
+          <Route path="/claude-code/:projectPath/sessions/:sessionId" element={<ClaudeCodeSessionViewer />} />
+        </Routes>
+      </div>
     </div>
   );
 }

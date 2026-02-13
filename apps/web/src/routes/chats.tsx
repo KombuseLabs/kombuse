@@ -78,7 +78,7 @@ export function Chats() {
   return (
     <Container className={cn(
       "flex min-h-0",
-      isProjectContext ? "h-full" : "h-[calc(100dvh-var(--header-height))]"
+      "h-full"
     )}>
       {/* Sidebar with sessions list */}
       <div className={cn(

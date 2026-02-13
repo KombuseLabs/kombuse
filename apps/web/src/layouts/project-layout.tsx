@@ -33,14 +33,14 @@ export function ProjectLayout() {
 
   if (!projectId) {
     return (
-      <div className="flex items-center justify-center h-[calc(100dvh-var(--header-height))]">
+      <div className="flex items-center justify-center h-full">
         <p className="text-muted-foreground">Project not found</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100dvh-var(--header-height))]">
+    <div className="flex h-full">
       <Sidebar
         isCollapsed={isCollapsed}
         onCollapsedChange={setIsCollapsed}

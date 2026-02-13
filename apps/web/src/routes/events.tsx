@@ -11,7 +11,7 @@ export function Events() {
   const { data: events, isLoading, error, refetch, isFetching } = useEvents(filters)
 
   return (
-    <main className="flex flex-col h-[calc(100dvh-var(--header-height))]">
+    <main className="flex flex-col h-full">
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center gap-4">
           <History className="size-6" />
