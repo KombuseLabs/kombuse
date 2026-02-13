@@ -198,6 +198,8 @@ import type {
   ConversationContext,
   EventWithActor,
   KombuseSessionId,
+  Session,
+  SessionMetadata,
 } from '@kombuse/types'
 
 type AgentInvokeMessage = Extract<ClientMessage, { type: 'agent.invoke' }>
@@ -492,6 +494,15 @@ export function stopAllActiveBackends(): void {
   }
   activeBackends.clear()
   backendIdleTimeouts.clear()
+
+  cleanupOrphanedSessions(
+    {
+      source: 'shutdown_cleanup',
+      reason: 'server_shutdown',
+      includeAllSessions: true,
+    },
+    defaultDependencies
+  )
 }
 
 /**
@@ -569,7 +580,7 @@ export function computeTicketAgentStatus(ticketId: number): {
   const lastCompletedAt = completedSessions[0]?.completed_at
 
   const recentFailures = lastCompletedAt
-    ? failedSessions.filter((s) => s.completed_at && s.completed_at > lastCompletedAt)
+    ? failedSessions.filter((s) => (s.failed_at ?? s.updated_at) > lastCompletedAt)
     : failedSessions
 
   // Cross-reference against in-memory activeBackends map.
@@ -628,28 +639,141 @@ export function getActiveSessions(): ActiveSessionInfo[] {
   return results
 }
 
+type ForcedAbortSource =
+  | 'orphan_cleanup'
+  | 'startup_cleanup'
+  | 'shutdown_cleanup'
+
+interface CleanupOrphanedSessionsOptions {
+  source?: ForcedAbortSource
+  reason?: string
+  includeAllSessions?: boolean
+}
+
+function getSessionBackendForEvent(session: Session): BackendType {
+  return session.backend_type ?? BACKEND_TYPES.CLAUDE_CODE
+}
+
+function emitForcedAbortDiagnosticEvent(
+  session: Session,
+  dependencies: AgentExecutionDependencies,
+  source: ForcedAbortSource,
+  reason: string,
+  terminalAt: string,
+  note?: string,
+): void {
+  dependencies.sessionPersistence.persistEvent(session.id, {
+    type: 'raw',
+    eventId: crypto.randomUUID(),
+    backend: getSessionBackendForEvent(session),
+    timestamp: Date.now(),
+    sourceType: 'server_session_cleanup',
+    data: {
+      action: 'forced_abort',
+      source,
+      reason,
+      terminal_at: terminalAt,
+      previous_status: session.status,
+      kombuse_session_id: session.kombuse_session_id,
+      backend_session_id: session.backend_session_id,
+      ticket_id: session.ticket_id,
+      note,
+    },
+  })
+}
+
+function abortSessionWithDiagnostics(
+  session: Session,
+  dependencies: AgentExecutionDependencies,
+  source: ForcedAbortSource,
+  reason: string,
+): void {
+  const terminalAt = new Date().toISOString()
+  const metadataPatch: Partial<SessionMetadata> = {
+    terminal_reason: reason,
+    terminal_source: source,
+    terminal_at: terminalAt,
+  }
+
+  emitForcedAbortDiagnosticEvent(
+    session,
+    dependencies,
+    source,
+    reason,
+    terminalAt
+  )
+
+  if (session.kombuse_session_id) {
+    try {
+      dependencies.stateMachine.transition(session.id, 'abort', {
+        kombuseSessionId: session.kombuse_session_id,
+        ticketId: session.ticket_id ?? undefined,
+        backendSessionId: session.backend_session_id ?? undefined,
+        error: reason,
+        metadataPatch,
+      })
+      return
+    } catch (error) {
+      const errorText =
+        error instanceof Error ? error.message : String(error)
+      metadataPatch.terminal_error = errorText
+      emitForcedAbortDiagnosticEvent(
+        session,
+        dependencies,
+        source,
+        `${reason}_state_machine_fallback`,
+        terminalAt,
+        errorText,
+      )
+
+      const latestSession = dependencies.sessionPersistence.getSession(session.id)
+      if (latestSession && latestSession.status !== 'running' && latestSession.status !== 'pending') {
+        return
+      }
+    }
+  }
+
+  // Fallback for sessions without kombuse_session_id or unexpected transition errors.
+  dependencies.sessionPersistence.abortSession(
+    session.id,
+    session.backend_session_id ?? undefined
+  )
+  dependencies.sessionPersistence.setMetadata(session.id, metadataPatch)
+}
+
 /**
- * Detect and abort sessions stuck in 'running' with no live backend.
+ * Detect and abort sessions stuck in 'running'/'pending' with no live backend.
  * Returns the number of orphaned sessions cleaned up.
  */
-export function cleanupOrphanedSessions(): number {
+export function cleanupOrphanedSessions(
+  options: CleanupOrphanedSessionsOptions = {},
+  dependencies: AgentExecutionDependencies = defaultDependencies,
+): number {
+  const source = options.source ?? 'orphan_cleanup'
+  const reason = options.reason ?? 'backend_unavailable'
+  const includeAllSessions = options.includeAllSessions ?? false
   const runningSessions = sessionsRepository.list({ status: 'running' })
   const pendingSessions = sessionsRepository.list({ status: 'pending' })
   let cleaned = 0
   const affectedTickets = new Set<number>()
 
   for (const session of [...runningSessions, ...pendingSessions]) {
-    if (session.kombuse_session_id && !activeBackends.has(session.kombuse_session_id)) {
-      sessionsRepository.update(session.id, { status: 'aborted' })
+    const isOrphaned = includeAllSessions
+      || !session.kombuse_session_id
+      || !activeBackends.has(session.kombuse_session_id)
+    if (isOrphaned) {
+      abortSessionWithDiagnostics(session, dependencies, source, reason)
 
       // Notify clients so ActiveAgentsIndicator removes this session
-      const completeMsg: ServerMessage = {
-        type: 'agent.complete',
-        kombuseSessionId: session.kombuse_session_id,
-        ticketId: session.ticket_id ?? undefined,
+      if (session.kombuse_session_id) {
+        const completeMsg: ServerMessage = {
+          type: 'agent.complete',
+          kombuseSessionId: session.kombuse_session_id,
+          ticketId: session.ticket_id ?? undefined,
+        }
+        wsHub.broadcastAgentMessage(session.kombuse_session_id, completeMsg)
+        wsHub.broadcastToTopic('*', completeMsg)
       }
-      wsHub.broadcastAgentMessage(session.kombuse_session_id, completeMsg)
-      wsHub.broadcastToTopic('*', completeMsg)
 
       if (session.ticket_id) affectedTickets.add(session.ticket_id)
       cleaned++

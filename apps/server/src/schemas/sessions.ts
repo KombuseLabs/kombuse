@@ -1,8 +1,18 @@
 import { z } from 'zod'
 import { BACKEND_TYPES } from '@kombuse/types'
 
+const booleanQuerySchema = z.union([z.boolean(), z.enum(['true', 'false'])]).transform((value) => {
+  if (typeof value === 'boolean') {
+    return value
+  }
+  return value === 'true'
+})
+
 export const sessionFiltersSchema = z.object({
-  status: z.enum(['running', 'completed', 'failed', 'aborted']).optional(),
+  ticket_id: z.coerce.number().int().positive().optional(),
+  status: z.enum(['pending', 'running', 'completed', 'failed', 'aborted', 'stopped']).optional(),
+  terminal_reason: z.string().trim().min(1).optional(),
+  has_backend_session_id: booleanQuerySchema.optional(),
   sort_by: z.enum(['created_at', 'updated_at']).optional(),
   limit: z.coerce.number().int().positive().max(100).default(50),
   offset: z.coerce.number().int().nonnegative().default(0),
@@ -23,6 +33,11 @@ export const sessionEventFiltersSchema = z.object({
   limit: z.coerce.number().int().positive().max(1000).default(100),
 })
 
+export const sessionDiagnosticsQuerySchema = z.object({
+  recent_limit: z.coerce.number().int().positive().max(200).default(20),
+})
+
 export type SessionFiltersQuery = z.infer<typeof sessionFiltersSchema>
 export type CreateSessionBody = z.infer<typeof createSessionSchema>
 export type SessionEventFiltersQuery = z.infer<typeof sessionEventFiltersSchema>
+export type SessionDiagnosticsQuery = z.infer<typeof sessionDiagnosticsQuerySchema>

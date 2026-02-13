@@ -51,7 +51,7 @@ describe('sessionsRepository', () => {
 
       expect(session.id).toBeDefined()
       expect(session.ticket_id).toBeNull()
-      expect(session.status).toBe('running')
+      expect(session.status).toBe('pending')
     })
 
     it('should create session with ticket_id', () => {
@@ -61,7 +61,7 @@ describe('sessionsRepository', () => {
 
       expect(session.id).toBeDefined()
       expect(session.ticket_id).toBe(testTicketId)
-      expect(session.status).toBe('running')
+      expect(session.status).toBe('pending')
     })
 
     it('should create session with agent_id', () => {
@@ -75,7 +75,7 @@ describe('sessionsRepository', () => {
       })
 
       expect(session.agent_id).toBe(TEST_AGENT_ID)
-      expect(session.status).toBe('running')
+      expect(session.status).toBe('pending')
     })
 
     it('should create session with agent_id and ticket_id', () => {
@@ -130,16 +130,16 @@ describe('sessionsRepository', () => {
     })
 
     it('should filter by status when listing by ticket', () => {
-      const runningSession = sessionsRepository.create({ ticket_id: testTicketId })
+      const pendingSession = sessionsRepository.create({ ticket_id: testTicketId })
       const completedSession = sessionsRepository.create({ ticket_id: testTicketId })
       sessionsRepository.update(completedSession.id, { status: 'completed' })
 
-      const runningSessions = sessionsRepository.listByTicket(testTicketId, {
-        status: 'running',
+      const pendingSessions = sessionsRepository.listByTicket(testTicketId, {
+        status: 'pending',
       })
 
-      expect(runningSessions).toHaveLength(1)
-      expect(runningSessions[0]?.id).toBe(runningSession.id)
+      expect(pendingSessions).toHaveLength(1)
+      expect(pendingSessions[0]?.id).toBe(pendingSession.id)
     })
 
     it('should not return sessions from other tickets', () => {
@@ -191,17 +191,17 @@ describe('sessionsRepository', () => {
     })
 
     it('should combine ticket_id and status filters', () => {
-      const runningSession = sessionsRepository.create({ ticket_id: testTicketId })
+      const pendingSession = sessionsRepository.create({ ticket_id: testTicketId })
       const completedSession = sessionsRepository.create({ ticket_id: testTicketId })
       sessionsRepository.update(completedSession.id, { status: 'completed' })
 
       const sessions = sessionsRepository.list({
         ticket_id: testTicketId,
-        status: 'running',
+        status: 'pending',
       })
 
       expect(sessions).toHaveLength(1)
-      expect(sessions[0]?.id).toBe(runningSession.id)
+      expect(sessions[0]?.id).toBe(pendingSession.id)
     })
 
     it('should return all sessions when no ticket_id filter', () => {
@@ -211,6 +211,50 @@ describe('sessionsRepository', () => {
       const sessions = sessionsRepository.list()
 
       expect(sessions).toHaveLength(2)
+    })
+
+    it('should filter by has_backend_session_id', () => {
+      const withBackend = sessionsRepository.create({
+        ticket_id: testTicketId,
+        backend_session_id: 'backend-123',
+      })
+      sessionsRepository.create({ ticket_id: testTicketId })
+
+      const withBackendOnly = sessionsRepository.list({
+        ticket_id: testTicketId,
+        has_backend_session_id: true,
+      })
+      const withoutBackendOnly = sessionsRepository.list({
+        ticket_id: testTicketId,
+        has_backend_session_id: false,
+      })
+
+      expect(withBackendOnly).toHaveLength(1)
+      expect(withBackendOnly[0]?.id).toBe(withBackend.id)
+      expect(withoutBackendOnly).toHaveLength(1)
+      expect(withoutBackendOnly[0]?.backend_session_id).toBeNull()
+    })
+
+    it('should filter by metadata terminal_reason', () => {
+      const orphaned = sessionsRepository.create({ ticket_id: testTicketId })
+      const shutdown = sessionsRepository.create({ ticket_id: testTicketId })
+      sessionsRepository.update(orphaned.id, {
+        status: 'aborted',
+        metadata: { terminal_reason: 'backend_unavailable' },
+      })
+      sessionsRepository.update(shutdown.id, {
+        status: 'aborted',
+        metadata: { terminal_reason: 'server_shutdown' },
+      })
+
+      const orphanedOnly = sessionsRepository.list({
+        ticket_id: testTicketId,
+        status: 'aborted',
+        terminal_reason: 'backend_unavailable',
+      })
+
+      expect(orphanedOnly).toHaveLength(1)
+      expect(orphanedOnly[0]?.id).toBe(orphaned.id)
     })
   })
 
@@ -479,6 +523,33 @@ describe('sessionsRepository', () => {
     })
   })
 
+  describe('diagnostics', () => {
+    it('summarizes aborted sessions missing backend session IDs', () => {
+      const session = sessionsRepository.create({ ticket_id: testTicketId })
+      sessionsRepository.update(session.id, {
+        status: 'aborted',
+        aborted_at: new Date().toISOString(),
+        metadata: {
+          terminal_reason: 'backend_unavailable',
+          terminal_source: 'orphan_cleanup',
+        },
+      })
+
+      const diagnostics = sessionsRepository.diagnostics(10)
+
+      expect(diagnostics.counts_by_status.aborted).toBe(1)
+      expect(diagnostics.aborted_by_reason[0]).toMatchObject({
+        reason: 'backend_unavailable',
+        count: 1,
+      })
+      expect(
+        diagnostics.recent_aborted_without_backend_session_id.some(
+          (entry) => entry.id === session.id
+        )
+      ).toBe(true)
+    })
+  })
+
   /*
    * ABORT ALL RUNNING SESSIONS TESTS
    * Verify bulk cleanup of orphaned running sessions
@@ -498,6 +569,8 @@ describe('sessionsRepository', () => {
 
       const aborted = sessionsRepository.list({ status: 'aborted' })
       expect(aborted).toHaveLength(3)
+      expect(aborted.every((s) => s.aborted_at !== null)).toBe(true)
+      expect(aborted.every((s) => s.failed_at !== null)).toBe(true)
     })
 
     it('should not affect completed or failed sessions', () => {

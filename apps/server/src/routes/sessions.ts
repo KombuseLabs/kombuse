@@ -6,6 +6,7 @@ import {
   createSessionSchema,
   sessionFiltersSchema,
   sessionEventFiltersSchema,
+  sessionDiagnosticsQuerySchema,
 } from '../schemas/sessions'
 
 function toPublicSession({ id, ...rest }: Session): PublicSession {
@@ -21,6 +22,16 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     }
 
     return sessionsRepository.list(parseResult.data).map(toPublicSession)
+  })
+
+  // Session diagnostics summary for abort investigations.
+  fastify.get('/sessions/diagnostics', async (request, reply) => {
+    const parseResult = sessionDiagnosticsQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    return sessionsRepository.diagnostics(parseResult.data.recent_limit)
   })
 
   // Create a new session. By default use the session ID as kombuse_session_id

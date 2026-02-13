@@ -1853,7 +1853,18 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
       .mockReturnValueOnce(orphanedSessions)
       .mockReturnValueOnce([])
 
-    const cleaned = cleanupOrphanedSessions()
+    const deps = {
+      sessionPersistence: {
+        persistEvent: vi.fn(),
+        abortSession: vi.fn(),
+        setMetadata: vi.fn(),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+      },
+    }
+
+    const cleaned = cleanupOrphanedSessions({}, deps as any)
 
     expect(cleaned).toBe(2)
 
@@ -1890,7 +1901,16 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
   it('does not broadcast when no orphaned sessions exist', () => {
     vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
 
-    const cleaned = cleanupOrphanedSessions()
+    const cleaned = cleanupOrphanedSessions({}, {
+      sessionPersistence: {
+        persistEvent: vi.fn(),
+        abortSession: vi.fn(),
+        setMetadata: vi.fn(),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+      },
+    } as any)
 
     expect(cleaned).toBe(0)
     expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()

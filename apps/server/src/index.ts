@@ -9,7 +9,6 @@ import {
   initializeDatabase,
   seedDatabase,
   onEventCreated,
-  sessionsRepository,
   type DatabaseType,
 } from "@kombuse/persistence";
 import {
@@ -39,7 +38,11 @@ import {
   codexMcpRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
-import { processEventAndRunAgents, cleanupOrphanedSessions } from "./services/agent-execution-service";
+import {
+  processEventAndRunAgents,
+  cleanupOrphanedSessions,
+  stopAllActiveBackends,
+} from "./services/agent-execution-service";
 
 // Re-export for desktop shell integration
 export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
@@ -59,7 +62,11 @@ export async function createServer({ port, db }: ServerOptions) {
   // Clean up orphaned sessions from any previous server run.
   // After a restart, no in-process backend can be alive, so all
   // 'running' sessions are stale and must be marked 'aborted'.
-  const abortedCount = sessionsRepository.abortAllRunningSessions();
+  const abortedCount = cleanupOrphanedSessions({
+    source: 'startup_cleanup',
+    reason: 'server_startup_recovery',
+    includeAllSessions: true,
+  });
   if (abortedCount > 0) {
     console.log(
       `[Server] Aborted ${abortedCount} orphaned session(s) from previous run`
@@ -167,6 +174,7 @@ export async function createServer({ port, db }: ServerOptions) {
     listen: () => fastify.listen({ port, host: "0.0.0.0" }),
     close: () => {
       clearInterval(orphanInterval);
+      stopAllActiveBackends();
       return fastify.close();
     },
     instance: fastify,

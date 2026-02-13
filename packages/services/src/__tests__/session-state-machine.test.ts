@@ -15,6 +15,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     started_at: new Date().toISOString(),
     completed_at: null,
     failed_at: null,
+    aborted_at: null,
     last_event_seq: 0,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

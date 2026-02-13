@@ -58,6 +58,23 @@ const EXPECTED_TICKET_COLUMNS = [
   'created_at',
   'updated_at',
 ]
+const EXPECTED_SESSION_COLUMNS = [
+  'id',
+  'kombuse_session_id',
+  'backend_type',
+  'backend_session_id',
+  'ticket_id',
+  'agent_id',
+  'status',
+  'metadata',
+  'started_at',
+  'completed_at',
+  'failed_at',
+  'aborted_at',
+  'last_event_seq',
+  'created_at',
+  'updated_at',
+]
 const EXPECTED_INDEXES = [
   'idx_tickets_project',
   'idx_tickets_status',
@@ -84,6 +101,7 @@ const EXPECTED_MIGRATIONS = [
   '015_milestones',
   '016_session_state_machine',
   '017_ticket_triggers_enabled',
+  '018_session_abort_diagnostics',
 ]
 
 describe('database', () => {
@@ -121,6 +139,21 @@ describe('database', () => {
 
       for (const expected of EXPECTED_TICKET_COLUMNS) {
         expect(columnNames, `Missing column: tickets.${expected}`).toContain(
+          expected
+        )
+      }
+    })
+
+    it('should create sessions table with all required columns', () => {
+      runMigrations(db)
+
+      const columns = db
+        .prepare('PRAGMA table_info(sessions)')
+        .all() as { name: string }[]
+      const columnNames = columns.map((c) => c.name)
+
+      for (const expected of EXPECTED_SESSION_COLUMNS) {
+        expect(columnNames, `Missing column: sessions.${expected}`).toContain(
           expected
         )
       }

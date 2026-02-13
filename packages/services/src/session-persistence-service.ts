@@ -38,6 +38,7 @@ export interface ISessionPersistenceService {
 export class SessionPersistenceService implements ISessionPersistenceService {
   private options: Required<SessionPersistenceOptions>
   private seqCounters: Map<string, number> = new Map()
+  private sessionsWithBackendId: Set<string> = new Set()
 
   constructor(options: SessionPersistenceOptions = {}) {
     this.options = {
@@ -69,6 +70,9 @@ export class SessionPersistenceService implements ISessionPersistenceService {
       const nextSeq = sessionEventsRepository.getNextSeq(session.id)
       this.seqCounters.set(session.id, nextSeq)
     }
+    if (typeof session.backend_session_id === 'string' && session.backend_session_id.trim().length > 0) {
+      this.sessionsWithBackendId.add(session.id)
+    }
 
     return session.id
   }
@@ -87,8 +91,19 @@ export class SessionPersistenceService implements ISessionPersistenceService {
       payload,
     })
 
-    // Update session's last_event_seq
-    sessionsRepository.update(sessionId, { last_event_seq: seq })
+    // Capture backend session IDs as soon as they appear in stream events.
+    const update: { last_event_seq: number; backend_session_id?: string } = {
+      last_event_seq: seq,
+    }
+    if (!this.sessionsWithBackendId.has(sessionId)) {
+      const inferredBackendSessionId = this.extractBackendSessionId(event)
+      if (inferredBackendSessionId) {
+        update.backend_session_id = inferredBackendSessionId
+        this.sessionsWithBackendId.add(sessionId)
+      }
+    }
+
+    sessionsRepository.update(sessionId, update)
   }
 
   /**
@@ -104,32 +119,51 @@ export class SessionPersistenceService implements ISessionPersistenceService {
    * Mark session as completed with optional backend session ID.
    */
   completeSession(sessionId: string, backendSessionId?: string): void {
+    const now = new Date().toISOString()
     sessionsRepository.update(sessionId, {
       status: 'completed',
       backend_session_id: backendSessionId,
-      completed_at: new Date().toISOString(),
+      completed_at: now,
+      failed_at: null,
+      aborted_at: null,
     })
+    if (backendSessionId) {
+      this.sessionsWithBackendId.add(sessionId)
+    }
   }
 
   /**
    * Mark session as failed with optional backend session ID.
    */
   failSession(sessionId: string, backendSessionId?: string): void {
+    const now = new Date().toISOString()
     sessionsRepository.update(sessionId, {
       status: 'failed',
       backend_session_id: backendSessionId,
-      failed_at: new Date().toISOString(),
+      completed_at: null,
+      failed_at: now,
+      aborted_at: null,
     })
+    if (backendSessionId) {
+      this.sessionsWithBackendId.add(sessionId)
+    }
   }
 
   /**
    * Mark session as aborted with optional backend session ID.
    */
   abortSession(sessionId: string, backendSessionId?: string): void {
+    const now = new Date().toISOString()
     sessionsRepository.update(sessionId, {
       status: 'aborted',
       backend_session_id: backendSessionId,
+      completed_at: null,
+      failed_at: now,
+      aborted_at: now,
     })
+    if (backendSessionId) {
+      this.sessionsWithBackendId.add(sessionId)
+    }
   }
 
   /**
@@ -182,7 +216,8 @@ export class SessionPersistenceService implements ISessionPersistenceService {
    * Get and increment the sequence counter for a session.
    */
   private getNextSeq(sessionId: string): number {
-    const current = this.seqCounters.get(sessionId) ?? 1
+    const current = this.seqCounters.get(sessionId)
+      ?? sessionEventsRepository.getNextSeq(sessionId)
     this.seqCounters.set(sessionId, current + 1)
     return current
   }
@@ -217,6 +252,42 @@ export class SessionPersistenceService implements ISessionPersistenceService {
     }
 
     return serialized
+  }
+
+  private extractBackendSessionId(event: AgentEvent): string | undefined {
+    if (event.type === 'complete' && typeof event.sessionId === 'string') {
+      const trimmed = event.sessionId.trim()
+      return trimmed.length > 0 ? trimmed : undefined
+    }
+
+    if (event.type !== 'raw' || typeof event.data !== 'object' || event.data === null) {
+      return undefined
+    }
+
+    const rawData = event.data as Record<string, unknown>
+    const nestedSession =
+      typeof rawData.session === 'object' && rawData.session !== null
+        ? rawData.session as Record<string, unknown>
+        : undefined
+
+    const candidates = [
+      rawData.session_id,
+      rawData.sessionId,
+      nestedSession?.id,
+      nestedSession?.session_id,
+    ]
+
+    for (const candidate of candidates) {
+      if (typeof candidate !== 'string') {
+        continue
+      }
+      const trimmed = candidate.trim()
+      if (trimmed.length > 0) {
+        return trimmed
+      }
+    }
+
+    return undefined
   }
 }
 

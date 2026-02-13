@@ -15,6 +15,10 @@ export interface SessionMetadata {
   didCallAddComment?: boolean
   lastAssistantMessage?: string
   exitPlanModeToolUseId?: string
+  terminal_reason?: string
+  terminal_source?: string
+  terminal_at?: string
+  terminal_error?: string
   [key: string]: unknown
 }
 
@@ -33,6 +37,7 @@ export interface Session {
   started_at: string
   completed_at: string | null
   failed_at: string | null
+  aborted_at: string | null
   last_event_seq: number
   created_at: string
   updated_at: string
@@ -65,6 +70,8 @@ export interface CreateSessionInput {
 export interface SessionFilters {
   ticket_id?: number
   status?: SessionStatus
+  terminal_reason?: string
+  has_backend_session_id?: boolean
   sort_by?: 'created_at' | 'updated_at'
   limit?: number
   offset?: number
@@ -77,8 +84,9 @@ export interface UpdateSessionInput {
   backend_session_id?: string
   status?: SessionStatus
   metadata?: SessionMetadata
-  completed_at?: string
-  failed_at?: string
+  completed_at?: string | null
+  failed_at?: string | null
+  aborted_at?: string | null
   last_event_seq?: number
   agent_id?: string
 }

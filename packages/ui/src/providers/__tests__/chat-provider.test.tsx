@@ -59,6 +59,7 @@ function makeSession(overrides: Partial<PublicSession> = {}): PublicSession {
     started_at: new Date().toISOString(),
     completed_at: new Date().toISOString(),
     failed_at: null,
+    aborted_at: null,
     last_event_seq: 0,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

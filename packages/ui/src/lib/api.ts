@@ -548,10 +548,40 @@ export const timelineApi = {
   },
 }
 
+type SessionDiagnostics = {
+  generated_at: string
+  counts_by_status: Record<string, number>
+  aborted_by_reason: Array<{ reason: string; count: number }>
+  terminal_timestamp_gaps: {
+    completed_missing_timestamp: number
+    failed_missing_timestamp: number
+    aborted_missing_timestamp: number
+  }
+  recent_aborted_without_backend_session_id: Array<{
+    id: string
+    kombuse_session_id: string | null
+    ticket_id: number | null
+    backend_type: string | null
+    backend_session_id: string | null
+    status: string
+    updated_at: string
+    completed_at: string | null
+    failed_at: string | null
+    aborted_at: string | null
+    terminal_reason: string | null
+    terminal_source: string | null
+  }>
+}
+
 export const sessionsApi = {
   async list(filters?: SessionFilters): Promise<PublicSession[]> {
     const params = new URLSearchParams()
+    if (filters?.ticket_id) params.set('ticket_id', String(filters.ticket_id))
     if (filters?.status) params.set('status', filters.status)
+    if (filters?.terminal_reason) params.set('terminal_reason', filters.terminal_reason)
+    if (filters?.has_backend_session_id !== undefined) {
+      params.set('has_backend_session_id', String(filters.has_backend_session_id))
+    }
     if (filters?.sort_by) params.set('sort_by', filters.sort_by)
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
@@ -559,6 +589,14 @@ export const sessionsApi = {
     const url = `${API_BASE}/sessions${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<PublicSession[]>(response)
+  },
+
+  async diagnostics(recentLimit = 20): Promise<SessionDiagnostics> {
+    const params = new URLSearchParams()
+    params.set('recent_limit', String(recentLimit))
+
+    const response = await fetch(`${API_BASE}/sessions/diagnostics?${params}`)
+    return handleResponse<SessionDiagnostics>(response)
   },
 
   async get(kombuseSessionId: string): Promise<PublicSession> {

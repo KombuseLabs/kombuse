@@ -44,6 +44,16 @@ export const sessionsRepository = {
       conditions.push('s.status = ?')
       params.push(filters.status)
     }
+    if (filters?.terminal_reason) {
+      conditions.push("json_extract(s.metadata, '$.terminal_reason') = ?")
+      params.push(filters.terminal_reason)
+    }
+    if (filters?.has_backend_session_id === true) {
+      conditions.push("s.backend_session_id IS NOT NULL AND trim(s.backend_session_id) <> ''")
+    }
+    if (filters?.has_backend_session_id === false) {
+      conditions.push("(s.backend_session_id IS NULL OR trim(s.backend_session_id) = '')")
+    }
 
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
@@ -162,6 +172,10 @@ export const sessionsRepository = {
       fields.push('failed_at = ?')
       params.push(input.failed_at)
     }
+    if (input.aborted_at !== undefined) {
+      fields.push('aborted_at = ?')
+      params.push(input.aborted_at)
+    }
     if (input.last_event_seq !== undefined) {
       fields.push('last_event_seq = ?')
       params.push(input.last_event_seq)
@@ -208,6 +222,16 @@ export const sessionsRepository = {
       conditions.push('s.status = ?')
       params.push(filters.status)
     }
+    if (filters?.terminal_reason) {
+      conditions.push("json_extract(s.metadata, '$.terminal_reason') = ?")
+      params.push(filters.terminal_reason)
+    }
+    if (filters?.has_backend_session_id === true) {
+      conditions.push("s.backend_session_id IS NOT NULL AND trim(s.backend_session_id) <> ''")
+    }
+    if (filters?.has_backend_session_id === false) {
+      conditions.push("(s.backend_session_id IS NULL OR trim(s.backend_session_id) = '')")
+    }
 
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
@@ -238,6 +262,148 @@ export const sessionsRepository = {
   },
 
   /**
+   * Aggregate session diagnostics to help identify abrupt abort causes.
+   */
+  diagnostics(recentLimit = 20): {
+    generated_at: string
+    counts_by_status: Record<string, number>
+    aborted_by_reason: Array<{ reason: string; count: number }>
+    terminal_timestamp_gaps: {
+      completed_missing_timestamp: number
+      failed_missing_timestamp: number
+      aborted_missing_timestamp: number
+    }
+    recent_aborted_without_backend_session_id: Array<{
+      id: string
+      kombuse_session_id: string | null
+      ticket_id: number | null
+      backend_type: string | null
+      backend_session_id: string | null
+      status: string
+      updated_at: string
+      completed_at: string | null
+      failed_at: string | null
+      aborted_at: string | null
+      terminal_reason: string | null
+      terminal_source: string | null
+    }>
+  } {
+    const db = getDatabase()
+
+    const countsRows = db
+      .prepare(
+        `
+        SELECT status, COUNT(*) AS count
+        FROM sessions
+        GROUP BY status
+      `
+      )
+      .all() as Array<{ status: string; count: number }>
+
+    const counts_by_status: Record<string, number> = {}
+    for (const row of countsRows) {
+      counts_by_status[row.status] = row.count
+    }
+
+    const aborted_by_reason = db
+      .prepare(
+        `
+        SELECT
+          COALESCE(json_extract(metadata, '$.terminal_reason'), 'unspecified') AS reason,
+          COUNT(*) AS count
+        FROM sessions
+        WHERE status = 'aborted'
+        GROUP BY reason
+        ORDER BY count DESC, reason ASC
+      `
+      )
+      .all() as Array<{ reason: string; count: number }>
+
+    const completedGap = db
+      .prepare(
+        `
+        SELECT COUNT(*) AS count
+        FROM sessions
+        WHERE status = 'completed'
+          AND completed_at IS NULL
+      `
+      )
+      .get() as { count: number }
+
+    const failedGap = db
+      .prepare(
+        `
+        SELECT COUNT(*) AS count
+        FROM sessions
+        WHERE status = 'failed'
+          AND failed_at IS NULL
+      `
+      )
+      .get() as { count: number }
+
+    const abortedGap = db
+      .prepare(
+        `
+        SELECT COUNT(*) AS count
+        FROM sessions
+        WHERE status = 'aborted'
+          AND aborted_at IS NULL
+      `
+      )
+      .get() as { count: number }
+
+    const recent_aborted_without_backend_session_id = db
+      .prepare(
+        `
+        SELECT
+          id,
+          kombuse_session_id,
+          ticket_id,
+          backend_type,
+          backend_session_id,
+          status,
+          updated_at,
+          completed_at,
+          failed_at,
+          aborted_at,
+          json_extract(metadata, '$.terminal_reason') AS terminal_reason,
+          json_extract(metadata, '$.terminal_source') AS terminal_source
+        FROM sessions
+        WHERE status = 'aborted'
+          AND (backend_session_id IS NULL OR trim(backend_session_id) = '')
+        ORDER BY COALESCE(aborted_at, failed_at, updated_at) DESC
+        LIMIT ?
+      `
+      )
+      .all(recentLimit) as Array<{
+      id: string
+      kombuse_session_id: string | null
+      ticket_id: number | null
+      backend_type: string | null
+      backend_session_id: string | null
+      status: string
+      updated_at: string
+      completed_at: string | null
+      failed_at: string | null
+      aborted_at: string | null
+      terminal_reason: string | null
+      terminal_source: string | null
+    }>
+
+    return {
+      generated_at: new Date().toISOString(),
+      counts_by_status,
+      aborted_by_reason,
+      terminal_timestamp_gaps: {
+        completed_missing_timestamp: completedGap.count,
+        failed_missing_timestamp: failedGap.count,
+        aborted_missing_timestamp: abortedGap.count,
+      },
+      recent_aborted_without_backend_session_id,
+    }
+  },
+
+  /**
    * Abort all sessions currently in 'running' or 'pending' status.
    * Used at server startup to clean up orphaned sessions from prior runs.
    * Returns the number of sessions aborted.
@@ -246,7 +412,15 @@ export const sessionsRepository = {
     const db = getDatabase()
     const result = db
       .prepare(
-        "UPDATE sessions SET status = 'aborted', updated_at = datetime('now') WHERE status IN ('running', 'pending')"
+        `
+        UPDATE sessions
+        SET status = 'aborted',
+            completed_at = NULL,
+            failed_at = COALESCE(failed_at, datetime('now')),
+            aborted_at = COALESCE(aborted_at, datetime('now')),
+            updated_at = datetime('now')
+        WHERE status IN ('running', 'pending')
+      `
       )
       .run()
     return result.changes

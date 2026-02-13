@@ -724,6 +724,75 @@ const migrations = [
       ALTER TABLE tickets ADD COLUMN triggers_enabled INTEGER NOT NULL DEFAULT 1;
     `,
   },
+  {
+    name: '018_session_abort_diagnostics',
+    sql: `
+      ALTER TABLE sessions ADD COLUMN aborted_at TEXT;
+
+      -- Backfill legacy aborted rows so terminal time queries remain accurate.
+      UPDATE sessions
+      SET completed_at = NULL,
+          failed_at = COALESCE(failed_at, updated_at),
+          aborted_at = COALESCE(aborted_at, failed_at, updated_at)
+      WHERE status = 'aborted';
+
+      -- Backfill missing backend_session_id from persisted stream events.
+      UPDATE sessions
+      SET backend_session_id = COALESCE(
+        (
+          SELECT json_extract(se.payload, '$.sessionId')
+          FROM session_events se
+          WHERE se.session_id = sessions.id
+            AND se.event_type = 'complete'
+            AND json_type(se.payload, '$.sessionId') = 'text'
+          ORDER BY se.seq DESC
+          LIMIT 1
+        ),
+        (
+          SELECT json_extract(se.payload, '$.data.session_id')
+          FROM session_events se
+          WHERE se.session_id = sessions.id
+            AND se.event_type = 'raw'
+            AND json_type(se.payload, '$.data.session_id') = 'text'
+          ORDER BY se.seq ASC
+          LIMIT 1
+        ),
+        (
+          SELECT json_extract(se.payload, '$.data.sessionId')
+          FROM session_events se
+          WHERE se.session_id = sessions.id
+            AND se.event_type = 'raw'
+            AND json_type(se.payload, '$.data.sessionId') = 'text'
+          ORDER BY se.seq ASC
+          LIMIT 1
+        )
+      )
+      WHERE (backend_session_id IS NULL OR trim(backend_session_id) = '')
+        AND EXISTS (
+          SELECT 1
+          FROM session_events se
+          WHERE se.session_id = sessions.id
+            AND (
+              (se.event_type = 'complete' AND json_type(se.payload, '$.sessionId') = 'text')
+              OR
+              (se.event_type = 'raw' AND (
+                json_type(se.payload, '$.data.session_id') = 'text'
+                OR json_type(se.payload, '$.data.sessionId') = 'text'
+              ))
+            )
+        );
+
+      -- Add explicit reason/source for legacy aborted rows that predate terminal metadata.
+      UPDATE sessions
+      SET metadata = json_set(
+        json_set(metadata, '$.terminal_reason', 'legacy_abort'),
+        '$.terminal_source',
+        'migration_backfill'
+      )
+      WHERE status = 'aborted'
+        AND json_extract(metadata, '$.terminal_reason') IS NULL;
+    `,
+  },
 ]
 
 /**
