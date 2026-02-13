@@ -36,6 +36,10 @@ const getTicketConfigSchema = z.object({
     .boolean()
     .optional()
     .describe('Include actor/participant overview (default: true)'),
+  force_full: z
+    .boolean()
+    .optional()
+    .describe('Force full, untruncated payload (bypasses hard-cap pruning and body truncation)'),
   comment_filters: getTicketCommentFiltersSchema,
   ticket_body_preview_chars: z
     .number()
@@ -188,13 +192,14 @@ function toAttachmentMetaWithPath(attachment: Attachment) {
 
 function buildTicketSummary(
   ticket: NonNullable<ReturnType<typeof ticketsRepository.getWithRelations>>,
-  bodyPreviewChars: number
+  bodyPreviewChars: number,
+  includeFullBody: boolean
 ) {
   const bodyPreview = ticket.body
     ? truncateText(ticket.body, bodyPreviewChars)
     : null
 
-  return {
+  const summary: Record<string, unknown> = {
     id: ticket.id,
     project_id: ticket.project_id,
     title: ticket.title,
@@ -225,6 +230,14 @@ function buildTicketSummary(
       name: ticket.author.name,
     },
   }
+
+  if (includeFullBody) {
+    summary.body = ticket.body ?? null
+    summary.body_preview = ticket.body ?? null
+    summary.body_preview_truncated = false
+  }
+
+  return summary
 }
 
 function parseGetTicketCommentFilters(
@@ -386,6 +399,18 @@ function pruneGetTicketPayloadToHardCap(
   }
 }
 
+function serializeGetTicketPayloadWithoutCap(payload: Record<string, unknown>): string {
+  const working = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>
+  const meta = getMetaObject(working)
+
+  let serialized = JSON.stringify(working)
+  meta.bytes_used = utf8ByteLength(serialized)
+  serialized = JSON.stringify(working)
+  meta.bytes_used = utf8ByteLength(serialized)
+
+  return JSON.stringify(working)
+}
+
 /**
  * Resolve the agent and invocation context from a kombuse_session_id.
  * Returns null if no session ID provided (non-agent callers pass through).
@@ -473,6 +498,7 @@ export function registerTicketTools(server: McpServer): void {
       const includeOverview = config?.overview ?? true
       const includeImages = config?.images ?? false
       const includeComments = config?.comments ?? !isTriageLikeCaller
+      const forceFull = config?.force_full ?? false
       const ticketBodyPreviewChars = config?.ticket_body_preview_chars ?? DEFAULT_TICKET_BODY_PREVIEW_CHARS
       const parsedFilters = parseGetTicketCommentFilters(config)
 
@@ -491,7 +517,7 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       const response: Record<string, unknown> = {
-        ticket: buildTicketSummary(ticket, ticketBodyPreviewChars),
+        ticket: buildTicketSummary(ticket, ticketBodyPreviewChars, forceFull),
       }
 
       const allOverviewComments = includeOverview
@@ -599,9 +625,14 @@ export function registerTicketTools(server: McpServer): void {
           }
 
           if (parsedFilters.includeBodies) {
-            const body = truncateText(comment.body, parsedFilters.maxBodyChars)
-            commentPayload.body = body.value
-            commentPayload.body_truncated = body.truncated
+            if (forceFull) {
+              commentPayload.body = comment.body
+              commentPayload.body_truncated = false
+            } else {
+              const body = truncateText(comment.body, parsedFilters.maxBodyChars)
+              commentPayload.body = body.value
+              commentPayload.body_truncated = body.truncated
+            }
           }
 
           return commentPayload
@@ -629,6 +660,8 @@ export function registerTicketTools(server: McpServer): void {
 
       response.meta = {
         cap_bytes: MAX_GET_TICKET_RESPONSE_BYTES,
+        cap_enforced: !forceFull,
+        force_full: forceFull,
         caller_agent_type: callerAgentType ?? null,
         section_flags: {
           overview: includeOverview,
@@ -657,6 +690,15 @@ export function registerTicketTools(server: McpServer): void {
           },
         },
         truncated: false,
+      }
+
+      if (forceFull) {
+        const serialized = serializeGetTicketPayloadWithoutCap(response)
+        return {
+          content: [
+            { type: 'text' as const, text: serialized },
+          ],
+        }
       }
 
       const prune = pruneGetTicketPayloadToHardCap(response, MAX_GET_TICKET_RESPONSE_BYTES)

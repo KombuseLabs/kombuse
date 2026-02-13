@@ -394,6 +394,54 @@ describe('get_ticket', () => {
     expect(Buffer.byteLength(text, 'utf8')).toBeLessThanOrEqual(25_000)
   })
 
+  it('should allow forcing full untruncated payload when config.force_full is true', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Force full test',
+      body: 'T'.repeat(20_000),
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: `full-comment-${'C'.repeat(12_000)}`,
+    })
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: {
+        ticket_id: ticket.id,
+        config: {
+          comments: true,
+          overview: false,
+          force_full: true,
+          ticket_body_preview_chars: 32,
+          comment_filters: {
+            include_bodies: true,
+            max_body_chars: 64,
+            limit: 20,
+          },
+        },
+      },
+    })
+
+    const textBlock = (result.content as Array<{ type: string; text?: string }>)[0]
+    expect(textBlock?.type).toBe('text')
+    const text = textBlock?.text ?? ''
+    expect(Buffer.byteLength(text, 'utf8')).toBeGreaterThan(25_000)
+
+    const data = parseContent(result) as any
+    expect(data.meta.cap_enforced).toBe(false)
+    expect(data.meta.force_full).toBe(true)
+    expect(data.meta.truncated).toBe(false)
+    expect(data.ticket.body).toBe('T'.repeat(20_000))
+    expect(data.ticket.body_preview_truncated).toBe(false)
+    expect(data.comments[0].body).toContain('full-comment-')
+    expect(data.comments[0].body.length).toBeGreaterThan(12_000)
+    expect(data.comments[0].body_truncated).toBe(false)
+  })
+
   it('should return comments only when config.images is false and config.comments is true', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
