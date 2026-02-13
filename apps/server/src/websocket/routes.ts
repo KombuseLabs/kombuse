@@ -19,9 +19,18 @@ export async function websocketRoutes(fastify: FastifyInstance) {
     wsHub.addClient(socket)
 
     socket.on('message', (rawMessage: RawData) => {
+      let message: ClientMessage
       try {
-        const message = JSON.parse(rawMessage.toString()) as ClientMessage
+        message = JSON.parse(rawMessage.toString()) as ClientMessage
+      } catch {
+        sendServerMessage(socket, {
+          type: 'error',
+          message: 'Invalid message format',
+        })
+        return
+      }
 
+      try {
         switch (message.type) {
           case 'subscribe':
             wsHub.subscribe(socket, message.topics)
@@ -73,11 +82,11 @@ export async function websocketRoutes(fastify: FastifyInstance) {
             }
             break
         }
-      } catch {
-        sendServerMessage(socket, {
-          type: 'error',
-          message: 'Invalid message format',
-        })
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Failed to process websocket message'
+        console.error('[ws.message] failed:', error)
+        sendServerMessage(socket, { type: 'error', message: errorMessage })
       }
     })
 

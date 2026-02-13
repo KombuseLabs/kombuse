@@ -10,7 +10,7 @@ export type SessionTransitionEvent =
   | 'fail'        // running -> failed
   | 'abort'       // running|pending -> aborted
   | 'stop'        // completed -> stopped (idle timeout)
-  | 'continue'    // completed|failed|running -> running (resume/retry/reuse)
+  | 'continue'    // completed|failed|running|stopped -> running (resume/retry/reuse)
 
 /**
  * Context passed with each transition, providing data for side effects.
@@ -68,7 +68,9 @@ const TRANSITIONS: Record<SessionStatus, Partial<Record<SessionTransitionEvent, 
     continue: 'running',
   },
   aborted: {},
-  stopped: {},
+  stopped: {
+    continue: 'running',
+  },
 }
 
 export class SessionStateMachine {
@@ -176,7 +178,7 @@ export class SessionStateMachine {
           }
           this.deps.backends.resetIdleTimeout(ctx.kombuseSessionId)
         } else {
-          // completed|failed -> running (resume/retry)
+          // completed|failed|stopped -> running (resume/retry)
           this.deps.sessionPersistence.markSessionRunning(sessionId)
           if (ctx.backend) {
             this.deps.backends.register(ctx.kombuseSessionId, ctx.backend)
