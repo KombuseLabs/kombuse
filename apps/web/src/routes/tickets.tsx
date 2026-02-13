@@ -273,19 +273,27 @@ export function Tickets() {
 
   // Track last-viewed ticket to avoid redundant markViewed calls on reference changes
   const lastViewedTicketIdRef = useRef<number | null>(null);
+  // Track ticket route changes so we only reset UI state when switching tickets.
+  const lastRouteTicketIdRef = useRef<string | undefined>(ticketId);
+
+  // Reset per-ticket local UI state only when the route ticket actually changes.
+  useEffect(() => {
+    if (lastRouteTicketIdRef.current !== ticketId) {
+      setReplyTarget(null);
+      setAgentReplySessionId(null);
+      lastRouteTicketIdRef.current = ticketId;
+    }
+  }, [ticketId]);
 
   // Sync selected ticket to context and mark as viewed
   useEffect(() => {
     setCurrentTicket(selectedTicket ?? null);
-    setReplyTarget(null);
-    updateSearchParams({ session: null });
-    setAgentReplySessionId(null);
 
     if (selectedTicket && selectedTicket.id > 0 && selectedTicket.id !== lastViewedTicketIdRef.current) {
       lastViewedTicketIdRef.current = selectedTicket.id;
       markViewedMutate({ id: selectedTicket.id, profileId: "user-1" }); // TODO: Get from auth context
     }
-  }, [selectedTicket, setCurrentTicket, markViewedMutate, updateSearchParams]);
+  }, [selectedTicket, setCurrentTicket, markViewedMutate]);
 
   const handleReplyToComment = useCallback((comment: CommentWithAuthor) => {
     setReplyTarget({
