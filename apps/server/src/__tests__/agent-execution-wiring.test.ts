@@ -37,15 +37,23 @@ vi.mock('@kombuse/persistence', () => ({
   agentInvocationsRepository: {
     list: vi.fn(() => []),
     create: vi.fn((input: Record<string, unknown>) => ({ id: 100, ...input, status: 'pending', attempts: 0, max_attempts: 3, run_at: new Date().toISOString(), result: null, error: null, started_at: null, completed_at: null, created_at: new Date().toISOString() })),
+    countRecentByTicketId: vi.fn(() => 0),
     update: vi.fn(() => null),
   },
   commentsRepository: {
+    get: vi.fn(() => null),
     list: vi.fn(() => []),
     create: vi.fn(() => ({ id: 999 })),
     update: vi.fn(),
   },
   eventsRepository: {
     create: vi.fn(),
+  },
+  labelsRepository: {
+    getTicketLabels: vi.fn(() => []),
+  },
+  projectsRepository: {
+    get: vi.fn(() => null),
   },
   sessionsRepository: {
     get: vi.fn(() => null),
@@ -156,6 +164,126 @@ describe('processEventAndRunAgents ticket trigger suppression', () => {
 
     expect(processEvent).toHaveBeenCalledTimes(1)
     expect(processEvent).toHaveBeenCalledWith(event)
+  })
+})
+
+describe('processEventAndRunAgents lifecycle session isolation', () => {
+  const upstreamSessionId = 'trigger-550e8400-e29b-41d4-a716-446655440000'
+
+  function createInvocation(agentId: string) {
+    return {
+      id: 501,
+      agent_id: agentId,
+      trigger_id: 12,
+      event_id: 9734,
+      session_id: null,
+      kombuse_session_id: null,
+      status: 'pending' as const,
+      attempts: 0,
+      max_attempts: 3,
+      run_at: new Date().toISOString(),
+      context: { ticket_id: 42, project_id: '1' },
+      result: null,
+      error: null,
+      started_at: null,
+      completed_at: null,
+      created_at: new Date().toISOString(),
+    }
+  }
+
+  function createLifecycleEvent(actorId: string) {
+    return {
+      id: 9734,
+      event_type: 'agent.completed',
+      project_id: '1',
+      ticket_id: 42,
+      comment_id: null,
+      actor_id: actorId,
+      actor_type: 'agent' as const,
+      kombuse_session_id: upstreamSessionId,
+      payload: '{}',
+      created_at: new Date().toISOString(),
+      actor: null,
+    }
+  }
+
+  function createDeps(invocation: ReturnType<typeof createInvocation>) {
+    const backend: AgentBackend = {
+      name: BACKEND_TYPES.CLAUDE_CODE,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+
+    return {
+      getAgent: vi.fn((agentId: string) => ({
+        id: agentId,
+        system_prompt: '',
+        is_enabled: true,
+        config: { type: 'kombuse' },
+      })),
+      processEvent: vi.fn(() => [invocation]),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'chat-test-id' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+  }
+
+  function getAssignedSessionId(invocationId: number): string | undefined {
+    const calls = vi.mocked(agentInvocationsRepository.update).mock.calls.filter(
+      ([id, input]) =>
+        id === invocationId
+        && Object.prototype.hasOwnProperty.call(input as Record<string, unknown>, 'kombuse_session_id')
+    )
+    const patch = calls[0]?.[1] as { kombuse_session_id?: string } | undefined
+    return patch?.kombuse_session_id
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(agentInvocationsRepository.countRecentByTicketId as ReturnType<typeof vi.fn>).mockReturnValue(0)
+    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue(null)
+  })
+
+  it('uses a fresh trigger session for cross-agent lifecycle handoff', async () => {
+    const invocation = createInvocation('pipeline-orchestrator')
+    const event = createLifecycleEvent('triage-agent')
+    const deps = createDeps(invocation)
+
+    await processEventAndRunAgents(event as any, deps as any)
+
+    const assignedSessionId = getAssignedSessionId(invocation.id)
+    expect(assignedSessionId).toBeDefined()
+    expect(assignedSessionId).not.toBe(upstreamSessionId)
+    expect(assignedSessionId).toMatch(/^trigger-/)
+  })
+
+  it('reuses lifecycle session only for same-agent continuation', async () => {
+    const invocation = createInvocation('triage-agent')
+    const event = createLifecycleEvent('triage-agent')
+    const deps = createDeps(invocation)
+
+    await processEventAndRunAgents(event as any, deps as any)
+
+    expect(getAssignedSessionId(invocation.id)).toBe(upstreamSessionId)
   })
 })
 

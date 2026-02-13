@@ -1481,13 +1481,22 @@ export async function processEventAndRunAgents(
       continue
     }
 
-    // Reuse existing session ID from the event for lifecycle events (maintains
-    // conversation continuity), otherwise generate a fresh one. Mention-triggered
-    // agents get their own session since they're a new invocation context.
-    const kombuseSessionId =
-      event.kombuse_session_id && isValidSessionId(event.kombuse_session_id) && isLifecycleEvent
+    // Lifecycle handoffs across different agents must not share sessions, otherwise
+    // the downstream agent can attach to the upstream agent's live backend process.
+    // Keep reuse only for same-agent lifecycle continuation.
+    const lifecycleSessionId =
+      typeof event.kombuse_session_id === 'string' && isValidSessionId(event.kombuse_session_id)
         ? event.kombuse_session_id
-        : createSessionId('trigger')
+        : undefined
+    const shouldReuseLifecycleSession =
+      isLifecycleEvent
+      && event.actor_type === 'agent'
+      && typeof event.actor_id === 'string'
+      && event.actor_id === invocation.agent_id
+      && lifecycleSessionId !== undefined
+    const kombuseSessionId: KombuseSessionId = shouldReuseLifecycleSession
+      ? lifecycleSessionId
+      : createSessionId('trigger')
 
     // Update invocation with session ID
     agentInvocationsRepository.update(invocation.id, {
