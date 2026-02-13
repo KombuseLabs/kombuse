@@ -27,6 +27,7 @@
     "@fastify/multipart": "^9.0.3",
     "@fastify/websocket": "^11.2.0",
     "@kombuse/agent": "*",
+    "@kombuse/core": "*",
     "@kombuse/mcp": "*",
     "@kombuse/persistence": "*",
     "@kombuse/services": "*",

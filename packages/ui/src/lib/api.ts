@@ -47,6 +47,7 @@ import type {
   CreateMilestoneInput,
   UpdateMilestoneInput,
   BackendType,
+  CodexMcpStatus,
 } from '@kombuse/types'
 
 declare global {
@@ -711,6 +712,22 @@ export const profileSettingsApi = {
       body: JSON.stringify(input),
     })
     return handleResponse<ProfileSetting>(response)
+  },
+}
+
+export const codexApi = {
+  async getMcpStatus(): Promise<CodexMcpStatus> {
+    const response = await fetch(`${API_BASE}/codex/mcp`)
+    return handleResponse<CodexMcpStatus>(response)
+  },
+
+  async setMcpEnabled(enabled: boolean): Promise<CodexMcpStatus> {
+    const response = await fetch(`${API_BASE}/codex/mcp`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    })
+    return handleResponse<CodexMcpStatus>(response)
   },
 }
 

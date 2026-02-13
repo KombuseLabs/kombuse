@@ -8,6 +8,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./codex-config": {
+      "types": "./src/codex-config.ts",
+      "default": "./src/codex-config.ts"
+    },
     "./commands": {
       "types": "./src/commands/index.ts",
       "default": "./src/commands/index.ts"
@@ -18,6 +22,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@iarna/toml": "^2.2.5",
     "@kombuse/types": "*"
   },
   "devDependencies": {

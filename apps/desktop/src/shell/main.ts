@@ -16,12 +16,19 @@ config();
 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { writeFileSync, unlinkSync } from "node:fs";
+import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { app, BrowserWindow, ipcMain } from "electron";
 
 // ESM equivalent of __dirname
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Prefer a colocated bridge script to avoid CWD/package-path drift.
+const localBridgePath = join(__dirname, "mcp-bridge.mjs");
+if (existsSync(localBridgePath)) {
+  process.env.KOMBUSE_MCP_BRIDGE_PATH = localBridgePath;
+}
+
 import { initializeDatabase, seedDatabase } from "@kombuse/persistence";
 import { createServer as createServerDirect, setAutoUpdater } from "server";
 import { registerAppProtocol } from "./protocol";

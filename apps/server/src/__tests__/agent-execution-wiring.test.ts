@@ -21,6 +21,18 @@ vi.mock('../logger', () => ({
   })),
 }))
 
+vi.mock('../services/codex-mcp-config', () => ({
+  getCodexMcpStatus: vi.fn(() => ({
+    enabled: false,
+    configured: false,
+    config_path: '/tmp/.codex/config.toml',
+    command: null,
+    args: [],
+    bridge_path: null,
+  })),
+  resolveKombuseBridgeCommandConfig: vi.fn(() => null),
+}))
+
 vi.mock('@kombuse/persistence', () => ({
   agentInvocationsRepository: {
     list: vi.fn(() => []),
@@ -48,11 +60,17 @@ vi.mock('@kombuse/persistence', () => ({
   },
 }))
 
-import { agentInvocationsRepository, commentsRepository, sessionsRepository } from '@kombuse/persistence'
+import {
+  agentInvocationsRepository,
+  commentsRepository,
+  sessionsRepository,
+} from '@kombuse/persistence'
+import { getCodexMcpStatus } from '../services/codex-mcp-config'
 import { createSessionLogger } from '../logger'
 import { wsHub } from '../websocket/hub'
 import {
   startAgentChatSession,
+  createServerAgentBackend,
   presetToAllowedTools,
   getTypePreset,
   shouldAutoApprove,
@@ -205,6 +223,51 @@ describe('startAgentChatSession backend selection', () => {
 
     expect(existingBackend.stop).toHaveBeenCalled()
     expect(createBackend).toHaveBeenCalledWith(BACKEND_TYPES.CODEX)
+  })
+})
+
+describe('createServerAgentBackend codex MCP setting', () => {
+  afterEach(() => {
+    ;(getCodexMcpStatus as ReturnType<typeof vi.fn>).mockReturnValue({
+      enabled: false,
+      configured: false,
+      config_path: '/tmp/.codex/config.toml',
+      command: null,
+      args: [],
+      bridge_path: null,
+    })
+  })
+
+  it('disables MCP for Codex by default', () => {
+    ;(getCodexMcpStatus as ReturnType<typeof vi.fn>).mockReturnValue({
+      enabled: false,
+      configured: true,
+      config_path: '/tmp/.codex/config.toml',
+      command: 'bun',
+      args: ['run', '/tmp/bridge.ts'],
+      bridge_path: '/tmp/bridge.ts',
+    })
+
+    const backend = createServerAgentBackend(BACKEND_TYPES.CODEX) as any
+    const extraArgs = backend.options?.extraArgs as string[]
+
+    expect(extraArgs).toContain('mcp_servers.kombuse.enabled=false')
+  })
+
+  it('enables MCP for Codex when user setting is true', () => {
+    ;(getCodexMcpStatus as ReturnType<typeof vi.fn>).mockReturnValue({
+      enabled: true,
+      configured: true,
+      config_path: '/tmp/.codex/config.toml',
+      command: 'bun',
+      args: ['run', '/tmp/bridge.ts'],
+      bridge_path: '/tmp/bridge.ts',
+    })
+
+    const backend = createServerAgentBackend(BACKEND_TYPES.CODEX) as any
+    const extraArgs = backend.options?.extraArgs as string[]
+
+    expect(extraArgs).toContain('mcp_servers.kombuse.enabled=true')
   })
 })
 

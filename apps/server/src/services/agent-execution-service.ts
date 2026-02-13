@@ -135,6 +135,7 @@ const AGENT_TYPE_PRESETS: Record<string, AgentTypePreset> = {
 
 /** Default preset when agent has no type configured */
 const DEFAULT_AGENT_TYPE = 'kombuse'
+const KOMBUSE_MCP_SERVER_NAME = 'kombuse'
 
 /**
  * Resolve the type preset for an agent. Falls back to 'kombuse' if type is unknown.
@@ -175,8 +176,15 @@ import {
   type ISessionPersistenceService,
   type StateMachineDeps,
 } from '@kombuse/services'
-import { agentInvocationsRepository, commentsRepository, eventsRepository, profilesRepository, sessionsRepository } from '@kombuse/persistence'
+import {
+  agentInvocationsRepository,
+  commentsRepository,
+  eventsRepository,
+  profilesRepository,
+  sessionsRepository,
+} from '@kombuse/persistence'
 import { BACKEND_TYPES, EVENT_TYPES, createSessionId, isValidSessionId, type PermissionMode, type ServerMessage } from '@kombuse/types'
+import { getCodexMcpStatus, resolveKombuseBridgeCommandConfig } from './codex-mcp-config'
 import { wsHub } from '../websocket/hub'
 import { serializeAgentStreamEvent } from '../websocket/serialize-agent-event'
 import type {
@@ -483,6 +491,30 @@ export function stopAllActiveBackends(): void {
   }
   activeBackends.clear()
   backendIdleTimeouts.clear()
+}
+
+/**
+ * Stop only active Codex backends so Codex MCP config changes take effect
+ * on the next Codex session start.
+ */
+export function stopActiveCodexBackends(): number {
+  let stoppedCount = 0
+
+  for (const [sessionId, backend] of activeBackends) {
+    if (backend.name !== BACKEND_TYPES.CODEX) {
+      continue
+    }
+
+    if (backend.isRunning()) {
+      void backend.stop()
+    }
+
+    clearBackendIdleTimeout(sessionId)
+    activeBackends.delete(sessionId)
+    stoppedCount += 1
+  }
+
+  return stoppedCount
 }
 
 /**
@@ -915,13 +947,56 @@ function resolveConfiguredBackendType(value: unknown): BackendType | undefined {
   return isSupportedBackendType(value) ? value : undefined
 }
 
+function isCodexMcpEnabled(): boolean {
+  try {
+    return getCodexMcpStatus().enabled
+  } catch {
+    return false
+  }
+}
+
+function toTomlStringLiteral(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+function buildCodexMcpConfigOverrides(enabled: boolean): string[] {
+  const keyPrefix = `mcp_servers.${KOMBUSE_MCP_SERVER_NAME}`
+  const extraArgs: string[] = [
+    '-c',
+    `${keyPrefix}.enabled=${enabled ? 'true' : 'false'}`,
+  ]
+
+  if (!enabled) {
+    return extraArgs
+  }
+
+  // Force a known-good local kombuse MCP bridge config when available.
+  const bridgeConfig = resolveKombuseBridgeCommandConfig()
+  if (!bridgeConfig) {
+    return extraArgs
+  }
+
+  extraArgs.push(
+    '-c',
+    `${keyPrefix}.command=${toTomlStringLiteral(bridgeConfig.command)}`,
+    '-c',
+    `${keyPrefix}.args=[${bridgeConfig.args.map((arg) => toTomlStringLiteral(arg)).join(',')}]`
+  )
+
+  return extraArgs
+}
+
 /**
  * Server-standard backend factory for all agent execution paths.
  */
 export function createServerAgentBackend(backendType: BackendType): AgentBackend {
   switch (backendType) {
-    case BACKEND_TYPES.CODEX:
-      return new CodexBackend()
+    case BACKEND_TYPES.CODEX: {
+      const codexMcpEnabled = isCodexMcpEnabled()
+      return new CodexBackend({
+        extraArgs: buildCodexMcpConfigOverrides(codexMcpEnabled),
+      })
+    }
     case BACKEND_TYPES.MOCK:
       return new MockAgentClient()
     case BACKEND_TYPES.CLAUDE_CODE:

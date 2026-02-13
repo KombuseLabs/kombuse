@@ -13,6 +13,7 @@ import {
   rmSync
 } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -127,6 +128,18 @@ function replaceSymlinkWithLocalCopy(packageName) {
     renameSync(tempCopyPath, packagePath)
 
     console.log(`[native] localized ${packageName}`)
+
+    // Re-sign Electron.app after copy — cpSync with dereference breaks the
+    // macOS code signature, which prevents Chromium sub-processes from launching.
+    if (packageName === 'electron') {
+      const electronApp = resolve(packagePath, 'dist', 'Electron.app')
+      if (existsSync(electronApp)) {
+        execFileSync('codesign', ['--force', '--deep', '--sign', '-', electronApp], {
+          stdio: 'inherit'
+        })
+        console.log('[native] re-signed Electron.app')
+      }
+    }
   } else {
     console.log(`[native] ${packageName} already local`)
 

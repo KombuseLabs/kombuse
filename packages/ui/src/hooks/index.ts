@@ -112,4 +112,5 @@ export {
 } from './use-scroll-to-comment'
 export { useDesktop } from './use-desktop'
 export { useProfileSetting, useProfileSettings, useUpsertProfileSetting } from './use-profile-settings'
+export { useCodexMcpStatus, useSetCodexMcpEnabled } from './use-codex-mcp'
 export { useShiki } from './use-shiki'

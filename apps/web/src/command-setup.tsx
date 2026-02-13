@@ -2,9 +2,20 @@ import { useState, useEffect, useMemo, createContext, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { createCommandRegistry } from "@kombuse/core";
+import { toast } from "@kombuse/ui/base";
 import { CommandProvider } from "@kombuse/ui/providers";
-import { useAppContext, useProfileSetting, useUpsertProfileSetting } from "@kombuse/ui/hooks";
+import {
+  useAppContext,
+  useCodexMcpStatus,
+  useProfileSetting,
+  useSetCodexMcpEnabled,
+  useUpsertProfileSetting,
+} from "@kombuse/ui/hooks";
 import type { CommandContext } from "@kombuse/types";
+
+const USER_PROFILE_ID = "user-1";
+const SIDEBAR_EVENTS_SETTING_KEY = "sidebar.hidden.events";
+const SIDEBAR_PERMISSIONS_SETTING_KEY = "sidebar.hidden.permissions";
 
 interface PaletteState {
   open: boolean;
@@ -30,10 +41,13 @@ export function CommandSetup({ children }: CommandSetupProps) {
 
   const registry = useMemo(() => createCommandRegistry(), []);
 
-  const { data: eventsSetting } = useProfileSetting("user-1", "sidebar.hidden.events");
-  const { data: permissionsSetting } = useProfileSetting("user-1", "sidebar.hidden.permissions");
+  const { data: eventsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_EVENTS_SETTING_KEY);
+  const { data: permissionsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PERMISSIONS_SETTING_KEY);
+  const { data: codexMcpStatus } = useCodexMcpStatus();
   const eventsVisible = eventsSetting?.setting_value === "false";
   const permissionsVisible = permissionsSetting?.setting_value === "false";
+  const codexMcpEnabled = codexMcpStatus?.enabled === true;
+  const setCodexMcpEnabled = useSetCodexMcpEnabled();
   const upsertSetting = useUpsertProfileSetting();
 
   // Register commands
@@ -121,8 +135,8 @@ export function CommandSetup({ children }: CommandSetupProps) {
         category: "Sidebar",
         handler: () => {
           upsertSetting.mutate({
-            profile_id: "user-1",
-            setting_key: "sidebar.hidden.events",
+            profile_id: USER_PROFILE_ID,
+            setting_key: SIDEBAR_EVENTS_SETTING_KEY,
             setting_value: eventsVisible ? "true" : "false",
           });
         },
@@ -133,9 +147,25 @@ export function CommandSetup({ children }: CommandSetupProps) {
         category: "Sidebar",
         handler: () => {
           upsertSetting.mutate({
-            profile_id: "user-1",
-            setting_key: "sidebar.hidden.permissions",
+            profile_id: USER_PROFILE_ID,
+            setting_key: SIDEBAR_PERMISSIONS_SETTING_KEY,
             setting_value: permissionsVisible ? "true" : "false",
+          });
+        },
+      }),
+      registry.register({
+        id: "codex.toggleMcp",
+        title: codexMcpEnabled ? "Disable MCP for Codex" : "Enable MCP for Codex",
+        category: "Codex",
+        handler: () => {
+          setCodexMcpEnabled.mutate(!codexMcpEnabled, {
+            onError: (error) => {
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Failed to update Codex MCP setting"
+              );
+            },
           });
         },
       }),
@@ -162,7 +192,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
     ];
 
     return () => unregisterFns.forEach((fn) => fn());
-  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, upsertSetting]);
+  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting]);
 
   const context: CommandContext = useMemo(
     () => ({

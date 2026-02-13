@@ -1,5 +1,10 @@
 import { useTheme } from 'next-themes'
-import { useProfileSetting, useUpsertProfileSetting } from '@kombuse/ui/hooks'
+import {
+  useCodexMcpStatus,
+  useProfileSetting,
+  useSetCodexMcpEnabled,
+  useUpsertProfileSetting,
+} from '@kombuse/ui/hooks'
 import {
   Card,
   CardContent,
@@ -10,17 +15,25 @@ import {
   RadioGroup,
   RadioGroupItem,
   Switch,
+  toast,
 } from '@kombuse/ui/base'
 import { Sun, Moon, Monitor } from 'lucide-react'
 
+const USER_PROFILE_ID = 'user-1'
+const SIDEBAR_EVENTS_SETTING_KEY = 'sidebar.hidden.events'
+const SIDEBAR_PERMISSIONS_SETTING_KEY = 'sidebar.hidden.permissions'
+
 export function Settings() {
   const { theme, setTheme } = useTheme()
-  const { data: eventsSetting } = useProfileSetting('user-1', 'sidebar.hidden.events')
-  const { data: permissionsSetting } = useProfileSetting('user-1', 'sidebar.hidden.permissions')
+  const { data: eventsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_EVENTS_SETTING_KEY)
+  const { data: permissionsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PERMISSIONS_SETTING_KEY)
+  const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
+  const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const upsertSetting = useUpsertProfileSetting()
 
   const showEvents = eventsSetting?.setting_value !== 'true'
   const showPermissions = permissionsSetting?.setting_value !== 'true'
+  const codexMcpEnabled = codexMcpStatus?.enabled === true
 
   return (
     <main className="mx-auto max-w-2xl p-8">
@@ -74,8 +87,8 @@ export function Settings() {
                 checked={showEvents}
                 onCheckedChange={(checked) => {
                   upsertSetting.mutate({
-                    profile_id: 'user-1',
-                    setting_key: 'sidebar.hidden.events',
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: SIDEBAR_EVENTS_SETTING_KEY,
                     setting_value: checked ? 'false' : 'true',
                   })
                 }}
@@ -88,13 +101,46 @@ export function Settings() {
                 checked={showPermissions}
                 onCheckedChange={(checked) => {
                   upsertSetting.mutate({
-                    profile_id: 'user-1',
-                    setting_key: 'sidebar.hidden.permissions',
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: SIDEBAR_PERMISSIONS_SETTING_KEY,
                     setting_value: checked ? 'false' : 'true',
                   })
                 }}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Codex */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Codex</CardTitle>
+            <CardDescription>Configure Codex backend behavior for chat sessions.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="codex-mcp-enabled" className="font-normal">Enable MCP for Codex</Label>
+              <Switch
+                id="codex-mcp-enabled"
+                checked={codexMcpEnabled}
+                disabled={codexMcpStatusLoading || setCodexMcpEnabled.isPending}
+                onCheckedChange={(checked) => {
+                  setCodexMcpEnabled.mutate(checked, {
+                    onError: (error) => {
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : 'Failed to update Codex MCP setting'
+                      )
+                    },
+                  })
+                }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Writes to your local Codex config at{' '}
+              <code>{codexMcpStatus?.config_path ?? '~/.codex/config.toml'}</code>.
+            </p>
           </CardContent>
         </Card>
       </div>

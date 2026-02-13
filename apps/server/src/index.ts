@@ -35,6 +35,7 @@ import {
   syncRoutes,
   claudeCodeRoutes,
   profileSettingsRoutes,
+  codexMcpRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
 import { processEventAndRunAgents, cleanupOrphanedSessions } from "./services/agent-execution-service";
@@ -82,7 +83,7 @@ export async function createServer({ port, db }: ServerOptions) {
   // Note: app:// protocol sends null origin (opaque origin)
   await fastify.register(cors, {
     origin: ["http://localhost:3333", "null"],
-    methods: ["GET", "POST", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
 
   // Multipart file uploads (10 MB limit)
@@ -131,8 +132,9 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(attachmentRoutes, { prefix: "/api" });
   fastify.register(permissionRoutes, { prefix: "/api" });
   fastify.register(syncRoutes, { prefix: "/api" });
-fastify.register(claudeCodeRoutes, { prefix: "/api" });
+  fastify.register(claudeCodeRoutes, { prefix: "/api" });
   fastify.register(profileSettingsRoutes, { prefix: "/api" });
+  fastify.register(codexMcpRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {
     return { hello: "world" };
