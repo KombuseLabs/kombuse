@@ -18,7 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 
 // ESM equivalent of __dirname
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -128,6 +128,24 @@ ipcMain.handle("app:restart", () => {
   // In development, the app will quit and needs manual restart.
   app.relaunch();
   app.quit();
+});
+
+// IPC handler for opening a native directory picker
+ipcMain.handle("dialog:openDirectory", async () => {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  const result = focusedWindow
+    ? await dialog.showOpenDialog(focusedWindow, {
+        properties: ["openDirectory"],
+      })
+    : await dialog.showOpenDialog({
+        properties: ["openDirectory"],
+      });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return result.filePaths[0];
 });
 
 app.whenReady().then(async () => {

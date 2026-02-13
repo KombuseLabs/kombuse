@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Button,
   Card,
@@ -12,35 +12,74 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  Input,
+  Label,
   DialogTitle,
   DialogTrigger,
 } from "@kombuse/ui/base";
-import { Download, Folder, Loader2 } from "lucide-react";
+import { Download, Folder, FolderOpen, Loader2, Plus } from "lucide-react";
 import {
+  useCreateProject,
   useProjects,
   useClaudeCodeProjects,
   useImportClaudeCodeProjects,
+  useDesktop,
 } from "@kombuse/ui/hooks";
 
 export function Projects() {
   const { data: projects, isLoading, error } = useProjects();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+
+  useEffect(() => {
+    setCreateOpen(searchParams.get("create") === "true");
+  }, [searchParams]);
+
+  function setCreateDialogOpen(open: boolean) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (open) {
+        next.set("create", "true");
+      } else {
+        next.delete("create");
+      }
+      return next;
+    }, { replace: true });
+  }
 
   return (
     <main className="flex flex-col p-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-4xl font-bold">Projects</h1>
-        <Dialog open={importOpen} onOpenChange={setImportOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Download className="size-4 mr-2" />
-              Import from Claude Code
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-            <ImportDialog onDone={() => setImportOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Dialog open={createOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="size-4 mr-2" />
+                New Project
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <CreateProjectDialog
+                open={createOpen}
+                onDone={() => setCreateDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={importOpen} onOpenChange={setImportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="size-4 mr-2" />
+                Import from Claude Code
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+              <ImportDialog onDone={() => setImportOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {isLoading && (
@@ -57,7 +96,7 @@ export function Projects() {
 
       {!isLoading && !error && projects?.length === 0 && (
         <div className="text-sm text-muted-foreground py-8 text-center">
-          No projects yet. Import projects from Claude Code to get started.
+          No projects yet. Create a new project or import from Claude Code.
         </div>
       )}
 
@@ -98,6 +137,139 @@ export function Projects() {
         </div>
       )}
     </main>
+  );
+}
+
+function CreateProjectDialog({
+  open,
+  onDone,
+}: {
+  open: boolean;
+  onDone: () => void;
+}) {
+  const { isDesktop, selectDirectory } = useDesktop();
+  const createProject = useCreateProject();
+  const [localPath, setLocalPath] = useState("");
+  const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
+
+  function resetForm() {
+    setLocalPath("");
+    setName("");
+    setNameTouched(false);
+  }
+
+  useEffect(() => {
+    if (!open) {
+      setLocalPath("");
+      setName("");
+      setNameTouched(false);
+    }
+  }, [open]);
+
+  function updatePath(nextPath: string) {
+    setLocalPath(nextPath);
+    if (!nameTouched) {
+      setName(deriveProjectNameFromPath(nextPath));
+    }
+  }
+
+  async function handleSelectDirectory() {
+    const selectedPath = await selectDirectory();
+    if (selectedPath) {
+      updatePath(selectedPath);
+    }
+  }
+
+  async function handleCreate() {
+    const trimmedName = name.trim();
+    const trimmedPath = localPath.trim();
+    if (!trimmedName || !trimmedPath) return;
+
+    await createProject.mutateAsync({
+      name: trimmedName,
+      owner_id: "user-1",
+      local_path: trimmedPath,
+    });
+
+    resetForm();
+    onDone();
+  }
+
+  function handleCancel() {
+    resetForm();
+    onDone();
+  }
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Create Project</DialogTitle>
+        <DialogDescription>
+          Choose a local directory to create a project. The folder name is used
+          as the default project name.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4 py-2">
+        <div className="space-y-2">
+          <Label htmlFor="project-local-path">Directory path</Label>
+          <div className="flex gap-2">
+            <Input
+              id="project-local-path"
+              value={localPath}
+              onChange={(event) => updatePath(event.target.value)}
+              placeholder={isDesktop ? "Select a directory" : "/path/to/project"}
+              autoFocus
+            />
+            {isDesktop && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSelectDirectory}
+                disabled={createProject.isPending}
+              >
+                <FolderOpen className="size-4 mr-2" />
+                Open
+              </Button>
+            )}
+          </div>
+          {!isDesktop && (
+            <p className="text-xs text-muted-foreground">
+              Browser mode does not support a native directory picker.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="project-name">Project name</Label>
+          <Input
+            id="project-name"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              setNameTouched(true);
+            }}
+            placeholder="my-project"
+          />
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={handleCancel} disabled={createProject.isPending}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleCreate}
+          disabled={createProject.isPending || !name.trim() || !localPath.trim()}
+        >
+          {createProject.isPending && (
+            <Loader2 className="size-4 mr-2 animate-spin" />
+          )}
+          Create Project
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
 
@@ -244,4 +416,11 @@ function ImportDialog({ onDone }: { onDone: () => void }) {
       </DialogFooter>
     </>
   );
+}
+
+function deriveProjectNameFromPath(path: string) {
+  const normalized = path.trim().replace(/[\\/]+$/, "");
+  if (!normalized) return "";
+  const parts = normalized.split(/[\\/]/);
+  return parts[parts.length - 1] ?? "";
 }

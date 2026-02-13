@@ -112,7 +112,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
         title: "Create New Project",
         category: "Projects",
         handler: () => {
-          navigate("/projects/new");
+          navigate("/projects?create=true");
         },
       }),
       registry.register({

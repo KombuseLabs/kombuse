@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld("electron", {
   restart: () => ipcRenderer.invoke("app:restart"),
 
   /**
+   * Open a native directory picker.
+   */
+  selectDirectory: () => ipcRenderer.invoke("dialog:openDirectory") as Promise<string | null>,
+
+  /**
    * The port the embedded server is listening on (resolved at preload time).
    */
   serverPort: ipcRenderer.sendSync("server:port") as number,

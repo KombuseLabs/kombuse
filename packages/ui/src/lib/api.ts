@@ -58,6 +58,7 @@ declare global {
     electron?: {
       serverPort?: number
       restart?: () => Promise<void>
+      selectDirectory?: () => Promise<string | null>
       platform?: string
     }
   }
