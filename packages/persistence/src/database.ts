@@ -810,7 +810,12 @@ const migrations = [
       UPDATE agent_invocations
       SET project_id = json_extract(context, '$.project_id')
       WHERE project_id IS NULL
-        AND json_type(context, '$.project_id') = 'text';
+        AND json_type(context, '$.project_id') = 'text'
+        AND EXISTS (
+          SELECT 1
+          FROM projects p
+          WHERE p.id = json_extract(context, '$.project_id')
+        );
 
       -- Fallback backfill for invocations with an event link.
       UPDATE agent_invocations

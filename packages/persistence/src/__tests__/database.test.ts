@@ -270,5 +270,62 @@ describe('database', () => {
         to: 'id',
       })
     })
+
+    it('should ignore stale invocation context project_id values during migration 019 backfill', () => {
+      db.exec(`
+        CREATE TABLE migrations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE projects (
+          id TEXT PRIMARY KEY
+        );
+
+        CREATE TABLE tickets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kombuse_session_id TEXT,
+          ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id TEXT REFERENCES projects(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE agent_invocations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+          session_id INTEGER REFERENCES sessions(id) ON DELETE SET NULL,
+          kombuse_session_id TEXT,
+          context TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+      `)
+
+      const insertMigration = db.prepare(
+        'INSERT INTO migrations (name) VALUES (?)'
+      )
+      for (const migrationName of EXPECTED_MIGRATIONS.slice(0, -1)) {
+        insertMigration.run(migrationName)
+      }
+
+      db.prepare('INSERT INTO agent_invocations (context) VALUES (?)').run(
+        JSON.stringify({ project_id: 'deleted-project' })
+      )
+
+      expect(() => runMigrations(db)).not.toThrow()
+
+      const invocation = db
+        .prepare('SELECT project_id FROM agent_invocations LIMIT 1')
+        .get() as { project_id: string | null }
+      expect(invocation.project_id).toBeNull()
+    })
   })
 })
