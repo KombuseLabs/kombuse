@@ -51,6 +51,8 @@ interface ChatRunnerOptions {
   onEvent: (event: AgentEvent) => void
   /** Callback when complete, receives backend session context if available */
   onComplete?: (context: ConversationContext) => void
+  /** Callback when the backend was explicitly stopped */
+  onStopped?: (reason: string) => void
   /** Callback on error */
   onError?: (error: Error) => void
   /** Callback when resume fails (e.g. "session does not exist") — allows retry without --resume */
@@ -93,6 +95,11 @@ async function runAgentChat(
         options.onResumeFailed()
         return
       }
+      if (event.reason === 'stopped') {
+        options.onStopped?.('user_stop')
+        finalize()
+        return
+      }
       if (event.success === false) {
         const msg = event.errorMessage
           ?? (event.exitCode != null
@@ -109,14 +116,8 @@ async function runAgentChat(
         options.onComplete?.(context)
         finalize(true)
       }
-    } else if (event.type === 'error') {
-      options.onEvent(event)
-
-      if (!backend.isRunning()) {
-        didComplete = true
-        options.onError?.(new Error(event.message ?? 'Backend terminated with error'))
-        finalize()
-      }
+    } else if (event.type === 'lifecycle') {
+      return
     } else {
       options.onEvent(event)
     }
@@ -158,6 +159,10 @@ function runFollowUpChat(
     if (event.type === 'complete') {
       didComplete = true
       unsubscribe()
+      if (event.reason === 'stopped') {
+        options.onStopped?.('user_stop')
+        return
+      }
       if (event.success === false) {
         const msg = event.errorMessage
           ?? (event.exitCode != null
@@ -171,13 +176,8 @@ function runFollowUpChat(
           backendSessionId,
         })
       }
-    } else if (event.type === 'error') {
-      options.onEvent(event)
-      if (!backend.isRunning()) {
-        didComplete = true
-        unsubscribe()
-        options.onError?.(new Error(event.message ?? 'Backend terminated with error'))
-      }
+    } else if (event.type === 'lifecycle') {
+      return
     } else {
       options.onEvent(event)
     }
@@ -267,8 +267,7 @@ function handlePermissionRequest(options: {
   const { event, backend, sessionId, ticketId, preset, logger, emit } = options
   if (
     shouldAutoApprove(event.toolName, event.input, preset) &&
-    'respondToPermission' in backend &&
-    typeof backend.respondToPermission === 'function'
+    backend.respondToPermission
   ) {
     logger.info('auto-approving', { requestId: event.requestId, toolName: event.toolName })
     backend.respondToPermission(event.requestId, 'allow', { updatedInput: event.input })
@@ -343,6 +342,61 @@ function handleRuntimeRunFailure(options: {
     status: 'failed',
     reason: failureReason,
     errorMessage: messageText,
+  })
+  if (ticketId) {
+    broadcastTicketAgentStatus(ticketId)
+  }
+}
+
+function handleRuntimeRunStopped(options: {
+  dependencies: AgentExecutionDependencies
+  emit: (event: AgentExecutionEvent) => void
+  logger: SessionLogger
+  backend: AgentBackend
+  persistentSessionId: string
+  appSessionId: KombuseSessionId
+  ticketId: number | undefined
+  continuationInvocationId: number | null
+  reason: string
+}): void {
+  const {
+    dependencies,
+    emit,
+    logger,
+    backend,
+    persistentSessionId,
+    appSessionId,
+    ticketId,
+    continuationInvocationId,
+    reason,
+  } = options
+
+  const terminalAt = new Date().toISOString()
+  setSessionTurnActive(appSessionId, false)
+  logger.close()
+
+  dependencies.stateMachine.transition(persistentSessionId, 'abort', {
+    kombuseSessionId: appSessionId,
+    ticketId,
+    backendSessionId: backend.getBackendSessionId(),
+    error: reason,
+    invocationId: continuationInvocationId ?? undefined,
+    metadataPatch: {
+      terminal_reason: reason,
+      terminal_source: 'runtime',
+      terminal_at: terminalAt,
+      terminal_error: 'Stopped by user',
+    },
+  })
+
+  emit({
+    type: 'complete',
+    kombuseSessionId: appSessionId,
+    backendSessionId: backend.getBackendSessionId(),
+    ticketId,
+    status: 'aborted',
+    reason,
+    errorMessage: 'Stopped by user',
   })
   if (ticketId) {
     broadcastTicketAgentStatus(ticketId)
@@ -585,6 +639,9 @@ export function startAgentChatSession(
         if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
           return
         }
+        if (event.type === 'lifecycle') {
+          return
+        }
 
         dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
 
@@ -637,6 +694,19 @@ export function startAgentChatSession(
           ticketId,
           status: 'completed',
           reason: 'result',
+        })
+      },
+      onStopped: (reason: string) => {
+        handleRuntimeRunStopped({
+          dependencies,
+          emit,
+          logger: reusedLogger,
+          backend: existingBackend,
+          persistentSessionId,
+          appSessionId,
+          ticketId,
+          continuationInvocationId,
+          reason,
         })
       },
       onError: (error: Error) => {
@@ -743,6 +813,9 @@ export function startAgentChatSession(
       logger.logEvent(event)
 
       if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
+        return
+      }
+      if (event.type === 'lifecycle') {
         return
       }
 
@@ -866,6 +939,19 @@ export function startAgentChatSession(
         reason: 'result',
       })
     },
+    onStopped: (reason: string) => {
+      handleRuntimeRunStopped({
+        dependencies,
+        emit,
+        logger,
+        backend,
+        persistentSessionId,
+        appSessionId,
+        ticketId,
+        continuationInvocationId,
+        reason,
+      })
+    },
     onResumeFailed: resumeSessionId ? () => {
       setSessionTurnActive(appSessionId, false)
       logger.info('resume failed, retrying without --resume')
@@ -910,6 +996,9 @@ export function startAgentChatSession(
           logger.logEvent(event)
 
           if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
+            return
+          }
+          if (event.type === 'lifecycle') {
             return
           }
 
@@ -967,6 +1056,19 @@ export function startAgentChatSession(
             ticketId,
             status: 'completed',
             reason: 'result',
+          })
+        },
+        onStopped: (reason: string) => {
+          handleRuntimeRunStopped({
+            dependencies,
+            emit,
+            logger,
+            backend: retryBackend,
+            persistentSessionId,
+            appSessionId,
+            ticketId,
+            continuationInvocationId,
+            reason,
           })
         },
         onError: (error: Error) => {

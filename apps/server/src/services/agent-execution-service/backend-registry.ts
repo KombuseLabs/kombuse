@@ -147,15 +147,19 @@ export function registerBackend(sessionId: string, backend: AgentBackend): void 
 
 /**
  * Stop a single agent session by its kombuse session ID.
- * Returns true if the backend was found and stopped, false otherwise.
+ * Returns true if the backend was found and stop was requested, false otherwise.
  */
 export function stopAgentSession(kombuseSessionId: string): boolean {
   const backend = activeBackends.get(kombuseSessionId)
-  if (!backend || !backend.isRunning()) {
+  if (!backend) {
     return false
   }
+
+  clearBackendIdleTimeout(kombuseSessionId)
   setSessionTurnActive(kombuseSessionId, false)
-  void backend.stop()
+  if (backend.isRunning()) {
+    void backend.stop()
+  }
   return true
 }
 

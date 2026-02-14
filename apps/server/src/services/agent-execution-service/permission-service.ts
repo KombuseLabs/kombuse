@@ -262,7 +262,7 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
     return false
   }
 
-  if (!('respondToPermission' in backend) || typeof backend.respondToPermission !== 'function') {
+  if (!backend.respondToPermission) {
     console.warn('[Server] Backend does not support respondToPermission')
     return false
   }

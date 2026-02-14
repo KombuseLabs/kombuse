@@ -132,10 +132,12 @@ export interface AgentErrorEvent extends AgentEventBase {
   raw?: unknown
 }
 
+export type AgentCompleteReason = 'result' | 'process_exit' | 'mock_complete' | 'stopped' | 'failed'
+
 /** Completion event from an agent backend */
 export interface AgentCompleteEvent extends AgentEventBase {
   type: 'complete'
-  reason: 'result' | 'process_exit' | 'mock_complete'
+  reason: AgentCompleteReason
   sessionId?: string
   exitCode?: number | null
   success?: boolean
@@ -144,6 +146,16 @@ export interface AgentCompleteEvent extends AgentEventBase {
   /** True when the CLI returned a "session does not exist" or similar resume error */
   resumeFailed?: boolean
   raw?: unknown
+}
+
+export type AgentBackendLifecycleState = 'starting' | 'running' | 'stopping' | 'stopped' | 'failed'
+
+/** Backend lifecycle event emitted for internal lifecycle coordination. */
+export interface AgentLifecycleEvent extends AgentEventBase {
+  type: 'lifecycle'
+  state: AgentBackendLifecycleState
+  reason?: string
+  errorMessage?: string
 }
 
 /** Stable backend-agnostic event union */
@@ -156,6 +168,7 @@ export type AgentEvent =
   | AgentRawEvent
   | AgentErrorEvent
   | AgentCompleteEvent
+  | AgentLifecycleEvent
 
 /**
  * JSON-safe types used for websocket payload serialization
@@ -206,6 +219,8 @@ export type SerializedAgentCompleteEvent = Omit<AgentCompleteEvent, 'raw'> & {
   raw?: JsonValue
 }
 
+export type SerializedAgentLifecycleEvent = AgentLifecycleEvent
+
 export type SerializedAgentEvent =
   | SerializedAgentMessageEvent
   | SerializedAgentToolUseEvent
@@ -215,6 +230,12 @@ export type SerializedAgentEvent =
   | SerializedAgentRawEvent
   | SerializedAgentErrorEvent
   | SerializedAgentCompleteEvent
+  | SerializedAgentLifecycleEvent
+
+export interface PermissionResponseOptions {
+  updatedInput?: Record<string, unknown>
+  message?: string
+}
 
 /**
  * Agent backend interface - abstraction over Claude, Codex, or mock implementations
@@ -236,6 +257,15 @@ export interface AgentBackend {
    * Send a message to the agent
    */
   send(message: string): void
+
+  /**
+   * Optional capability for permission-response handling.
+   */
+  respondToPermission?(
+    requestId: string,
+    behavior: 'allow' | 'deny',
+    options?: PermissionResponseOptions
+  ): void
 
   /**
    * Subscribe to agent events. Returns an unsubscribe function.

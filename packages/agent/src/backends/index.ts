@@ -1,3 +1,4 @@
+export { BaseAgentBackend } from './base-agent-backend'
 export {
   ClaudeCodeBackend,
   type ClaudeCodeOptions,

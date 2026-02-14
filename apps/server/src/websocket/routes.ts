@@ -66,18 +66,7 @@ export async function websocketRoutes(fastify: FastifyInstance) {
             break
 
           case 'agent.stop':
-            if (stopAgentSession(message.kombuseSessionId)) {
-              // Immediately notify all clients so ActiveAgentsIndicator clears
-              const completeMsg: ServerMessage = {
-                type: 'agent.complete',
-                kombuseSessionId: message.kombuseSessionId,
-                status: 'aborted',
-                reason: 'user_stop',
-                errorMessage: 'Stopped by user',
-              }
-              wsHub.broadcastAgentMessage(message.kombuseSessionId, completeMsg, socket)
-              wsHub.broadcastToTopic('*', completeMsg)
-            } else {
+            if (!stopAgentSession(message.kombuseSessionId)) {
               sendServerMessage(socket, {
                 type: 'error',
                 message: 'No active agent to stop for this session',

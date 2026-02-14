@@ -7,6 +7,7 @@ export {
   waitForRunning,
 } from './utils'
 export {
+  BaseAgentBackend,
   ClaudeCodeBackend,
   type ClaudeCodeOptions,
   CodexBackend,

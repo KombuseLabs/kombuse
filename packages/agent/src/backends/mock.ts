@@ -1,4 +1,5 @@
-import { BACKEND_TYPES, type AgentBackend, type AgentEvent, type StartOptions } from '../types'
+import { BACKEND_TYPES, type StartOptions } from '../types'
+import { BaseAgentBackend } from './base-agent-backend'
 
 export interface MockClientOptions {
   /** Delay between simulated messages in ms (default: 1000) */
@@ -11,16 +12,14 @@ export interface MockClientOptions {
  * Mock agent client for testing and development.
  * Simulates an agent by sleeping and emitting periodic message events.
  */
-export class MockAgentClient implements AgentBackend {
+export class MockAgentClient extends BaseAgentBackend {
   readonly name = BACKEND_TYPES.MOCK
 
-  private running = false
-  private backendSessionId: string | undefined
-  private subscribers = new Set<(event: AgentEvent) => void>()
   private abortController: AbortController | null = null
   private options: Required<MockClientOptions>
 
   constructor(options: MockClientOptions = {}) {
+    super()
     this.options = {
       messageDelayMs: options.messageDelayMs ?? 1000,
       messageCount: options.messageCount ?? 3,
@@ -28,45 +27,47 @@ export class MockAgentClient implements AgentBackend {
   }
 
   async start(options: StartOptions): Promise<void> {
-    if (this.running) {
+    if (this.isRunning()) {
       throw new Error('Mock client is already running')
     }
 
-    this.running = true
-    // Mock backend has no provider-native session ID.
-    this.backendSessionId = undefined
+    this.starting()
+    this.clearBackendSessionId()
     this.abortController = new AbortController()
+    this.started()
 
     // Start simulation loop in background
     this.runSimulation(options)
   }
 
   async stop(): Promise<void> {
-    if (!this.running) {
+    if (!this.isRunning()) {
       return
     }
 
+    this.stopping('user_stop')
     this.abortController?.abort()
-    this.running = false
-    this.emit({
-      type: 'complete',
-      eventId: crypto.randomUUID(),
-      backend: this.name,
-      timestamp: Date.now(),
-      reason: 'mock_complete',
-      success: true,
+    this.abortController = null
+    this.stopped({
+      reason: 'user_stop',
+      complete: {
+        reason: 'stopped',
+        sessionId: this.getBackendSessionId(),
+        success: false,
+        errorMessage: 'Stopped by user',
+      },
     })
   }
 
   send(message: string): void {
-    if (!this.running) {
+    if (!this.isRunning()) {
       throw new Error('Cannot send message: mock client is not running')
     }
 
     // Simulate receiving a message and responding
     setTimeout(() => {
-      if (this.running) {
-        this.emit({
+      if (this.isRunning()) {
+        this.emitEvent({
           type: 'message',
           eventId: crypto.randomUUID(),
           backend: this.name,
@@ -78,38 +79,13 @@ export class MockAgentClient implements AgentBackend {
     }, this.options.messageDelayMs)
   }
 
-  subscribe(handler: (event: AgentEvent) => void): () => void {
-    this.subscribers.add(handler)
-    return () => {
-      this.subscribers.delete(handler)
-    }
-  }
-
-  isRunning(): boolean {
-    return this.running
-  }
-
-  getBackendSessionId(): string | undefined {
-    return this.backendSessionId
-  }
-
-  private emit(event: AgentEvent): void {
-    for (const handler of this.subscribers) {
-      try {
-        handler(event)
-      } catch {
-        // Ignore subscriber errors
-      }
-    }
-  }
-
   private async runSimulation(options: StartOptions): Promise<void> {
     const signal = this.abortController?.signal
 
     try {
       // Emit initial message if provided
       if (options.initialMessage) {
-        this.emit({
+        this.emitEvent({
           type: 'message',
           eventId: crypto.randomUUID(),
           backend: this.name,
@@ -127,7 +103,7 @@ export class MockAgentClient implements AgentBackend {
           return
         }
 
-        this.emit({
+        this.emitEvent({
           type: 'message',
           eventId: crypto.randomUUID(),
           backend: this.name,
@@ -139,26 +115,19 @@ export class MockAgentClient implements AgentBackend {
 
       // Emit completion
       if (!signal?.aborted) {
-        this.running = false
-        this.emit({
-          type: 'complete',
-          eventId: crypto.randomUUID(),
-          backend: this.name,
-          timestamp: Date.now(),
+        this.stopping('mock_complete')
+        this.emitComplete({
           reason: 'mock_complete',
+          sessionId: this.getBackendSessionId(),
           success: true,
         })
+        this.stopped({ reason: 'mock_complete', complete: null })
       }
     } catch (error) {
       if (!signal?.aborted) {
-        this.running = false
         const err = error instanceof Error ? error : new Error(String(error))
-        this.emit({
-          type: 'error',
-          eventId: crypto.randomUUID(),
-          backend: this.name,
-          timestamp: Date.now(),
-          message: err.message,
+        this.failed(err.message, {
+          reason: 'mock_error',
           error: err,
         })
       }

@@ -139,6 +139,7 @@ Client -> /ws -> chat-session-runner -> SessionStateMachine -> SessionPersistenc
 7) backend completes
 8) runner applies complete/fail/abort transition
 9) runner emits agent.complete (user success path does not emit ticket.agent_status)
+10) user `agent.stop` requests backend stop, and terminal `agent.complete` is emitted from the runner lifecycle path (not directly from `/ws`)
 ```
 
 ## Sequence: Trigger-Orchestrated Flow
@@ -209,6 +210,7 @@ Event bus -> trigger-orchestrator
 | `raw` | Backend | `chat-session-runner` | Yes | `session_events` (`event_type='raw'`), `sessions.last_event_seq` |
 | `error` | Backend | `chat-session-runner` | Yes | `session_events` (`event_type='error'`), plus `sessions.status='failed'` transition on terminal failure |
 | `complete` | Backend | `chat-session-runner` completion handlers | Yes (via transition side effects, not as normal `session_events` row) | `sessions.status`, terminal timestamps (`completed_at` / `failed_at` / `aborted_at`), `sessions.backend_session_id`, optional `agent_invocations.status` update |
+| `lifecycle` | Backend base class (`BaseAgentBackend`) | `chat-session-runner` (control flow only) | No | In-memory only; not serialized on `agent.event` and not persisted to `session_events` |
 
 ### WebSocket Lifecycle Messages
 

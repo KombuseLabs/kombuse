@@ -90,11 +90,13 @@ import {
   presetToAllowedTools,
   getTypePreset,
   shouldAutoApprove,
+  stopAgentSession,
   stopAllActiveBackends,
   cleanupOrphanedSessions,
   registerBackend,
   resetBackendIdleTimeout,
   processEventAndRunAgents,
+  type AgentExecutionEvent,
 } from '../services/agent-execution-service'
 
 // Clean up persistent backends between tests to prevent cross-test state pollution
@@ -2025,6 +2027,130 @@ describe('persistent backend reuse', () => {
     expect(deps.createBackend).toHaveBeenCalledTimes(2)
     // send() should NOT have been called on the dead primary backend
     expect(primary.backend.send).not.toHaveBeenCalled()
+  })
+})
+
+describe('user stop lifecycle integration', () => {
+  type EventCallback = (event: AgentEvent) => void
+
+  function createStoppableBackend() {
+    const subscribers: EventCallback[] = []
+    let running = false
+
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {
+        running = true
+      }),
+      stop: vi.fn(async () => {
+        if (!running) return
+        running = false
+        const completeEvent: AgentEvent = {
+          type: 'complete',
+          eventId: crypto.randomUUID(),
+          backend: 'claude-code',
+          timestamp: Date.now(),
+          reason: 'stopped',
+          success: false,
+          errorMessage: 'Stopped by user',
+        }
+        for (const callback of [...subscribers]) {
+          callback(completeEvent)
+        }
+      }),
+      send: vi.fn(),
+      subscribe: vi.fn((callback: EventCallback) => {
+        subscribers.push(callback)
+        return () => {
+          const idx = subscribers.indexOf(callback)
+          if (idx >= 0) subscribers.splice(idx, 1)
+        }
+      }),
+      isRunning: vi.fn(() => running),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+
+    return { backend }
+  }
+
+  it('emits a single aborted completion and abort transition on user stop', async () => {
+    const { backend } = createStoppableBackend()
+
+    const deps = {
+      getAgent: vi.fn(() => null),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'stop-flow-test' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => ({
+          id: 'session-1',
+          kombuse_session_id: 'stop-flow-test',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          backend_session_id: null,
+          ticket_id: null,
+          agent_id: null,
+          status: 'pending',
+          metadata: {},
+          started_at: new Date().toISOString(),
+          completed_at: null,
+          failed_at: null,
+          aborted_at: null,
+          last_event_seq: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+
+    const emittedEvents: AgentExecutionEvent[] = []
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'stop me',
+        kombuseSessionId: 'stop-flow-test' as KombuseSessionId,
+      },
+      (event) => emittedEvents.push(event),
+      deps as any
+    )
+
+    await waitForBackendStart(backend)
+    registerBackend('stop-flow-test', backend)
+
+    expect(stopAgentSession('stop-flow-test')).toBe(true)
+
+    const completionEvents = emittedEvents.filter(
+      (event): event is Extract<AgentExecutionEvent, { type: 'complete' }> => event.type === 'complete'
+    )
+
+    expect(completionEvents).toHaveLength(1)
+    expect(completionEvents[0]).toMatchObject({
+      kombuseSessionId: 'stop-flow-test',
+      status: 'aborted',
+      reason: 'user_stop',
+      errorMessage: 'Stopped by user',
+    })
+    expect(completionEvents.every((event) => event.status !== 'failed')).toBe(true)
+    expect(deps.stateMachine.transition).toHaveBeenCalledWith(
+      'session-1',
+      'abort',
+      expect.objectContaining({
+        kombuseSessionId: 'stop-flow-test',
+      })
+    )
   })
 })
 

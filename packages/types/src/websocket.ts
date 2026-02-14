@@ -6,9 +6,9 @@ import type { BackendType } from './agent'
 
 /**
  * Agent events streamed over websocket.
- * `complete` is represented by a dedicated `agent.complete` server message.
+ * `complete` and internal `lifecycle` events are represented by dedicated server handling paths.
  */
-export type AgentStreamEvent = Exclude<SerializedAgentEvent, { type: 'complete' }>
+export type AgentStreamEvent = Exclude<SerializedAgentEvent, { type: 'complete' | 'lifecycle' }>
 
 /**
  * WebSocket event payload sent to clients

@@ -1,5 +1,11 @@
-import { BACKEND_TYPES, type AgentBackend, type AgentEvent, type StartOptions } from '../../types'
+import {
+  BACKEND_TYPES,
+  type AgentEvent,
+  type PermissionResponseOptions,
+  type StartOptions,
+} from '../../types'
 import { Process, waitForRunning } from '../../utils'
+import { BaseAgentBackend } from '../base-agent-backend'
 import { resolveClaudePath, createCleanEnv, createJsonLineBehavior, type ParsedClaudeMessage } from './utils'
 import type { ClaudeAssistantMessage, ClaudeContentBlock, ClaudeEvent, ClaudeResultMessage, ClaudeUserMessage } from './types'
 
@@ -33,16 +39,15 @@ export type ClaudeInputEvent =
  * Agent backend that spawns Claude Code CLI as a subprocess.
  * Leverages existing CLI configuration (API keys, CLAUDE.md, MCP servers, etc.)
  */
-export class ClaudeCodeBackend implements AgentBackend {
+export class ClaudeCodeBackend extends BaseAgentBackend {
   readonly name = BACKEND_TYPES.CLAUDE_CODE
 
-  private running = false
-  private backendSessionId: string | undefined
-  private subscribers = new Set<(event: AgentEvent) => void>()
   private process: Process | null = null
+  private skipResultEvents = false
   private options: Required<ClaudeCodeOptions>
 
   constructor(options: ClaudeCodeOptions = {}) {
+    super()
     this.options = {
       cliPath: options.cliPath ?? resolveClaudePath(),
       extraArgs: options.extraArgs ?? [],
@@ -51,12 +56,13 @@ export class ClaudeCodeBackend implements AgentBackend {
   }
 
   async start(options: StartOptions): Promise<void> {
-    if (this.running) {
+    if (this.isRunning()) {
       throw new Error('Claude Code backend is already running')
     }
 
-    this.running = true
-    this.backendSessionId = undefined
+    this.starting()
+    this.clearBackendSessionId()
+    this.skipResultEvents = false
 
     const args = this.buildArgs(options)
 
@@ -76,17 +82,37 @@ export class ClaudeCodeBackend implements AgentBackend {
       },
       {
         onSpawn: (pid) => {
-          this.emit(this.createRawEvent({ pid }, 'process_spawn'))
+          this.emitEvent(this.createRawEvent({ pid }, 'process_spawn'))
         },
         onStderr: (data) => {
-          this.emit(this.createRawEvent({ stderr: data }, 'process_stderr'))
+          this.emitEvent(this.createRawEvent({ stderr: data }, 'process_stderr'))
         },
-        onExit: (code, signal) => {
-          this.running = false
+        onExit: (code) => {
+          this.process = null
+          const lifecycleState = this.getLifecycleState()
+          const wasStopping = lifecycleState === 'stopping' || lifecycleState === 'stopped'
+          if (!wasStopping) {
+            this.stopping('process_exit')
+          }
+          this.stopped({
+            reason: 'process_exit',
+            complete: wasStopping
+              ? null
+              : {
+                  reason: 'process_exit',
+                  sessionId: this.getBackendSessionId(),
+                  exitCode: code,
+                  success: code === 0,
+                  ...(code === 0 ? {} : { errorMessage: `Claude process exited with code ${code}` }),
+                },
+          })
         },
         onError: (error) => {
-          this.running = false
-          this.emit(this.createErrorEvent(error.message, error))
+          this.process = null
+          this.failed(error.message, {
+            reason: 'process_error',
+            error,
+          })
         },
       },
       [jsonLineBehavior]
@@ -95,6 +121,7 @@ export class ClaudeCodeBackend implements AgentBackend {
     try {
       await this.process.spawn()
       await waitForRunning(this.process)
+      this.started()
       await this.sendRaw({
         type: 'user',
         message: {
@@ -103,19 +130,38 @@ export class ClaudeCodeBackend implements AgentBackend {
         },
       })
     } catch (error) {
-      this.running = false
+      this.process = null
+      if (this.getLifecycleState() !== 'failed' && this.getLifecycleState() !== 'stopped') {
+        const err = error instanceof Error ? error : new Error(String(error))
+        this.failed(err.message, {
+          reason: 'start_failed',
+          error: err,
+        })
+      }
       throw error
     }
   }
 
   async stop(): Promise<void> {
-    if (!this.running || !this.process) {
+    if (!this.isRunning()) {
       return
     }
 
-    this.process.kill('SIGTERM')
-    this.running = false
+    this.stopping('user_stop')
+    this.skipResultEvents = true
+    if (this.process?.isRunning) {
+      this.process.kill('SIGTERM')
+    }
     this.process = null
+    this.stopped({
+      reason: 'user_stop',
+      complete: {
+        reason: 'stopped',
+        sessionId: this.getBackendSessionId(),
+        success: false,
+        errorMessage: 'Stopped by user',
+      },
+    })
   }
 
   /**
@@ -134,7 +180,7 @@ export class ClaudeCodeBackend implements AgentBackend {
   respondToPermission(
     requestId: string,
     behavior: 'allow' | 'deny',
-    options: { updatedInput?: Record<string, unknown>; message?: string } = {}
+    options: PermissionResponseOptions = {}
   ): void {
     const response =
       behavior === 'allow'
@@ -159,21 +205,6 @@ export class ClaudeCodeBackend implements AgentBackend {
       throw new Error('Claude process not running')
     }
     this.process.writeLine(JSON.stringify(message))
-  }
-
-  subscribe(handler: (event: AgentEvent) => void): () => void {
-    this.subscribers.add(handler)
-    return () => {
-      this.subscribers.delete(handler)
-    }
-  }
-
-  isRunning(): boolean {
-    return this.running
-  }
-
-  getBackendSessionId(): string | undefined {
-    return this.backendSessionId
   }
 
   private buildArgs(options: StartOptions): string[] {
@@ -218,19 +249,9 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   private handleMessage(msg: ParsedClaudeMessage): void {
     const event = msg.data
-    this.emit(this.createRawEvent(event, 'cli_pre_normalization'))
+    this.emitEvent(this.createRawEvent(event, 'cli_pre_normalization'))
     for (const normalizedEvent of this.normalizeEvent(event)) {
-      this.emit(normalizedEvent)
-    }
-  }
-
-  private emit(event: AgentEvent): void {
-    for (const handler of this.subscribers) {
-      try {
-        handler(event)
-      } catch {
-        // Ignore subscriber errors to avoid crashing the backend.
-      }
+      this.emitEvent(normalizedEvent)
     }
   }
 
@@ -263,20 +284,27 @@ export class ClaudeCodeBackend implements AgentBackend {
         return this.normalizeResult(event)
 
       case 'process_exit':
-        this.running = false
-        return [
-          {
-            type: 'complete',
-            eventId: crypto.randomUUID(),
-            backend: this.name,
-            timestamp: Date.now(),
-            reason: 'process_exit',
-            sessionId: this.backendSessionId,
-            exitCode: event.code,
-            success: event.code === 0,
-            raw: event,
-          },
-        ]
+        this.process = null
+        const shouldEmitComplete =
+          this.getLifecycleState() !== 'stopping'
+          && this.getLifecycleState() !== 'stopped'
+        if (shouldEmitComplete) {
+          this.stopping('process_exit')
+        }
+        this.stopped({
+          reason: 'process_exit',
+          complete: shouldEmitComplete
+            ? {
+                reason: 'process_exit',
+                sessionId: this.getBackendSessionId(),
+                exitCode: event.code,
+                success: event.code === 0,
+                ...(event.code === 0 ? {} : { errorMessage: `Claude process exited with code ${event.code}` }),
+                raw: event,
+              }
+            : null,
+        })
+        return []
 
       case 'error':
         return [this.createErrorEvent(event.message, undefined, event)]
@@ -374,7 +402,10 @@ export class ClaudeCodeBackend implements AgentBackend {
   }
 
   private normalizeResult(event: ClaudeResultMessage): AgentEvent[] {
-    this.backendSessionId = event.session_id
+    this.setBackendSessionId(event.session_id)
+    if (this.skipResultEvents) {
+      return []
+    }
     const events: AgentEvent[] = []
     const isSuccess = event.subtype === 'success' && !event.is_error
     const errorMessage = isSuccess ? undefined : this.getResultErrorMessage(event)
@@ -409,7 +440,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   private updateBackendSessionId(event: ClaudeEvent): void {
     if ('session_id' in event && typeof event.session_id === 'string') {
-      this.backendSessionId = event.session_id
+      this.setBackendSessionId(event.session_id)
     }
   }
 

@@ -99,6 +99,21 @@ describe('WebSocket Agent Serialization', () => {
 
       expect(streamEvent).toBeNull()
     })
+
+    it('should skip lifecycle events for agent.event stream', () => {
+      const agentEvent: AgentEvent = {
+        type: 'lifecycle',
+        eventId: 'test-event-6',
+        backend: 'mock',
+        timestamp: Date.now(),
+        state: 'stopped',
+        reason: 'user_stop',
+      }
+
+      const streamEvent = serializeAgentStreamEvent(agentEvent)
+
+      expect(streamEvent).toBeNull()
+    })
   })
 
   describe('ServerMessage format', () => {

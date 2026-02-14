@@ -1,13 +1,17 @@
 export { BACKEND_TYPES } from '@kombuse/types'
 export type {
   AgentBackend,
+  AgentBackendLifecycleState,
   AgentCompleteEvent,
+  AgentCompleteReason,
   AgentErrorEvent,
   AgentEvent,
   AgentEventBase,
+  AgentLifecycleEvent,
   AgentMessageEvent,
   AgentMessageRole,
   AgentPermissionRequestEvent,
+  PermissionResponseOptions,
   AgentRawEvent,
   AgentToolResultEvent,
   AgentToolUseEvent,

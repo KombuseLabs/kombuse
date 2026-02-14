@@ -67,6 +67,9 @@ export function serializeAgentEvent(event: AgentEvent): SerializedAgentEvent {
         raw: toOptionalJsonValue(event.raw),
       }
 
+    case 'lifecycle':
+      return { ...event }
+
     default:
       return assertNever(event)
   }
@@ -74,11 +77,11 @@ export function serializeAgentEvent(event: AgentEvent): SerializedAgentEvent {
 
 /**
  * Serialize stream events for websocket delivery.
- * `complete` events are skipped because completion is represented by `agent.complete`.
+ * `complete` and backend `lifecycle` events are skipped from `agent.event`.
  */
 export function serializeAgentStreamEvent(event: AgentEvent): AgentStreamEvent | null {
   const serialized = serializeAgentEvent(event)
-  if (serialized.type === 'complete') {
+  if (serialized.type === 'complete' || serialized.type === 'lifecycle') {
     return null
   }
   return serialized

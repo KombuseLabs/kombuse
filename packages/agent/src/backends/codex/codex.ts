@@ -1,5 +1,11 @@
-import { BACKEND_TYPES, type AgentBackend, type AgentEvent, type StartOptions } from '../../types'
+import {
+  BACKEND_TYPES,
+  type AgentEvent,
+  type PermissionResponseOptions,
+  type StartOptions,
+} from '../../types'
 import { Process, waitForRunning } from '../../utils'
+import { BaseAgentBackend } from '../base-agent-backend'
 import { createCleanEnv, createJsonRpcLineBehavior, resolveCodexPath } from './utils'
 import type {
   CodexCommandApprovalParams,
@@ -66,14 +72,12 @@ const NOISY_NOTIFICATION_METHODS = new Set<string>([
 /**
  * Agent backend that runs Codex app-server over stdio JSON-RPC transport.
  */
-export class CodexBackend implements AgentBackend {
+export class CodexBackend extends BaseAgentBackend {
   readonly name = BACKEND_TYPES.CODEX
 
-  private running = false
-  private backendSessionId: string | undefined
   private activeTurnId: string | undefined
-  private subscribers = new Set<(event: AgentEvent) => void>()
   private process: Process | null = null
+  private skipTurnCompletionEvents = false
   private options: Required<CodexBackendOptions>
   private nextRequestId = 1
   private pendingRequests = new Map<string, PendingRequest>()
@@ -83,6 +87,7 @@ export class CodexBackend implements AgentBackend {
   private recentAssistantMessages: Array<{ content: string; timestamp: number }> = []
 
   constructor(options: CodexBackendOptions = {}) {
+    super()
     this.options = {
       cliPath: options.cliPath ?? resolveCodexPath(),
       extraArgs: options.extraArgs ?? [],
@@ -91,13 +96,14 @@ export class CodexBackend implements AgentBackend {
   }
 
   async start(options: StartOptions): Promise<void> {
-    if (this.running) {
+    if (this.isRunning()) {
       throw new Error('Codex backend is already running')
     }
 
-    this.running = true
-    this.backendSessionId = undefined
+    this.starting()
+    this.clearBackendSessionId()
     this.activeTurnId = undefined
+    this.skipTurnCompletionEvents = false
 
     const args = this.buildArgs()
     const jsonRpcBehavior = createJsonRpcLineBehavior({
@@ -124,26 +130,37 @@ export class CodexBackend implements AgentBackend {
           this.emitRawIfDebug({ stderr: data }, 'process_stderr')
         },
         onExit: (code, signal) => {
-          this.running = false
           this.process = null
+          this.activeTurnId = undefined
           this.rejectAllPendingRequests(
             new Error(`Codex process exited (code=${code}, signal=${signal ?? 'none'})`)
           )
 
-          this.emit({
-            type: 'complete',
-            eventId: crypto.randomUUID(),
-            backend: this.name,
-            timestamp: Date.now(),
+          const lifecycleState = this.getLifecycleState()
+          const wasStopping = lifecycleState === 'stopping' || lifecycleState === 'stopped'
+          if (!wasStopping) {
+            this.stopping('process_exit')
+          }
+          this.stopped({
             reason: 'process_exit',
-            sessionId: this.backendSessionId,
-            exitCode: code,
-            success: code === 0,
+            complete: wasStopping
+              ? null
+              : {
+                  reason: 'process_exit',
+                  sessionId: this.getBackendSessionId(),
+                  exitCode: code,
+                  success: code === 0,
+                  ...(code === 0 ? {} : { errorMessage: `Codex process exited with code ${code}` }),
+                },
           })
         },
         onError: (error) => {
-          this.running = false
-          this.emit(this.createErrorEvent(error.message, error))
+          this.process = null
+          this.activeTurnId = undefined
+          this.failed(error.message, {
+            reason: 'process_error',
+            error,
+          })
         },
       },
       [jsonRpcBehavior]
@@ -156,11 +173,12 @@ export class CodexBackend implements AgentBackend {
       await this.initialize()
       this.sendNotification('initialized')
       await this.startOrResumeThread(options)
+      this.started()
       await this.startTurn(
         options.initialMessage || 'Message Error: No initial prompt provided.'
       )
     } catch (error) {
-      this.running = false
+      this.activeTurnId = undefined
       this.rejectAllPendingRequests(
         error instanceof Error ? error : new Error(String(error))
       )
@@ -170,16 +188,27 @@ export class CodexBackend implements AgentBackend {
       }
       this.process = null
 
+      if (this.getLifecycleState() !== 'failed' && this.getLifecycleState() !== 'stopped') {
+        const err = error instanceof Error ? error : new Error(String(error))
+        this.failed(err.message, {
+          reason: 'start_failed',
+          error: err,
+        })
+      }
+
       throw error
     }
   }
 
   async stop(): Promise<void> {
-    if (!this.running) {
+    if (!this.isRunning()) {
       return
     }
 
-    const threadId = this.backendSessionId
+    this.stopping('user_stop')
+    this.skipTurnCompletionEvents = true
+
+    const threadId = this.getBackendSessionId()
     const turnId = this.activeTurnId
 
     if (threadId && turnId) {
@@ -195,27 +224,35 @@ export class CodexBackend implements AgentBackend {
       this.process.kill('SIGTERM')
     }
 
-    this.running = false
     this.process = null
     this.activeTurnId = undefined
     this.rejectAllPendingRequests(new Error('Codex backend stopped'))
+    this.stopped({
+      reason: 'user_stop',
+      complete: {
+        reason: 'stopped',
+        sessionId: this.getBackendSessionId(),
+        success: false,
+        errorMessage: 'Stopped by user',
+      },
+    })
   }
 
   send(message: string): void {
-    if (!this.running) {
+    if (!this.isRunning()) {
       throw new Error('Codex backend is not running')
     }
 
     void this.startTurn(message).catch((error) => {
       const err = error instanceof Error ? error : new Error(String(error))
-      this.emit(this.createErrorEvent(err.message, err))
+      this.emitEvent(this.createErrorEvent(err.message, err))
     })
   }
 
   respondToPermission(
     requestId: string,
     behavior: 'allow' | 'deny',
-    _options: { updatedInput?: Record<string, unknown>; message?: string } = {}
+    _options: PermissionResponseOptions = {}
   ): void {
     const pending = this.pendingApprovalRequests.get(requestId)
     if (!pending) {
@@ -233,21 +270,6 @@ export class CodexBackend implements AgentBackend {
     }
 
     this.pendingApprovalRequests.delete(requestId)
-  }
-
-  subscribe(handler: (event: AgentEvent) => void): () => void {
-    this.subscribers.add(handler)
-    return () => {
-      this.subscribers.delete(handler)
-    }
-  }
-
-  isRunning(): boolean {
-    return this.running
-  }
-
-  getBackendSessionId(): string | undefined {
-    return this.backendSessionId
   }
 
   private buildArgs(): string[] {
@@ -286,7 +308,7 @@ export class CodexBackend implements AgentBackend {
         'thread/resume',
         params
       )
-      this.backendSessionId = response.thread.id
+      this.setBackendSessionId(response.thread.id)
       return
     }
 
@@ -297,16 +319,17 @@ export class CodexBackend implements AgentBackend {
       ...(systemPrompt ? { developerInstructions: systemPrompt } : {}),
     }
     const response = await this.sendRequest<CodexThreadStartResponse>('thread/start', params)
-    this.backendSessionId = response.thread.id
+    this.setBackendSessionId(response.thread.id)
   }
 
   private async startTurn(content: string): Promise<void> {
-    if (!this.backendSessionId) {
+    const threadId = this.getBackendSessionId()
+    if (!threadId) {
       throw new Error('Codex thread is not initialized')
     }
 
     const params: CodexTurnStartParams = {
-      threadId: this.backendSessionId,
+      threadId,
       input: [
         {
           type: 'text',
@@ -446,7 +469,7 @@ export class CodexBackend implements AgentBackend {
         method: message.method,
       })
 
-      this.emit({
+      this.emitEvent({
         type: 'permission_request',
         eventId: crypto.randomUUID(),
         backend: this.name,
@@ -476,7 +499,7 @@ export class CodexBackend implements AgentBackend {
         method: message.method,
       })
 
-      this.emit({
+      this.emitEvent({
         type: 'permission_request',
         eventId: crypto.randomUUID(),
         backend: this.name,
@@ -505,7 +528,7 @@ export class CodexBackend implements AgentBackend {
         const params = message.params as { thread?: { id?: string } }
         const threadId = params.thread?.id
         if (threadId) {
-          this.backendSessionId = threadId
+          this.setBackendSessionId(threadId)
         }
         return
       }
@@ -515,7 +538,7 @@ export class CodexBackend implements AgentBackend {
         const threadId = params.threadId
         const turnId = params.turn?.id
         if (threadId) {
-          this.backendSessionId = threadId
+          this.setBackendSessionId(threadId)
         }
         if (turnId) {
           this.activeTurnId = turnId
@@ -526,11 +549,11 @@ export class CodexBackend implements AgentBackend {
       case 'item/started': {
         const params = message.params as CodexItemNotificationParams
         if (params.threadId) {
-          this.backendSessionId = params.threadId
+          this.setBackendSessionId(params.threadId)
         }
         const events = this.mapItemStarted(params)
         for (const event of events) {
-          this.emit(event)
+          this.emitEvent(event)
         }
         return
       }
@@ -538,11 +561,11 @@ export class CodexBackend implements AgentBackend {
       case 'item/completed': {
         const params = message.params as CodexItemNotificationParams
         if (params.threadId) {
-          this.backendSessionId = params.threadId
+          this.setBackendSessionId(params.threadId)
         }
         const events = this.mapItemCompleted(params)
         for (const event of events) {
-          this.emit(event)
+          this.emitEvent(event)
         }
         return
       }
@@ -580,7 +603,7 @@ export class CodexBackend implements AgentBackend {
           ? `${params.error.message}: ${params.error.additionalDetails}`
           : params.error.message
 
-        this.emit(
+        this.emitEvent(
           this.createErrorEvent(errorMessage || 'Codex error notification received', undefined, message)
         )
         return
@@ -606,17 +629,21 @@ export class CodexBackend implements AgentBackend {
   }
 
   private handleTurnCompleted(params: CodexTurnCompletedNotificationParams): void {
-    this.backendSessionId = params.threadId
+    this.setBackendSessionId(params.threadId)
     this.activeTurnId = undefined
 
     this.flushBufferedAgentMessages({ method: 'turn/completed', params })
+
+    if (this.skipTurnCompletionEvents) {
+      return
+    }
 
     const turn = params.turn
     const success = turn.status === 'completed'
     const errorMessage = success ? undefined : this.getTurnErrorMessage(turn)
 
     if (!success) {
-      this.emit(
+      this.emitEvent(
         this.createErrorEvent(
           errorMessage ?? 'Codex turn failed',
           undefined,
@@ -625,13 +652,9 @@ export class CodexBackend implements AgentBackend {
       )
     }
 
-    this.emit({
-      type: 'complete',
-      eventId: crypto.randomUUID(),
-      backend: this.name,
-      timestamp: Date.now(),
+    this.emitComplete({
       reason: 'result',
-      sessionId: this.backendSessionId,
+      sessionId: this.getBackendSessionId(),
       success,
       ...(errorMessage ? { errorMessage } : {}),
       raw: { method: 'turn/completed', params },
@@ -838,7 +861,7 @@ export class CodexBackend implements AgentBackend {
     }
 
     if (parsed.threadId) {
-      this.backendSessionId = parsed.threadId
+      this.setBackendSessionId(parsed.threadId)
     }
     if (parsed.turnId) {
       this.activeTurnId = parsed.turnId
@@ -864,7 +887,7 @@ export class CodexBackend implements AgentBackend {
         continue
       }
 
-      this.emit(messageEvent)
+      this.emitEvent(messageEvent)
     }
 
     this.agentMessageBuffers.clear()
@@ -888,7 +911,7 @@ export class CodexBackend implements AgentBackend {
       return
     }
 
-    this.emit(messageEvent)
+    this.emitEvent(messageEvent)
   }
 
   private createAssistantMessageEvent(
@@ -1019,16 +1042,6 @@ export class CodexBackend implements AgentBackend {
     return trimmed.length > 0 ? trimmed : undefined
   }
 
-  private emit(event: AgentEvent): void {
-    for (const handler of this.subscribers) {
-      try {
-        handler(event)
-      } catch {
-        // Ignore subscriber errors to avoid crashing the backend.
-      }
-    }
-  }
-
   private createRawEvent(data: unknown, sourceType?: string): AgentEvent {
     return {
       type: 'raw',
@@ -1042,7 +1055,7 @@ export class CodexBackend implements AgentBackend {
 
   private emitRawIfDebug(data: unknown, sourceType?: string): void {
     if (process.env.KOMBUSE_LOG_LEVEL === 'debug') {
-      this.emit(this.createRawEvent(data, sourceType))
+      this.emitEvent(this.createRawEvent(data, sourceType))
     }
   }
 
