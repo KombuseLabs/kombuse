@@ -74,13 +74,13 @@ describe('AgentDetail', () => {
     expect(queryByRole('switch')).toBeNull()
   })
 
-  it('shows configuration fields (including triggers) only in the Configuration tab', () => {
+  it('shows System Prompt in Basic Info and configuration fields (including triggers) only in the Configuration tab', () => {
     const onCreateTrigger = vi.fn().mockResolvedValue(undefined)
     const onUpdateTrigger = vi.fn().mockResolvedValue(undefined)
     const onDeleteTrigger = vi.fn().mockResolvedValue(undefined)
     const onToggleTrigger = vi.fn().mockResolvedValue(undefined)
 
-    const { getByRole, getByLabelText, getByText, queryByLabelText } = render(
+    const { getByRole, getByLabelText, getByText, queryByLabelText, queryByText } = render(
       <AgentDetail
         {...buildProps({
           onCreateTrigger,
@@ -91,16 +91,33 @@ describe('AgentDetail', () => {
       />
     )
 
+    expect(getByText('System Prompt')).toBeDefined()
+
     const configurationTab = activateConfigurationTab(getByRole)
     expect(configurationTab.getAttribute('aria-selected')).toBe('true')
 
     expect(getByText('Available in chat')).toBeDefined()
     expect(getByLabelText('Backend Override')).toBeDefined()
     expect(getByLabelText('Model Override')).toBeDefined()
-    expect(getByText('System Prompt')).toBeDefined()
+    expect(queryByText('System Prompt')).toBeNull()
     expect(getByText('Permissions')).toBeDefined()
     expect(getByText('Triggers')).toBeDefined()
     expect(queryByLabelText('Name')).toBeNull()
+  })
+
+  it('shows Save Changes when only the system prompt is edited in Basic Info', () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    const { getByRole, getByPlaceholderText, queryByRole } = render(
+      <AgentDetail {...buildProps({ onSave })} />
+    )
+
+    expect(queryByRole('button', { name: 'Save Changes' })).toBeNull()
+
+    fireEvent.change(getByPlaceholderText("Enter the agent's system prompt..."), {
+      target: { value: 'Updated system prompt' },
+    })
+
+    expect(getByRole('button', { name: 'Save Changes' })).toBeDefined()
   })
 
   it('keeps cross-tab unsaved edits and save action visible across tab switches', () => {

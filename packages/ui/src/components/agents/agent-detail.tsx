@@ -250,6 +250,17 @@ function AgentDetail({
                   <Label>Avatar</Label>
                   <AvatarPicker value={avatar} onChange={setAvatar} />
                 </div>
+
+                {/* System Prompt */}
+                <div className="space-y-2">
+                  <Label>System Prompt</Label>
+                  <PromptEditor
+                    value={systemPrompt}
+                    onChange={setSystemPrompt}
+                    placeholder="Enter the agent's system prompt..."
+                    showAvailableVariables
+                  />
+                </div>
               </div>
             </TabsContent>
 
@@ -299,17 +310,6 @@ function AgentDetail({
                       Stored as a preference and applied when the selected backend supports explicit model selection.
                     </p>
                   </div>
-                </div>
-
-                {/* System Prompt */}
-                <div className="space-y-2">
-                  <Label>System Prompt</Label>
-                  <PromptEditor
-                    value={systemPrompt}
-                    onChange={setSystemPrompt}
-                    placeholder="Enter the agent's system prompt..."
-                    showAvailableVariables
-                  />
                 </div>
 
                 {/* Permissions */}
