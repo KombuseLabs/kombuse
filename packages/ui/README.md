@@ -499,6 +499,8 @@ Props:
 
 Code blocks use [Shiki](https://shiki.style) for syntax highlighting with dual-theme support (`github-light` / `github-dark`). Language detection is automatic from fenced code block language hints (e.g., `` ```typescript ``). Inline code retains simple muted styling.
 
+Single newlines inside a paragraph are rendered as visible line breaks (`<br />`). Blank lines still create paragraph breaks, and fenced code blocks preserve their original newline content.
+
 ### TicketMentionChip
 
 Used internally by `Markdown` to render rich ticket references. Can also be used standalone:

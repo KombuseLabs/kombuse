@@ -2,6 +2,7 @@ import { Children, isValidElement, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { Link } from 'react-router-dom'
 import { remarkTicketLinks } from './remark-ticket-links'
 import { remarkProfileMentions } from './remark-profile-mentions'
@@ -27,7 +28,7 @@ const COMMENT_PROTOCOL_REGEX = /^comment:\/\/(\d+)\/(\d+)$/
 export function Markdown({ children, className, projectId }: MarkdownProps) {
   const { highlight } = useShiki()
 
-  const remarkPlugins: PluggableList = [remarkGfm, remarkProfileMentions]
+  const remarkPlugins: PluggableList = [remarkGfm, remarkBreaks, remarkProfileMentions]
   if (projectId) {
     remarkPlugins.push(remarkLabelMentions)
     remarkPlugins.push(remarkCommentLinks)
