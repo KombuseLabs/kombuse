@@ -42,6 +42,11 @@ const priorityLabels: Record<number, string> = {
   4: 'Highest',
 }
 
+function getPriorityLabel(priority: number | null | undefined): string {
+  if (priority == null) return 'No priority'
+  return priorityLabels[priority] ?? 'No priority'
+}
+
 const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
   { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
@@ -206,12 +211,10 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                       {ticket.status.replace('_', ' ')}
                     </span>
                   )}
-                  {ticket.priority !== null && (
-                    <>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-xs text-muted-foreground">{priorityLabels[ticket.priority]}</span>
-                    </>
-                  )}
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-xs text-muted-foreground">
+                    Priority: {getPriorityLabel(ticket.priority)}
+                  </span>
                   <span className="text-muted-foreground">·</span>
                   <span className="text-xs text-muted-foreground">
                     {new Date(ticket.created_at).toLocaleDateString()}
@@ -261,6 +264,10 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                       ))}
                     </TabsList>
                   </Tabs>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-xs text-muted-foreground">
+                    Priority: {getPriorityLabel(ticket.priority)}
+                  </span>
                 </div>
                 <Input
                   value={editTitle}
