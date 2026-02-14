@@ -716,95 +716,103 @@ export function Tickets() {
                     )}
 
                     {selectedTicket && (
-                      <div className="relative flex flex-col flex-1 min-h-0">
-                        {/* Scrollable area: ticket detail + comments */}
-                        <div ref={ticketScrollRef} onScroll={ticketOnScroll} className="flex-1 overflow-y-auto">
-                          <TicketDetail
-                            onClose={handleCloseDetail}
-                            isEditable
-                          />
+                      <div className="flex flex-col flex-1 min-h-0">
+                        <div
+                          className="relative flex-1 min-h-0"
+                          data-testid="ticket-scroll-viewport"
+                        >
+                          {/* Scrollable area: ticket detail + comments */}
+                          <div ref={ticketScrollRef} onScroll={ticketOnScroll} className="h-full overflow-y-auto">
+                            <TicketDetail
+                              onClose={handleCloseDetail}
+                              isEditable
+                            />
 
-                          {/* Activity Timeline */}
-                          <div className="mt-6 px-4 pb-4">
-                            <h3 className="text-sm font-medium mb-4">
-                              Activity {timeline?.total ? `(${timeline.total})` : ""}
-                            </h3>
+                            {/* Activity Timeline */}
+                            <div className="mt-6 px-4 pb-4">
+                              <h3 className="text-sm font-medium mb-4">
+                                Activity {timeline?.total ? `(${timeline.total})` : ""}
+                              </h3>
 
-                            <ActivityTimeline
-                              items={timeline?.items ?? []}
-                              projectId={projectId}
-                              attachmentsByCommentId={attachmentsByCommentId}
-                              highlightedCommentId={highlightedCommentId}
-                              editingCommentId={editingCommentId}
-                              editBody={editBody}
-                              onEditBodyChange={setEditBody}
-                              onStartEditComment={(comment) => {
-                                setEditingCommentId(comment.id);
-                                setEditBody(comment.body);
-                              }}
-                              onSaveEditComment={async (stagedFiles?: File[]) => {
-                                if (editingCommentId) {
-                                  await updateComment(editingCommentId, editBody);
-                                  if (stagedFiles?.length) {
-                                    for (const file of stagedFiles) {
-                                      try {
-                                        await uploadAttachment.mutateAsync({
-                                          commentId: editingCommentId,
-                                          file,
-                                          uploadedById: "user-1", // TODO: Get from auth context
-                                        });
-                                      } catch {
-                                        // Individual upload failures don't block remaining uploads
+                              <ActivityTimeline
+                                items={timeline?.items ?? []}
+                                projectId={projectId}
+                                attachmentsByCommentId={attachmentsByCommentId}
+                                highlightedCommentId={highlightedCommentId}
+                                editingCommentId={editingCommentId}
+                                editBody={editBody}
+                                onEditBodyChange={setEditBody}
+                                onStartEditComment={(comment) => {
+                                  setEditingCommentId(comment.id);
+                                  setEditBody(comment.body);
+                                }}
+                                onSaveEditComment={async (stagedFiles?: File[]) => {
+                                  if (editingCommentId) {
+                                    await updateComment(editingCommentId, editBody);
+                                    if (stagedFiles?.length) {
+                                      for (const file of stagedFiles) {
+                                        try {
+                                          await uploadAttachment.mutateAsync({
+                                            commentId: editingCommentId,
+                                            file,
+                                            uploadedById: "user-1", // TODO: Get from auth context
+                                          });
+                                        } catch {
+                                          // Individual upload failures don't block remaining uploads
+                                        }
                                       }
                                     }
+                                    setEditingCommentId(null);
+                                    setEditBody("");
                                   }
+                                }}
+                                onCancelEditComment={() => {
                                   setEditingCommentId(null);
                                   setEditBody("");
-                                }
-                              }}
-                              onCancelEditComment={() => {
-                                setEditingCommentId(null);
-                                setEditBody("");
-                              }}
-                              onDeleteComment={deleteComment}
-                              onReplyComment={handleReplyToComment}
-                              onSessionClick={(sessionId) => updateSearchParams({ session: sessionId })}
-                              isUpdatingComment={isUpdatingComment}
-                              isDeletingComment={isDeletingComment}
-                            />
+                                }}
+                                onDeleteComment={deleteComment}
+                                onReplyComment={handleReplyToComment}
+                                onSessionClick={(sessionId) => updateSearchParams({ session: sessionId })}
+                                isUpdatingComment={isUpdatingComment}
+                                isDeletingComment={isDeletingComment}
+                              />
+                            </div>
                           </div>
+
+                          {/* Floating scroll navigation buttons */}
+                          {(!ticketIsAtTop || !ticketIsAtBottom) && (
+                            <div
+                              data-testid="ticket-scroll-controls"
+                              className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10"
+                            >
+                              {!ticketIsAtTop && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="pointer-events-auto rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+                                  onClick={ticketScrollToTop}
+                                  aria-label="Scroll to top"
+                                >
+                                  <ArrowUp className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {!ticketIsAtBottom && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="pointer-events-auto rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+                                  onClick={ticketScrollToBottom}
+                                  aria-label="Scroll to bottom"
+                                >
+                                  <ArrowDown className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Floating scroll navigation buttons */}
-                        {(!ticketIsAtTop || !ticketIsAtBottom) && (
-                          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10">
-                            {!ticketIsAtTop && (
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
-                                onClick={ticketScrollToTop}
-                                aria-label="Scroll to top"
-                              >
-                                <ArrowUp className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {!ticketIsAtBottom && (
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
-                                onClick={ticketScrollToBottom}
-                                aria-label="Scroll to bottom"
-                              >
-                                <ArrowDown className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
-
                         {/* Fixed ChatInput at bottom */}
-                        <div className="border-t p-4 shrink-0">
+                        <div className="border-t p-4 shrink-0" data-testid="ticket-composer-shell">
                           {agentReplySessionId && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 animate-pulse">
                               <span className="inline-block size-2 rounded-full bg-primary" />
