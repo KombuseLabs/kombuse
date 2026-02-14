@@ -309,6 +309,7 @@ export class CodexBackend extends BaseAgentBackend {
         params
       )
       this.setBackendSessionId(response.thread.id)
+      this.emitThreadCreatedEvent(response.thread.id)
       return
     }
 
@@ -320,6 +321,7 @@ export class CodexBackend extends BaseAgentBackend {
     }
     const response = await this.sendRequest<CodexThreadStartResponse>('thread/start', params)
     this.setBackendSessionId(response.thread.id)
+    this.emitThreadCreatedEvent(response.thread.id)
   }
 
   private async startTurn(content: string): Promise<void> {
@@ -1031,6 +1033,17 @@ export class CodexBackend extends BaseAgentBackend {
       default:
         return `Codex turn ended with status ${turn.status}`
     }
+  }
+
+  private emitThreadCreatedEvent(threadId: string): void {
+    this.emitEvent({
+      type: 'raw',
+      eventId: crypto.randomUUID(),
+      backend: this.name,
+      timestamp: Date.now(),
+      sourceType: 'thread_created',
+      data: { session_id: threadId },
+    })
   }
 
   private normalizeSystemPrompt(systemPrompt: string | undefined): string | undefined {
