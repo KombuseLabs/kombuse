@@ -20,7 +20,7 @@ src/
 ├── components/     - Domain components
 │   ├── agent-picker/     - Agent selector for chat sessions
 │   ├── command-palette/  - Command palette UI
-│   ├── chat/             - Chat transcript UI and SessionViewer renderers (including generic kombuse MCP tool cards)
+│   ├── chat/             - Chat transcript UI, session header backend-details popover, and SessionViewer renderers (including generic kombuse MCP tool cards)
 │   ├── labels/           - Label management components
 │   ├── milestones/       - Milestone management components
 │   ├── prompt-editor/    - System prompt editor with template variables

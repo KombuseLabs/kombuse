@@ -225,6 +225,51 @@ describe('ChatProvider isLoading sync from session status', () => {
   })
 })
 
+describe('ChatProvider session metadata exposure', () => {
+  beforeEach(() => {
+    mockSessionData = undefined
+    mockSessionEventsData = undefined
+    mockPendingPermissions = new Map()
+    mockActiveSessions = new Map()
+    mockWebSocketOnMessage = undefined
+    mockWebSocketSend.mockReset()
+    mockUseSessionByKombuseId.mockClear()
+    mockUseSessionEvents.mockClear()
+  })
+
+  it('exposes effective backend, applied model, and model preference from session data', () => {
+    mockSessionData = makeSession({
+      backend_type: 'claude-code',
+      effective_backend: 'codex',
+      applied_model: 'gpt-5-mini',
+      model_preference: 'gpt-5',
+      backend_session_id: 'backend-session-123',
+    })
+
+    const { getCtx } = renderProvider()
+
+    expect(getCtx().effectiveBackend).toBe('codex')
+    expect(getCtx().appliedModel).toBe('gpt-5-mini')
+    expect(getCtx().modelPreference).toBe('gpt-5')
+    expect(getCtx().backendSessionId).toBe('backend-session-123')
+  })
+
+  it('falls back to backend_type when effective_backend is not present', () => {
+    mockSessionData = makeSession({
+      backend_type: 'claude-code',
+      effective_backend: null,
+      applied_model: null,
+      model_preference: null,
+    })
+
+    const { getCtx } = renderProvider()
+
+    expect(getCtx().effectiveBackend).toBe('claude-code')
+    expect(getCtx().appliedModel).toBeNull()
+    expect(getCtx().modelPreference).toBeNull()
+  })
+})
+
 describe('ChatProvider pendingPermission restoration from AppProvider', () => {
   beforeEach(() => {
     mockSessionData = undefined

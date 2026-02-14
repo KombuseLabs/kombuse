@@ -500,6 +500,9 @@ export function ChatProvider({
   }, [])
 
   const backendSessionId = sessionData?.backend_session_id ?? null
+  const effectiveBackend = sessionData?.effective_backend ?? sessionData?.backend_type ?? null
+  const appliedModel = sessionData?.applied_model ?? null
+  const sessionModelPreference = sessionData?.model_preference ?? null
 
   const value = useMemo(
     () => ({
@@ -513,6 +516,9 @@ export function ChatProvider({
       historyTotalCount,
       kombuseSessionId: effectiveKombuseSessionId,
       backendSessionId,
+      effectiveBackend,
+      appliedModel,
+      modelPreference: sessionModelPreference,
       pendingPermission,
       send,
       respondToPermission,
@@ -529,6 +535,9 @@ export function ChatProvider({
       historyTotalCount,
       effectiveKombuseSessionId,
       backendSessionId,
+      effectiveBackend,
+      appliedModel,
+      sessionModelPreference,
       pendingPermission,
       send,
       respondToPermission,

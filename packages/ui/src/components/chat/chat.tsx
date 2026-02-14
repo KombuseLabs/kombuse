@@ -76,6 +76,9 @@ function Chat({
         historyTotalCount={ctx?.historyTotalCount}
         sessionId={ctx?.kombuseSessionId}
         backendSessionId={ctx?.backendSessionId}
+        effectiveBackend={ctx?.effectiveBackend}
+        appliedModel={ctx?.appliedModel}
+        modelPreference={ctx?.modelPreference}
       />
       <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} viewMode={viewMode} className="flex-1 min-h-0" />
       {pendingPermission && respondToPermission && (

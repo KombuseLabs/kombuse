@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '../../lib/utils'
+import { Button } from '../../base/button'
 import { Label } from '../../base/label'
+import { Popover, PopoverContent, PopoverTrigger } from '../../base/popover'
 import { Switch } from '../../base/switch'
 import type { PublicSession } from '@kombuse/types'
 
@@ -23,8 +25,14 @@ interface SessionHeaderProps {
   onViewModeChange?: (mode: ViewMode) => void
   /** Kombuse session ID shown for debugging (e.g. "chat-abc123") */
   sessionId?: string | null
-  /** Claude backend session ID shown for debugging */
+  /** Backend session ID shown for debugging */
   backendSessionId?: string | null
+  /** Effective backend resolved for this session */
+  effectiveBackend?: PublicSession['effective_backend'] | null
+  /** Model actually used by the backend */
+  appliedModel?: string | null
+  /** Preferred model configured for this session */
+  modelPreference?: string | null
   className?: string
 }
 
@@ -61,6 +69,9 @@ function SessionHeader({
   onViewModeChange,
   sessionId,
   backendSessionId,
+  effectiveBackend,
+  appliedModel,
+  modelPreference,
   className,
 }: SessionHeaderProps) {
   const [copiedId, setCopiedId] = useState<'session' | 'backend' | null>(null)
@@ -81,7 +92,14 @@ function SessionHeader({
   }
 
   const truncatedSessionId = sessionId ? truncateId(sessionId) : null
-  const truncatedBackendId = backendSessionId ? truncateId(backendSessionId) : null
+  const usedModelLabel = appliedModel ?? 'Backend default'
+  const hasBackendDetails = Boolean(
+    sessionId
+    || backendSessionId
+    || effectiveBackend
+    || appliedModel
+    || modelPreference
+  )
   const statusLabel = isLoading
     ? 'Running'
     : sessionStatus === 'failed'
@@ -169,17 +187,86 @@ function SessionHeader({
         </>
       )}
 
-      {truncatedBackendId && (
+      {hasBackendDetails && (
         <>
           <div className="w-px h-4 bg-border" />
-          <button
-            type="button"
-            onClick={() => handleCopy(backendSessionId!, 'backend')}
-            title={`Click to copy: ${backendSessionId}`}
-            className="font-mono text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors cursor-pointer"
-          >
-            {copiedId === 'backend' ? 'Copied!' : truncatedBackendId}
-          </button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Backend details
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 space-y-3 p-3">
+              <div className="border-b pb-2">
+                <h4 className="text-sm font-medium text-foreground">Backend details</h4>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Backend</div>
+                <div className="font-mono text-xs text-foreground/90">
+                  {effectiveBackend ?? 'Unknown'}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Used model</div>
+                <div className="font-mono text-xs text-foreground/90">{usedModelLabel}</div>
+                {!appliedModel && modelPreference && (
+                  <div className="text-[11px] text-muted-foreground">
+                    Preference set: {modelPreference}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Model preference</div>
+                <div className="font-mono text-xs text-foreground/90">{modelPreference ?? 'Not set'}</div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-muted-foreground">Kombuse session ID</div>
+                  {sessionId && (
+                    <button
+                      type="button"
+                      aria-label="Copy Kombuse session ID"
+                      onClick={() => handleCopy(sessionId, 'session')}
+                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      {copiedId === 'session' ? 'Copied!' : 'Copy'}
+                    </button>
+                  )}
+                </div>
+                <div className="font-mono text-xs break-all text-foreground/90">
+                  {sessionId ?? 'Not available'}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-muted-foreground">Backend session ID</div>
+                  {backendSessionId && (
+                    <button
+                      type="button"
+                      aria-label="Copy backend session ID"
+                      onClick={() => handleCopy(backendSessionId, 'backend')}
+                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      {copiedId === 'backend' ? 'Copied!' : 'Copy'}
+                    </button>
+                  )}
+                </div>
+                <div className="font-mono text-xs break-all text-foreground/90">
+                  {backendSessionId ?? 'Not available'}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </>
       )}
 

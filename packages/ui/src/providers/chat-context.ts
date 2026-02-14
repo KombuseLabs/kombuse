@@ -1,5 +1,10 @@
 import { createContext } from 'react'
-import type { PublicSession, SerializedAgentEvent, SerializedAgentPermissionRequestEvent } from '@kombuse/types'
+import type {
+  BackendType,
+  PublicSession,
+  SerializedAgentEvent,
+  SerializedAgentPermissionRequestEvent,
+} from '@kombuse/types'
 
 export interface ChatContextValue {
   /** Current events in the conversation */
@@ -20,8 +25,14 @@ export interface ChatContextValue {
   historyTotalCount: number | null
   /** Current app session ID (set after first message) */
   kombuseSessionId: string | null
-  /** Claude backend session ID (available after session is fetched) */
+  /** Backend session ID (available after session is fetched) */
   backendSessionId: string | null
+  /** Effective backend resolved for this session */
+  effectiveBackend: BackendType | null
+  /** Model actually used by the backend (if known) */
+  appliedModel: string | null
+  /** Session model preference (if set) */
+  modelPreference: string | null
   /** Pending permission request awaiting user response */
   pendingPermission: SerializedAgentPermissionRequestEvent | null
   /** Send a message to the agent */
