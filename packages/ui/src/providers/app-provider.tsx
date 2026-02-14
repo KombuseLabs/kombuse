@@ -74,18 +74,18 @@ export function AppProvider({
 
   const addPendingPermission = useCallback((permission: PendingPermission) => {
     setPendingPermissions((prev) => {
-      if (prev.has(permission.requestId)) return prev
+      if (prev.has(permission.permissionKey)) return prev
       const next = new Map(prev)
-      next.set(permission.requestId, permission)
+      next.set(permission.permissionKey, permission)
       return next
     })
   }, [])
 
-  const removePendingPermission = useCallback((requestId: string) => {
+  const removePendingPermission = useCallback((permissionKey: string) => {
     setPendingPermissions((prev) => {
-      if (!prev.has(requestId)) return prev
+      if (!prev.has(permissionKey)) return prev
       const next = new Map(prev)
-      next.delete(requestId)
+      next.delete(permissionKey)
       return next
     })
   }, [])
@@ -96,7 +96,7 @@ export function AppProvider({
       if (toRemove.length === 0) return prev
       const next = new Map(prev)
       for (const p of toRemove) {
-        next.delete(p.requestId)
+        next.delete(p.permissionKey)
       }
       return next
     })
@@ -155,6 +155,7 @@ export function AppProvider({
         case 'agent.permission_pending': {
           console.log('[client] received permission_pending:', message)
           addPendingPermission({
+            permissionKey: message.permissionKey,
             sessionId: message.sessionId,
             requestId: message.requestId,
             toolName: message.toolName,
@@ -165,7 +166,7 @@ export function AppProvider({
           break
         }
         case 'agent.permission_resolved': {
-          removePendingPermission(message.requestId)
+          removePendingPermission(message.permissionKey)
           break
         }
         case 'agent.complete': {

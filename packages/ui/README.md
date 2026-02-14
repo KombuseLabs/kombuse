@@ -291,6 +291,9 @@ import { CommandPalette, SearchBar, Header, ModeToggle } from '@kombuse/ui/compo
   <NotificationBell />
 </Header>
 
+// Note: pending permissions are keyed by `permissionKey` (`${sessionId}:${requestId}`),
+// so same `requestId` values from different sessions render as separate notifications.
+
 // Profile/Settings dropdown menu for the header
 import { ProfileButton } from '@kombuse/ui/components'
 <Header center={...}>

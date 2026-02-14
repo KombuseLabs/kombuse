@@ -49,6 +49,10 @@ vi.mock('@kombuse/persistence', () => ({
   eventsRepository: {
     create: vi.fn(),
   },
+  sessionEventsRepository: {
+    getNextSeq: vi.fn(() => 1),
+    create: vi.fn(),
+  },
   labelsRepository: {
     getTicketLabels: vi.fn(() => []),
   },
@@ -94,11 +98,15 @@ import {
   stopAgentSession,
   stopAllActiveBackends,
   cleanupOrphanedSessions,
+  getPendingPermissions,
   registerBackend,
   resetBackendIdleTimeout,
+  respondToPermission,
   processEventAndRunAgents,
   type AgentExecutionEvent,
 } from '../services/agent-execution-service'
+import { broadcastPermissionPending } from '../services/agent-execution-service/permission-service'
+import { serverPendingPermissions } from '../services/agent-execution-service/runtime-state'
 
 // Clean up persistent backends between tests to prevent cross-test state pollution
 afterEach(() => {
@@ -3185,6 +3193,103 @@ describe('backend idle timeout broadcasts agent.complete', () => {
         kombuseSessionId: 'test-session',
         status: 'stopped',
         reason: 'idle_timeout',
+      })
+    )
+  })
+})
+
+describe('permission keying for cross-session requestId collisions', () => {
+  function makePermissionRequestEvent(requestId: string): Extract<AgentEvent, { type: 'permission_request' }> {
+    return {
+      type: 'permission_request',
+      eventId: crypto.randomUUID(),
+      backend: BACKEND_TYPES.CODEX,
+      timestamp: Date.now(),
+      requestId,
+      toolName: 'Bash',
+      toolUseId: `tool-${requestId}`,
+      input: { command: 'ls' },
+    }
+  }
+
+  function makePermissionBackend(): AgentBackend {
+    return {
+      name: BACKEND_TYPES.CODEX,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      respondToPermission: vi.fn(),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    serverPendingPermissions.clear()
+  })
+
+  it('tracks same requestId from different sessions as distinct pending permissions', () => {
+    broadcastPermissionPending(
+      'chat-session-alpha',
+      makePermissionRequestEvent('request-1')
+    )
+    broadcastPermissionPending(
+      'chat-session-beta',
+      makePermissionRequestEvent('request-1')
+    )
+
+    const pending = getPendingPermissions()
+    expect(pending).toHaveLength(2)
+
+    const keys = pending.map((permission) => permission.permissionKey)
+    expect(keys).toContain('chat-session-alpha:request-1')
+    expect(keys).toContain('chat-session-beta:request-1')
+  })
+
+  it('resolves only the targeted session permission when requestId collides', () => {
+    const backendAlpha = makePermissionBackend()
+    const backendBeta = makePermissionBackend()
+    registerBackend('chat-session-alpha', backendAlpha)
+    registerBackend('chat-session-beta', backendBeta)
+
+    broadcastPermissionPending(
+      'chat-session-alpha',
+      makePermissionRequestEvent('request-1')
+    )
+    broadcastPermissionPending(
+      'chat-session-beta',
+      makePermissionRequestEvent('request-1')
+    )
+
+    const didRespond = respondToPermission({
+      type: 'permission.response',
+      kombuseSessionId: 'chat-session-alpha',
+      requestId: 'request-1',
+      behavior: 'allow',
+    })
+    expect(didRespond).toBe(true)
+
+    expect(backendAlpha.respondToPermission).toHaveBeenCalledWith(
+      'request-1',
+      'allow',
+      expect.objectContaining({ updatedInput: undefined, message: undefined })
+    )
+    expect(backendBeta.respondToPermission).not.toHaveBeenCalled()
+
+    const pending = getPendingPermissions()
+    expect(pending).toHaveLength(1)
+    expect(pending[0]?.sessionId).toBe('chat-session-beta')
+    expect(pending[0]?.permissionKey).toBe('chat-session-beta:request-1')
+
+    expect(wsHub.broadcastToTopic).toHaveBeenCalledWith(
+      '*',
+      expect.objectContaining({
+        type: 'agent.permission_resolved',
+        sessionId: 'chat-session-alpha',
+        requestId: 'request-1',
+        permissionKey: 'chat-session-alpha:request-1',
       })
     )
   })

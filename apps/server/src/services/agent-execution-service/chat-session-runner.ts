@@ -29,7 +29,7 @@ import {
 import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registry'
 import { broadcastPermissionPending } from './permission-service'
 import { getTypePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from './presets'
-import { activeBackends, setSessionTurnActive } from './runtime-state'
+import { activeBackends, createPermissionKey, setSessionTurnActive } from './runtime-state'
 import type {
   AgentExecutionDependencies,
   AgentExecutionEvent,
@@ -310,6 +310,7 @@ function handlePermissionRequest(options: {
     backend.respondToPermission(event.requestId, 'allow', { updatedInput: event.input })
     const resolvedMsg: ServerMessage = {
       type: 'agent.permission_resolved',
+      permissionKey: createPermissionKey(sessionId, event.requestId),
       sessionId,
       requestId: event.requestId,
     }

@@ -16,6 +16,7 @@ export interface AppSession {
  * A pending permission request from an agent
  */
 export interface PendingPermission {
+  permissionKey: string
   sessionId: string
   requestId: string
   toolName: string
@@ -63,7 +64,7 @@ export interface AppState {
   isGenerating: boolean
   /** Current chat/agent session */
   currentSession: AppSession | null
-  /** Map of requestId -> pending permission details */
+  /** Map of permissionKey -> pending permission details */
   pendingPermissions: Map<string, PendingPermission>
   /** Map of ticketId -> agent activity status */
   ticketAgentStatus: Map<number, TicketAgentStatus>
@@ -81,7 +82,7 @@ export interface AppActions {
   setIsGenerating: (isGenerating: boolean) => void
   setCurrentSession: (session: AppSession | null) => void
   addPendingPermission: (permission: PendingPermission) => void
-  removePendingPermission: (requestId: string) => void
+  removePendingPermission: (permissionKey: string) => void
   clearPendingPermissionsForSession: (sessionId: string) => void
   /** Update agent activity status for a ticket */
   updateTicketAgentStatus: (ticketId: number, status: TicketAgentStatus) => void

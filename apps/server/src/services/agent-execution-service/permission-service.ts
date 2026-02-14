@@ -3,6 +3,7 @@ import type { AgentEvent, ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import {
   activeBackends,
+  createPermissionKey,
   serverPendingPermissions,
   type ServerPendingPermission,
 } from './runtime-state'
@@ -227,9 +228,11 @@ export function broadcastPermissionPending(
   event: Extract<AgentEvent, { type: 'permission_request' }>,
   ticketId?: number
 ): void {
+  const permissionKey = createPermissionKey(sessionId, event.requestId)
   const description = generatePermissionDescription(event.toolName, event.input)
   console.log('[server] permission_request:', event.requestId, event.toolName, '-', description)
-  serverPendingPermissions.set(event.requestId, {
+  serverPendingPermissions.set(permissionKey, {
+    permissionKey,
     sessionId,
     requestId: event.requestId,
     toolName: event.toolName,
@@ -239,6 +242,7 @@ export function broadcastPermissionPending(
   })
   const msg: ServerMessage = {
     type: 'agent.permission_pending',
+    permissionKey,
     sessionId,
     requestId: event.requestId,
     toolName: event.toolName,
@@ -255,6 +259,7 @@ export function broadcastPermissionPending(
  */
 export function respondToPermission(message: PermissionResponseMessage): boolean {
   const { kombuseSessionId, requestId, behavior, updatedInput, message: denyMessage } = message
+  const permissionKey = createPermissionKey(kombuseSessionId, requestId)
 
   const backend = activeBackends.get(kombuseSessionId)
   if (!backend) {
@@ -287,12 +292,13 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
 
   const resolvedMsg: ServerMessage = {
     type: 'agent.permission_resolved',
+    permissionKey,
     sessionId: kombuseSessionId,
     requestId,
   }
   wsHub.broadcastToTopic('*', resolvedMsg)
   wsHub.broadcastToTopic(`session:${kombuseSessionId}`, resolvedMsg)
-  serverPendingPermissions.delete(requestId)
+  serverPendingPermissions.delete(permissionKey)
 
   return true
 }

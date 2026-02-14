@@ -78,6 +78,7 @@ export type ServerMessage =
     }
   | {
       type: 'agent.permission_pending'
+      permissionKey: string
       sessionId: string
       requestId: string
       toolName: string
@@ -89,6 +90,7 @@ export type ServerMessage =
     }
   | {
       type: 'agent.permission_resolved'
+      permissionKey: string
       sessionId: string
       requestId: string
     }

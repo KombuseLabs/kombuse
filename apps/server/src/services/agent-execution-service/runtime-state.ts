@@ -41,10 +41,11 @@ export function isSessionTurnActive(sessionId: string): boolean {
 
 /**
  * Server-side tracking of pending (unresolved) permission requests.
- * Keyed by requestId. Populated when a permission is broadcast to clients,
+ * Keyed by permissionKey (`${sessionId}:${requestId}`). Populated when a permission is broadcast to clients,
  * removed when resolved or when the backend is unregistered.
  */
 export interface ServerPendingPermission {
+  permissionKey: string
   sessionId: string
   requestId: string
   toolName: string
@@ -55,10 +56,14 @@ export interface ServerPendingPermission {
 
 export const serverPendingPermissions = new Map<string, ServerPendingPermission>()
 
+export function createPermissionKey(sessionId: string, requestId: string): string {
+  return `${sessionId}:${requestId}`
+}
+
 export function clearPendingPermissionsForSession(sessionId: string): void {
-  for (const [requestId, permission] of serverPendingPermissions) {
+  for (const [permissionKey, permission] of serverPendingPermissions) {
     if (permission.sessionId === sessionId) {
-      serverPendingPermissions.delete(requestId)
+      serverPendingPermissions.delete(permissionKey)
     }
   }
 }

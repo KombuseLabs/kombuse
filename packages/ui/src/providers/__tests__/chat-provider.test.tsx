@@ -241,7 +241,8 @@ describe('ChatProvider pendingPermission restoration from AppProvider', () => {
     const sessionId = 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId
     mockSessionData = makeSession({ kombuse_session_id: sessionId, status: 'running' })
     mockPendingPermissions = new Map([
-      ['req-1', {
+      ['perm-chat-1:req-1', {
+        permissionKey: 'perm-chat-1:req-1',
         sessionId,
         requestId: 'req-1',
         toolName: 'AskUserQuestion',
@@ -262,7 +263,8 @@ describe('ChatProvider pendingPermission restoration from AppProvider', () => {
   it('should not restore pendingPermission when no global permission matches session', () => {
     mockSessionData = makeSession({ status: 'running' })
     mockPendingPermissions = new Map([
-      ['req-2', {
+      ['perm-chat-2:req-2', {
+        permissionKey: 'perm-chat-2:req-2',
         sessionId: 'other-session-id',
         requestId: 'req-2',
         toolName: 'AskUserQuestion',
@@ -279,7 +281,8 @@ describe('ChatProvider pendingPermission restoration from AppProvider', () => {
     const sessionId = 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId
     mockSessionData = makeSession({ kombuse_session_id: sessionId, status: 'running' })
     mockPendingPermissions = new Map([
-      ['req-3', {
+      ['perm-chat-3:req-3', {
+        permissionKey: 'perm-chat-3:req-3',
         sessionId,
         requestId: 'req-3',
         toolName: 'ExitPlanMode',

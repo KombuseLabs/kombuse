@@ -48,7 +48,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       updatedInput: permission.input,
     })
     // Optimistically remove from UI
-    removePendingPermission(permission.requestId)
+    removePendingPermission(permission.permissionKey)
   }
 
   const handleDeny = (permission: PendingPermission) => {
@@ -59,7 +59,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       behavior: 'deny',
     })
     // Optimistically remove from UI
-    removePendingPermission(permission.requestId)
+    removePendingPermission(permission.permissionKey)
   }
 
   const handleDenyWithMessage = (permission: PendingPermission, message?: string) => {
@@ -70,7 +70,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       behavior: 'deny',
       ...(message ? { message } : {}),
     })
-    removePendingPermission(permission.requestId)
+    removePendingPermission(permission.permissionKey)
   }
 
   const getNavigationPath = (permission: PendingPermission) => {
@@ -91,7 +91,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
 
       return (
         <div
-          key={permission.requestId}
+          key={permission.permissionKey}
           className="border-b border-border bg-muted/40 p-3 last:border-0"
         >
           <div className="mb-1 flex items-center gap-2">
@@ -168,7 +168,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
 
       return (
         <div
-          key={permission.requestId}
+          key={permission.permissionKey}
           className="border-b border-border bg-muted/40 p-3 last:border-0"
         >
           <div className="mb-1 flex items-center gap-2">
@@ -227,7 +227,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
     // Default: generic permission card (unchanged)
     return (
       <div
-        key={permission.requestId}
+        key={permission.permissionKey}
         className="border-b border-border bg-muted/40 p-3 last:border-0"
       >
         <div className="mb-1 flex items-center gap-2">
