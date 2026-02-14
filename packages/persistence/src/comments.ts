@@ -611,7 +611,7 @@ export const commentsRepository = {
             actor_id: existingRow.author_id,
             actor_type: editActorType,
             kombuse_session_id: existingRow.kombuse_session_id ?? undefined,
-            payload: { comment_id: id },
+            payload: { comment_id: id, author_type: editActorType },
           })
         }
       }

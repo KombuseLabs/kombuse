@@ -7,6 +7,7 @@ import { Button } from '../../base/button'
 import { Switch } from '../../base/switch'
 import { getEventTypeOption } from './event-type-constants'
 import { getMentionTypeLabel } from './mention-type-picker'
+import { getAuthorTypeLabel } from './author-type-picker'
 
 interface TriggerItemProps {
   trigger: AgentTrigger
@@ -32,6 +33,9 @@ function TriggerItem({
     const conditions = trigger.conditions
     if (conditions.mention_type) {
       return getMentionTypeLabel(String(conditions.mention_type))
+    }
+    if (conditions.author_type) {
+      return getAuthorTypeLabel(String(conditions.author_type))
     }
     const count = Object.keys(conditions).length
     if (count === 0) return null

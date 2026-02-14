@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import type { AgentTrigger, MentionType } from '@kombuse/types'
+import { useEffect, useState } from 'react'
+import type { ActorType, AgentTrigger, MentionType } from '@kombuse/types'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Label } from '../../base/label'
@@ -19,6 +19,7 @@ import { ConditionEditor } from './condition-editor'
 import { EVENT_TYPE_OPTIONS, EVENT_TYPE_CATEGORIES } from './event-type-constants'
 import { LabelPicker } from '../labels/label-picker'
 import { MentionTypePicker } from './mention-type-picker'
+import { AuthorTypePicker } from './author-type-picker'
 import { useProjectLabels, useCreateLabel } from '../../hooks/use-labels'
 import { useAppContext } from '../../hooks/use-app-context'
 
@@ -37,10 +38,18 @@ interface TriggerFormProps {
   isLoading?: boolean
 }
 
+function stripAuthorTypeCondition(
+  currentConditions: Record<string, unknown> | null | undefined
+): Record<string, unknown> | null {
+  if (!currentConditions) return null
+  const { author_type: _authorType, ...rest } = currentConditions
+  return Object.keys(rest).length > 0 ? rest : null
+}
+
 function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: TriggerFormProps) {
   const [eventType, setEventType] = useState(trigger?.event_type ?? '')
-  const [conditions, setConditions] = useState<Record<string, unknown> | null>(
-    trigger?.conditions ?? null
+  const [conditions, setConditions] = useState<Record<string, unknown> | null>(() =>
+    stripAuthorTypeCondition(trigger?.conditions ?? null)
   )
   const [priority, setPriority] = useState(trigger?.priority ?? 0)
   const [isEnabled, setIsEnabled] = useState(trigger?.is_enabled ?? true)
@@ -49,6 +58,9 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
   )
   const [selectedMentionType, setSelectedMentionType] = useState<MentionType | null>(
     (trigger?.conditions?.mention_type as MentionType) ?? null
+  )
+  const [selectedAuthorType, setSelectedAuthorType] = useState<ActorType | null>(
+    (trigger?.conditions?.author_type as ActorType) ?? null
   )
 
   // Get project context for label operations
@@ -61,6 +73,21 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
   // Check if this is a label-based or mention-based event type
   const isLabelEvent = eventType === 'label.added' || eventType === 'label.removed'
   const isMentionEvent = eventType === 'mention.created'
+  const isCommentEvent = eventType === 'comment.added' || eventType === 'comment.edited'
+
+  useEffect(() => {
+    if (isCommentEvent) {
+      setConditions((current) => stripAuthorTypeCondition(current))
+    }
+  }, [isCommentEvent])
+
+  const handleConditionsChange = (nextConditions: Record<string, unknown> | null) => {
+    if (isCommentEvent) {
+      setConditions(stripAuthorTypeCondition(nextConditions))
+      return
+    }
+    setConditions(nextConditions)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,6 +101,8 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
         if (selectedMentionType === 'profile') {
           finalConditions = { ...finalConditions, mentioned_profile_id: agentId }
         }
+      } else if (isCommentEvent && selectedAuthorType) {
+        finalConditions = { ...finalConditions, author_type: selectedAuthorType }
       }
 
       onSubmit({
@@ -140,8 +169,25 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
               </p>
             )}
           </>
+        ) : isCommentEvent ? (
+          <>
+            <AuthorTypePicker
+              value={selectedAuthorType}
+              onValueChange={setSelectedAuthorType}
+              disabled={isLoading}
+            />
+            <ConditionEditor
+              conditions={conditions}
+              onChange={handleConditionsChange}
+              disabled={isLoading}
+            />
+          </>
         ) : (
-          <ConditionEditor conditions={conditions} onChange={setConditions} disabled={isLoading} />
+          <ConditionEditor
+            conditions={conditions}
+            onChange={handleConditionsChange}
+            disabled={isLoading}
+          />
         )}
       </div>
 

@@ -444,6 +444,7 @@ import {
 ```typescript
 import { TriggerEditor, TriggerForm, TriggerList, TriggerItem } from '@kombuse/ui/components'
 import { MentionTypePicker, getMentionTypeLabel } from '@kombuse/ui/components'
+import { AuthorTypePicker, getAuthorTypeLabel } from '@kombuse/ui/components'
 
 // Mention type picker for trigger conditions (select between @profile and #ticket)
 <MentionTypePicker
@@ -452,14 +453,30 @@ import { MentionTypePicker, getMentionTypeLabel } from '@kombuse/ui/components'
   disabled={false}
 />
 
+// Comment author type picker for trigger conditions (human users or agents)
+<AuthorTypePicker
+  value={selectedAuthorType}
+  onValueChange={(type) => setSelectedAuthorType(type)}
+  disabled={false}
+/>
+
 // Get human-readable label for a mention type
 getMentionTypeLabel('profile') // => "Profile mention (@)"
 getMentionTypeLabel('ticket')  // => "Ticket mention (#)"
+
+// Get human-readable label for an author type
+getAuthorTypeLabel('user')  // => "Human only"
+getAuthorTypeLabel('agent') // => "Agent only"
 ```
 
 Props for `MentionTypePicker`:
 - `value`: `MentionType | null` — current selection
 - `onValueChange`: `(value: MentionType) => void` — selection callback
+- `disabled`: Optional boolean
+
+Props for `AuthorTypePicker`:
+- `value`: `ActorType | null` — current selection
+- `onValueChange`: `(value: ActorType) => void` — selection callback
 - `disabled`: Optional boolean
 
 #### ConditionEditor
