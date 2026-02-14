@@ -220,7 +220,12 @@ function AgentDetail({
               <TabsTrigger value="configuration">Configuration</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="basic-info" className="min-h-0 overflow-y-auto pr-1">
+            <TabsContent
+              value="basic-info"
+              forceMount
+              hidden={activeTab !== 'basic-info'}
+              className="min-h-0 overflow-y-auto pr-1 data-[state=inactive]:hidden"
+            >
               <div className="space-y-6">
                 {/* Name */}
                 <div className="space-y-2">
@@ -264,7 +269,12 @@ function AgentDetail({
               </div>
             </TabsContent>
 
-            <TabsContent value="configuration" className="min-h-0 overflow-y-auto pr-1">
+            <TabsContent
+              value="configuration"
+              forceMount
+              hidden={activeTab !== 'configuration'}
+              className="min-h-0 overflow-y-auto pr-1 data-[state=inactive]:hidden"
+            >
               <div className="space-y-6">
                 {/* Available in chat */}
                 <div className="flex items-center justify-between">

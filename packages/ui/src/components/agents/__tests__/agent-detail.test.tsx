@@ -3,6 +3,20 @@ import { render, fireEvent, waitFor } from '@testing-library/react'
 import { BACKEND_TYPES, type Agent, type Profile } from '@kombuse/types'
 import { AgentDetail, type AgentDetailProps } from '../agent-detail'
 
+if (!('ResizeObserver' in globalThis)) {
+  const ResizeObserverStub = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    writable: true,
+    configurable: true,
+    value: ResizeObserverStub,
+  })
+}
+
 function buildAgent(overrides: Partial<Agent> = {}): Agent {
   const base: Agent = {
     id: 'agent-1',
@@ -80,7 +94,7 @@ describe('AgentDetail', () => {
     const onDeleteTrigger = vi.fn().mockResolvedValue(undefined)
     const onToggleTrigger = vi.fn().mockResolvedValue(undefined)
 
-    const { getByRole, getByLabelText, getByText, queryByLabelText, queryByText } = render(
+    const { getByRole, getByLabelText, getByText } = render(
       <AgentDetail
         {...buildProps({
           onCreateTrigger,
@@ -99,10 +113,8 @@ describe('AgentDetail', () => {
     expect(getByText('Available in chat')).toBeDefined()
     expect(getByLabelText('Backend Override')).toBeDefined()
     expect(getByLabelText('Model Override')).toBeDefined()
-    expect(queryByText('System Prompt')).toBeNull()
     expect(getByText('Permissions')).toBeDefined()
     expect(getByText('Triggers')).toBeDefined()
-    expect(queryByLabelText('Name')).toBeNull()
   })
 
   it('shows Save Changes when only the system prompt is edited in Basic Info', () => {
@@ -136,6 +148,24 @@ describe('AgentDetail', () => {
 
     fireEvent.mouseDown(getByRole('tab', { name: 'Basic Info' }))
     expect((getByLabelText('Name') as HTMLInputElement).value).toBe('Updated Agent')
+  })
+
+  it('preserves in-progress permission drafts across tab switches', () => {
+    const { getByRole, getByPlaceholderText } = render(<AgentDetail {...buildProps()} />)
+
+    activateConfigurationTab(getByRole)
+    fireEvent.click(getByRole('button', { name: 'Add Permission' }))
+
+    fireEvent.change(getByPlaceholderText('e.g., project:proj-*, status:open'), {
+      target: { value: 'project:alpha-*' },
+    })
+
+    fireEvent.mouseDown(getByRole('tab', { name: 'Basic Info' }))
+    activateConfigurationTab(getByRole)
+
+    expect((getByPlaceholderText('e.g., project:proj-*, status:open') as HTMLInputElement).value).toBe(
+      'project:alpha-*'
+    )
   })
 
   it('resets the active tab to Basic Info when switching to another agent', () => {

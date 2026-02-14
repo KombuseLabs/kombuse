@@ -795,6 +795,7 @@ Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users ca
 `AgentDetail` is split into two tabs:
 - `Basic Info`: name, description, avatar, system prompt
 - `Configuration`: available-in-chat toggle, backend override, model override, permissions, triggers
+- Tab switches preserve in-progress editor state (for example unsaved permission/trigger drafts)
 - Save action: rendered in a persistent footer and shown only when there are unsaved changes
 
 ### Prompt Editor
