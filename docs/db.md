@@ -438,7 +438,7 @@ Or on failure:
 | `ticket.unclaimed` | `{"ticket_id": 1, "previous_claimed_by": "agent-456"}` |
 | `comment.added` | `{"comment_id": 5, "ticket_id": 1, "author_id": "agent-456"}` |
 | `label.added` | `{"ticket_id": 1, "label_id": 3, "added_by": "user-123"}` |
-| `mention.created` | `{"comment_id": 5, "mentioned_id": "agent-456"}` |
+| `mention.created` | `{"comment_id": 5, "mention_type": "profile", "mentioned_profile_id": "agent-456", "mention_text": "@claude"}` |
 
 ## Examples
 
@@ -532,8 +532,8 @@ INSERT INTO comments (ticket_id, author_id, body)
 VALUES (1, 'user-1', 'Hey @claude can you look at this?');
 
 -- Record the mention (parsed from body)
-INSERT INTO mentions (comment_id, mentioned_id, mention_text)
-VALUES (1, 'agent-claude', '@claude');
+INSERT INTO mentions (comment_id, mention_type, mentioned_profile_id, mention_text)
+VALUES (1, 'profile', 'agent-claude', '@claude');
 
 -- Log the event
 INSERT INTO events (event_type, project_id, ticket_id, comment_id, actor_id, actor_type, payload)
@@ -544,7 +544,7 @@ VALUES (
   1,
   'user-1',
   'user',
-  '{"mentioned_id": "agent-claude"}'
+  '{"mention_type": "profile", "mentioned_profile_id": "agent-claude", "mention_text": "@claude"}'
 );
 ```
 

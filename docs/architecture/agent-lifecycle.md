@@ -100,13 +100,17 @@ sequenceDiagram
         Persist->>DB: INSERT session_events + UPDATE sessions.last_event_seq
         Runner->>Hub: agent.event
 
-        alt permission_request
+        alt permission_request requires manual approval
             Runner->>Perm: broadcastPermissionPending(...)
             Perm->>Hub: agent.permission_pending
             Client->>WS: { type: "permission.response", ... }
             WS->>Perm: respondToPermission(...)
             Perm->>Persist: persistEvent(permission_response)
             Perm->>Hub: agent.permission_resolved
+        else permission_request auto-approved
+            Runner->>Backend: respondToPermission(allow)
+            Runner->>Hub: agent.permission_resolved
+            Note over Runner,DB: Auto-approved permission responses are not persisted as permission_response rows.
         end
     end
 
@@ -114,7 +118,8 @@ sequenceDiagram
     Runner->>SM: transition(complete|fail|abort)
     SM->>Persist: update sessions status/timestamps/metadata
     Runner->>Hub: agent.complete (session + wildcard)
-    Runner->>Hub: ticket.agent_status (ticket-scoped)
+    Note over Runner,Hub: User invoke success path does not emit ticket.agent_status.
+    Note over Hub: ticket.agent_status is emitted by trigger-orchestrator and backend-registry paths.
 ```
 
 ### ASCII
@@ -129,13 +134,11 @@ Client -> /ws -> chat-session-runner -> SessionStateMachine -> SessionPersistenc
 4) backend streams events
 5) runner persists each stream event to session_events and emits agent.event
 6) permission_request path:
-   - broadcast agent.permission_pending
-   - receive permission.response
-   - persist permission_response
-   - broadcast agent.permission_resolved
+   - manual approval: broadcast agent.permission_pending, receive permission.response, persist permission_response, broadcast agent.permission_resolved
+   - auto-approve: broadcast agent.permission_resolved without persisting permission_response
 7) backend completes
 8) runner applies complete/fail/abort transition
-9) runner emits agent.complete and ticket.agent_status
+9) runner emits agent.complete (user success path does not emit ticket.agent_status)
 ```
 
 ## Sequence: Trigger-Orchestrated Flow
@@ -202,7 +205,7 @@ Event bus -> trigger-orchestrator
 | `tool_use` | Backend | `chat-session-runner` | Yes | `session_events` (`event_type='tool_use'`), `sessions.last_event_seq` |
 | `tool_result` | Backend | `chat-session-runner` | Yes | `session_events` (`event_type='tool_result'`), `sessions.last_event_seq` |
 | `permission_request` | Backend | `chat-session-runner` (`handlePermissionRequest`) | Yes | `session_events` (`event_type='permission_request'`), `sessions.last_event_seq` |
-| `permission_response` | `permission-service` when WS `permission.response` is handled | Backend via `respondToPermission(...)` + clients via `agent.permission_resolved` | Yes | `session_events` (`event_type='permission_response'`) |
+| `permission_response` | `permission-service` when WS `permission.response` is handled | Backend via `respondToPermission(...)` + clients via `agent.permission_resolved` | Manual responses only | `session_events` (`event_type='permission_response'`) when resolved via WS `permission.response` |
 | `raw` | Backend | `chat-session-runner` | Yes | `session_events` (`event_type='raw'`), `sessions.last_event_seq` |
 | `error` | Backend | `chat-session-runner` | Yes | `session_events` (`event_type='error'`), plus `sessions.status='failed'` transition on terminal failure |
 | `complete` | Backend | `chat-session-runner` completion handlers | Yes (via transition side effects, not as normal `session_events` row) | `sessions.status`, terminal timestamps (`completed_at` / `failed_at` / `aborted_at`), `sessions.backend_session_id`, optional `agent_invocations.status` update |
@@ -215,8 +218,8 @@ Event bus -> trigger-orchestrator
 | `agent.event` | `websocket/routes.ts` and `trigger-orchestrator.ts` | Session subscribers + origin socket | Indirectly yes | Underlying source events are in `session_events` |
 | `agent.complete` | `websocket/routes.ts`, `trigger-orchestrator.ts`, `backend-registry.ts` | UI removes active session/pending permissions | Yes | `sessions` terminal status fields; trigger path also writes `agent_invocations` + `events` (`agent.completed`/`agent.failed`) |
 | `agent.permission_pending` | `permission-service.ts` | UI permission queue + session/wildcard subscribers | Indirectly yes | Request event persisted in `session_events`; pending queue in runtime map (`serverPendingPermissions`) |
-| `agent.permission_resolved` | `permission-service.ts` | UI permission queue + session/wildcard subscribers | Yes | `session_events` (`permission_response`) |
-| `ticket.agent_status` | `backend-registry.ts` | UI ticket status map | Derived only (no row) | Computed from `sessions` + in-memory `activeBackends`; broadcast only |
+| `agent.permission_resolved` | `permission-service.ts` and `chat-session-runner.ts` (auto-approve path) | UI permission queue + session/wildcard subscribers | Manual responses only | `session_events` (`permission_response`) only for WS `permission.response`; auto-approved resolutions are broadcast without a row |
+| `ticket.agent_status` | `backend-registry.ts` and `trigger-orchestrator.ts` | UI ticket status map | Derived only (no row) | Computed from `sessions` + in-memory `activeBackends`; broadcast only |
 
 ## Database Storage Map
 

@@ -60,14 +60,15 @@ The canonical union is `ServerMessage` in `packages/types/src/websocket.ts`.
 | `agent.complete` | `{ kombuseSessionId, backendSessionId?, ticketId?, status?, reason?, errorMessage? }` | `session:{id}` + origin socket + `*` |
 | `agent.permission_pending` | `{ sessionId, requestId, toolName, input, description?, ticketId? }` | `session:{id}` + `*` |
 | `agent.permission_resolved` | `{ sessionId, requestId }` | `session:{id}` + `*` |
-| `ticket.agent_status` | `{ ticketId, status, sessionCount }` | `*` |
+| `ticket.agent_status` | `{ ticketId, status, sessionCount }` derived status snapshot | `*` |
 
 ## Lifecycle Stream Rules
 
 ### Agent stream semantics
 
 - `agent.started` is emitted when a session turn starts.
-- `agent.event` streams serialized backend events (`message`, `tool_use`, `tool_result`, `permission_request`, `raw`, `error`, `permission_response`).
+- `agent.event` streams serialized backend events (`message`, `tool_use`, `tool_result`, `permission_request`, `raw`, `error`).
+- `permission_response` exists in the serialized event union, but current server producers do not emit it on `agent.event`.
 - Backend `complete` events are **not** sent as `agent.event`; completion is represented by `agent.complete`.
 - `agent.complete.status` can be `completed`, `failed`, `aborted`, or `stopped`.
 
@@ -76,11 +77,14 @@ The canonical union is `ServerMessage` in `packages/types/src/websocket.ts`.
 - `permission_request` backend events are converted into `agent.permission_pending` broadcasts.
 - Client approval/denial arrives as `permission.response`.
 - The server forwards the decision to the backend and then broadcasts `agent.permission_resolved`.
+- Manual permission responses persist `session_events(event_type='permission_response')`; auto-approved responses broadcast `agent.permission_resolved` without persisting `permission_response`.
 
 ### Ticket status indicator semantics
 
 - `ticket.agent_status` is computed and broadcast from server state.
+- Current producers are `trigger-orchestrator.ts` and `backend-registry.ts`.
 - It is derived from persisted `sessions` status plus live backend registry state.
+- User `/ws` successful completion path does not emit `ticket.agent_status` directly.
 - It is not a standalone persisted WebSocket record.
 
 ## Routing and Broadcast Behavior
@@ -100,6 +104,7 @@ Behavior summary:
   - always to `session:{kombuseSessionId}`
   - plus `originSocket` for user-initiated invocations
   - optionally plus wildcard (`agent.started`, `agent.complete`)
+- `ticket.agent_status` messages are emitted by trigger/orphan/cleanup/status-computation paths, not by the normal user `/ws` success completion callback.
 - `agent.stop`:
   - if an active backend exists, the server issues stop and immediately broadcasts `agent.complete` with `status: 'aborted'`, `reason: 'user_stop'`
   - if no active backend exists, server responds with `error`
@@ -112,7 +117,7 @@ Client -> /ws: agent.invoke
 runner -> session:{id} + origin: agent.started
 runner -> session:{id} + origin: agent.event (stream)
 runner -> session:{id} + origin + *: agent.complete
-runner -> *: ticket.agent_status
+trigger/backend-registry paths -> *: ticket.agent_status (when applicable)
 ```
 
 ## Client Integration Notes
