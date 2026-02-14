@@ -65,24 +65,40 @@ function formatTerminalReason(reason: string | null | undefined): string | null 
 
 function mergeEventsById(
   currentEvents: SerializedAgentEvent[],
-  incomingEvents: SerializedAgentEvent[]
+  incomingEvents: SerializedAgentEvent[],
+  eventSequenceById: Map<string, number>
 ): SerializedAgentEvent[] {
-  const mergedEvents = [...currentEvents]
-  const indexByEventId = new Map(
+  const mergedByEventId = new Map(
+    currentEvents.map((event) => [event.eventId, event] as const)
+  )
+  const fallbackOrderById = new Map(
     currentEvents.map((event, index) => [event.eventId, index] as const)
   )
+  let nextFallbackOrder = currentEvents.length
 
-  for (const event of incomingEvents) {
-    const existingIndex = indexByEventId.get(event.eventId)
-    if (existingIndex === undefined) {
-      indexByEventId.set(event.eventId, mergedEvents.length)
-      mergedEvents.push(event)
-      continue
+  for (const incomingEvent of incomingEvents) {
+    if (!fallbackOrderById.has(incomingEvent.eventId)) {
+      fallbackOrderById.set(incomingEvent.eventId, nextFallbackOrder)
+      nextFallbackOrder += 1
     }
-    mergedEvents[existingIndex] = event
+    mergedByEventId.set(incomingEvent.eventId, incomingEvent)
   }
 
-  return mergedEvents
+  return [...mergedByEventId.values()].sort((a, b) => {
+    const aSequence = eventSequenceById.get(a.eventId)
+    const bSequence = eventSequenceById.get(b.eventId)
+    if (aSequence !== undefined && bSequence !== undefined && aSequence !== bSequence) {
+      return aSequence - bSequence
+    }
+
+    if (a.timestamp !== b.timestamp) {
+      return a.timestamp - b.timestamp
+    }
+
+    const aFallbackOrder = fallbackOrderById.get(a.eventId) ?? Number.MAX_SAFE_INTEGER
+    const bFallbackOrder = fallbackOrderById.get(b.eventId) ?? Number.MAX_SAFE_INTEGER
+    return aFallbackOrder - bFallbackOrder
+  })
 }
 
 /**
@@ -113,6 +129,7 @@ export function ChatProvider({
   const [pendingPermission, setPendingPermission] =
     useState<SerializedAgentPermissionRequestEvent | null>(null)
   const previousSessionIdRef = useRef<string | null>(null)
+  const eventSequenceByIdRef = useRef<Map<string, number>>(new Map())
 
   const { pendingPermissions, activeSessions } = useAppContext()
 
@@ -136,6 +153,7 @@ export function ChatProvider({
   useEffect(() => {
     if (previousSessionIdRef.current !== sessionId) {
       previousSessionIdRef.current = sessionId ?? null
+      eventSequenceByIdRef.current = new Map()
       setEvents([])
       setHistoryLoadedCount(null)
       setHistoryTotalCount(null)
@@ -145,11 +163,20 @@ export function ChatProvider({
   // Load historical events when sessionId is provided
   useEffect(() => {
     if (sessionId && sessionEventsData?.events) {
-      // Convert SessionEvent payloads to SerializedAgentEvent
-      const historicalEvents = sessionEventsData.events.map(
-        (e) => e.payload as SerializedAgentEvent
-      )
-      setEvents((currentEvents) => mergeEventsById(currentEvents, historicalEvents))
+      const updatedSequenceMap = new Map(eventSequenceByIdRef.current)
+
+      const historicalEvents = sessionEventsData.events.map((event): SerializedAgentEvent => {
+        const payload = event.payload as SerializedAgentEvent
+        updatedSequenceMap.set(payload.eventId, event.seq)
+        return payload
+      })
+
+      eventSequenceByIdRef.current = updatedSequenceMap
+      setEvents((currentEvents) => mergeEventsById(
+        currentEvents,
+        historicalEvents,
+        updatedSequenceMap
+      ))
       setHistoryLoadedCount(sessionEventsData.events.length)
       setHistoryTotalCount(sessionEventsData.total)
     }
@@ -201,6 +228,7 @@ export function ChatProvider({
   // Reset events when switching modes
   useEffect(() => {
     if (agentId && !sessionId) {
+      eventSequenceByIdRef.current = new Map()
       setEvents([])
       setHistoryLoadedCount(null)
       setHistoryTotalCount(null)
@@ -459,15 +487,16 @@ export function ChatProvider({
   )
 
   const reset = useCallback(() => {
-      setEvents([])
-      setKombuseSessionId(null)
-      setPendingPermission(null)
-      setIsLoading(false)
-      setSessionStatus(null)
-      setTerminalReason(null)
-      setTerminalMessage(null)
-      setHistoryLoadedCount(null)
-      setHistoryTotalCount(null)
+    eventSequenceByIdRef.current = new Map()
+    setEvents([])
+    setKombuseSessionId(null)
+    setPendingPermission(null)
+    setIsLoading(false)
+    setSessionStatus(null)
+    setTerminalReason(null)
+    setTerminalMessage(null)
+    setHistoryLoadedCount(null)
+    setHistoryTotalCount(null)
   }, [])
 
   const backendSessionId = sessionData?.backend_session_id ?? null

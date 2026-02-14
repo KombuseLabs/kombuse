@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useContext, type ReactNode } from 'react'
 import type {
@@ -8,6 +8,8 @@ import type {
   PendingPermission,
   SessionEvent,
   ActiveSessionInfo,
+  ServerMessage,
+  SerializedAgentEvent,
 } from '@kombuse/types'
 import { ChatProvider } from '../chat-provider'
 import { ChatCtx, type ChatContextValue } from '../chat-context'
@@ -20,14 +22,28 @@ let mockSessionEventsData:
   | undefined
 let mockPendingPermissions: Map<string, PendingPermission>
 let mockActiveSessions: Map<string, ActiveSessionInfo>
+const mockUseSessionByKombuseId = vi.fn((_kombuseSessionId: string | null) => ({ data: mockSessionData }))
+const mockUseSessionEvents = vi.fn((
+  _kombuseSessionId: string | null,
+  _filters?: { since_seq?: number; event_type?: string; limit?: number }
+) => ({ data: mockSessionEventsData }))
+const mockWebSocketSend = vi.fn()
+let mockWebSocketOnMessage: ((message: ServerMessage) => void) | undefined
 
 vi.mock('../../hooks/use-sessions', () => ({
-  useSessionByKombuseId: () => ({ data: mockSessionData }),
-  useSessionEvents: () => ({ data: mockSessionEventsData }),
+  useSessionByKombuseId: (kombuseSessionId: string | null) =>
+    mockUseSessionByKombuseId(kombuseSessionId),
+  useSessionEvents: (
+    kombuseSessionId: string | null,
+    filters?: { since_seq?: number; event_type?: string; limit?: number }
+  ) => mockUseSessionEvents(kombuseSessionId, filters),
 }))
 
 vi.mock('../../hooks/use-websocket', () => ({
-  useWebSocket: () => ({ isConnected: false, send: vi.fn() }),
+  useWebSocket: ({ onMessage }: { onMessage: (message: ServerMessage) => void }) => {
+    mockWebSocketOnMessage = onMessage
+    return { isConnected: false, send: mockWebSocketSend }
+  },
 }))
 
 vi.mock('../../hooks/use-app-context', () => ({
@@ -79,20 +95,25 @@ function makeSession(overrides: Partial<PublicSession> = {}): PublicSession {
 }
 
 function makeSessionEvent(seq: number): SessionEvent {
+  const payload = makeSerializedEvent(seq)
   return {
     id: seq,
     session_id: 'session-1',
     seq,
     event_type: 'message',
-    payload: {
-      type: 'message',
-      eventId: `event-${seq}`,
-      role: 'assistant',
-      content: `message-${seq}`,
-      backend: 'mock',
-      timestamp: seq,
-    },
+    payload: payload as unknown as Record<string, unknown>,
     created_at: new Date().toISOString(),
+  }
+}
+
+function makeSerializedEvent(seq: number): Extract<SerializedAgentEvent, { type: 'message' }> {
+  return {
+    type: 'message',
+    eventId: `event-${seq}`,
+    role: 'assistant',
+    content: `message-${seq}`,
+    backend: 'mock',
+    timestamp: seq,
   }
 }
 
@@ -148,6 +169,10 @@ describe('ChatProvider isLoading sync from session status', () => {
     mockSessionEventsData = undefined
     mockPendingPermissions = new Map()
     mockActiveSessions = new Map()
+    mockWebSocketOnMessage = undefined
+    mockWebSocketSend.mockReset()
+    mockUseSessionByKombuseId.mockClear()
+    mockUseSessionEvents.mockClear()
   })
 
   it('should set isLoading to true when running session is active', () => {
@@ -206,6 +231,10 @@ describe('ChatProvider pendingPermission restoration from AppProvider', () => {
     mockSessionEventsData = undefined
     mockPendingPermissions = new Map()
     mockActiveSessions = new Map()
+    mockWebSocketOnMessage = undefined
+    mockWebSocketSend.mockReset()
+    mockUseSessionByKombuseId.mockClear()
+    mockUseSessionEvents.mockClear()
   })
 
   it('should restore pendingPermission when AppProvider has a matching global permission', () => {
@@ -274,6 +303,23 @@ describe('ChatProvider historical event loading', () => {
     mockSessionEventsData = undefined
     mockPendingPermissions = new Map()
     mockActiveSessions = new Map()
+    mockWebSocketOnMessage = undefined
+    mockWebSocketSend.mockReset()
+    mockUseSessionByKombuseId.mockClear()
+    mockUseSessionEvents.mockClear()
+  })
+
+  it('requests initial history with a 1000-event limit', () => {
+    mockSessionData = makeSession({
+      kombuse_session_id: 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId,
+    })
+
+    renderProvider({ sessionId: 'sess-1' })
+
+    expect(mockUseSessionEvents).toHaveBeenCalledWith(
+      'chat-00000000-0000-0000-0000-000000000001',
+      { limit: 1000 }
+    )
   })
 
   it('merges history refetches without dropping newer local events and dedupes by eventId', async () => {
@@ -323,6 +369,50 @@ describe('ChatProvider historical event loading', () => {
     await waitFor(() => {
       const eventIds = getCtx().events.map((event) => event.eventId)
       expect(eventIds).toEqual(['event-1', 'event-2', 'event-3', 'event-4'])
+      expect(new Set(eventIds).size).toBe(eventIds.length)
+    })
+  })
+
+  it('keeps chronological order when live events arrive before history fetch resolves', async () => {
+    mockSessionData = makeSession({
+      kombuse_session_id: 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId,
+      status: 'running',
+    })
+    mockSessionEventsData = undefined
+
+    const { getCtx, rerenderProvider } = renderProvider({ sessionId: 'sess-1' })
+
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'agent.event',
+        kombuseSessionId: 'chat-00000000-0000-0000-0000-000000000001',
+        event: makeSerializedEvent(151),
+      })
+      mockWebSocketOnMessage?.({
+        type: 'agent.event',
+        kombuseSessionId: 'chat-00000000-0000-0000-0000-000000000001',
+        event: makeSerializedEvent(152),
+      })
+    })
+
+    await waitFor(() => {
+      expect(getCtx().events.map((event) => event.eventId)).toEqual(['event-151', 'event-152'])
+    })
+
+    mockSessionEventsData = {
+      session_id: 'chat-00000000-0000-0000-0000-000000000001',
+      events: Array.from({ length: 100 }, (_, index) => makeSessionEvent(index + 51)),
+      total: 152,
+    }
+    rerenderProvider({ sessionId: 'sess-1' })
+
+    await waitFor(() => {
+      const eventIds = getCtx().events.map((event) => event.eventId)
+      expect(eventIds).toEqual(
+        Array.from({ length: 102 }, (_, index) => `event-${index + 51}`)
+      )
       expect(new Set(eventIds).size).toBe(eventIds.length)
     })
   })
