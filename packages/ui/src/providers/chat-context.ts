@@ -14,6 +14,10 @@ export interface ChatContextValue {
   terminalReason: string | null
   /** Human-readable message for the last terminal outcome */
   terminalMessage: string | null
+  /** Number of events returned by the latest history fetch for this session */
+  historyLoadedCount: number | null
+  /** Total matching events available for the latest history fetch */
+  historyTotalCount: number | null
   /** Current app session ID (set after first message) */
   kombuseSessionId: string | null
   /** Claude backend session ID (available after session is fetched) */

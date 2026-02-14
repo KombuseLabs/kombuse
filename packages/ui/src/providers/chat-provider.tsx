@@ -107,6 +107,8 @@ export function ChatProvider({
   const [sessionStatus, setSessionStatus] = useState<PublicSession['status'] | null>(null)
   const [terminalReason, setTerminalReason] = useState<string | null>(null)
   const [terminalMessage, setTerminalMessage] = useState<string | null>(null)
+  const [historyLoadedCount, setHistoryLoadedCount] = useState<number | null>(null)
+  const [historyTotalCount, setHistoryTotalCount] = useState<number | null>(null)
   const [kombuseSessionId, setKombuseSessionId] = useState<string | null>(null)
   const [pendingPermission, setPendingPermission] =
     useState<SerializedAgentPermissionRequestEvent | null>(null)
@@ -135,6 +137,8 @@ export function ChatProvider({
     if (previousSessionIdRef.current !== sessionId) {
       previousSessionIdRef.current = sessionId ?? null
       setEvents([])
+      setHistoryLoadedCount(null)
+      setHistoryTotalCount(null)
     }
   }, [sessionId])
 
@@ -146,6 +150,8 @@ export function ChatProvider({
         (e) => e.payload as SerializedAgentEvent
       )
       setEvents((currentEvents) => mergeEventsById(currentEvents, historicalEvents))
+      setHistoryLoadedCount(sessionEventsData.events.length)
+      setHistoryTotalCount(sessionEventsData.total)
     }
   }, [sessionId, sessionEventsData])
 
@@ -193,6 +199,8 @@ export function ChatProvider({
   useEffect(() => {
     if (agentId && !sessionId) {
       setEvents([])
+      setHistoryLoadedCount(null)
+      setHistoryTotalCount(null)
       setKombuseSessionId(null)
       setIsLoading(false)
     }
@@ -455,6 +463,8 @@ export function ChatProvider({
       setSessionStatus(null)
       setTerminalReason(null)
       setTerminalMessage(null)
+      setHistoryLoadedCount(null)
+      setHistoryTotalCount(null)
   }, [])
 
   const backendSessionId = sessionData?.backend_session_id ?? null
@@ -467,6 +477,8 @@ export function ChatProvider({
       sessionStatus,
       terminalReason,
       terminalMessage,
+      historyLoadedCount,
+      historyTotalCount,
       kombuseSessionId: effectiveKombuseSessionId,
       backendSessionId,
       pendingPermission,
@@ -481,6 +493,8 @@ export function ChatProvider({
       sessionStatus,
       terminalReason,
       terminalMessage,
+      historyLoadedCount,
+      historyTotalCount,
       effectiveKombuseSessionId,
       backendSessionId,
       pendingPermission,

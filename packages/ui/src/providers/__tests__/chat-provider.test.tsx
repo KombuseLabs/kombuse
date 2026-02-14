@@ -271,6 +271,8 @@ describe('ChatProvider historical event loading', () => {
         'event-2',
         'event-3',
       ])
+      expect(getCtx().historyLoadedCount).toBe(3)
+      expect(getCtx().historyTotalCount).toBe(3)
     })
 
     mockSessionEventsData = {
@@ -338,6 +340,8 @@ describe('ChatProvider historical event loading', () => {
 
     await waitFor(() => {
       expect(getCtx().events).toEqual([])
+      expect(getCtx().historyLoadedCount).toBeNull()
+      expect(getCtx().historyTotalCount).toBeNull()
     })
   })
 })

@@ -72,6 +72,8 @@ function Chat({
         sessionStatus={ctx?.sessionStatus}
         terminalReason={ctx?.terminalReason}
         terminalMessage={ctx?.terminalMessage}
+        historyLoadedCount={ctx?.historyLoadedCount}
+        historyTotalCount={ctx?.historyTotalCount}
         sessionId={ctx?.kombuseSessionId}
         backendSessionId={ctx?.backendSessionId}
       />

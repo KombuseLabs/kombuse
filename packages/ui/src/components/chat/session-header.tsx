@@ -16,6 +16,8 @@ interface SessionHeaderProps {
   terminalReason?: string | null
   terminalMessage?: string | null
   eventCount: number
+  historyLoadedCount?: number | null
+  historyTotalCount?: number | null
   lastEventTime?: number
   viewMode?: ViewMode
   onViewModeChange?: (mode: ViewMode) => void
@@ -52,6 +54,8 @@ function SessionHeader({
   terminalReason = null,
   terminalMessage = null,
   eventCount,
+  historyLoadedCount = null,
+  historyTotalCount = null,
   lastEventTime,
   viewMode = 'normal',
   onViewModeChange,
@@ -101,6 +105,11 @@ function SessionHeader({
           ? 'bg-green-500'
           : 'bg-muted-foreground/50'
   const statusDetail = terminalMessage ?? humanizeReason(terminalReason)
+  const isHistoryTruncated = (
+    historyLoadedCount !== null
+    && historyTotalCount !== null
+    && historyTotalCount > historyLoadedCount
+  )
 
   return (
     <div className={cn('flex items-center gap-3 px-4 py-2 border-b text-sm text-muted-foreground', className)}>
@@ -129,6 +138,15 @@ function SessionHeader({
       <div className="w-px h-4 bg-border" />
 
       <span>{eventCount} {eventCount === 1 ? 'event' : 'events'}</span>
+
+      {isHistoryTruncated && (
+        <>
+          <div className="w-px h-4 bg-border" />
+          <span className="text-amber-600/90">
+            Showing latest {historyLoadedCount} of {historyTotalCount}
+          </span>
+        </>
+      )}
 
       {lastEventTime && (
         <>
