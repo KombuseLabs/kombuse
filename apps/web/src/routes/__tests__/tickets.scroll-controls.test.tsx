@@ -6,6 +6,9 @@ const {
   mockScrollState,
   mockScrollToTop,
   mockScrollToBottom,
+  mockSelectedTicket,
+  mockTimelineState,
+  mockUseScrollToComment,
   mockMarkViewed,
   mockUploadAsync,
   mockCreateComment,
@@ -19,6 +22,20 @@ const {
   mockScrollState: { isAtTop: false, isAtBottom: false },
   mockScrollToTop: vi.fn(),
   mockScrollToBottom: vi.fn(),
+  mockSelectedTicket: {
+    value: { id: 42, title: 'Ticket 42', status: 'open' },
+  },
+  mockTimelineState: {
+    data: {
+      total: 0,
+      items: [],
+    },
+    isFetched: true,
+  },
+  mockUseScrollToComment: vi.fn(() => ({
+    highlightedCommentId: null,
+    isScrollToCommentPending: false,
+  })),
   mockMarkViewed: vi.fn(),
   mockUploadAsync: vi.fn(async () => ({})),
   mockCreateComment: vi.fn(async () => ({ id: 99 })),
@@ -98,7 +115,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
     error: null,
   }),
   useTicket: (id: number) => ({
-    data: id > 0 ? { id, title: `Ticket ${id}`, status: 'open' } : undefined,
+    data: id > 0 ? mockSelectedTicket.value : undefined,
     isLoading: false,
   }),
   useCreateTicket: () => ({
@@ -121,10 +138,8 @@ vi.mock('@kombuse/ui/hooks', () => ({
   useProjectLabels: () => ({ data: [] }),
   useProjectMilestones: () => ({ data: [] }),
   useTicketTimeline: () => ({
-    data: {
-      total: 0,
-      items: [],
-    },
+    data: mockTimelineState.data,
+    isFetched: mockTimelineState.isFetched,
   }),
   useWebSocket: () => ({ send: mockSend }),
   useCommentsAttachments: () => ({}),
@@ -158,22 +173,23 @@ vi.mock('@kombuse/ui/hooks', () => ({
     scrollToTop: mockScrollToTop,
     onScroll: vi.fn(),
   }),
-  useScrollToComment: () => ({
-    highlightedCommentId: null,
-    isScrollToCommentPending: false,
-  }),
+  useScrollToComment: mockUseScrollToComment,
 }))
 
 import { Tickets } from '../tickets'
 
-function renderTicketsRoute() {
-  return render(
+function ticketsRouteElement() {
+  return (
     <MemoryRouter initialEntries={['/projects/1/tickets/42']}>
       <Routes>
         <Route path="/projects/:projectId/tickets/:ticketId" element={<Tickets />} />
       </Routes>
     </MemoryRouter>
   )
+}
+
+function renderTicketsRoute() {
+  return render(ticketsRouteElement())
 }
 
 function setScrollState(isAtTop: boolean, isAtBottom: boolean) {
@@ -183,6 +199,14 @@ function setScrollState(isAtTop: boolean, isAtBottom: boolean) {
 
 beforeEach(() => {
   setScrollState(false, false)
+  mockSelectedTicket.value = { id: 42, title: 'Ticket 42', status: 'open' }
+  mockTimelineState.data = { total: 0, items: [] }
+  mockTimelineState.isFetched = true
+  mockUseScrollToComment.mockClear()
+  mockUseScrollToComment.mockImplementation(() => ({
+    highlightedCommentId: null,
+    isScrollToCommentPending: false,
+  }))
   mockScrollToTop.mockReset()
   mockScrollToBottom.mockReset()
   mockMarkViewed.mockReset()
@@ -252,5 +276,29 @@ describe('Tickets scroll controls', () => {
 
     expect(mockScrollToTop).toHaveBeenCalledOnce()
     expect(mockScrollToBottom).toHaveBeenCalledOnce()
+  })
+
+  it('treats a fetched empty timeline as loaded for hash navigation', () => {
+    mockTimelineState.data = { total: 0, items: [] }
+    mockTimelineState.isFetched = true
+
+    renderTicketsRoute()
+
+    expect(mockUseScrollToComment).toHaveBeenLastCalledWith({ isTimelineLoaded: true })
+  })
+
+  it('waits for ticket detail mount before enabling hash navigation', () => {
+    mockTimelineState.data = { total: 1, items: [{ type: 'comment', data: { id: 144 } }] }
+    mockTimelineState.isFetched = true
+    mockSelectedTicket.value = undefined
+
+    const view = renderTicketsRoute()
+
+    expect(mockUseScrollToComment).toHaveBeenLastCalledWith({ isTimelineLoaded: false })
+
+    mockSelectedTicket.value = { id: 42, title: 'Ticket 42', status: 'open' }
+    view.rerender(ticketsRouteElement())
+
+    expect(mockUseScrollToComment).toHaveBeenLastCalledWith({ isTimelineLoaded: true })
   })
 })

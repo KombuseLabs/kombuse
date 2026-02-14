@@ -248,12 +248,12 @@ import { useScrollToComment } from '@kombuse/ui/hooks'
 
 // Scroll to and highlight a comment targeted by URL hash fragment (e.g. #comment-144)
 const { highlightedCommentId, isScrollToCommentPending } = useScrollToComment({
-  isTimelineLoaded: (timeline?.items.length ?? 0) > 0,
+  isTimelineLoaded: Boolean(selectedTicket && isTimelineFetched),
 })
 ```
 
 - Reads `location.hash` via React Router's `useLocation()` and parses `#comment-{id}`
-- Scrolls the target comment into view (`smooth`, `center`) once the timeline is loaded
+- Scrolls the target comment into view (`smooth`, `center`) once ticket detail is mounted and timeline fetch is complete
 - Returns `highlightedCommentId` for visual highlight (ring), auto-clears after 3 seconds
 - Returns `isScrollToCommentPending` to suppress `useScrollToBottom`'s initial force-scroll
 - Handles same-ticket navigation (hash change without page reload) and cross-ticket navigation

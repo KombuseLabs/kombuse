@@ -164,7 +164,7 @@ export function Tickets() {
   } = useCommentOperations();
 
   // Unified timeline of comments + events
-  const { data: timeline } = useTicketTimeline(ticketId ? Number(ticketId) : 0);
+  const { data: timeline, isFetched: isTimelineFetched } = useTicketTimeline(ticketId ? Number(ticketId) : 0);
 
   // Fetch attachments for all comments in the timeline
   const commentIds = useMemo(
@@ -179,7 +179,7 @@ export function Tickets() {
 
   // Scroll-to-comment for hash fragment navigation (e.g. #comment-144)
   const { highlightedCommentId, isScrollToCommentPending } = useScrollToComment({
-    isTimelineLoaded: (timeline?.items.length ?? 0) > 0,
+    isTimelineLoaded: Boolean(selectedTicket && isTimelineFetched),
   });
 
   // Scroll-to-bottom for ticket detail (suppressed when scroll-to-comment is active)
