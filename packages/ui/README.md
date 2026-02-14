@@ -614,6 +614,9 @@ Props:
 - View mode displays ticket attachments as clickable thumbnails with lightbox
 - Delete confirmation warns that related comments and attachments are also removed; confirm action shows `Deleting...` while pending
 - If delete fails, the dialog stays open so users can retry after the app-level error toast
+- Header stays sticky with elevated separation (`z-20`, `shadow-md`) and translucent blur treatment while content scrolls beneath
+- View mode uses semantic heading markup (`h1`) with `leading-tight`, and keeps created date in a secondary metadata row
+- In editable view mode, the trigger switch is grouped with header actions and is hidden while editing
 
 ### Session Components
 

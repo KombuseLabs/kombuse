@@ -140,6 +140,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   }
 
   const ticket = currentTicket
+  const createdDate = new Date(ticket.created_at).toLocaleDateString()
 
   const handleDelete = async () => {
     try {
@@ -188,12 +189,17 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   return (
     <>
       {/* Sticky header — direct child of scroll container so sticky works correctly */}
-      <div className={cn('sticky top-0 z-10 bg-background border-b shadow-sm px-4 py-4', className)}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
+      <div
+        className={cn(
+          'sticky top-0 z-20 border-b bg-background/95 px-4 py-3 shadow-md backdrop-blur-sm',
+          className
+        )}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0 flex-1">
             {mode === 'view' ? (
-              <>
-                <div className="flex items-center gap-2 mb-2">
+              <div className="min-h-[5.25rem] space-y-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   {isEditable ? (
@@ -220,58 +226,38 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                   ) : (
                     <span
                       className={cn(
-                        'px-2 py-0.5 text-xs rounded-full font-medium',
+                        'rounded-full px-2 py-0.5 text-xs font-medium',
                         statusColors[ticket.status]
                       )}
                     >
                       {ticket.status.replace('_', ' ')}
                     </span>
                   )}
-                  <span className="text-muted-foreground">·</span>
                   <span className="text-xs text-muted-foreground">
                     Priority: {getPriorityLabel(ticket.priority)}
                   </span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(ticket.created_at).toLocaleDateString()}
-                  </span>
-                  {isEditable && (
-                    <>
-                      <span className="text-muted-foreground">·</span>
-                      <div className="flex items-center gap-1.5">
-                        <Switch
-                          checked={ticket.triggers_enabled}
-                          onCheckedChange={(checked) => {
-                            void updateCurrentTicket({ triggers_enabled: checked })
-                          }}
-                          disabled={isUpdating}
-                          aria-label="Toggle ticket triggers"
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {ticket.triggers_enabled ? 'Triggers on' : 'Triggers off'}
-                        </span>
-                      </div>
-                    </>
-                  )}
                 </div>
-                <div className="text-lg font-semibold leading-none">{ticket.title}</div>
-              </>
+                <div className="space-y-1">
+                  <h1 className="text-lg font-semibold leading-tight tracking-tight">{ticket.title}</h1>
+                  <p className="text-xs text-muted-foreground">Created {createdDate}</p>
+                </div>
+              </div>
             ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="min-h-[5.25rem] space-y-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.id}</span>
                   <Tabs
                     value={editStatus}
                     onValueChange={(v) => setEditStatus(v as TicketStatus)}
                   >
-                    <TabsList className="h-7 p-0.5">
+                    <TabsList className="h-6 p-0.5">
                       {STATUS_OPTIONS.map((opt) => (
                         <TabsTrigger
                           key={opt.value}
                           value={opt.value}
                           className={cn(
-                            'h-6 px-2 py-0 text-xs',
+                            'h-5 px-2 py-0 text-xs',
                             editStatus === opt.value && statusColors[opt.value]
                           )}
                         >
@@ -280,28 +266,28 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                       ))}
                     </TabsList>
                   </Tabs>
-                  <span className="text-muted-foreground">·</span>
                   <span className="text-xs text-muted-foreground">
                     Priority: {getPriorityLabel(ticket.priority)}
                   </span>
                 </div>
-                <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="Ticket title"
-                  className="text-xl font-semibold"
-                />
+                <div className="space-y-1">
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Ticket title"
+                    className="h-9 text-lg font-semibold leading-tight"
+                  />
+                  <p className="text-xs text-muted-foreground">Created {createdDate}</p>
+                </div>
               </div>
             )}
-            <div className="flex flex-wrap items-center gap-1 mt-2">
+            <div className="mt-2 flex flex-wrap items-center gap-1">
               {ticketLabels.map((label) => (
                 <LabelBadge
                   key={label.id}
                   label={label}
                   size="sm"
-                  onRemove={
-                    isEditable ? () => removeLabel(label.id, 'user-1') : undefined
-                  }
+                  onRemove={isEditable ? () => removeLabel(label.id, 'user-1') : undefined}
                 />
               ))}
               {isEditable && (
@@ -319,7 +305,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                 />
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-1 mt-1">
+            <div className="mt-1 flex flex-wrap items-center gap-1">
               {currentMilestone && (
                 <MilestoneBadge milestone={currentMilestone} size="sm" showProgress />
               )}
@@ -334,10 +320,31 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-start gap-1">
+            {isEditable && mode === 'view' && (
+              <div className="mr-1 flex items-center gap-1.5 rounded-md border px-2 py-1">
+                <Switch
+                  checked={ticket.triggers_enabled}
+                  onCheckedChange={(checked) => {
+                    void updateCurrentTicket({ triggers_enabled: checked })
+                  }}
+                  disabled={isUpdating}
+                  aria-label="Toggle ticket triggers"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {ticket.triggers_enabled ? 'Triggers on' : 'Triggers off'}
+                </span>
+              </div>
+            )}
             {isEditable && mode === 'edit' ? (
               <>
-                <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUpdating}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUpdating}
+                  aria-label="Attach files"
+                >
                   <Paperclip className="size-4" />
                 </Button>
                 <Button variant="ghost" onClick={handleCancel} disabled={isUpdating}>
@@ -353,6 +360,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                   variant="ghost"
                   size="icon"
                   onClick={handleEditClick}
+                  aria-label="Edit ticket"
                 >
                   <Pencil className="size-4" />
                 </Button>
@@ -396,7 +404,12 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
               </>
             ) : null}
             {onClose && (
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                aria-label="Close ticket detail"
+              >
                 <X className="size-4" />
               </Button>
             )}

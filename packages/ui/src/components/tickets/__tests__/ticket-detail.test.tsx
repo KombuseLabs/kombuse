@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { Ticket } from '@kombuse/types'
 import { TicketDetail } from '../ticket-detail'
 
@@ -127,15 +127,8 @@ function buildTicket(overrides: Partial<Ticket> = {}): Ticket {
   }
 }
 
-function enterEditMode(container: HTMLElement) {
-  const editIcon = container.querySelector('svg.lucide-pencil')
-  const editButton = editIcon?.closest('button')
-
-  if (!(editButton instanceof HTMLButtonElement)) {
-    throw new Error('Edit button not found')
-  }
-
-  fireEvent.click(editButton)
+function enterEditMode() {
+  fireEvent.click(screen.getByRole('button', { name: 'Edit ticket' }))
 }
 
 describe('TicketDetail priority display', () => {
@@ -146,31 +139,98 @@ describe('TicketDetail priority display', () => {
 
   it('shows fallback text when priority is null', () => {
     currentTicket = buildTicket({ priority: null })
-    const { getByText } = render(<TicketDetail />)
+    render(<TicketDetail />)
 
-    expect(getByText('Priority: No priority')).toBeDefined()
+    expect(screen.getByText('Priority: No priority')).toBeDefined()
   })
 
   it('shows Lowest when priority is 0', () => {
     currentTicket = buildTicket({ priority: 0 })
-    const { getByText } = render(<TicketDetail />)
+    render(<TicketDetail />)
 
-    expect(getByText('Priority: Lowest')).toBeDefined()
+    expect(screen.getByText('Priority: Lowest')).toBeDefined()
   })
 
   it('shows Highest when priority is 4', () => {
     currentTicket = buildTicket({ priority: 4 })
-    const { getByText } = render(<TicketDetail />)
+    render(<TicketDetail />)
 
-    expect(getByText('Priority: Highest')).toBeDefined()
+    expect(screen.getByText('Priority: Highest')).toBeDefined()
   })
 
   it('shows priority in edit mode', () => {
     currentTicket = buildTicket({ priority: null })
-    const { container, getByText } = render(<TicketDetail isEditable />)
+    render(<TicketDetail isEditable />)
 
-    enterEditMode(container)
+    enterEditMode()
 
-    expect(getByText('Priority: No priority')).toBeDefined()
+    expect(screen.getByText('Priority: No priority')).toBeDefined()
+  })
+})
+
+describe('TicketDetail header behavior', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    currentTicket = buildTicket()
+  })
+
+  it('uses elevated sticky header styling classes', () => {
+    const { container } = render(<TicketDetail />)
+    const stickyHeader = container.querySelector('div.sticky.top-0.z-20')
+
+    expect(stickyHeader).toBeTruthy()
+    expect(stickyHeader?.className.includes('shadow-md')).toBe(true)
+    expect(stickyHeader?.className.includes('backdrop-blur-sm')).toBe(true)
+  })
+
+  it('renders the title as a semantic h1 with tight leading', () => {
+    render(<TicketDetail />)
+
+    const heading = screen.getByRole('heading', {
+      level: 1,
+      name: 'Display ticket priority in ticket details',
+    })
+
+    expect(heading.tagName).toBe('H1')
+    expect(heading.className.includes('leading-tight')).toBe(true)
+  })
+
+  it('shows the created date in the secondary row in view and edit modes', () => {
+    render(<TicketDetail isEditable />)
+
+    expect(screen.getByText(/^Created /)).toBeDefined()
+    enterEditMode()
+    expect(screen.getByText(/^Created /)).toBeDefined()
+  })
+
+  it('shows trigger toggle only in editable view mode and updates ticket triggers', () => {
+    render(<TicketDetail isEditable />)
+
+    const triggerSwitch = screen.getByRole('switch', { name: 'Toggle ticket triggers' })
+    expect(triggerSwitch).toBeDefined()
+
+    fireEvent.click(triggerSwitch)
+    expect(updateCurrentTicket).toHaveBeenCalledWith({ triggers_enabled: false })
+
+    enterEditMode()
+    expect(screen.queryByRole('switch', { name: 'Toggle ticket triggers' })).toBeNull()
+  })
+
+  it('renders mode-specific action controls', () => {
+    render(<TicketDetail isEditable />)
+
+    expect(screen.getByRole('button', { name: 'Edit ticket' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Delete ticket' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Attach files' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+
+    enterEditMode()
+
+    expect(screen.getByRole('button', { name: 'Attach files' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Edit ticket' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete ticket' })).toBeNull()
   })
 })
