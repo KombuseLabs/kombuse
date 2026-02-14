@@ -857,7 +857,7 @@ import type { ViewMode } from '@kombuse/ui/components'
 `SessionViewer` props:
 - `events`: `SerializedAgentEvent[]` to render
 - `isLoading`, `emptyMessage`: Loading/empty states
-- `viewMode`: `'clean' | 'normal'` (default `'normal'`) — in `'clean'` mode, only `message` events are shown; tool uses, permission requests, and raw events are hidden
+- `viewMode`: `'clean' | 'normal'` (default `'normal'`) — in `'clean'` mode, `message` and `error` events are shown, plus plan milestone tools (`ExitPlanMode`, `TodoWrite`)
 - Auto-scrolls to bottom when new events arrive (if already at bottom)
 - Shows a floating scroll-to-bottom button when the user scrolls up
 
@@ -868,6 +868,16 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Renders commands in a terminal-style dark card with `$ command` prompt, monospace font, and collapsible output
 - Shows optional `description`, `run_in_background`, and `timeout` metadata as badges
 - Error states display red ring and red output text
+
+`ErrorRenderer` (in `renderers/`):
+- Dedicated renderer for `error` session events
+- Shows error name and user-facing message with destructive styling
+- Formats escaped stack traces (`\\n`) into readable multiline output with both horizontal and vertical scrolling
+
+`CompleteRenderer` (in `renderers/`):
+- Dedicated renderer for `complete` session events
+- Shows success/failure status, reason badge, and optional exit code
+- Shows optional failure details (`errorMessage`, `resumeFailed`) when present
 
 `AskUserBar` props:
 - `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request with `toolName: 'AskUserQuestion'`

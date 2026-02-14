@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
-import type { JsonObject, JsonValue, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
+import type { JsonObject, JsonValue, SerializedAgentCompleteEvent, SerializedAgentErrorEvent, SerializedAgentEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { SessionViewer } from '../session-viewer'
 import { KNOWN_KOMBUSE_TOOL_NAMES, getKombuseToolConfig } from '../renderers'
 
@@ -47,6 +47,57 @@ function makeToolResultEvent({
     toolUseId,
     content,
     isError,
+  }
+}
+
+function makeErrorEvent({
+  id,
+  message,
+  timestamp,
+  error,
+}: {
+  id: string
+  message: string
+  timestamp: number
+  error?: SerializedAgentErrorEvent['error']
+}): SerializedAgentErrorEvent {
+  return {
+    type: 'error',
+    eventId: `evt-${id}`,
+    backend: 'mock',
+    timestamp,
+    message,
+    error,
+  }
+}
+
+function makeCompleteEvent({
+  id,
+  reason,
+  timestamp,
+  success,
+  exitCode,
+  errorMessage,
+  resumeFailed,
+}: {
+  id: string
+  reason: SerializedAgentCompleteEvent['reason']
+  timestamp: number
+  success?: boolean
+  exitCode?: number | null
+  errorMessage?: string
+  resumeFailed?: boolean
+}): SerializedAgentCompleteEvent {
+  return {
+    type: 'complete',
+    eventId: `evt-${id}`,
+    backend: 'mock',
+    timestamp,
+    reason,
+    success,
+    exitCode,
+    errorMessage,
+    resumeFailed,
   }
 }
 
@@ -197,6 +248,95 @@ describe('SessionViewer kombuse renderers', () => {
     expect(getByText('Custom Tool')).toBeDefined()
     expect(queryAllByText((_, node) => node?.textContent?.includes('3 items') ?? false).length).toBeGreaterThan(0)
     expect(queryByText('kombuse[custom_tool]')).toBeNull()
+  })
+
+  it('renders error events with formatted stack traces', () => {
+    const event = makeErrorEvent({
+      id: 'error',
+      message: 'Session crashed',
+      timestamp: 5500,
+      error: {
+        name: 'RuntimeError',
+        message: 'Command failed unexpectedly',
+        stack: 'Error: crash\\n    at run (/tmp/task.ts:2:3)\\n    at main (/tmp/main.ts:9:1)',
+      },
+    })
+
+    const { getByText, container } = render(<SessionViewer events={[event]} />)
+
+    expect(getByText('RuntimeError')).toBeDefined()
+    expect(getByText('Session crashed')).toBeDefined()
+    expect(getByText('Command failed unexpectedly')).toBeDefined()
+
+    const stackNode = container.querySelector('pre')
+    expect(stackNode).not.toBeNull()
+    expect(stackNode?.textContent).toContain('\n    at run (/tmp/task.ts:2:3)')
+    expect(stackNode?.textContent).not.toContain('\\n')
+  })
+
+  it('renders complete events with success and failure states', () => {
+    const successEvent = makeCompleteEvent({
+      id: 'complete-success',
+      reason: 'process_exit',
+      timestamp: 5600,
+      success: true,
+      exitCode: 0,
+    })
+    const failedEvent = makeCompleteEvent({
+      id: 'complete-failed',
+      reason: 'failed',
+      timestamp: 5601,
+      success: false,
+      exitCode: 1,
+      errorMessage: 'The agent exited with errors',
+      resumeFailed: true,
+    })
+
+    const { getByText, queryAllByText } = render(<SessionViewer events={[successEvent, failedEvent]} />)
+
+    expect(getByText('Session Complete')).toBeDefined()
+    expect(getByText('Session Failed')).toBeDefined()
+    expect(queryAllByText('Reason').length).toBe(2)
+    expect(getByText('process_exit')).toBeDefined()
+    expect(getByText('failed')).toBeDefined()
+    expect(getByText('exit 0')).toBeDefined()
+    expect(getByText('exit 1')).toBeDefined()
+    expect(getByText('The agent exited with errors')).toBeDefined()
+    expect(getByText('Resume failed')).toBeDefined()
+  })
+
+  it('shows error events but hides complete events in clean mode', () => {
+    const error = makeErrorEvent({
+      id: 'clean-error',
+      message: 'User-visible error',
+      timestamp: 5701,
+    })
+    const complete = makeCompleteEvent({
+      id: 'clean-complete',
+      reason: 'result',
+      timestamp: 5702,
+      success: true,
+    })
+
+    const { getByText, queryByText } = render(<SessionViewer events={[error, complete]} viewMode="clean" />)
+
+    expect(getByText('User-visible error')).toBeDefined()
+    expect(queryByText('Session Complete')).toBeNull()
+  })
+
+  it('preserves fallback rendering for unknown event types', () => {
+    const lifecycleEvent: SerializedAgentEvent = {
+      type: 'lifecycle',
+      eventId: 'evt-lifecycle',
+      backend: 'mock',
+      timestamp: 5800,
+      state: 'running',
+      reason: 'boot',
+    }
+
+    const { container } = render(<SessionViewer events={[lifecycleEvent]} />)
+
+    expect(container.querySelector('pre')?.textContent).toContain('"type": "lifecycle"')
   })
 
   it('keeps non-kombuse renderer behavior unchanged', () => {

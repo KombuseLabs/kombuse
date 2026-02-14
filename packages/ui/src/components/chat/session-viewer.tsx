@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { useScrollToBottom } from '../../hooks/use-scroll-to-bottom'
 import { isValidAskUserInput } from './ask-user-types'
-import { AskUserRenderer, BashRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PlanPermissionRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
+import { AskUserRenderer, BashRenderer, CompleteRenderer, EditRenderer, EnterPlanModeRenderer, ErrorRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PlanPermissionRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 interface SessionViewerProps {
@@ -126,16 +126,11 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         }
 
         if (event.type === 'error') {
-          return (
-            <EventCard
-              key={event.eventId}
-              timestamp={event.timestamp}
-              className="bg-red-500/5 ring-1 ring-red-500/20 overflow-x-auto"
-              header={<span className="text-xs font-medium uppercase text-red-700 dark:text-red-300">Error</span>}
-            >
-              <div className="text-sm text-red-700 dark:text-red-300">{event.message}</div>
-            </EventCard>
-          )
+          return <ErrorRenderer key={event.eventId} event={event} />
+        }
+
+        if (event.type === 'complete') {
+          return <CompleteRenderer key={event.eventId} event={event} />
         }
 
         if (event.type === 'raw' && event.sourceType === 'thinking') {
