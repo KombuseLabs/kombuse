@@ -1,4 +1,9 @@
-import { agentInvocationsRepository, commentsRepository, profilesRepository } from '@kombuse/persistence'
+import {
+  agentInvocationsRepository,
+  commentsRepository,
+  profilesRepository,
+  projectsRepository,
+} from '@kombuse/persistence'
 import { buildConversationSummary, renderTemplate } from '@kombuse/services'
 import {
   BACKEND_TYPES,
@@ -193,6 +198,38 @@ function clearTerminalMetadataPatch(): Partial<SessionMetadata> {
     terminal_at: undefined,
     terminal_error: undefined,
   }
+}
+
+function normalizeProjectId(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : undefined
+}
+
+function resolveContinuationProjectId(options: {
+  messageProjectId: unknown
+  persistedSessionProjectId: unknown
+  invocationProjectId: unknown
+  invocationContext: Record<string, unknown>
+}): string | undefined {
+  const trustedProjectId =
+    normalizeProjectId(options.messageProjectId)
+    ?? normalizeProjectId(options.persistedSessionProjectId)
+    ?? normalizeProjectId(options.invocationProjectId)
+
+  if (trustedProjectId) {
+    return trustedProjectId
+  }
+
+  const legacyContextProjectId = normalizeProjectId(options.invocationContext.project_id)
+  if (!legacyContextProjectId) {
+    return undefined
+  }
+
+  return projectsRepository.get(legacyContextProjectId) ? legacyContextProjectId : undefined
 }
 
 function classifyRuntimeFailureReason(errorMessage: string | undefined): string {
@@ -565,16 +602,18 @@ export function startAgentChatSession(
     lastInvocation &&
     (lastInvocation.status === 'failed' || lastInvocation.status === 'completed')
   ) {
+    const continuationProjectId = resolveContinuationProjectId({
+      messageProjectId: projectId,
+      persistedSessionProjectId: existingSession?.project_id,
+      invocationProjectId: lastInvocation.project_id,
+      invocationContext: lastInvocation.context,
+    })
     const continuation = agentInvocationsRepository.create({
       agent_id: lastInvocation.agent_id,
       trigger_id: lastInvocation.trigger_id,
       event_id: lastInvocation.event_id ?? undefined,
       session_id: persistentSessionId,
-      project_id:
-        lastInvocation.project_id
-        ?? (typeof lastInvocation.context.project_id === 'string'
-          ? lastInvocation.context.project_id
-          : undefined),
+      project_id: continuationProjectId,
       context: lastInvocation.context,
     })
     agentInvocationsRepository.update(continuation.id, {

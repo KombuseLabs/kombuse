@@ -78,6 +78,7 @@ import {
   agentInvocationsRepository,
   commentsRepository,
   profileSettingsRepository,
+  projectsRepository,
   sessionsRepository,
   ticketsRepository,
 } from '@kombuse/persistence'
@@ -681,6 +682,118 @@ describe('startAgentChatSession allowedTools wiring', () => {
     await waitForBackendStart(mockBackend)
 
     expect(capturedOptions?.permissionMode, 'coder preset should pass permissionMode plan').toBe('plan')
+  })
+})
+
+describe('startAgentChatSession continuation project scoping', () => {
+  function createPassiveBackend(): AgentBackend {
+    return {
+      name: BACKEND_TYPES.CLAUDE_CODE,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+  }
+
+  function createDependencies(backend: AgentBackend) {
+    return {
+      getAgent: vi.fn(() => ({
+        id: 'ticket-analyzer',
+        is_enabled: true,
+        system_prompt: '',
+        config: { type: 'coder' },
+      })),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'trigger-session-abc' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => ({
+          id: 'session-1',
+          kombuse_session_id: 'trigger-session-abc',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          backend_session_id: 'backend-abc',
+          ticket_id: 42,
+          project_id: null,
+          agent_id: 'ticket-analyzer',
+          status: 'completed',
+          metadata: {},
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          failed_at: null,
+          last_event_seq: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(projectsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue(null)
+  })
+
+  it('skips stale legacy context project_id when creating continuation invocation', async () => {
+    const backend = createPassiveBackend()
+    const deps = createDependencies(backend)
+
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([
+      {
+        id: 17,
+        agent_id: 'ticket-analyzer',
+        trigger_id: 11,
+        event_id: 99,
+        session_id: null,
+        project_id: null,
+        kombuse_session_id: 'trigger-session-abc',
+        status: 'completed',
+        attempts: 1,
+        max_attempts: 3,
+        run_at: new Date().toISOString(),
+        context: { project_id: 'deleted-project', ticket_id: 42 },
+        result: null,
+        error: null,
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      },
+    ])
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'resume this session',
+        kombuseSessionId: 'trigger-session-abc' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(projectsRepository.get).toHaveBeenCalledWith('deleted-project')
+    expect(agentInvocationsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        session_id: 'session-1',
+        project_id: undefined,
+      })
+    )
   })
 })
 
