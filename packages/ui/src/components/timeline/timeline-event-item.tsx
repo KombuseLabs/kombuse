@@ -5,6 +5,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
 import { cn } from '../../lib/utils'
 import { useSessionByKombuseId } from '../../hooks/use-sessions'
 import { TicketMentionChip } from '../ticket-mention-chip'
+import { AgentHoverCard } from '../agents'
 import {
   Tag,
   Plus,
@@ -55,6 +56,14 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
   const Icon = config.icon
 
   const actorLabel = event.actor?.name || event.actor_id || event.actor_type
+  const actorNode =
+    event.actor_type === 'agent' && event.actor_id ? (
+      <AgentHoverCard agentId={event.actor_id}>
+        <span className="font-medium text-foreground">{actorLabel}</span>
+      </AgentHoverCard>
+    ) : (
+      <span className="font-medium text-foreground">{actorLabel}</span>
+    )
 
   // Parse payload for richer event labels
   let eventLabel = config.label
@@ -136,7 +145,7 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
     >
       <Icon className="size-3.5 shrink-0" />
       <span>
-        <span className="font-medium text-foreground">{actorLabel}</span>
+        {actorNode}
         {sessionUrl && linkedSession ? (
           <>
             <Tooltip>

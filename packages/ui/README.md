@@ -608,10 +608,11 @@ Props:
 - `onClose`: Callback when close button is clicked
 - `isEditable`: When `true`, enables:
   - Edit button to toggle edit mode (title, description, status)
-  - Delete button
+  - Delete button with confirmation dialog before permanent removal
   - Label management
 - Edit mode supports image attachments via paperclip button, drag-and-drop, and clipboard paste. Staged files are uploaded on save
 - View mode displays ticket attachments as clickable thumbnails with lightbox
+- Delete confirmation warns that related comments and attachments are also removed; confirm action shows `Deleting...` while pending
 
 ### Session Components
 
@@ -767,7 +768,7 @@ Features:
 ### Agent Components
 
 ```typescript
-import { AgentCard, AgentDetail } from '@kombuse/ui/components'
+import { AgentCard, AgentDetail, AgentHoverCard, AgentPreviewCard } from '@kombuse/ui/components'
 
 // Card for agent list view — shows name, avatar, toggle, and agent ID
 <AgentCard
@@ -788,6 +789,14 @@ import { AgentCard, AgentDetail } from '@kombuse/ui/components'
   onSave={(updates) => ...}
   onDelete={() => ...}
 />
+
+// Hover any agent name/label to show critical details (lazy fetched)
+<AgentHoverCard agentId={agent.id}>
+  <span className="font-medium">{profile.name}</span>
+</AgentHoverCard>
+
+// Preview content used by AgentHoverCard (also usable standalone)
+<AgentPreviewCard agentId={agent.id} />
 ```
 
 Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users can easily reference it in trigger conditions. `AgentDetail` includes a click-to-copy button next to the ID.
@@ -797,6 +806,15 @@ Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users ca
 - `Configuration`: available-in-chat toggle, backend override, model override, permissions, triggers
 - Tab switches preserve in-progress editor state (for example unsaved permission/trigger drafts)
 - Save action: rendered in a persistent footer and shown only when there are unsaved changes
+
+`AgentHoverCard` props:
+- `agentId`: target agent ID
+- `children`: trigger node rendered inline
+
+`AgentPreviewCard` props:
+- `agentId`: target agent ID
+- `enabled`: optional lazy-load flag (defaults to true)
+- `onError`: optional callback when data loading fails
 
 ### Prompt Editor
 

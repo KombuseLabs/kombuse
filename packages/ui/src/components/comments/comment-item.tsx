@@ -15,6 +15,7 @@ import { useFileStaging } from '../../hooks/use-file-staging'
 import { StagedFilePreviews } from '../staged-file-previews'
 import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare, Paperclip } from 'lucide-react'
 import { getAvatarIcon } from '../agents/avatar-picker'
+import { AgentHoverCard } from '../agents'
 
 interface CommentItemProps {
   comment: CommentWithAuthor
@@ -95,6 +96,15 @@ function CommentItem({
     ? parseSessionId(comment.kombuse_session_id)?.origin ?? null
     : null
 
+  const authorNameNode =
+    comment.author.type === 'agent' ? (
+      <AgentHoverCard agentId={comment.author.id}>
+        <span className="text-sm font-medium">{comment.author.name}</span>
+      </AgentHoverCard>
+    ) : (
+      <span className="text-sm font-medium">{comment.author.name}</span>
+    )
+
   return (
     <div id={`comment-${comment.id}`} className={cn('p-3 rounded-lg border bg-card transition-shadow duration-1000', className)}>
       <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-border">
@@ -103,7 +113,7 @@ function CommentItem({
             const Icon = getAvatarIcon(comment.author.avatar_url)
             return <Icon className="size-4 text-muted-foreground" />
           })()}
-          <span className="text-sm font-medium">{comment.author.name}</span>
+          {authorNameNode}
           {sessionUrl && linkedSession && (
             <Tooltip>
               <TooltipTrigger asChild>

@@ -1,6 +1,7 @@
 import type { EventWithActor, ActorType } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Badge } from '../../base/badge'
+import { AgentHoverCard } from '../agents'
 import { TicketMentionChip } from '../ticket-mention-chip'
 import {
   Ticket,
@@ -133,6 +134,7 @@ function EventItem({ event, className }: EventItemProps) {
   const actorConfig = actorTypeConfig[event.actor_type]
   const Icon = typeConfig.icon
   const ActorIcon = actorConfig.icon
+  const actorLabel = event.actor?.name || event.actor_id || actorConfig.label
 
   const payload =
     typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
@@ -159,7 +161,13 @@ function EventItem({ event, className }: EventItemProps) {
 
           <Badge variant="outline" className="text-xs gap-1">
             <ActorIcon className="size-3" />
-            {event.actor?.name || event.actor_id || actorConfig.label}
+            {event.actor_type === 'agent' && event.actor_id ? (
+              <AgentHoverCard agentId={event.actor_id}>
+                <span>{actorLabel}</span>
+              </AgentHoverCard>
+            ) : (
+              actorLabel
+            )}
           </Badge>
 
           {event.ticket_id && event.project_id && (
