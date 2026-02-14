@@ -839,7 +839,12 @@ Props:
 - `showAvailableVariables`: Show collapsible panel of available template variables (default: false)
 - `availableVariables`: Override the default variable catalog (`TEMPLATE_VARIABLE_GROUPS`)
 
-The available variables panel lists variables grouped by category (Event, Ticket, Project, Comment, Actor, Session). Clicking a variable badge inserts `{{ variable }}` at the cursor position. Variables already used in the prompt are highlighted with a checkmark.
+`TemplateVariable` shape:
+- `name`: Variable key used in templates
+- `description`: What the variable provides
+- `availability` (optional): Condition-based availability guidance shown in hover help
+
+The available variables panel lists variables grouped by category (Event, Ticket, Project, Comment, Actor, Session). Clicking a variable badge inserts `{{ variable }}` at the cursor position. Variables already used in the prompt are highlighted with a checkmark. Hovering or focusing a variable badge opens a custom tooltip with both `description` and `availability` details. If a custom variable omits `availability`, the tooltip shows a fallback availability message.
 
 ### Chat Components
 

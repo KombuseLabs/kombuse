@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils'
 import { Textarea } from '../../base/textarea'
 import { Button } from '../../base/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../base/collapsible'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../base/tooltip'
 import { TEMPLATE_VARIABLE_GROUPS, type TemplateVariableGroup } from './template-variables'
 
 interface PromptEditorProps {
@@ -24,6 +25,7 @@ interface PromptEditorProps {
 
 // Regex to match template variables like {{ticket.title}}, {{user.name}}
 const VARIABLE_REGEX = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}/g
+const VARIABLE_AVAILABILITY_FALLBACK = 'Availability details are not defined for this variable.'
 
 function PromptEditor({
   value,
@@ -187,25 +189,41 @@ function PromptEditor({
                     {group.variables.map((variable) => {
                       const isUsed = usedVariableSet.has(variable.name)
                       return (
-                        <button
-                          key={variable.name}
-                          type="button"
-                          title={variable.description}
-                          onClick={() => insertAtCursor(variable.name)}
-                          disabled={disabled || isPreview}
-                          className={cn(
-                            'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono',
-                            'border transition-colors cursor-pointer',
-                            'hover:bg-primary/10 hover:border-primary/30',
-                            'disabled:cursor-not-allowed disabled:opacity-50',
-                            isUsed
-                              ? 'bg-primary/10 border-primary/20 text-primary'
-                              : 'bg-muted border-transparent text-muted-foreground'
-                          )}
-                        >
-                          {isUsed && <Check className="size-3" />}
-                          {`{{ ${variable.name} }}`}
-                        </button>
+                        <Tooltip key={variable.name}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => insertAtCursor(variable.name)}
+                              disabled={disabled || isPreview}
+                              className={cn(
+                                'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono',
+                                'border transition-colors cursor-pointer',
+                                'hover:bg-primary/10 hover:border-primary/30',
+                                'disabled:cursor-not-allowed disabled:opacity-50',
+                                isUsed
+                                  ? 'bg-primary/10 border-primary/20 text-primary'
+                                  : 'bg-muted border-transparent text-muted-foreground'
+                              )}
+                            >
+                              {isUsed && <Check className="size-3" />}
+                              {`{{ ${variable.name} }}`}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            align="start"
+                            className="max-w-xs space-y-2 px-3 py-2 text-left"
+                          >
+                            <div className="space-y-0.5">
+                              <div className="font-semibold">Description</div>
+                              <div>{variable.description}</div>
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="font-semibold">Available when</div>
+                              <div>{variable.availability ?? VARIABLE_AVAILABILITY_FALLBACK}</div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
                       )
                     })}
                   </div>
