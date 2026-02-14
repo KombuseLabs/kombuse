@@ -298,6 +298,12 @@ export const commentsRepository = {
 
       // Update ticket's last_activity_at
       db.prepare("UPDATE tickets SET last_activity_at = datetime('now') WHERE id = ?").run(payload.ticket_id)
+      db.prepare(`
+        INSERT INTO ticket_views (ticket_id, profile_id, last_viewed_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(ticket_id, profile_id) DO UPDATE SET
+          last_viewed_at = datetime('now')
+      `).run(payload.ticket_id, payload.author_id)
 
       // Determine actor type from author profile for event logging
       const authorProfile = profilesRepository.get(payload.author_id)
@@ -483,6 +489,12 @@ export const commentsRepository = {
 
       // Update ticket's last_activity_at
       db.prepare("UPDATE tickets SET last_activity_at = datetime('now') WHERE id = ?").run(existingRow.ticket_id)
+      db.prepare(`
+        INSERT INTO ticket_views (ticket_id, profile_id, last_viewed_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(ticket_id, profile_id) DO UPDATE SET
+          last_viewed_at = datetime('now')
+      `).run(existingRow.ticket_id, existingRow.author_id)
 
       // If body changed, re-parse mentions
       if (input.body !== undefined) {

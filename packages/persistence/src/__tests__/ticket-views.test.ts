@@ -4,6 +4,7 @@ import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
 import { ticketViewsRepository } from '../ticket-views'
 import { ticketsRepository } from '../tickets'
 import { labelsRepository } from '../labels'
+import { commentsRepository } from '../comments'
 
 const TEST_TICKET = {
   title: 'Test ticket',
@@ -161,6 +162,143 @@ describe('tickets list with viewer_id (has_unread)', () => {
     const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
     const found = tickets.find((t) => t.id === ticket.id)
     expect((found as any).has_unread, 'ticket with new activity should be unread').toBe(1)
+  })
+
+  it('should keep has_unread=0 after self-authored comment create', () => {
+    const ticket = ticketsRepository.create({
+      title: 'Self comment create',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    ticketViewsRepository.upsert({
+      ticket_id: ticket.id,
+      profile_id: TEST_USER_ID,
+    })
+
+    db.prepare(
+      "UPDATE ticket_views SET last_viewed_at = '2020-01-01 00:00:00' WHERE ticket_id = ? AND profile_id = ?"
+    ).run(ticket.id, TEST_USER_ID)
+
+    commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Self-authored comment',
+    })
+
+    const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
+    const found = tickets.find((t) => t.id === ticket.id)
+    expect((found as any).has_unread, 'self-authored comment should not mark unread').toBe(0)
+  })
+
+  it('should keep has_unread=0 after self-authored comment edit', () => {
+    const ticket = ticketsRepository.create({
+      title: 'Self comment edit',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Initial body',
+    })
+
+    ticketViewsRepository.upsert({
+      ticket_id: ticket.id,
+      profile_id: TEST_USER_ID,
+    })
+
+    db.prepare(
+      "UPDATE ticket_views SET last_viewed_at = '2020-01-01 00:00:00' WHERE ticket_id = ? AND profile_id = ?"
+    ).run(ticket.id, TEST_USER_ID)
+
+    commentsRepository.update(comment.id, { body: 'Edited body' })
+
+    const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
+    const found = tickets.find((t) => t.id === ticket.id)
+    expect((found as any).has_unread, 'self-authored comment edit should not mark unread').toBe(0)
+  })
+
+  it('should return has_unread=1 after another user comments', () => {
+    const ticket = ticketsRepository.create({
+      title: 'Other user comment',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    db.prepare(
+      "INSERT INTO profiles (id, type, name) VALUES ('user-2', 'user', 'User 2')"
+    ).run()
+
+    ticketViewsRepository.upsert({
+      ticket_id: ticket.id,
+      profile_id: TEST_USER_ID,
+    })
+
+    db.prepare(
+      "UPDATE ticket_views SET last_viewed_at = '2020-01-01 00:00:00' WHERE ticket_id = ? AND profile_id = ?"
+    ).run(ticket.id, TEST_USER_ID)
+
+    commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: 'user-2',
+      body: 'Comment from someone else',
+    })
+
+    const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
+    const found = tickets.find((t) => t.id === ticket.id)
+    expect((found as any).has_unread, 'other-user comment should mark unread').toBe(1)
+  })
+
+  it('should keep has_unread=0 after self-authored ticket update', () => {
+    const ticket = ticketsRepository.create({
+      title: 'Self ticket update',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    ticketViewsRepository.upsert({
+      ticket_id: ticket.id,
+      profile_id: TEST_USER_ID,
+    })
+
+    db.prepare(
+      "UPDATE ticket_views SET last_viewed_at = '2020-01-01 00:00:00' WHERE ticket_id = ? AND profile_id = ?"
+    ).run(ticket.id, TEST_USER_ID)
+
+    ticketsRepository.update(ticket.id, { title: 'Updated by self' }, TEST_USER_ID)
+
+    const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
+    const found = tickets.find((t) => t.id === ticket.id)
+    expect((found as any).has_unread, 'self-authored ticket update should not mark unread').toBe(0)
+  })
+
+  it('should return has_unread=1 after another user updates the ticket', () => {
+    const ticket = ticketsRepository.create({
+      title: 'Other user ticket update',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    db.prepare(
+      "INSERT INTO profiles (id, type, name) VALUES ('user-2', 'user', 'User 2')"
+    ).run()
+
+    ticketViewsRepository.upsert({
+      ticket_id: ticket.id,
+      profile_id: TEST_USER_ID,
+    })
+
+    db.prepare(
+      "UPDATE ticket_views SET last_viewed_at = '2020-01-01 00:00:00' WHERE ticket_id = ? AND profile_id = ?"
+    ).run(ticket.id, TEST_USER_ID)
+
+    ticketsRepository.update(ticket.id, { title: 'Updated by someone else' }, 'user-2')
+
+    const tickets = ticketsRepository.list({ viewer_id: TEST_USER_ID })
+    const found = tickets.find((t) => t.id === ticket.id)
+    expect((found as any).has_unread, 'other-user ticket update should mark unread').toBe(1)
   })
 
   it('should not include has_unread when viewer_id is not provided', () => {

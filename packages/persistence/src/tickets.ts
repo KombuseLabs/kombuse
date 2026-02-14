@@ -14,6 +14,7 @@ import { getDatabase } from './database'
 import { eventsRepository } from './events'
 import { labelsRepository } from './labels'
 import { profilesRepository } from './profiles'
+import { ticketViewsRepository } from './ticket-views'
 
 const FTS5_KEYWORDS = new Set(['AND', 'OR', 'NOT', 'NEAR'])
 
@@ -552,6 +553,13 @@ export const ticketsRepository = {
     db.prepare(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ?`).run(
       ...params
     )
+
+    if (updatedById) {
+      ticketViewsRepository.upsert({
+        ticket_id: id,
+        profile_id: updatedById,
+      })
+    }
 
     const updatedTicket = this.get(id)
 
