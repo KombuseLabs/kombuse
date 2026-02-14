@@ -117,3 +117,62 @@ describe('AppProvider permission key collision handling', () => {
     expect(getCtx().pendingPermissions.has('chat-beta:req-1')).toBe(true)
   })
 })
+
+describe('AppProvider active session ticketTitle handling', () => {
+  beforeEach(() => {
+    mockWebSocketHandler = undefined
+    mockGetState.mockReset()
+    mockGetState.mockResolvedValue({
+      pendingPermissions: [],
+      ticketAgentStatuses: [],
+      activeSessions: [],
+    })
+  })
+
+  it('stores ticketTitle from websocket agent.started messages', async () => {
+    const { getCtx } = renderProvider()
+
+    await waitFor(() => {
+      expect(mockGetState).toHaveBeenCalled()
+    })
+    expect(mockWebSocketHandler).toBeDefined()
+
+    act(() => {
+      mockWebSocketHandler?.({
+        type: 'agent.started',
+        kombuseSessionId: 'chat-ticket-title',
+        ticketId: 42,
+        ticketTitle: 'Render title snippet beside ticket id',
+        agentName: 'Coding Agent',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      })
+    })
+
+    const session = getCtx().activeSessions.get('chat-ticket-title')
+    expect(session).toBeDefined()
+    expect(session?.ticketTitle).toBe('Render title snippet beside ticket id')
+  })
+
+  it('ingests ticketTitle from sync state active sessions', async () => {
+    mockGetState.mockResolvedValue({
+      pendingPermissions: [],
+      ticketAgentStatuses: [],
+      activeSessions: [{
+        kombuseSessionId: 'sync-ticket-title',
+        agentName: 'Planning Agent',
+        ticketId: 288,
+        ticketTitle: 'In active agent component next to ticket id show a bit of the title for better context',
+        startedAt: '2026-02-14T10:05:00.000Z',
+      }],
+    })
+
+    const { getCtx } = renderProvider()
+
+    await waitFor(() => {
+      const session = getCtx().activeSessions.get('sync-ticket-title')
+      expect(session?.ticketTitle).toBe(
+        'In active agent component next to ticket id show a bit of the title for better context'
+      )
+    })
+  })
+})

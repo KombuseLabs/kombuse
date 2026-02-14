@@ -147,6 +147,7 @@ export function AppProvider({
             kombuseSessionId: message.kombuseSessionId,
             agentName: message.agentName ?? 'Agent',
             ticketId: message.ticketId,
+            ticketTitle: message.ticketTitle,
             startedAt: message.startedAt ?? new Date().toISOString(),
           })
           void queryClient.invalidateQueries({ queryKey: ['sessions'] })

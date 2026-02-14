@@ -352,6 +352,7 @@ export async function processEventAndRunAgents(
             type: 'agent.started',
             kombuseSessionId: evt.kombuseSessionId,
             ticketId: evt.ticketId,
+            ticketTitle: evt.ticketTitle,
             agentName: evt.agentName,
             startedAt: evt.startedAt,
           }

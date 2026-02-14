@@ -315,7 +315,7 @@ import { ActiveAgentsIndicator } from '@kombuse/ui/components'
   <ProfileButton onNavigate={navigate} />
 </Header>
 // Shows Bot icon with green badge count of running agents
-// Popover lists each session with agent name, status, ticket link, and duration
+// Popover lists each session with agent name, status, ticket metadata (`#id` + truncated title when available), and duration
 // Props: onNavigate?: (path: string) => void
 
 // CommandPalette supports #ticket search and navigation

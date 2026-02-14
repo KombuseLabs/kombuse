@@ -16,7 +16,14 @@ export type AgentInvokeMessage = Extract<ClientMessage, { type: 'agent.invoke' }
 export type PermissionResponseMessage = Extract<ClientMessage, { type: 'permission.response' }>
 
 export type AgentExecutionEvent =
-  | { type: 'started'; kombuseSessionId: string; ticketId?: number; agentName?: string; startedAt?: string }
+  | {
+      type: 'started'
+      kombuseSessionId: string
+      ticketId?: number
+      ticketTitle?: string
+      agentName?: string
+      startedAt?: string
+    }
   | { type: 'event'; kombuseSessionId: string; event: AgentEvent }
   | {
       type: 'complete'

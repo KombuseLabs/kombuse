@@ -1,4 +1,4 @@
-import { sessionsRepository } from '@kombuse/persistence'
+import { sessionsRepository, ticketsRepository } from '@kombuse/persistence'
 import type { SessionStateMachine } from '@kombuse/services'
 import { BACKEND_TYPES, type ActiveSessionInfo, type AgentActivityStatus, type AgentBackend, type BackendType, type ServerMessage, type Session, type SessionMetadata } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
@@ -279,10 +279,16 @@ export function getActiveSessions(): ActiveSessionInfo[] {
     if (!session.kombuse_session_id || !activeBackends.has(session.kombuse_session_id)) {
       continue
     }
+    const ticketId = session.ticket_id ?? undefined
+    const ticketTitle =
+      typeof ticketId === 'number'
+        ? ticketsRepository.get(ticketId)?.title ?? undefined
+        : undefined
     results.push({
       kombuseSessionId: session.kombuse_session_id,
       agentName: session.agent_name ?? 'Agent',
-      ticketId: session.ticket_id ?? undefined,
+      ticketId,
+      ticketTitle,
       startedAt: session.started_at,
     })
   }

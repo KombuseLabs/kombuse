@@ -117,6 +117,7 @@ function handleAgentInvoke(
           type: 'agent.started',
           kombuseSessionId: event.kombuseSessionId,
           ticketId: event.ticketId,
+          ticketTitle: event.ticketTitle,
           agentName: event.agentName,
           startedAt: event.startedAt,
         }

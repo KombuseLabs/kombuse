@@ -47,6 +47,7 @@ export interface ActiveSessionInfo {
   kombuseSessionId: string
   agentName: string
   ticketId?: number
+  ticketTitle?: string
   startedAt: string
 }
 

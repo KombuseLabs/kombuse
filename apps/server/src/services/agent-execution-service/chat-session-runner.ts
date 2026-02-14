@@ -3,6 +3,7 @@ import {
   commentsRepository,
   profilesRepository,
   projectsRepository,
+  ticketsRepository,
 } from '@kombuse/persistence'
 import { buildConversationSummary, renderTemplate } from '@kombuse/services'
 import {
@@ -579,6 +580,10 @@ export function startAgentChatSession(
   }
 
   const ticketId = options?.ticketId ?? existingSession?.ticket_id ?? undefined
+  const ticketTitle =
+    typeof ticketId === 'number'
+      ? ticketsRepository.get(ticketId)?.title ?? undefined
+      : undefined
   const resumeSessionId =
     typeof existingSession?.backend_session_id === 'string' &&
     existingSession.backend_session_id.trim().length > 0
@@ -667,6 +672,7 @@ export function startAgentChatSession(
       type: 'started',
       kombuseSessionId: appSessionId,
       ticketId,
+      ticketTitle,
       agentName,
       startedAt: new Date().toISOString(),
     })
@@ -793,6 +799,7 @@ export function startAgentChatSession(
     type: 'started',
     kombuseSessionId: appSessionId,
     ticketId,
+    ticketTitle,
     agentName,
     startedAt: new Date().toISOString(),
   })

@@ -98,6 +98,7 @@ import {
   stopAgentSession,
   stopAllActiveBackends,
   cleanupOrphanedSessions,
+  getActiveSessions,
   getPendingPermissions,
   registerBackend,
   resetBackendIdleTimeout,
@@ -121,6 +122,184 @@ async function waitForBackendStart(backend: AgentBackend): Promise<void> {
   }
   throw new Error('backend.start() was not called within timeout')
 }
+
+describe('ticket title propagation for active sessions', () => {
+  function createPassiveBackend(name: AgentBackend['name'] = BACKEND_TYPES.CLAUDE_CODE): AgentBackend {
+    return {
+      name,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+  }
+
+  function createDeps(backend: AgentBackend) {
+    return {
+      getAgent: vi.fn(() => null),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'chat-ticket-title-id' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => ({
+          id: 'session-1',
+          kombuse_session_id: 'chat-ticket-title-id',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          backend_session_id: null,
+          ticket_id: 42,
+          project_id: null,
+          agent_id: null,
+          status: 'pending',
+          metadata: {},
+          started_at: new Date().toISOString(),
+          completed_at: null,
+          failed_at: null,
+          last_event_seq: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(ticketsRepository.get).mockReturnValue(null)
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
+  })
+
+  it('includes ticketTitle in started event when ticket is resolvable', () => {
+    const backend = createPassiveBackend()
+    const deps = createDeps(backend)
+    const emittedEvents: AgentExecutionEvent[] = []
+
+    vi.mocked(ticketsRepository.get).mockReturnValue({
+      id: 42,
+      title: 'Improve active agent context row',
+    } as any)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke',
+        message: 'hello',
+        kombuseSessionId: 'chat-ticket-title-id' as KombuseSessionId,
+      },
+      (event) => emittedEvents.push(event),
+      deps as any
+    )
+
+    const started = emittedEvents.find(
+      (event): event is Extract<AgentExecutionEvent, { type: 'started' }> => event.type === 'started'
+    )
+
+    expect(started).toBeDefined()
+    expect(started).toMatchObject({
+      kombuseSessionId: 'chat-ticket-title-id',
+      ticketId: 42,
+      ticketTitle: 'Improve active agent context row',
+    })
+  })
+
+  it('keeps ticketTitle undefined in started event when ticket lookup fails', () => {
+    const backend = createPassiveBackend()
+    const deps = createDeps(backend)
+    const emittedEvents: AgentExecutionEvent[] = []
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke',
+        message: 'hello',
+        kombuseSessionId: 'chat-ticket-title-id' as KombuseSessionId,
+      },
+      (event) => emittedEvents.push(event),
+      deps as any
+    )
+
+    const started = emittedEvents.find(
+      (event): event is Extract<AgentExecutionEvent, { type: 'started' }> => event.type === 'started'
+    )
+
+    expect(started).toBeDefined()
+    expect(started?.ticketId).toBe(42)
+    expect(started?.ticketTitle).toBeUndefined()
+  })
+
+  it('enriches getActiveSessions with ticket titles and preserves fallback behavior', () => {
+    const activeBackend = createPassiveBackend()
+    registerBackend('running-session-1', activeBackend)
+    registerBackend('running-session-2', activeBackend)
+    registerBackend('running-session-3', activeBackend)
+
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([
+        {
+          kombuse_session_id: 'running-session-1',
+          agent_name: 'Agent A',
+          ticket_id: 42,
+          started_at: '2026-02-14T00:00:00.000Z',
+        },
+        {
+          kombuse_session_id: 'running-session-2',
+          agent_name: 'Agent B',
+          ticket_id: 43,
+          started_at: '2026-02-14T00:01:00.000Z',
+        },
+      ])
+      .mockReturnValueOnce([
+        {
+          kombuse_session_id: 'running-session-3',
+          agent_name: 'Agent C',
+          ticket_id: null,
+          started_at: '2026-02-14T00:02:00.000Z',
+        },
+      ])
+
+    vi.mocked(ticketsRepository.get).mockImplementation((ticketId: number) => {
+      if (ticketId === 42) {
+        return {
+          id: 42,
+          title: 'Show ticket title in active agents',
+        } as any
+      }
+      return null
+    })
+
+    const sessions = getActiveSessions()
+
+    expect(sessions).toEqual([
+      expect.objectContaining({
+        kombuseSessionId: 'running-session-1',
+        ticketId: 42,
+        ticketTitle: 'Show ticket title in active agents',
+      }),
+      expect.objectContaining({
+        kombuseSessionId: 'running-session-2',
+        ticketId: 43,
+        ticketTitle: undefined,
+      }),
+      expect.objectContaining({
+        kombuseSessionId: 'running-session-3',
+        ticketId: undefined,
+        ticketTitle: undefined,
+      }),
+    ])
+  })
+})
 
 describe('processEventAndRunAgents ticket trigger suppression', () => {
   beforeEach(() => {

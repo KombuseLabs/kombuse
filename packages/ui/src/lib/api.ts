@@ -691,6 +691,7 @@ export interface SyncState {
     kombuseSessionId: string
     agentName: string
     ticketId?: number
+    ticketTitle?: string
     startedAt: string
   }>
 }

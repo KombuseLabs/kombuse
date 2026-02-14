@@ -79,14 +79,23 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
                   </span>
                 </div>
                 <div className="mt-1 flex items-center gap-2 pl-3.5">
-                  <span className="truncate text-xs text-muted-foreground">
-                    {session.ticketId ? `#${session.ticketId}` : 'Chat'}
-                  </span>
+                  <div className="min-w-0 flex-1 text-xs text-muted-foreground">
+                    {session.ticketId ? (
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className="shrink-0">{`#${session.ticketId}`}</span>
+                        {session.ticketTitle ? (
+                          <span className="truncate">{session.ticketTitle}</span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="truncate">Chat</span>
+                    )}
+                  </div>
                   {onNavigate && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="ml-auto h-6 px-1.5 text-xs"
+                      className="ml-auto h-6 shrink-0 px-1.5 text-xs"
                       onClick={() => onNavigate(getNavigationPath(session))}
                     >
                       <ExternalLink className="mr-1 size-3" />

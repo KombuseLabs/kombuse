@@ -65,7 +65,14 @@ export type ServerMessage =
   | { type: 'pong' }
   | { type: 'error'; message: string }
   | { type: 'update:status'; status: UpdateStatus }
-  | { type: 'agent.started'; kombuseSessionId: string; ticketId?: number; agentName?: string; startedAt?: string }
+  | {
+      type: 'agent.started'
+      kombuseSessionId: string
+      ticketId?: number
+      ticketTitle?: string
+      agentName?: string
+      startedAt?: string
+    }
   | { type: 'agent.event'; kombuseSessionId: string; event: AgentStreamEvent }
   | {
       type: 'agent.complete'
