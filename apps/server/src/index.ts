@@ -60,11 +60,12 @@ export async function createServer({ port, db }: ServerOptions) {
   setDatabase(db);
 
   // Clean up orphaned sessions from previous runs.
-  // Use inactivity-based cleanup so we don't falsely abort sessions that are
-  // still actively updating from another process.
+  // Startup recovery should reconcile immediately because in-process backends
+  // are gone after restart.
   const abortedCount = cleanupOrphanedSessions({
     source: 'startup_cleanup',
     reason: 'server_startup_recovery',
+    minInactiveMs: 0,
   });
   if (abortedCount > 0) {
     console.log(

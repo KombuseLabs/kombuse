@@ -2403,6 +2403,91 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
     expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()
     expect(wsHub.broadcastToTopic).not.toHaveBeenCalled()
   })
+
+  it('cleans recently updated orphaned sessions during startup recovery', () => {
+    const recentRunningSession = {
+      id: 'session-running-recent',
+      kombuse_session_id: 'running-recent-session',
+      ticket_id: 55,
+      status: 'running',
+      updated_at: new Date().toISOString(),
+    }
+
+    const recentPendingSession = {
+      id: 'session-pending-recent',
+      kombuse_session_id: 'pending-recent-session',
+      ticket_id: 56,
+      status: 'pending',
+      updated_at: new Date().toISOString(),
+    }
+
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([recentRunningSession])
+      .mockReturnValueOnce([recentPendingSession])
+
+    const deps = {
+      sessionPersistence: {
+        persistEvent: vi.fn(),
+        abortSession: vi.fn(),
+        setMetadata: vi.fn(),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+      },
+    }
+
+    const cleaned = cleanupOrphanedSessions({
+      source: 'startup_cleanup',
+      reason: 'server_startup_recovery',
+      minInactiveMs: 0,
+    }, deps as any)
+
+    expect(cleaned).toBe(2)
+    expect(deps.stateMachine.transition).toHaveBeenCalledWith(
+      'session-running-recent',
+      'abort',
+      expect.objectContaining({
+        kombuseSessionId: 'running-recent-session',
+        ticketId: 55,
+        error: 'server_startup_recovery',
+      })
+    )
+    expect(deps.stateMachine.transition).toHaveBeenCalledWith(
+      'session-pending-recent',
+      'abort',
+      expect.objectContaining({
+        kombuseSessionId: 'pending-recent-session',
+        ticketId: 56,
+        error: 'server_startup_recovery',
+      })
+    )
+    expect(wsHub.broadcastAgentMessage).toHaveBeenCalledWith(
+      'running-recent-session',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'running-recent-session',
+        status: 'aborted',
+        reason: 'server_startup_recovery',
+      })
+    )
+    expect(wsHub.broadcastAgentMessage).toHaveBeenCalledWith(
+      'pending-recent-session',
+      expect.objectContaining({
+        type: 'agent.complete',
+        kombuseSessionId: 'pending-recent-session',
+        status: 'aborted',
+        reason: 'server_startup_recovery',
+      })
+    )
+    expect(wsHub.broadcastToTopic).toHaveBeenCalledWith(
+      '*',
+      expect.objectContaining({
+        type: 'agent.complete',
+        status: 'aborted',
+        reason: 'server_startup_recovery',
+      })
+    )
+  })
 })
 
 describe('cli_pre_normalization event filtering', () => {

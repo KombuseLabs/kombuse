@@ -7,6 +7,7 @@ import type {
   KombuseSessionId,
   PendingPermission,
   SessionEvent,
+  ActiveSessionInfo,
 } from '@kombuse/types'
 import { ChatProvider } from '../chat-provider'
 import { ChatCtx, type ChatContextValue } from '../chat-context'
@@ -18,6 +19,7 @@ let mockSessionEventsData:
   | { session_id: string; events: SessionEvent[]; total: number }
   | undefined
 let mockPendingPermissions: Map<string, PendingPermission>
+let mockActiveSessions: Map<string, ActiveSessionInfo>
 
 vi.mock('../../hooks/use-sessions', () => ({
   useSessionByKombuseId: () => ({ data: mockSessionData }),
@@ -37,7 +39,7 @@ vi.mock('../../hooks/use-app-context', () => ({
     isGenerating: false,
     currentSession: null,
     ticketAgentStatus: new Map(),
-    activeSessions: new Map(),
+    activeSessions: mockActiveSessions,
     setCurrentTicket: vi.fn(),
     setCurrentProjectId: vi.fn(),
     setView: vi.fn(),
@@ -145,14 +147,32 @@ describe('ChatProvider isLoading sync from session status', () => {
     mockSessionData = undefined
     mockSessionEventsData = undefined
     mockPendingPermissions = new Map()
+    mockActiveSessions = new Map()
   })
 
-  it('should set isLoading to true when session status is running', () => {
+  it('should set isLoading to true when running session is active', () => {
+    const sessionId = 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId
+    const session = makeSession({ status: 'running', kombuse_session_id: sessionId })
+    mockSessionData = session
+    mockActiveSessions = new Map([
+      [sessionId, {
+        kombuseSessionId: sessionId,
+        agentName: 'Test Agent',
+        startedAt: new Date().toISOString(),
+      }],
+    ])
+
+    const { getCtx } = renderProvider()
+
+    expect(getCtx().isLoading, 'isLoading should be true for active running session').toBe(true)
+  })
+
+  it('should set isLoading to false when running session is not active', () => {
     mockSessionData = makeSession({ status: 'running' })
 
     const { getCtx } = renderProvider()
 
-    expect(getCtx().isLoading, 'isLoading should be true for running session').toBe(true)
+    expect(getCtx().isLoading, 'isLoading should be false for inactive running session').toBe(false)
   })
 
   it('should set isLoading to false when session status is completed', () => {
@@ -185,6 +205,7 @@ describe('ChatProvider pendingPermission restoration from AppProvider', () => {
     mockSessionData = undefined
     mockSessionEventsData = undefined
     mockPendingPermissions = new Map()
+    mockActiveSessions = new Map()
   })
 
   it('should restore pendingPermission when AppProvider has a matching global permission', () => {
@@ -252,6 +273,7 @@ describe('ChatProvider historical event loading', () => {
     mockSessionData = undefined
     mockSessionEventsData = undefined
     mockPendingPermissions = new Map()
+    mockActiveSessions = new Map()
   })
 
   it('merges history refetches without dropping newer local events and dedupes by eventId', async () => {

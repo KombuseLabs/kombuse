@@ -114,7 +114,7 @@ export function ChatProvider({
     useState<SerializedAgentPermissionRequestEvent | null>(null)
   const previousSessionIdRef = useRef<string | null>(null)
 
-  const { pendingPermissions } = useAppContext()
+  const { pendingPermissions, activeSessions } = useAppContext()
 
   // Fetch session metadata — URL now contains kombuse_session_id
   const { data: sessionData } = useSessionByKombuseId(sessionId ?? null)
@@ -158,7 +158,10 @@ export function ChatProvider({
   // Sync isLoading from persisted session status on load
   useEffect(() => {
     if (sessionData?.status === 'running') {
-      setIsLoading(true)
+      const isLiveRunningSession =
+        typeof sessionData.kombuse_session_id === 'string'
+        && activeSessions.has(sessionData.kombuse_session_id)
+      setIsLoading(isLiveRunningSession)
       setSessionStatus('running')
       setTerminalReason(null)
       setTerminalMessage(null)
@@ -176,7 +179,7 @@ export function ChatProvider({
       setTerminalReason(reasonFromMetadata)
       setTerminalMessage(errorFromMetadata ?? formatTerminalReason(reasonFromMetadata))
     }
-  }, [sessionData])
+  }, [activeSessions, sessionData])
 
   // Restore pendingPermission from AppProvider's global map when loading a session.
   // This enables the interactive AskUserBar/PlanApprovalBar to render when navigating
