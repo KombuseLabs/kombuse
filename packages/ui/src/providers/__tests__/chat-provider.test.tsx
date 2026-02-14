@@ -1,19 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useContext, type ReactNode } from 'react'
-import type { PublicSession, KombuseSessionId, PendingPermission } from '@kombuse/types'
+import type {
+  PublicSession,
+  KombuseSessionId,
+  PendingPermission,
+  SessionEvent,
+} from '@kombuse/types'
 import { ChatProvider } from '../chat-provider'
 import { ChatCtx, type ChatContextValue } from '../chat-context'
 
 // --- Mocks ---
 
 let mockSessionData: PublicSession | undefined
+let mockSessionEventsData:
+  | { session_id: string; events: SessionEvent[]; total: number }
+  | undefined
 let mockPendingPermissions: Map<string, PendingPermission>
 
 vi.mock('../../hooks/use-sessions', () => ({
   useSessionByKombuseId: () => ({ data: mockSessionData }),
-  useSessionEvents: () => ({ data: undefined }),
+  useSessionEvents: () => ({ data: mockSessionEventsData }),
 }))
 
 vi.mock('../../hooks/use-websocket', () => ({
@@ -67,12 +75,34 @@ function makeSession(overrides: Partial<PublicSession> = {}): PublicSession {
   }
 }
 
+function makeSessionEvent(seq: number): SessionEvent {
+  return {
+    id: seq,
+    session_id: 'session-1',
+    seq,
+    event_type: 'message',
+    payload: {
+      type: 'message',
+      eventId: `event-${seq}`,
+      role: 'assistant',
+      content: `message-${seq}`,
+      backend: 'mock',
+      timestamp: seq,
+    },
+    created_at: new Date().toISOString(),
+  }
+}
+
 /** Renders ChatProvider and captures the context value via a consumer child. */
-function renderProvider(props: { sessionId?: string } = {}) {
+function renderProvider(props: { sessionId?: string | null; agentId?: string } = {}) {
   let ctx: ChatContextValue | null = null
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
+
+  const resolvedSessionId = Object.prototype.hasOwnProperty.call(props, 'sessionId')
+    ? props.sessionId
+    : 'sess-1'
 
   function Consumer() {
     ctx = useContext(ChatCtx)
@@ -86,13 +116,25 @@ function renderProvider(props: { sessionId?: string } = {}) {
   }
 
   const utils = render(
-    <ChatProvider sessionId={props.sessionId ?? 'sess-1'}>
+    <ChatProvider sessionId={resolvedSessionId} agentId={props.agentId}>
       <Consumer />
     </ChatProvider>,
     { wrapper: Wrapper }
   )
 
-  return { ...utils, getCtx: () => ctx! }
+  function rerenderProvider(nextProps: { sessionId?: string | null; agentId?: string } = {}) {
+    const nextResolvedSessionId = Object.prototype.hasOwnProperty.call(nextProps, 'sessionId')
+      ? nextProps.sessionId
+      : 'sess-1'
+
+    utils.rerender(
+      <ChatProvider sessionId={nextResolvedSessionId} agentId={nextProps.agentId}>
+        <Consumer />
+      </ChatProvider>
+    )
+  }
+
+  return { ...utils, getCtx: () => ctx!, rerenderProvider }
 }
 
 // --- Tests ---
@@ -100,6 +142,7 @@ function renderProvider(props: { sessionId?: string } = {}) {
 describe('ChatProvider isLoading sync from session status', () => {
   beforeEach(() => {
     mockSessionData = undefined
+    mockSessionEventsData = undefined
     mockPendingPermissions = new Map()
   })
 
@@ -139,6 +182,7 @@ describe('ChatProvider isLoading sync from session status', () => {
 describe('ChatProvider pendingPermission restoration from AppProvider', () => {
   beforeEach(() => {
     mockSessionData = undefined
+    mockSessionEventsData = undefined
     mockPendingPermissions = new Map()
   })
 
@@ -199,5 +243,101 @@ describe('ChatProvider pendingPermission restoration from AppProvider', () => {
     expect(perm, 'ExitPlanMode permission should be restored').not.toBeNull()
     expect(perm!.toolName).toBe('ExitPlanMode')
     expect(perm!.requestId).toBe('req-3')
+  })
+})
+
+describe('ChatProvider historical event loading', () => {
+  beforeEach(() => {
+    mockSessionData = undefined
+    mockSessionEventsData = undefined
+    mockPendingPermissions = new Map()
+  })
+
+  it('merges history refetches without dropping newer local events and dedupes by eventId', async () => {
+    mockSessionData = makeSession({
+      kombuse_session_id: 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId,
+    })
+    mockSessionEventsData = {
+      session_id: 'chat-00000000-0000-0000-0000-000000000001',
+      events: [makeSessionEvent(1), makeSessionEvent(2), makeSessionEvent(3)],
+      total: 3,
+    }
+
+    const { getCtx, rerenderProvider } = renderProvider({ sessionId: 'sess-1' })
+
+    await waitFor(() => {
+      expect(getCtx().events.map((event) => event.eventId)).toEqual([
+        'event-1',
+        'event-2',
+        'event-3',
+      ])
+    })
+
+    mockSessionEventsData = {
+      session_id: 'chat-00000000-0000-0000-0000-000000000001',
+      events: [makeSessionEvent(1), makeSessionEvent(2)],
+      total: 3,
+    }
+    rerenderProvider({ sessionId: 'sess-1' })
+
+    await waitFor(() => {
+      expect(getCtx().events.map((event) => event.eventId)).toEqual([
+        'event-1',
+        'event-2',
+        'event-3',
+      ])
+    })
+
+    mockSessionEventsData = {
+      session_id: 'chat-00000000-0000-0000-0000-000000000001',
+      events: [makeSessionEvent(2), makeSessionEvent(3), makeSessionEvent(4)],
+      total: 4,
+    }
+    rerenderProvider({ sessionId: 'sess-1' })
+
+    await waitFor(() => {
+      const eventIds = getCtx().events.map((event) => event.eventId)
+      expect(eventIds).toEqual(['event-1', 'event-2', 'event-3', 'event-4'])
+      expect(new Set(eventIds).size).toBe(eventIds.length)
+    })
+  })
+
+  it('resets event state when switching sessions and when switching from session mode to live mode', async () => {
+    mockSessionData = makeSession({
+      kombuse_session_id: 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId,
+    })
+    mockSessionEventsData = {
+      session_id: 'chat-00000000-0000-0000-0000-000000000001',
+      events: [makeSessionEvent(1), makeSessionEvent(2)],
+      total: 2,
+    }
+
+    const { getCtx, rerenderProvider } = renderProvider({ sessionId: 'sess-1' })
+
+    await waitFor(() => {
+      expect(getCtx().events.map((event) => event.eventId)).toEqual(['event-1', 'event-2'])
+    })
+
+    mockSessionData = makeSession({
+      kombuse_session_id: 'chat-00000000-0000-0000-0000-000000000002' as KombuseSessionId,
+    })
+    mockSessionEventsData = {
+      session_id: 'chat-00000000-0000-0000-0000-000000000002',
+      events: [makeSessionEvent(10)],
+      total: 1,
+    }
+    rerenderProvider({ sessionId: 'sess-2' })
+
+    await waitFor(() => {
+      expect(getCtx().events.map((event) => event.eventId)).toEqual(['event-10'])
+    })
+
+    mockSessionData = undefined
+    mockSessionEventsData = undefined
+    rerenderProvider({ sessionId: undefined, agentId: 'agent-1' })
+
+    await waitFor(() => {
+      expect(getCtx().events).toEqual([])
+    })
   })
 })

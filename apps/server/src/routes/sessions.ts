@@ -128,9 +128,13 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       events = events.filter((e) => e.event_type === event_type)
     }
 
+    const pagedEvents = since_seq === undefined
+      ? events.slice(-limit)
+      : events.slice(0, limit)
+
     return {
       session_id: request.params.id,
-      events: events.slice(0, limit),
+      events: pagedEvents,
       total: events.length,
     }
   })

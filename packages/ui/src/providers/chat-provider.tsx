@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type {
   ServerMessage,
@@ -17,6 +17,8 @@ import { useWebSocket } from '../hooks/use-websocket'
 import { useSessionByKombuseId, useSessionEvents } from '../hooks/use-sessions'
 import { useAppContext } from '../hooks/use-app-context'
 import { ChatCtx } from './chat-context'
+
+const INITIAL_SESSION_EVENTS_LIMIT = 1000
 
 interface ChatProviderProps {
   children: ReactNode
@@ -61,6 +63,28 @@ function formatTerminalReason(reason: string | null | undefined): string | null 
     .join(' ')
 }
 
+function mergeEventsById(
+  currentEvents: SerializedAgentEvent[],
+  incomingEvents: SerializedAgentEvent[]
+): SerializedAgentEvent[] {
+  const mergedEvents = [...currentEvents]
+  const indexByEventId = new Map(
+    currentEvents.map((event, index) => [event.eventId, index] as const)
+  )
+
+  for (const event of incomingEvents) {
+    const existingIndex = indexByEventId.get(event.eventId)
+    if (existingIndex === undefined) {
+      indexByEventId.set(event.eventId, mergedEvents.length)
+      mergedEvents.push(event)
+      continue
+    }
+    mergedEvents[existingIndex] = event
+  }
+
+  return mergedEvents
+}
+
 /**
  * Provides chat state and actions to the component tree.
  *
@@ -86,18 +110,33 @@ export function ChatProvider({
   const [kombuseSessionId, setKombuseSessionId] = useState<string | null>(null)
   const [pendingPermission, setPendingPermission] =
     useState<SerializedAgentPermissionRequestEvent | null>(null)
+  const previousSessionIdRef = useRef<string | null>(null)
 
   const { pendingPermissions } = useAppContext()
 
   // Fetch session metadata — URL now contains kombuse_session_id
   const { data: sessionData } = useSessionByKombuseId(sessionId ?? null)
 
+  const sessionEventFilters = useMemo(() => ({
+    limit: INITIAL_SESSION_EVENTS_LIMIT,
+  }), [])
+
   // Historical mode: fetch session events by kombuse session ID
-  const { data: sessionEventsData } = useSessionEvents(sessionData?.kombuse_session_id ?? null)
+  const { data: sessionEventsData } = useSessionEvents(
+    sessionData?.kombuse_session_id ?? null,
+    sessionEventFilters
+  )
 
   // The effective kombuse session ID — either from the loaded session record,
   // or from state set when the user started a new session
   const effectiveKombuseSessionId = sessionData?.kombuse_session_id ?? kombuseSessionId
+
+  useEffect(() => {
+    if (previousSessionIdRef.current !== sessionId) {
+      previousSessionIdRef.current = sessionId ?? null
+      setEvents([])
+    }
+  }, [sessionId])
 
   // Load historical events when sessionId is provided
   useEffect(() => {
@@ -106,7 +145,7 @@ export function ChatProvider({
       const historicalEvents = sessionEventsData.events.map(
         (e) => e.payload as SerializedAgentEvent
       )
-      setEvents(historicalEvents)
+      setEvents((currentEvents) => mergeEventsById(currentEvents, historicalEvents))
     }
   }, [sessionId, sessionEventsData])
 
