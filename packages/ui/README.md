@@ -613,6 +613,7 @@ Props:
 - Edit mode supports image attachments via paperclip button, drag-and-drop, and clipboard paste. Staged files are uploaded on save
 - View mode displays ticket attachments as clickable thumbnails with lightbox
 - Delete confirmation warns that related comments and attachments are also removed; confirm action shows `Deleting...` while pending
+- If delete fails, the dialog stays open so users can retry after the app-level error toast
 
 ### Session Components
 

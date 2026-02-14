@@ -6,6 +6,15 @@ import { Input } from '../../base/input'
 import { Textarea } from '../../base/textarea'
 import { Switch } from '../../base/switch'
 import { Tabs, TabsList, TabsTrigger } from '../../base/tabs'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../../base/dialog'
 import { X, Trash2, Pencil, Paperclip, ChevronDown, ChevronRight } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
@@ -102,6 +111,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
   const [descriptionClamped, setDescriptionClamped] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const descriptionRef = useRef<HTMLDivElement>(null)
 
   // Detect whether the description is long enough to need clamping
@@ -122,6 +132,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   useEffect(() => {
     setDescriptionExpanded(false)
     setDescriptionClamped(false)
+    setShowDeleteDialog(false)
   }, [currentTicket?.id])
 
   if (!currentTicket) {
@@ -131,8 +142,13 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   const ticket = currentTicket
 
   const handleDelete = async () => {
-    await deleteCurrentTicket()
-    onClose?.()
+    try {
+      await deleteCurrentTicket()
+      setShowDeleteDialog(false)
+      onClose?.()
+    } catch {
+      // Error toasts are handled by the app-level mutation cache.
+    }
   }
 
   const handleEditClick = () => {
@@ -340,15 +356,43 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                 >
                   <Pencil className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Delete ticket"
+                      disabled={isDeleting}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete ticket?</DialogTitle>
+                      <DialogDescription>
+                        This will permanently delete this ticket and all related comments and attachments.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowDeleteDialog(false)}
+                        disabled={isDeleting}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </>
             ) : null}
             {onClose && (
