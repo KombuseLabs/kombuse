@@ -201,7 +201,8 @@ export class CodexBackend extends BaseAgentBackend {
   }
 
   async stop(): Promise<void> {
-    if (!this.isRunning()) {
+    const lifecycleState = this.getLifecycleState()
+    if (lifecycleState === 'stopped' || lifecycleState === 'failed' || lifecycleState === 'stopping') {
       return
     }
 

@@ -129,16 +129,26 @@ async function runAgentChat(
     }
   })
 
-  await backend.start({
-    kombuseSessionId: appSessionId,
-    resumeSessionId: options.resumeSessionId,
-    model: options.model,
-    projectPath: options.projectPath,
-    systemPrompt: options.systemPrompt,
-    allowedTools: options.allowedTools,
-    permissionMode: options.permissionMode,
-    initialMessage: message,
-  })
+  try {
+    await backend.start({
+      kombuseSessionId: appSessionId,
+      resumeSessionId: options.resumeSessionId,
+      model: options.model,
+      projectPath: options.projectPath,
+      systemPrompt: options.systemPrompt,
+      allowedTools: options.allowedTools,
+      permissionMode: options.permissionMode,
+      initialMessage: message,
+    })
+  } catch (error) {
+    if (didComplete) {
+      return {
+        kombuseSessionId: appSessionId,
+        backendSessionId: backend.getBackendSessionId(),
+      }
+    }
+    throw error
+  }
 
   return {
     kombuseSessionId: appSessionId,

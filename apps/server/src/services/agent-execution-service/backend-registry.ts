@@ -157,9 +157,7 @@ export function stopAgentSession(kombuseSessionId: string): boolean {
 
   clearBackendIdleTimeout(kombuseSessionId)
   setSessionTurnActive(kombuseSessionId, false)
-  if (backend.isRunning()) {
-    void backend.stop()
-  }
+  void backend.stop().catch(() => {})
   return true
 }
 
@@ -168,9 +166,7 @@ export function stopAgentSession(kombuseSessionId: string): boolean {
  */
 export function stopAllActiveBackends(): void {
   for (const [sessionId, backend] of activeBackends) {
-    if (backend.isRunning()) {
-      void backend.stop()
-    }
+    void backend.stop().catch(() => {})
     clearBackendIdleTimeout(sessionId)
     activeSessionTurns.delete(sessionId)
   }
@@ -203,9 +199,7 @@ export function stopActiveCodexBackends(): number {
       continue
     }
 
-    if (backend.isRunning()) {
-      void backend.stop()
-    }
+    void backend.stop().catch(() => {})
 
     clearBackendIdleTimeout(sessionId)
     activeSessionTurns.delete(sessionId)

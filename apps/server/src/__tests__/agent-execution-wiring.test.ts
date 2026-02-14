@@ -2386,6 +2386,57 @@ describe('user stop lifecycle integration', () => {
     return { backend }
   }
 
+  function createStartupStoppableBackend() {
+    const subscribers: EventCallback[] = []
+    let running = false
+    let stopRequested = false
+    let releaseStartup: (() => void) | undefined
+
+    const startupBarrier = new Promise<void>((resolve) => {
+      releaseStartup = resolve
+    })
+
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {
+        await startupBarrier
+        if (stopRequested) {
+          throw new Error('Stopped during startup')
+        }
+        running = true
+      }),
+      stop: vi.fn(async () => {
+        stopRequested = true
+        running = false
+        releaseStartup?.()
+        const completeEvent: AgentEvent = {
+          type: 'complete',
+          eventId: crypto.randomUUID(),
+          backend: 'claude-code',
+          timestamp: Date.now(),
+          reason: 'stopped',
+          success: false,
+          errorMessage: 'Stopped by user',
+        }
+        for (const callback of [...subscribers]) {
+          callback(completeEvent)
+        }
+      }),
+      send: vi.fn(),
+      subscribe: vi.fn((callback: EventCallback) => {
+        subscribers.push(callback)
+        return () => {
+          const idx = subscribers.indexOf(callback)
+          if (idx >= 0) subscribers.splice(idx, 1)
+        }
+      }),
+      isRunning: vi.fn(() => running),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+
+    return { backend }
+  }
+
   it('emits a single aborted completion and abort transition on user stop', async () => {
     const { backend } = createStoppableBackend()
 
@@ -2464,6 +2515,193 @@ describe('user stop lifecycle integration', () => {
         kombuseSessionId: 'stop-flow-test',
       })
     )
+  })
+
+  it('stops an in-flight startup and still emits a single aborted completion', async () => {
+    const { backend } = createStartupStoppableBackend()
+
+    const deps = {
+      getAgent: vi.fn(() => null),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'stop-during-startup-test' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => ({
+          id: 'session-1',
+          kombuse_session_id: 'stop-during-startup-test',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          backend_session_id: null,
+          ticket_id: null,
+          agent_id: null,
+          status: 'pending',
+          metadata: {},
+          started_at: new Date().toISOString(),
+          completed_at: null,
+          failed_at: null,
+          aborted_at: null,
+          last_event_seq: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+
+    const emittedEvents: AgentExecutionEvent[] = []
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'stop while starting',
+        kombuseSessionId: 'stop-during-startup-test' as KombuseSessionId,
+      },
+      (event) => emittedEvents.push(event),
+      deps as any
+    )
+
+    await waitForBackendStart(backend)
+    registerBackend('stop-during-startup-test', backend)
+
+    expect(stopAgentSession('stop-during-startup-test')).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const completionEvents = emittedEvents.filter(
+      (event): event is Extract<AgentExecutionEvent, { type: 'complete' }> => event.type === 'complete'
+    )
+    const failTransitions = deps.stateMachine.transition.mock.calls.filter((call) => call[1] === 'fail')
+
+    expect(backend.stop).toHaveBeenCalledTimes(1)
+    expect(completionEvents).toHaveLength(1)
+    expect(completionEvents[0]).toMatchObject({
+      kombuseSessionId: 'stop-during-startup-test',
+      status: 'aborted',
+      reason: 'user_stop',
+      errorMessage: 'Stopped by user',
+    })
+    expect(failTransitions).toHaveLength(0)
+  })
+})
+
+describe('startup failure deduplication', () => {
+  type EventCallback = (event: AgentEvent) => void
+
+  function createFailingStartupBackend() {
+    const subscribers: EventCallback[] = []
+
+    const backend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {
+        const completeEvent: AgentEvent = {
+          type: 'complete',
+          eventId: crypto.randomUUID(),
+          backend: 'claude-code',
+          timestamp: Date.now(),
+          reason: 'failed',
+          success: false,
+          errorMessage: 'startup exploded',
+        }
+        for (const callback of [...subscribers]) {
+          callback(completeEvent)
+        }
+        throw new Error('startup exploded')
+      }),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn((callback: EventCallback) => {
+        subscribers.push(callback)
+        return () => {
+          const idx = subscribers.indexOf(callback)
+          if (idx >= 0) subscribers.splice(idx, 1)
+        }
+      }),
+      isRunning: vi.fn(() => false),
+      getBackendSessionId: vi.fn(() => 'backend-session-1'),
+    }
+
+    return { backend }
+  }
+
+  it('handles startup failure through a single terminal path', async () => {
+    const { backend } = createFailingStartupBackend()
+
+    const deps = {
+      getAgent: vi.fn(() => null),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'startup-failure-test' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/tmp'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => ({
+          id: 'session-1',
+          kombuse_session_id: 'startup-failure-test',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          backend_session_id: null,
+          ticket_id: null,
+          agent_id: null,
+          status: 'pending',
+          metadata: {},
+          started_at: new Date().toISOString(),
+          completed_at: null,
+          failed_at: null,
+          aborted_at: null,
+          last_event_seq: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+
+    const emittedEvents: AgentExecutionEvent[] = []
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'start and fail',
+        kombuseSessionId: 'startup-failure-test' as KombuseSessionId,
+      },
+      (event) => emittedEvents.push(event),
+      deps as any
+    )
+
+    await waitForBackendStart(backend)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const completionEvents = emittedEvents.filter(
+      (event): event is Extract<AgentExecutionEvent, { type: 'complete' }> => event.type === 'complete'
+    )
+    const failTransitions = deps.stateMachine.transition.mock.calls.filter((call) => call[1] === 'fail')
+
+    expect(completionEvents).toHaveLength(1)
+    expect(completionEvents[0]).toMatchObject({
+      kombuseSessionId: 'startup-failure-test',
+      status: 'failed',
+      errorMessage: 'startup exploded',
+    })
+    expect(failTransitions).toHaveLength(1)
   })
 })
 
