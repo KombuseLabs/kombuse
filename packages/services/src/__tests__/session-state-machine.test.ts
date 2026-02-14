@@ -66,7 +66,7 @@ describe('SessionStateMachine', () => {
 
       expect(deps.sessionPersistence.markSessionRunning).toHaveBeenCalledWith('session-1')
       expect(deps.backends.register).toHaveBeenCalledWith('chat-abc', mockBackend)
-      expect(deps.backends.resetIdleTimeout).toHaveBeenCalledWith('chat-abc')
+      expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
     })
 
     it('running -> completed via complete', () => {
@@ -156,7 +156,7 @@ describe('SessionStateMachine', () => {
 
       expect(deps.sessionPersistence.markSessionRunning).toHaveBeenCalledWith('session-1')
       expect(deps.backends.register).toHaveBeenCalledWith('chat-abc', mockBackend)
-      expect(deps.backends.resetIdleTimeout).toHaveBeenCalledWith('chat-abc')
+      expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
     })
 
     it('failed -> running via continue', () => {
@@ -166,7 +166,7 @@ describe('SessionStateMachine', () => {
       sm.transition('session-1', 'continue', baseCtx())
 
       expect(deps.sessionPersistence.markSessionRunning).toHaveBeenCalledWith('session-1')
-      expect(deps.backends.resetIdleTimeout).toHaveBeenCalledWith('chat-abc')
+      expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
     })
 
     it('stopped -> running via continue', () => {
@@ -176,7 +176,7 @@ describe('SessionStateMachine', () => {
       sm.transition('session-1', 'continue', baseCtx())
 
       expect(deps.sessionPersistence.markSessionRunning).toHaveBeenCalledWith('session-1')
-      expect(deps.backends.resetIdleTimeout).toHaveBeenCalledWith('chat-abc')
+      expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
     })
 
     it('completed -> stopped via stop', () => {
@@ -196,8 +196,8 @@ describe('SessionStateMachine', () => {
 
       sm.transition('session-1', 'continue', baseCtx())
 
-      // Should only reset idle timeout, not re-register or markRunning
-      expect(deps.backends.resetIdleTimeout).toHaveBeenCalledWith('chat-abc')
+      // Should only clear idle timeout, not re-register or markRunning
+      expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
       expect(deps.sessionPersistence.markSessionRunning).not.toHaveBeenCalled()
       expect(deps.backends.register).not.toHaveBeenCalled()
     })
@@ -210,7 +210,7 @@ describe('SessionStateMachine', () => {
       sm.transition('session-1', 'continue', baseCtx({ backend: mockBackend }))
 
       expect(deps.backends.register).toHaveBeenCalledWith('chat-abc', mockBackend)
-      expect(deps.backends.resetIdleTimeout).toHaveBeenCalledWith('chat-abc')
+      expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
       expect(deps.sessionPersistence.markSessionRunning).not.toHaveBeenCalled()
     })
   })
@@ -339,7 +339,7 @@ describe('SessionStateMachine', () => {
       const deps = createMockDeps({ status: 'pending' })
       deps.sessionPersistence.markSessionRunning = vi.fn(() => { callOrder.push('db') })
       deps.backends.register = vi.fn(() => { callOrder.push('register') })
-      deps.backends.resetIdleTimeout = vi.fn(() => { callOrder.push('timeout') })
+      deps.backends.clearIdleTimeout = vi.fn(() => { callOrder.push('timeout') })
       const sm = new SessionStateMachine(deps)
 
       sm.transition('session-1', 'start', baseCtx({

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import type { Agent, Profile } from '@kombuse/types'
+import type { Profile } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { Popover, PopoverContent, PopoverTrigger } from '../../base/popover'

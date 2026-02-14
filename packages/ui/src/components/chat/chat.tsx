@@ -1,6 +1,6 @@
 'use client'
 
-import { useContext, useState } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
 import type { SerializedAgentEvent } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { ChatCtx } from '../../providers/chat-context'
@@ -24,6 +24,8 @@ interface ChatProps {
   isConnected?: boolean
   /** Message to show when empty */
   emptyMessage?: string
+  /** Optional controls rendered in the chat input toolbar (left side) */
+  inputToolbarControls?: ReactNode
   className?: string
 }
 
@@ -31,7 +33,15 @@ interface ChatProps {
  * Chat component that can be used standalone with props or inside a ChatProvider.
  * When used inside ChatProvider, props are optional and values come from context.
  */
-function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoading, isConnected: propIsConnected, emptyMessage, className }: ChatProps) {
+function Chat({
+  events: propEvents,
+  onSubmit: propOnSubmit,
+  isLoading: propIsLoading,
+  isConnected: propIsConnected,
+  emptyMessage,
+  inputToolbarControls,
+  className,
+}: ChatProps) {
   const ctx = useContext(ChatCtx)
 
   // Use context values if available, otherwise fall back to props
@@ -59,6 +69,9 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
         lastEventTime={lastEventTime}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        sessionStatus={ctx?.sessionStatus}
+        terminalReason={ctx?.terminalReason}
+        terminalMessage={ctx?.terminalMessage}
         sessionId={ctx?.kombuseSessionId}
         backendSessionId={ctx?.backendSessionId}
       />
@@ -91,6 +104,7 @@ function Chat({ events: propEvents, onSubmit: propOnSubmit, isLoading: propIsLoa
         <ChatInput
           onSubmit={onSubmit}
           isLoading={isLoading}
+          toolbarControls={inputToolbarControls}
           onStop={!pendingPermission && ctx?.kombuseSessionId ? () => wsSend({ type: 'agent.stop', kombuseSessionId: ctx.kombuseSessionId! }) : undefined}
         />
       </div>

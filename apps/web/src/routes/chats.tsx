@@ -180,11 +180,6 @@ export function Chats() {
               className="h-9 w-52 rounded-md border border-input bg-background px-3 text-sm"
             />
           </div>
-          <AgentPicker
-            value={effectiveAgentId}
-            onChange={setSelectedAgentId}
-            disabled={!isDraft}
-          />
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -202,6 +197,14 @@ export function Chats() {
                 selectedSessionId
                   ? "Loading session..."
                   : "Start a conversation..."
+              }
+              inputToolbarControls={
+                <AgentPicker
+                  value={effectiveAgentId}
+                  onChange={setSelectedAgentId}
+                  disabled={!isDraft}
+                  className="h-8 w-[220px] max-w-full"
+                />
               }
               className="h-full"
             />

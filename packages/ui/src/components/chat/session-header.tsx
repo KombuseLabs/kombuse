@@ -5,12 +5,16 @@ import { formatDistanceToNow } from 'date-fns'
 import { cn } from '../../lib/utils'
 import { Label } from '../../base/label'
 import { Switch } from '../../base/switch'
+import type { PublicSession } from '@kombuse/types'
 
 type ViewMode = 'clean' | 'normal'
 
 interface SessionHeaderProps {
   isConnected?: boolean
   isLoading?: boolean
+  sessionStatus?: PublicSession['status'] | null
+  terminalReason?: string | null
+  terminalMessage?: string | null
   eventCount: number
   lastEventTime?: number
   viewMode?: ViewMode
@@ -30,7 +34,31 @@ function truncateId(id: string): string {
   return prefix + id.slice(dashIndex + 1, dashIndex + 9)
 }
 
-function SessionHeader({ isConnected = true, isLoading = false, eventCount, lastEventTime, viewMode = 'normal', onViewModeChange, sessionId, backendSessionId, className }: SessionHeaderProps) {
+function humanizeReason(reason: string | null | undefined): string | null {
+  if (!reason || reason.trim().length === 0) {
+    return null
+  }
+  return reason
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function SessionHeader({
+  isConnected = true,
+  isLoading = false,
+  sessionStatus = null,
+  terminalReason = null,
+  terminalMessage = null,
+  eventCount,
+  lastEventTime,
+  viewMode = 'normal',
+  onViewModeChange,
+  sessionId,
+  backendSessionId,
+  className,
+}: SessionHeaderProps) {
   const [copiedId, setCopiedId] = useState<'session' | 'backend' | null>(null)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
 
@@ -50,6 +78,29 @@ function SessionHeader({ isConnected = true, isLoading = false, eventCount, last
 
   const truncatedSessionId = sessionId ? truncateId(sessionId) : null
   const truncatedBackendId = backendSessionId ? truncateId(backendSessionId) : null
+  const statusLabel = isLoading
+    ? 'Running'
+    : sessionStatus === 'failed'
+      ? 'Failed'
+      : sessionStatus === 'aborted'
+        ? 'Aborted'
+        : sessionStatus === 'stopped'
+          ? 'Stopped'
+          : sessionStatus === 'completed'
+            ? 'Completed'
+            : sessionStatus === 'pending'
+              ? 'Pending'
+              : 'Idle'
+  const statusDotClass = isLoading
+    ? 'bg-yellow-500 animate-pulse'
+    : sessionStatus === 'failed' || sessionStatus === 'aborted'
+      ? 'bg-red-500'
+      : sessionStatus === 'stopped'
+        ? 'bg-orange-500'
+        : sessionStatus === 'completed'
+          ? 'bg-green-500'
+          : 'bg-muted-foreground/50'
+  const statusDetail = terminalMessage ?? humanizeReason(terminalReason)
 
   return (
     <div className={cn('flex items-center gap-3 px-4 py-2 border-b text-sm text-muted-foreground', className)}>
@@ -66,16 +117,12 @@ function SessionHeader({ isConnected = true, isLoading = false, eventCount, last
       <div className="w-px h-4 bg-border" />
 
       <div className="flex items-center gap-1.5">
-        {isLoading ? (
-          <>
-            <span className="size-2 rounded-full bg-yellow-500 animate-pulse" />
-            <span>Running</span>
-          </>
-        ) : (
-          <>
-            <span className="size-2 rounded-full bg-muted-foreground/50" />
-            <span>Idle</span>
-          </>
+        <span className={cn('size-2 rounded-full', statusDotClass)} />
+        <span>{statusLabel}</span>
+        {statusDetail && (
+          <span className="text-xs text-muted-foreground/80" title={statusDetail}>
+            ({statusDetail})
+          </span>
         )}
       </div>
 

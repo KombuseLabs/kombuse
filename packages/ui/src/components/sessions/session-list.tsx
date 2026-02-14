@@ -61,17 +61,35 @@ const OriginIcon = ({ origin }: { origin: 'chat' | 'trigger' | null }) => {
   return <MessageSquare className="size-3.5 text-muted-foreground" />
 }
 
+function humanizeTerminalReason(reason: string | undefined): string | null {
+  if (!reason || reason.trim().length === 0) {
+    return null
+  }
+  return reason
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 function getStatusText(session: PublicSession, hasPendingPermission: boolean): string {
   if (hasPendingPermission) return 'Awaiting input'
+  const reason = humanizeTerminalReason(
+    typeof session.metadata?.terminal_reason === 'string'
+      ? session.metadata.terminal_reason
+      : undefined
+  )
   switch (session.status) {
     case 'running':
       return 'Running'
     case 'completed':
       return 'Completed'
     case 'failed':
-      return 'Failed'
+      return reason ? `Failed: ${reason}` : 'Failed'
     case 'aborted':
-      return 'Aborted'
+      return reason ? `Aborted: ${reason}` : 'Aborted'
+    case 'stopped':
+      return reason ? `Stopped: ${reason}` : 'Stopped'
     default:
       return session.status
   }

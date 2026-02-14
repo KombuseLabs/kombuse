@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, type FormEvent, type KeyboardEvent } from 'react'
+import { useState, useCallback, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { cn } from '../../lib/utils'
@@ -20,6 +20,7 @@ interface ChatInputProps {
   placeholder?: string
   isLoading?: boolean
   disabled?: boolean
+  toolbarControls?: ReactNode
   replyTarget?: ReplyTarget | null
   onCancelReply?: () => void
   onStop?: () => void
@@ -31,6 +32,7 @@ function ChatInput({
   placeholder = 'Type a message...',
   isLoading = false,
   disabled = false,
+  toolbarControls,
   replyTarget,
   onCancelReply,
   onStop,
@@ -57,6 +59,7 @@ function ChatInput({
     onValueChange: setMessage,
     textareaRef,
   })
+  const { onChange: handleAutocompleteChange, onKeyDown: handleAutocompleteKeyDown } = autocompleteProps
 
   const handleSubmit = useCallback(
     async (e?: FormEvent) => {
@@ -75,7 +78,7 @@ function ChatInput({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       // Let autocomplete handle its keys first
-      autocompleteProps.onKeyDown(e)
+      handleAutocompleteKeyDown(e)
       if (e.defaultPrevented) return
 
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -83,7 +86,7 @@ function ChatInput({
         handleSubmit()
       }
     },
-    [autocompleteProps.onKeyDown, handleSubmit]
+    [handleAutocompleteKeyDown, handleSubmit]
   )
 
   const isDisabled = disabled || isLoading
@@ -96,14 +99,14 @@ function ChatInput({
   return (
     <div
       className={cn(
-        'flex flex-col gap-1 rounded-lg transition-colors',
+        'flex flex-col rounded-xl border bg-background p-2 transition-colors',
         isDragOver && 'ring-2 ring-primary/50 bg-primary/5',
         className,
       )}
       {...dragHandlers}
     >
       {replyTarget && (
-        <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground bg-muted/50 rounded">
+        <div className="mb-2 flex items-center gap-2 rounded bg-muted/50 px-2 py-1 text-xs text-muted-foreground">
           <span className="truncate">
             Replying to <span className="font-medium text-foreground">{replyTarget.authorId}</span>
             {replyTarget.isAgentSession && ' (resumes agent session)'}
@@ -113,44 +116,62 @@ function ChatInput({
             size="icon"
             className="size-4 shrink-0 text-muted-foreground hover:text-foreground"
             onClick={onCancelReply}
+            aria-label="Cancel reply"
           >
             <X className="size-3" />
           </Button>
         </div>
       )}
-      <StagedFilePreviews stagedFiles={stagedFiles} previewUrls={previewUrls} onRemove={removeFile} />
-      <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+      <StagedFilePreviews
+        stagedFiles={stagedFiles}
+        previewUrls={previewUrls}
+        onRemove={removeFile}
+        className={cn(stagedFiles.length > 0 && 'mb-2')}
+      />
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <Textarea
           ref={textareaRef}
           value={message}
-          onChange={autocompleteProps.onChange}
+          onChange={handleAutocompleteChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder={effectivePlaceholder}
           disabled={isDisabled}
-          className="h-20 min-h-[80px] resize-none"
+          className="h-20 min-h-[80px] resize-none border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           rows={3}
         />
-        <div className="flex flex-col gap-1 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {toolbarControls}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isDisabled}
+              aria-label="Attach file"
+            >
+              <Paperclip className="size-4" />
+            </Button>
+          </div>
           <Button
-            type="button"
-            variant="ghost"
+            type={isLoading && onStop ? 'button' : 'submit'}
             size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isDisabled}
+            variant={isLoading && onStop ? 'destructive' : 'default'}
+            className="shrink-0"
+            onClick={isLoading && onStop ? onStop : undefined}
+            disabled={isLoading && onStop ? false : !canSubmit}
+            aria-label={isLoading && onStop ? 'Stop agent' : 'Send message'}
           >
-            <Paperclip className="size-4" />
-          </Button>
-          {isLoading && onStop ? (
-            <Button type="button" size="icon" variant="destructive" onClick={onStop}>
+            {isLoading && onStop ? (
               <Square className="size-3" />
-            </Button>
-          ) : (
-            <Button type="submit" disabled={!canSubmit} size="icon">
-              {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            </Button>
-          )}
+            ) : isLoading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Send className="size-4" />
+            )}
+          </Button>
         </div>
       </form>
       <AutocompletePortal />

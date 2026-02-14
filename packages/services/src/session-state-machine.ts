@@ -124,7 +124,8 @@ export class SessionStateMachine {
         if (ctx.backend) {
           this.deps.backends.register(ctx.kombuseSessionId, ctx.backend)
         }
-        this.deps.backends.resetIdleTimeout(ctx.kombuseSessionId)
+        // Active turns must not be governed by idle timeout.
+        this.deps.backends.clearIdleTimeout(ctx.kombuseSessionId)
         break
       }
 
@@ -176,14 +177,14 @@ export class SessionStateMachine {
           if (ctx.backend) {
             this.deps.backends.register(ctx.kombuseSessionId, ctx.backend)
           }
-          this.deps.backends.resetIdleTimeout(ctx.kombuseSessionId)
+          this.deps.backends.clearIdleTimeout(ctx.kombuseSessionId)
         } else {
           // completed|failed|stopped -> running (resume/retry)
           this.deps.sessionPersistence.markSessionRunning(sessionId)
           if (ctx.backend) {
             this.deps.backends.register(ctx.kombuseSessionId, ctx.backend)
           }
-          this.deps.backends.resetIdleTimeout(ctx.kombuseSessionId)
+          this.deps.backends.clearIdleTimeout(ctx.kombuseSessionId)
         }
         break
       }

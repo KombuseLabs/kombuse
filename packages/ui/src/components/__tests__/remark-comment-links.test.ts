@@ -37,8 +37,8 @@ describe('remarkCommentLinks', () => {
 
     const links = paragraph.children.filter((c) => c.type === 'link') as Link[]
     expect(links).toHaveLength(2)
-    expect(links[0].url).toBe('comment://10/100')
-    expect(links[1].url).toBe('comment://20/200')
+    expect(links[0]!.url).toBe('comment://10/100')
+    expect(links[1]!.url).toBe('comment://20/200')
   })
 
   it('should preserve surrounding text', () => {

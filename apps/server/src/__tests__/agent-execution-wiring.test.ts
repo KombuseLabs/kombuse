@@ -2669,7 +2669,7 @@ describe('continuation invocation tracking', () => {
 })
 
 describe('backend idle timeout broadcasts agent.complete', () => {
-  const BACKEND_IDLE_TIMEOUT_MS = 5 * 60 * 1000
+  const BACKEND_IDLE_TIMEOUT_MS = 30 * 60 * 1000
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -2722,6 +2722,8 @@ describe('backend idle timeout broadcasts agent.complete', () => {
         type: 'agent.complete',
         kombuseSessionId: 'test-session',
         ticketId: 42,
+        status: 'stopped',
+        reason: 'idle_timeout',
       })
     )
     expect(wsHub.broadcastToTopic).toHaveBeenCalledWith(
@@ -2730,6 +2732,8 @@ describe('backend idle timeout broadcasts agent.complete', () => {
         type: 'agent.complete',
         kombuseSessionId: 'test-session',
         ticketId: 42,
+        status: 'stopped',
+        reason: 'idle_timeout',
       })
     )
   })
@@ -2770,6 +2774,41 @@ describe('backend idle timeout broadcasts agent.complete', () => {
     )
   })
 
+  it('does not stop or broadcast while the session is still running', () => {
+    const mockSession = {
+      id: 'session-1',
+      kombuse_session_id: 'test-session',
+      ticket_id: 42,
+      status: 'running',
+      backend_session_id: null,
+      backend_type: 'claude-code',
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    vi.mocked((sessionsRepository as any).get as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+    vi.mocked((sessionsRepository as any).getByKombuseSessionId as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+
+    const mockBackend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+    registerBackend('test-session', mockBackend)
+    resetBackendIdleTimeout('test-session')
+
+    vi.advanceTimersByTime(BACKEND_IDLE_TIMEOUT_MS)
+    vi.advanceTimersByTime(BACKEND_IDLE_TIMEOUT_MS)
+
+    expect(mockBackend.stop).not.toHaveBeenCalled()
+    expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()
+    expect(wsHub.broadcastToTopic).not.toHaveBeenCalled()
+  })
+
   it('still broadcasts when session is already in terminal state', () => {
     const mockSession = {
       id: 'session-1',
@@ -2805,6 +2844,8 @@ describe('backend idle timeout broadcasts agent.complete', () => {
       expect.objectContaining({
         type: 'agent.complete',
         kombuseSessionId: 'test-session',
+        status: 'stopped',
+        reason: 'idle_timeout',
       })
     )
   })

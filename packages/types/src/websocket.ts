@@ -72,6 +72,9 @@ export type ServerMessage =
       kombuseSessionId: string
       backendSessionId?: string
       ticketId?: number
+      status?: 'completed' | 'failed' | 'aborted' | 'stopped'
+      reason?: string
+      errorMessage?: string
     }
   | {
       type: 'agent.permission_pending'

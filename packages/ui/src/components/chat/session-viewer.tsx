@@ -46,6 +46,7 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
 
     return events.filter((e) => {
       if (e.type === 'message') return true
+      if (e.type === 'error') return true
       if (e.type === 'tool_use' && allowedToolNames.has(e.name)) return true
       if (e.type === 'tool_result') {
         const toolUse = toolUseMap.get(e.toolUseId)
@@ -69,6 +70,19 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
       {visibleEvents.map((event) => {
         if (event.type === 'message') {
           return <MessageRenderer key={event.eventId} event={event} />
+        }
+
+        if (event.type === 'error') {
+          return (
+            <EventCard
+              key={event.eventId}
+              timestamp={event.timestamp}
+              className="bg-red-500/5 ring-1 ring-red-500/20 overflow-x-auto"
+              header={<span className="text-xs font-medium uppercase text-red-700 dark:text-red-300">Error</span>}
+            >
+              <div className="text-sm text-red-700 dark:text-red-300">{event.message}</div>
+            </EventCard>
+          )
         }
 
         if (event.type === 'raw' && event.sourceType === 'thinking') {

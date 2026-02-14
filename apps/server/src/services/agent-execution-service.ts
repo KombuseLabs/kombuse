@@ -383,8 +383,35 @@ const activeBackends = new Map<string, AgentBackend>()
 /** Idle timeout handles for persistent backends. */
 const backendIdleTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-/** Default idle timeout: 5 minutes. */
-const BACKEND_IDLE_TIMEOUT_MS = 5 * 60 * 1000
+/** Sessions that are actively processing a turn. */
+const activeSessionTurns = new Set<string>()
+
+/** Default idle timeout: 30 minutes. */
+const DEFAULT_BACKEND_IDLE_TIMEOUT_MS = 30 * 60 * 1000
+
+function parseBackendIdleTimeoutMs(rawValue: string | undefined): number {
+  const parsed = Number.parseInt(rawValue ?? '', 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_BACKEND_IDLE_TIMEOUT_MS
+  }
+  return parsed
+}
+
+const BACKEND_IDLE_TIMEOUT_MS = parseBackendIdleTimeoutMs(
+  process.env.KOMBUSE_BACKEND_IDLE_TIMEOUT_MS
+)
+
+function setSessionTurnActive(sessionId: string, isActive: boolean): void {
+  if (isActive) {
+    activeSessionTurns.add(sessionId)
+    return
+  }
+  activeSessionTurns.delete(sessionId)
+}
+
+function isSessionTurnActive(sessionId: string): boolean {
+  return activeSessionTurns.has(sessionId)
+}
 
 /**
  * Reset the idle timeout for a persistent backend.
@@ -393,20 +420,36 @@ const BACKEND_IDLE_TIMEOUT_MS = 5 * 60 * 1000
 export function resetBackendIdleTimeout(sessionId: string): void {
   clearBackendIdleTimeout(sessionId)
   const timer = setTimeout(() => {
+    // Never interrupt an active turn. If work is still ongoing, re-arm the idle timer.
+    if (isSessionTurnActive(sessionId)) {
+      resetBackendIdleTimeout(sessionId)
+      return
+    }
+
+    // Look up session info before deciding whether this backend is truly idle.
+    const session = sessionPersistenceService.getSessionByKombuseId(sessionId)
+    if (session && (session.status === 'running' || session.status === 'pending')) {
+      resetBackendIdleTimeout(sessionId)
+      return
+    }
+
     const backend = activeBackends.get(sessionId)
     if (backend?.isRunning()) {
       void backend.stop()
     }
 
-    // Look up session info for state machine transition and broadcast
-    const session = sessionPersistenceService.getSessionByKombuseId(sessionId)
-
     // Use state machine for state management (DB update, unregister, clear timeout)
-    if (session) {
+    // only when this is a truly idle, completed session.
+    if (session?.status === 'completed') {
       try {
         defaultStateMachine.transition(session.id, 'stop', {
           kombuseSessionId: sessionId,
           ticketId: session.ticket_id ?? undefined,
+          metadataPatch: {
+            terminal_reason: 'idle_timeout',
+            terminal_source: 'idle_timeout',
+            terminal_at: new Date().toISOString(),
+          },
         })
       } catch {
         // Session may already be in a terminal state (aborted, stopped) — just clean up in-memory
@@ -423,6 +466,9 @@ export function resetBackendIdleTimeout(sessionId: string): void {
       type: 'agent.complete',
       kombuseSessionId: sessionId,
       ticketId: session?.ticket_id ?? undefined,
+      status: 'stopped',
+      reason: 'idle_timeout',
+      errorMessage: 'Session stopped after inactivity timeout',
     }
     wsHub.broadcastAgentMessage(sessionId, completeMsg)
     wsHub.broadcastToTopic('*', completeMsg)
@@ -474,6 +520,7 @@ export function registerBackend(sessionId: string, backend: AgentBackend): void 
 function unregisterBackend(sessionId: string): void {
   activeBackends.delete(sessionId)
   clearBackendIdleTimeout(sessionId)
+  activeSessionTurns.delete(sessionId)
   // Clear any pending permissions for this session since the backend is gone
   for (const [requestId, perm] of serverPendingPermissions) {
     if (perm.sessionId === sessionId) {
@@ -491,6 +538,7 @@ export function stopAgentSession(kombuseSessionId: string): boolean {
   if (!backend || !backend.isRunning()) {
     return false
   }
+  setSessionTurnActive(kombuseSessionId, false)
   void backend.stop()
   return true
 }
@@ -504,9 +552,11 @@ export function stopAllActiveBackends(): void {
       void backend.stop()
     }
     clearBackendIdleTimeout(sessionId)
+    activeSessionTurns.delete(sessionId)
   }
   activeBackends.clear()
   backendIdleTimeouts.clear()
+  activeSessionTurns.clear()
 
   cleanupOrphanedSessions(
     {
@@ -535,6 +585,7 @@ export function stopActiveCodexBackends(): number {
     }
 
     clearBackendIdleTimeout(sessionId)
+    activeSessionTurns.delete(sessionId)
     activeBackends.delete(sessionId)
     stoppedCount += 1
   }
@@ -808,6 +859,9 @@ export function cleanupOrphanedSessions(
         type: 'agent.complete',
         kombuseSessionId: session.kombuse_session_id,
         ticketId: session.ticket_id ?? undefined,
+        status: 'aborted',
+        reason,
+        errorMessage: reason,
       }
       wsHub.broadcastAgentMessage(session.kombuse_session_id, completeMsg)
       wsHub.broadcastToTopic('*', completeMsg)
@@ -1077,8 +1131,39 @@ export type AgentExecutionEvent =
       kombuseSessionId: string
       backendSessionId?: string
       ticketId?: number
+      status?: 'completed' | 'failed' | 'aborted' | 'stopped'
+      reason?: string
+      errorMessage?: string
     }
   | { type: 'error'; message: string }
+
+function clearTerminalMetadataPatch(): Partial<SessionMetadata> {
+  return {
+    terminal_reason: undefined,
+    terminal_source: undefined,
+    terminal_at: undefined,
+    terminal_error: undefined,
+  }
+}
+
+function classifyRuntimeFailureReason(errorMessage: string | undefined): string {
+  const normalized = (errorMessage ?? '').toLowerCase()
+  if (normalized.includes('interrupted')) return 'turn_interrupted'
+  if (normalized.includes('timed out')) return 'backend_timeout'
+  if (normalized.includes('resume')) return 'resume_failed'
+  if (normalized.includes('stopped')) return 'backend_stopped'
+  if (normalized.includes('exit')) return 'process_exit'
+  return 'agent_error'
+}
+
+function buildFailureMetadataPatch(errorMessage: string | undefined): Partial<SessionMetadata> {
+  return {
+    terminal_reason: classifyRuntimeFailureReason(errorMessage),
+    terminal_source: 'runtime',
+    terminal_at: new Date().toISOString(),
+    terminal_error: errorMessage,
+  }
+}
 
 /**
  * Dependencies for agent execution (injectable for testing).
@@ -1590,7 +1675,13 @@ export async function processEventAndRunAgents(
             wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           }
         } else if (evt.type === 'complete') {
-          if (!invocationFailed) {
+          const completionFailed =
+            evt.status === 'failed'
+            || evt.status === 'aborted'
+          if (completionFailed && !invocationFailed) {
+            markFailed(evt.errorMessage ?? evt.reason ?? 'Agent invocation failed')
+          }
+          if (!completionFailed && !invocationFailed) {
             agentInvocationsRepository.update(invocation.id, {
               status: 'completed',
               completed_at: new Date().toISOString(),
@@ -1612,6 +1703,9 @@ export async function processEventAndRunAgents(
             kombuseSessionId: evt.kombuseSessionId,
             backendSessionId: evt.backendSessionId,
             ticketId: evt.ticketId,
+            status: evt.status,
+            reason: evt.reason,
+            errorMessage: evt.errorMessage,
           }
           wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           wsHub.broadcastToTopic('*', msg)
@@ -1842,6 +1936,7 @@ export function startAgentChatSession(
     dependencies.stateMachine.transition(persistentSessionId, 'continue', {
       kombuseSessionId: appSessionId,
       ticketId,
+      metadataPatch: clearTerminalMetadataPatch(),
     })
 
     const reusedLogger = createSessionLogger({
@@ -1873,6 +1968,7 @@ export function startAgentChatSession(
     let followUpDidCallAddComment = false
     let followUpLastAssistantMessage = ''
 
+    setSessionTurnActive(appSessionId, true)
     runFollowUpChat(existingBackend, userMessage, appSessionId, {
       projectPath: '', // Not used for follow-up
       onEvent: (event: AgentEvent) => {
@@ -1919,6 +2015,7 @@ export function startAgentChatSession(
         emit({ type: 'event', kombuseSessionId: appSessionId, event })
       },
       onComplete: (context: ConversationContext) => {
+        setSessionTurnActive(appSessionId, false)
         reusedLogger.close()
         dependencies.stateMachine.transition(persistentSessionId, 'complete', {
           kombuseSessionId: appSessionId,
@@ -1936,10 +2033,19 @@ export function startAgentChatSession(
           } catch { /* fallback comment failed */ }
         }
 
-        emit({ type: 'complete', kombuseSessionId: appSessionId, backendSessionId: context.backendSessionId, ticketId })
+        emit({
+          type: 'complete',
+          kombuseSessionId: appSessionId,
+          backendSessionId: context.backendSessionId,
+          ticketId,
+          status: 'completed',
+          reason: 'result',
+        })
       },
       onError: (error: Error) => {
+        setSessionTurnActive(appSessionId, false)
         reusedLogger.close()
+        const failureReason = classifyRuntimeFailureReason(error.message)
 
         const errorEvent: AgentEvent = {
           type: 'error',
@@ -1956,9 +2062,17 @@ export function startAgentChatSession(
           backendSessionId: existingBackend.getBackendSessionId(),
           error: error.message,
           invocationId: continuationInvocationId ?? undefined,
+          metadataPatch: buildFailureMetadataPatch(error.message),
         })
         emit({ type: 'event', kombuseSessionId: appSessionId, event: errorEvent })
-        emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
+        emit({
+          type: 'complete',
+          kombuseSessionId: appSessionId,
+          ticketId,
+          status: 'failed',
+          reason: failureReason,
+          errorMessage: error.message,
+        })
         if (ticketId) broadcastTicketAgentStatus(ticketId)
       },
     })
@@ -1968,7 +2082,7 @@ export function startAgentChatSession(
 
   const backend = dependencies.createBackend(resolvedBackendType)
 
-  // Transition to running: updates DB, registers backend, resets idle timeout.
+  // Transition to running: updates DB, registers backend, clears idle timeout.
   // Determine correct event based on current session status.
   const sessionForTransition = dependencies.sessionPersistence.getSession(persistentSessionId)
   const transitionEvent = sessionForTransition?.status === 'pending' ? 'start' as const : 'continue' as const
@@ -1976,6 +2090,7 @@ export function startAgentChatSession(
     kombuseSessionId: appSessionId,
     ticketId,
     backend,
+    metadataPatch: clearTerminalMetadataPatch(),
   })
 
   const logger = createSessionLogger({
@@ -2051,6 +2166,7 @@ export function startAgentChatSession(
   let planCommentId = restoredMetadata.planCommentId
   let exitPlanModeToolUseId = restoredMetadata.exitPlanModeToolUseId
 
+  setSessionTurnActive(appSessionId, true)
   runAgentChat(backend, userMessage, appSessionId, {
     projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
     resumeSessionId,
@@ -2170,6 +2286,7 @@ export function startAgentChatSession(
       })
     },
     onComplete: (context: ConversationContext) => {
+      setSessionTurnActive(appSessionId, false)
       logger.close()
 
       // Sentinel: catch unexpected process death between turns (intentional state machine bypass).
@@ -2224,9 +2341,12 @@ export function startAgentChatSession(
         kombuseSessionId: appSessionId,
         backendSessionId: context.backendSessionId,
         ticketId,
+        status: 'completed',
+        reason: 'result',
       })
     },
     onResumeFailed: resumeSessionId ? () => {
+      setSessionTurnActive(appSessionId, false)
       logger.info('resume failed, retrying without --resume')
 
       // Transition to failed then back to running with a new backend
@@ -2234,6 +2354,7 @@ export function startAgentChatSession(
         kombuseSessionId: appSessionId,
         ticketId,
         error: 'resume_failed',
+        metadataPatch: buildFailureMetadataPatch('resume_failed'),
       })
 
       // Reset state from failed primary run
@@ -2258,8 +2379,10 @@ export function startAgentChatSession(
         kombuseSessionId: appSessionId,
         ticketId,
         backend: retryBackend,
+        metadataPatch: clearTerminalMetadataPatch(),
       })
 
+      setSessionTurnActive(appSessionId, true)
       runAgentChat(retryBackend, userMessage, appSessionId, {
         projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
         systemPrompt: fallbackSystemPrompt,
@@ -2310,6 +2433,7 @@ export function startAgentChatSession(
           emit({ type: 'event', kombuseSessionId: appSessionId, event })
         },
         onComplete: (context: ConversationContext) => {
+          setSessionTurnActive(appSessionId, false)
           logger.close()
           // Sentinel: catch unexpected process death between turns (intentional state machine bypass).
           // The 'complete' transition already fired — this is in-memory cleanup only.
@@ -2333,10 +2457,19 @@ export function startAgentChatSession(
               commentsRepository.create({ ticket_id: ticketId, author_id: authorId, parent_id: userReply?.id, body: lastAssistantMessage.trim(), kombuse_session_id: appSessionId })
             } catch { /* fallback comment failed */ }
           }
-          emit({ type: 'complete', kombuseSessionId: appSessionId, backendSessionId: context.backendSessionId, ticketId })
+          emit({
+            type: 'complete',
+            kombuseSessionId: appSessionId,
+            backendSessionId: context.backendSessionId,
+            ticketId,
+            status: 'completed',
+            reason: 'result',
+          })
         },
         onError: (error: Error) => {
+          setSessionTurnActive(appSessionId, false)
           logger.close()
+          const failureReason = classifyRuntimeFailureReason(error.message)
           const errorEvent: AgentEvent = { type: 'error', eventId: crypto.randomUUID(), backend: retryBackend.name, timestamp: Date.now(), message: error.message, error }
           dependencies.sessionPersistence.persistEvent(persistentSessionId, errorEvent)
           dependencies.stateMachine.transition(persistentSessionId, 'fail', {
@@ -2345,28 +2478,48 @@ export function startAgentChatSession(
             backendSessionId: retryBackend.getBackendSessionId(),
             error: error.message,
             invocationId: continuationInvocationId ?? undefined,
+            metadataPatch: buildFailureMetadataPatch(error.message),
           })
           emit({ type: 'event', kombuseSessionId: appSessionId, event: errorEvent })
-          emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
+          emit({
+            type: 'complete',
+            kombuseSessionId: appSessionId,
+            ticketId,
+            status: 'failed',
+            reason: failureReason,
+            errorMessage: error.message,
+          })
           if (ticketId) broadcastTicketAgentStatus(ticketId)
         },
       }).catch((retryError: unknown) => {
+        setSessionTurnActive(appSessionId, false)
         logger.close()
         const messageText = retryError instanceof Error ? retryError.message : String(retryError)
+        const failureReason = classifyRuntimeFailureReason(messageText)
         dependencies.stateMachine.transition(persistentSessionId, 'fail', {
           kombuseSessionId: appSessionId,
           ticketId,
           backendSessionId: retryBackend.getBackendSessionId(),
           error: messageText,
           invocationId: continuationInvocationId ?? undefined,
+          metadataPatch: buildFailureMetadataPatch(messageText),
         })
         emit({ type: 'error', message: `Failed to start agent (retry): ${messageText}` })
-        emit({ type: 'complete', kombuseSessionId: appSessionId, ticketId })
+        emit({
+          type: 'complete',
+          kombuseSessionId: appSessionId,
+          ticketId,
+          status: 'failed',
+          reason: failureReason,
+          errorMessage: messageText,
+        })
         if (ticketId) broadcastTicketAgentStatus(ticketId)
       })
     } : undefined,
     onError: (error: Error) => {
+      setSessionTurnActive(appSessionId, false)
       logger.close()
+      const failureReason = classifyRuntimeFailureReason(error.message)
 
       // Persist error event
       const errorEvent: AgentEvent = {
@@ -2389,6 +2542,7 @@ export function startAgentChatSession(
         backendSessionId: backend.getBackendSessionId(),
         error: error.message,
         invocationId: continuationInvocationId ?? undefined,
+        metadataPatch: buildFailureMetadataPatch(error.message),
       })
 
       emit({
@@ -2401,6 +2555,9 @@ export function startAgentChatSession(
         type: 'complete',
         kombuseSessionId: appSessionId,
         ticketId,
+        status: 'failed',
+        reason: failureReason,
+        errorMessage: error.message,
       })
 
       // Broadcast updated ticket agent status
@@ -2409,10 +2566,12 @@ export function startAgentChatSession(
       }
     },
   }).catch((error: unknown) => {
+      setSessionTurnActive(appSessionId, false)
       logger.close()
 
       const messageText =
         error instanceof Error ? error.message : String(error)
+      const failureReason = classifyRuntimeFailureReason(messageText)
 
       // Transition to failed via state machine (handles DB, backend cleanup, invocation)
       dependencies.stateMachine.transition(persistentSessionId, 'fail', {
@@ -2421,6 +2580,7 @@ export function startAgentChatSession(
         backendSessionId: backend.getBackendSessionId(),
         error: messageText,
         invocationId: continuationInvocationId ?? undefined,
+        metadataPatch: buildFailureMetadataPatch(messageText),
       })
 
       emit({
@@ -2431,6 +2591,9 @@ export function startAgentChatSession(
         type: 'complete',
         kombuseSessionId: appSessionId,
         ticketId,
+        status: 'failed',
+        reason: failureReason,
+        errorMessage: messageText,
       })
 
       // Broadcast updated ticket agent status

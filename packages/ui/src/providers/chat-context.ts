@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { SerializedAgentEvent, SerializedAgentPermissionRequestEvent } from '@kombuse/types'
+import type { PublicSession, SerializedAgentEvent, SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 
 export interface ChatContextValue {
   /** Current events in the conversation */
@@ -8,6 +8,12 @@ export interface ChatContextValue {
   isLoading: boolean
   /** Whether the WebSocket is connected */
   isConnected: boolean
+  /** Persisted lifecycle status for the current session */
+  sessionStatus: PublicSession['status'] | null
+  /** Machine-readable reason for the last terminal outcome */
+  terminalReason: string | null
+  /** Human-readable message for the last terminal outcome */
+  terminalMessage: string | null
   /** Current app session ID (set after first message) */
   kombuseSessionId: string | null
   /** Claude backend session ID (available after session is fetched) */

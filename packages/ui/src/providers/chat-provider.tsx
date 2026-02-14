@@ -50,6 +50,17 @@ function pendingPermissionToEvent(perm: PendingPermission): SerializedAgentPermi
   }
 }
 
+function formatTerminalReason(reason: string | null | undefined): string | null {
+  if (!reason || reason.trim().length === 0) {
+    return null
+  }
+  return reason
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 /**
  * Provides chat state and actions to the component tree.
  *
@@ -69,6 +80,9 @@ export function ChatProvider({
   const queryClient = useQueryClient()
   const [events, setEvents] = useState<SerializedAgentEvent[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [sessionStatus, setSessionStatus] = useState<PublicSession['status'] | null>(null)
+  const [terminalReason, setTerminalReason] = useState<string | null>(null)
+  const [terminalMessage, setTerminalMessage] = useState<string | null>(null)
   const [kombuseSessionId, setKombuseSessionId] = useState<string | null>(null)
   const [pendingPermission, setPendingPermission] =
     useState<SerializedAgentPermissionRequestEvent | null>(null)
@@ -100,10 +114,24 @@ export function ChatProvider({
   useEffect(() => {
     if (sessionData?.status === 'running') {
       setIsLoading(true)
+      setSessionStatus('running')
+      setTerminalReason(null)
+      setTerminalMessage(null)
     } else if (sessionData?.status) {
       setIsLoading(false)
+      setSessionStatus(sessionData.status)
+      const reasonFromMetadata =
+        typeof sessionData.metadata?.terminal_reason === 'string'
+          ? sessionData.metadata.terminal_reason
+          : null
+      const errorFromMetadata =
+        typeof sessionData.metadata?.terminal_error === 'string'
+          ? sessionData.metadata.terminal_error
+          : null
+      setTerminalReason(reasonFromMetadata)
+      setTerminalMessage(errorFromMetadata ?? formatTerminalReason(reasonFromMetadata))
     }
-  }, [sessionData?.status])
+  }, [sessionData])
 
   // Restore pendingPermission from AppProvider's global map when loading a session.
   // This enables the interactive AskUserBar/PlanApprovalBar to render when navigating
@@ -167,6 +195,9 @@ export function ChatProvider({
         }
         setKombuseSessionId(message.kombuseSessionId)
         setIsLoading(true)
+        setSessionStatus('running')
+        setTerminalReason(null)
+        setTerminalMessage(null)
         updateSessionStatus(message.kombuseSessionId, 'running')
         refreshSessions()
         break
@@ -182,6 +213,11 @@ export function ChatProvider({
         const event = message.event
         // Pass events through directly - they already have all required fields
         setEvents((prev) => [...prev, event])
+        if (event.type === 'error') {
+          setSessionStatus('failed')
+          setTerminalReason('agent_error')
+          setTerminalMessage(event.message)
+        }
         // Track permission requests for UI response (skip auto-approved)
         if (event.type === 'permission_request' && !event.autoApproved) {
           setPendingPermission(event)
@@ -203,15 +239,40 @@ export function ChatProvider({
         if (message.kombuseSessionId !== effectiveKombuseSessionId) {
           break
         }
+        const completionStatus = message.status ?? 'completed'
         setIsLoading(false)
         setPendingPermission(null)
-        updateSessionStatus(message.kombuseSessionId, 'completed')
+        setSessionStatus(completionStatus)
+        setTerminalReason(message.reason ?? null)
+        const completionMessage =
+          message.errorMessage
+          ?? formatTerminalReason(message.reason ?? null)
+          ?? null
+        setTerminalMessage(completionMessage)
+        updateSessionStatus(message.kombuseSessionId, completionStatus)
+
+        if (
+          (completionStatus === 'failed' || completionStatus === 'aborted')
+          && completionMessage
+        ) {
+          const errorEvent: SerializedAgentErrorEvent = {
+            type: 'error',
+            eventId: crypto.randomUUID(),
+            message: completionMessage,
+            backend: 'mock',
+            timestamp: Date.now(),
+          }
+          setEvents((prev) => [...prev, errorEvent])
+        }
         refreshSessions()
         break
       }
 
       case 'error': {
         setIsLoading(false)
+        setSessionStatus('failed')
+        setTerminalReason('server_error')
+        setTerminalMessage(message.message)
         refreshSessions()
         // Create an error event for server-level errors
         const errorEvent: SerializedAgentErrorEvent = {
@@ -348,10 +409,13 @@ export function ChatProvider({
   )
 
   const reset = useCallback(() => {
-    setEvents([])
-    setKombuseSessionId(null)
-    setPendingPermission(null)
-    setIsLoading(false)
+      setEvents([])
+      setKombuseSessionId(null)
+      setPendingPermission(null)
+      setIsLoading(false)
+      setSessionStatus(null)
+      setTerminalReason(null)
+      setTerminalMessage(null)
   }, [])
 
   const backendSessionId = sessionData?.backend_session_id ?? null
@@ -361,6 +425,9 @@ export function ChatProvider({
       events,
       isLoading,
       isConnected,
+      sessionStatus,
+      terminalReason,
+      terminalMessage,
       kombuseSessionId: effectiveKombuseSessionId,
       backendSessionId,
       pendingPermission,
@@ -368,7 +435,20 @@ export function ChatProvider({
       respondToPermission,
       reset,
     }),
-    [events, isLoading, isConnected, effectiveKombuseSessionId, backendSessionId, pendingPermission, send, respondToPermission, reset]
+    [
+      events,
+      isLoading,
+      isConnected,
+      sessionStatus,
+      terminalReason,
+      terminalMessage,
+      effectiveKombuseSessionId,
+      backendSessionId,
+      pendingPermission,
+      send,
+      respondToPermission,
+      reset,
+    ]
   )
 
   return <ChatCtx.Provider value={value}>{children}</ChatCtx.Provider>

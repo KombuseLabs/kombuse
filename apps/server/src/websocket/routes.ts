@@ -71,6 +71,9 @@ export async function websocketRoutes(fastify: FastifyInstance) {
               const completeMsg: ServerMessage = {
                 type: 'agent.complete',
                 kombuseSessionId: message.kombuseSessionId,
+                status: 'aborted',
+                reason: 'user_stop',
+                errorMessage: 'Stopped by user',
               }
               wsHub.broadcastAgentMessage(message.kombuseSessionId, completeMsg, socket)
               wsHub.broadcastToTopic('*', completeMsg)
@@ -151,6 +154,9 @@ function handleAgentInvoke(
           kombuseSessionId: event.kombuseSessionId,
           backendSessionId: event.backendSessionId,
           ticketId: event.ticketId,
+          status: event.status,
+          reason: event.reason,
+          errorMessage: event.errorMessage,
         }
         wsHub.broadcastAgentMessage(event.kombuseSessionId, msg, socket)
         wsHub.broadcastToTopic('*', msg)

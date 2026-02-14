@@ -46,8 +46,8 @@ describe('remarkLabelMentions', () => {
 
     const links = paragraph.children.filter((c) => c.type === 'link') as Link[]
     expect(links).toHaveLength(2)
-    expect(links[0].url).toBe('label://1')
-    expect(links[1].url).toBe('label://2')
+    expect(links[0]!.url).toBe('label://1')
+    expect(links[1]!.url).toBe('label://2')
   })
 
   it('should preserve surrounding text', () => {
