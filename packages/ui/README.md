@@ -509,11 +509,15 @@ import { TicketMentionChip } from '@kombuse/ui/components'
 // Renders an inline chip: #42 · Ticket Title [status dot]
 // Hovering shows a preview popover with title, body excerpt, status, labels, and timestamp
 <TicketMentionChip ticketId={42} href="/projects/my-project/tickets/42" />
+
+// Renders a plain text link while keeping the same hover preview popover
+<TicketMentionChip ticketId={42} href="/projects/my-project/tickets/42" variant="inline" />
 ```
 
 Props:
 - `ticketId`: Ticket ID to fetch and display
 - `href`: Navigation URL for the chip link
+- `variant`: Optional render style (`"chip"` | `"inline"`, default `"chip"`)
 - Falls back to a plain `#ID` link while loading or on error
 - Shows a `HoverCard` popover on hover with ticket details (powered by `TicketPreviewCard`)
 

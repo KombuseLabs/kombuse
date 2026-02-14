@@ -81,7 +81,14 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
           : `/tickets/${payload.source_ticket_id}`
         eventLabel = 'mentioned this ticket in'
         eventSuffix = (
-          <TicketMentionChip ticketId={payload.source_ticket_id} href={ticketHref} />
+          <>
+            {' '}
+            <TicketMentionChip
+              variant="inline"
+              ticketId={Number(payload.source_ticket_id)}
+              href={ticketHref}
+            />
+          </>
         )
       } else if (payload?.mention_type === 'ticket' && payload?.mentioned_ticket_id) {
         const ticketHref = projectId
@@ -89,7 +96,14 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
           : `/tickets/${payload.mentioned_ticket_id}`
         eventLabel = 'mentioned'
         eventSuffix = (
-          <TicketMentionChip ticketId={payload.mentioned_ticket_id} href={ticketHref} />
+          <>
+            {' '}
+            <TicketMentionChip
+              variant="inline"
+              ticketId={Number(payload.mentioned_ticket_id)}
+              href={ticketHref}
+            />
+          </>
         )
       } else if (payload?.mention_type === 'profile' && payload?.mention_text) {
         eventLabel = `mentioned ${payload.mention_text}`

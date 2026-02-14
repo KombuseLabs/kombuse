@@ -164,6 +164,7 @@ function EventItem({ event, className }: EventItemProps) {
 
           {event.ticket_id && event.project_id && (
             <TicketMentionChip
+              variant="inline"
               ticketId={event.ticket_id}
               href={`/projects/${event.project_id}/tickets/${event.ticket_id}`}
             />
