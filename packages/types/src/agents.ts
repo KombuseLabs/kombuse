@@ -190,6 +190,7 @@ export interface AgentInvocation {
   trigger_id: number
   event_id: number | null
   session_id: string | null
+  project_id: string | null
   /** App-level session ID (links to chat session for viewing/resuming) */
   kombuse_session_id: string | null
   status: InvocationStatus
@@ -218,6 +219,7 @@ export interface CreateAgentInvocationInput {
   trigger_id: number
   event_id?: number
   session_id?: string
+  project_id?: string
   max_attempts?: number
   run_at?: string
   context: Record<string, unknown>
@@ -247,6 +249,7 @@ export interface AgentInvocationFilters {
   trigger_id?: number
   status?: InvocationStatus
   session_id?: string
+  project_id?: string
   kombuse_session_id?: string
   limit?: number
   offset?: number

@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository, agentsRepository } from '@kombuse/persistence'
-import type { Ticket, Project, Label, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Attachment, CommentWithAuthor, CommentFilters } from '@kombuse/types'
+import { ticketsRepository, projectsRepository, commentsRepository, attachmentsRepository, agentInvocationsRepository, labelsRepository, agentsRepository, eventsRepository } from '@kombuse/persistence'
+import type { Ticket, Project, Label, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Attachment, CommentWithAuthor, CommentFilters, Event } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import { agentService, fileStorage } from '@kombuse/services'
 import { z } from 'zod'
@@ -422,9 +422,71 @@ function serializeGetTicketPayloadWithoutCap(payload: Record<string, unknown>): 
  * Resolve the agent and invocation context from a kombuse_session_id.
  * Returns null if no session ID provided (non-agent callers pass through).
  */
+function toOptionalNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.trunc(value)
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed.length === 0) return null
+    const parsed = Number(trimmed)
+    if (Number.isFinite(parsed)) {
+      return Math.trunc(parsed)
+    }
+  }
+  return null
+}
+
+function resolvePermissionEvent(invocation: AgentInvocation): Event | undefined {
+  if (typeof invocation.event_id === 'number') {
+    const event = eventsRepository.get(invocation.event_id)
+    if (event) return event
+  }
+
+  const context = invocation.context
+  if (!context || typeof context !== 'object' || Array.isArray(context)) {
+    return undefined
+  }
+
+  const contextRecord = context as Record<string, unknown>
+  const contextEventId = toOptionalNumber(contextRecord.event_id)
+  if (contextEventId !== null) {
+    const event = eventsRepository.get(contextEventId)
+    if (event) return event
+  }
+
+  const contextProjectId =
+    typeof contextRecord.project_id === 'string' && contextRecord.project_id.trim().length > 0
+      ? contextRecord.project_id
+      : invocation.project_id
+  const contextTicketId = toOptionalNumber(contextRecord.ticket_id)
+  const contextCommentId = toOptionalNumber(contextRecord.comment_id)
+
+  if (!contextProjectId && contextTicketId === null && contextCommentId === null) {
+    return undefined
+  }
+
+  return {
+    id: contextEventId ?? invocation.event_id ?? 0,
+    event_type:
+      typeof contextRecord.event_type === 'string' && contextRecord.event_type.trim().length > 0
+        ? contextRecord.event_type
+        : 'agent.invocation',
+    project_id: contextProjectId ?? null,
+    ticket_id: contextTicketId,
+    comment_id: contextCommentId,
+    actor_id: null,
+    actor_type: 'agent',
+    kombuse_session_id: invocation.kombuse_session_id,
+    payload: '{}',
+    created_at: invocation.created_at,
+  }
+}
+
 function resolveAgentContext(kombuse_session_id?: string): {
   agent: Agent
   invocation: AgentInvocation
+  event?: Event
 } | null {
   if (!kombuse_session_id) return null
 
@@ -435,7 +497,11 @@ function resolveAgentContext(kombuse_session_id?: string): {
   const agent = agentsRepository.get(invocation.agent_id)
   if (!agent) return null
 
-  return { agent, invocation }
+  return {
+    agent,
+    invocation,
+    event: resolvePermissionEvent(invocation),
+  }
 }
 
 /**
@@ -443,18 +509,24 @@ function resolveAgentContext(kombuse_session_id?: string): {
  * If no agent context (non-agent caller), allows by default.
  */
 function checkAgentPermission(
-  agentContext: { agent: Agent; invocation: AgentInvocation } | null,
+  agentContext: { agent: Agent; invocation: AgentInvocation; event?: Event } | null,
   request: PermissionCheckRequest
 ): PermissionCheckResult {
   if (!agentContext) {
     return { allowed: true }
   }
 
+  const requestWithProject =
+    request.projectId === undefined && agentContext.event?.project_id
+      ? { ...request, projectId: agentContext.event.project_id }
+      : request
+
   const permissionContext: PermissionContext = {
     invocation: agentContext.invocation,
+    event: agentContext.event,
   }
 
-  return agentService.checkPermission(agentContext.agent, request, permissionContext)
+  return agentService.checkPermission(agentContext.agent, requestWithProject, permissionContext)
 }
 
 function permissionDeniedResponse(reason: string) {
@@ -1377,7 +1449,14 @@ export function registerTicketTools(server: McpServer): void {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(updatedTicket, null, 2),
+            text: JSON.stringify(
+              {
+                ticket: updatedTicket,
+                labels: updatedTicket.labels,
+              },
+              null,
+              2
+            ),
           },
         ],
       }

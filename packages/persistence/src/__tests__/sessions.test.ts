@@ -105,6 +105,14 @@ describe('sessionsRepository', () => {
       expect(session.backend_type).toBe('claude-code')
       expect(session.ticket_id).toBe(testTicketId)
     })
+
+    it('should create session with project_id', () => {
+      const session = sessionsRepository.create({
+        project_id: TEST_PROJECT_ID,
+      })
+
+      expect(session.project_id).toBe(TEST_PROJECT_ID)
+    })
   })
 
   describe('update', () => {
@@ -228,6 +236,23 @@ describe('sessionsRepository', () => {
       const sessions = sessionsRepository.list()
 
       expect(sessions).toHaveLength(2)
+    })
+
+    it('should filter sessions by project_id', () => {
+      const otherProjectId = 'test-project-2'
+      db.prepare(`
+        INSERT INTO projects (id, name, owner_id)
+        VALUES (?, 'Other Project', ?)
+      `).run(otherProjectId, TEST_USER_ID)
+
+      sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+      sessionsRepository.create({ project_id: otherProjectId })
+      sessionsRepository.create()
+
+      const sessions = sessionsRepository.list({ project_id: TEST_PROJECT_ID })
+
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0]?.project_id).toBe(TEST_PROJECT_ID)
     })
 
     it('should filter by has_backend_session_id', () => {

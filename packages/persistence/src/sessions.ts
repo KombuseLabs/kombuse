@@ -40,6 +40,10 @@ export const sessionsRepository = {
       conditions.push('s.ticket_id = ?')
       params.push(filters.ticket_id)
     }
+    if (filters?.project_id !== undefined) {
+      conditions.push('s.project_id = ?')
+      params.push(filters.project_id)
+    }
     if (filters?.status) {
       conditions.push('s.status = ?')
       params.push(filters.status)
@@ -106,8 +110,8 @@ export const sessionsRepository = {
     db
       .prepare(
         `
-        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id, ticket_id, agent_id, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id, ticket_id, project_id, agent_id, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -116,6 +120,7 @@ export const sessionsRepository = {
         input?.backend_type ?? null,
         input?.backend_session_id ?? null,
         input?.ticket_id ?? null,
+        input?.project_id ?? null,
         input?.agent_id ?? null,
         metadata
       )
@@ -159,6 +164,10 @@ export const sessionsRepository = {
     if (input.backend_session_id !== undefined) {
       fields.push('backend_session_id = ?')
       params.push(input.backend_session_id)
+    }
+    if (input.project_id !== undefined) {
+      fields.push('project_id = ?')
+      params.push(input.project_id)
     }
     if (input.status !== undefined) {
       fields.push('status = ?')
@@ -225,6 +234,10 @@ export const sessionsRepository = {
     if (filters?.status) {
       conditions.push('s.status = ?')
       params.push(filters.status)
+    }
+    if (filters?.project_id !== undefined) {
+      conditions.push('s.project_id = ?')
+      params.push(filters.project_id)
     }
     if (filters?.terminal_reason) {
       conditions.push("json_extract(s.metadata, '$.terminal_reason') = ?")

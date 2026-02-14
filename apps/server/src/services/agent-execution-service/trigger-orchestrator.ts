@@ -344,6 +344,7 @@ export async function processEventAndRunAgents(
         agentId: agent.id,
         message: triggerPrompt.userMessage,
         kombuseSessionId,
+        projectId: event.project_id ?? undefined,
       },
       (evt) => {
         if (evt.type === 'started') {

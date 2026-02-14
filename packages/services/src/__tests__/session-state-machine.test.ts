@@ -9,6 +9,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     backend_type: 'claude-code',
     backend_session_id: null,
     ticket_id: null,
+    project_id: null,
     agent_id: null,
     status: 'pending',
     metadata: {},

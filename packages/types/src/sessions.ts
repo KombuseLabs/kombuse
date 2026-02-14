@@ -37,6 +37,7 @@ export interface Session {
   backend_type: BackendType | null
   backend_session_id: string | null
   ticket_id: number | null
+  project_id: string | null
   agent_id: string | null
   status: SessionStatus
   metadata: SessionMetadata
@@ -72,6 +73,7 @@ export interface CreateSessionInput {
   backend_type?: BackendType
   backend_session_id?: string
   ticket_id?: number
+  project_id?: string
   agent_id?: string
   metadata?: SessionMetadata
 }
@@ -81,6 +83,7 @@ export interface CreateSessionInput {
  */
 export interface SessionFilters {
   ticket_id?: number
+  project_id?: string
   status?: SessionStatus
   terminal_reason?: string
   has_backend_session_id?: boolean
@@ -95,6 +98,7 @@ export interface SessionFilters {
 export interface UpdateSessionInput {
   backend_type?: BackendType
   backend_session_id?: string | null
+  project_id?: string | null
   status?: SessionStatus
   metadata?: SessionMetadata
   completed_at?: string | null

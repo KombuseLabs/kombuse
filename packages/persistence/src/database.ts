@@ -793,6 +793,69 @@ const migrations = [
         AND json_extract(metadata, '$.terminal_reason') IS NULL;
     `,
   },
+  {
+    name: '019_session_invocation_project_scope',
+    sql: `
+      ALTER TABLE sessions
+        ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_sessions_project
+        ON sessions(project_id) WHERE project_id IS NOT NULL;
+
+      ALTER TABLE agent_invocations
+        ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_agent_invocations_project
+        ON agent_invocations(project_id) WHERE project_id IS NOT NULL;
+
+      -- Backfill invocations from persisted context JSON.
+      UPDATE agent_invocations
+      SET project_id = json_extract(context, '$.project_id')
+      WHERE project_id IS NULL
+        AND json_type(context, '$.project_id') = 'text';
+
+      -- Fallback backfill for invocations with an event link.
+      UPDATE agent_invocations
+      SET project_id = (
+        SELECT e.project_id
+        FROM events e
+        WHERE e.id = agent_invocations.event_id
+      )
+      WHERE project_id IS NULL
+        AND event_id IS NOT NULL;
+
+      -- Backfill sessions from linked tickets when available.
+      UPDATE sessions
+      SET project_id = (
+        SELECT t.project_id
+        FROM tickets t
+        WHERE t.id = sessions.ticket_id
+      )
+      WHERE project_id IS NULL
+        AND ticket_id IS NOT NULL;
+
+      -- Backfill sessions from invocation lineage for trigger/chat sessions.
+      UPDATE sessions
+      SET project_id = (
+        SELECT ai.project_id
+        FROM agent_invocations ai
+        WHERE ai.kombuse_session_id = sessions.kombuse_session_id
+          AND ai.project_id IS NOT NULL
+        ORDER BY ai.created_at DESC
+        LIMIT 1
+      )
+      WHERE project_id IS NULL
+        AND kombuse_session_id IS NOT NULL;
+
+      -- Final fallback: hydrate invocations from linked session rows.
+      UPDATE agent_invocations
+      SET project_id = (
+        SELECT s.project_id
+        FROM sessions s
+        WHERE s.id = agent_invocations.session_id
+      )
+      WHERE project_id IS NULL
+        AND session_id IS NOT NULL;
+    `,
+  },
 ]
 
 /**

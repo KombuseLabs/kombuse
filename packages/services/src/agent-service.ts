@@ -3,6 +3,7 @@ import type {
   AgentFilters,
   AgentTrigger,
   AgentInvocation,
+  AgentInvocationFilters,
   CreateAgentInput,
   UpdateAgentInput,
   CreateAgentTriggerInput,
@@ -49,7 +50,7 @@ export interface IAgentService {
   deleteTrigger(id: number): void
 
   // Invocation management
-  listInvocations(filters?: { agent_id?: string; status?: string }): AgentInvocation[]
+  listInvocations(filters?: AgentInvocationFilters): AgentInvocation[]
   getInvocation(id: number): AgentInvocation | null
 
   // Core operations
@@ -244,11 +245,8 @@ export class AgentService implements IAgentService {
   // Invocation management
   // ============================================
 
-  listInvocations(filters?: {
-    agent_id?: string
-    status?: string
-  }): AgentInvocation[] {
-    return agentInvocationsRepository.list(filters as any)
+  listInvocations(filters?: AgentInvocationFilters): AgentInvocation[] {
+    return agentInvocationsRepository.list(filters)
   }
 
   getInvocation(id: number): AgentInvocation | null {
@@ -384,6 +382,75 @@ export class AgentService implements IAgentService {
     return { allowed: true, matchedPermission: permission }
   }
 
+  private readInvocationContext(
+    context: PermissionContext
+  ): Record<string, unknown> | null {
+    const raw = context.invocation.context
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return null
+    }
+    return raw as Record<string, unknown>
+  }
+
+  private readInvocationContextString(
+    context: PermissionContext,
+    key: string
+  ): string | null {
+    const invocationContext = this.readInvocationContext(context)
+    const value = invocationContext?.[key]
+    if (typeof value !== 'string') {
+      return null
+    }
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+
+  private readInvocationContextNumber(
+    context: PermissionContext,
+    key: string
+  ): number | null {
+    const invocationContext = this.readInvocationContext(context)
+    const value = invocationContext?.[key]
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return Math.trunc(value)
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed.length === 0) return null
+      const parsed = Number(trimmed)
+      if (Number.isFinite(parsed)) {
+        return Math.trunc(parsed)
+      }
+    }
+
+    return null
+  }
+
+  private resolveContextProjectId(context: PermissionContext): string | null {
+    if (context.event?.project_id) {
+      return context.event.project_id
+    }
+    if (context.invocation.project_id) {
+      return context.invocation.project_id
+    }
+    return this.readInvocationContextString(context, 'project_id')
+  }
+
+  private resolveContextTicketId(context: PermissionContext): number | null {
+    if (typeof context.event?.ticket_id === 'number') {
+      return context.event.ticket_id
+    }
+    return this.readInvocationContextNumber(context, 'ticket_id')
+  }
+
+  private resolveContextCommentId(context: PermissionContext): number | null {
+    if (typeof context.event?.comment_id === 'number') {
+      return context.event.comment_id
+    }
+    return this.readInvocationContextNumber(context, 'comment_id')
+  }
+
   private checkScope(
     scope: 'invocation' | 'project' | 'global',
     request: PermissionCheckRequest,
@@ -395,27 +462,29 @@ export class AgentService implements IAgentService {
         return true
 
       case 'project':
-        // Check resource is in the same project as the triggering event
-        if (context.event?.project_id && request.projectId) {
-          return context.event.project_id === request.projectId
+        // Fail closed: project-scoped permissions require both sides.
+        if (!request.projectId) {
+          return false
         }
-        // If no project context, allow (conservative)
-        return true
+        return this.resolveContextProjectId(context) === request.projectId
 
       case 'invocation':
         // Check resource is related to the triggering event
+        const ticketId = this.resolveContextTicketId(context)
+        const commentId = this.resolveContextCommentId(context)
+
         // For now, we check if the resource ID matches the event's ticket/comment
-        if (request.resource === 'ticket' && context.event?.ticket_id) {
-          return String(request.resourceId) === String(context.event.ticket_id)
+        if (request.resource === 'ticket' && ticketId !== null) {
+          return String(request.resourceId) === String(ticketId)
         }
-        if (request.resource === 'comment' && context.event?.comment_id) {
-          return String(request.resourceId) === String(context.event.comment_id)
+        if (request.resource === 'comment' && commentId !== null) {
+          return String(request.resourceId) === String(commentId)
         }
         // For create operations on comments, check the ticket context
         if (
           request.resource === 'comment' &&
           request.action === 'create' &&
-          context.event?.ticket_id
+          ticketId !== null
         ) {
           // Allow creating comments on the triggering ticket
           return true
@@ -451,6 +520,7 @@ export class AgentService implements IAgentService {
       agent_id: trigger.agent_id,
       trigger_id: trigger.id,
       event_id: event.id,
+      project_id: event.project_id ?? undefined,
       max_attempts: maxAttempts,
       context,
     })

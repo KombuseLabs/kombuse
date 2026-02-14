@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
-import { setupTestDb, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
+import { setupTestDb, TEST_AGENT_ID, TEST_PROJECT_ID, TEST_USER_ID } from '../test-utils'
 import {
   agentsRepository,
   agentTriggersRepository,
@@ -478,6 +478,17 @@ describe('agentInvocationsRepository', () => {
 
       expect(invocation.session_id).toBe(session.id)
     })
+
+    it('should create an invocation with project_id', () => {
+      const invocation = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        project_id: TEST_PROJECT_ID,
+        context: { ticket_id: 456, project_id: TEST_PROJECT_ID },
+      })
+
+      expect(invocation.project_id).toBe(TEST_PROJECT_ID)
+    })
   })
 
   describe('get', () => {
@@ -524,6 +535,32 @@ describe('agentInvocationsRepository', () => {
       const pending = agentInvocationsRepository.list({ status: 'pending' })
 
       expect(pending.every((i) => i.status === 'pending')).toBe(true)
+    })
+
+    it('should filter invocations by project_id', () => {
+      const otherProjectId = 'test-project-2'
+      db.prepare(`
+        INSERT INTO projects (id, name, owner_id)
+        VALUES (?, 'Other Project', ?)
+      `).run(otherProjectId, TEST_USER_ID)
+
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        project_id: TEST_PROJECT_ID,
+        context: { project_id: TEST_PROJECT_ID },
+      })
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        project_id: otherProjectId,
+        context: { project_id: otherProjectId },
+      })
+
+      const scoped = agentInvocationsRepository.list({ project_id: TEST_PROJECT_ID })
+
+      expect(scoped).toHaveLength(1)
+      expect(scoped[0]?.project_id).toBe(TEST_PROJECT_ID)
     })
   })
 

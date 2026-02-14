@@ -309,6 +309,10 @@ export const agentInvocationsRepository = {
       conditions.push('session_id = ?')
       params.push(filters.session_id)
     }
+    if (filters?.project_id) {
+      conditions.push('project_id = ?')
+      params.push(filters.project_id)
+    }
     if (filters?.kombuse_session_id) {
       conditions.push('kombuse_session_id = ?')
       params.push(filters.kombuse_session_id)
@@ -352,9 +356,9 @@ export const agentInvocationsRepository = {
       .prepare(
         `
       INSERT INTO agent_invocations (
-        agent_id, trigger_id, event_id, session_id, max_attempts, run_at, context
+        agent_id, trigger_id, event_id, session_id, project_id, max_attempts, run_at, context
       )
-      VALUES (?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?)
+      VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?)
     `
       )
       .run(
@@ -362,6 +366,7 @@ export const agentInvocationsRepository = {
         input.trigger_id,
         input.event_id ?? null,
         input.session_id ?? null,
+        input.project_id ?? null,
         input.max_attempts ?? 3,
         input.run_at ?? null,
         JSON.stringify(input.context)
@@ -488,6 +493,7 @@ interface RawAgentInvocation {
   trigger_id: number
   event_id: number | null
   session_id: string | null
+  project_id: string | null
   kombuse_session_id: string | null
   status: string
   attempts: number
@@ -535,6 +541,7 @@ function mapAgentInvocation(row: RawAgentInvocation): AgentInvocation {
     trigger_id: row.trigger_id,
     event_id: row.event_id,
     session_id: row.session_id,
+    project_id: row.project_id,
     kombuse_session_id: row.kombuse_session_id,
     status: row.status as AgentInvocation['status'],
     attempts: row.attempts,

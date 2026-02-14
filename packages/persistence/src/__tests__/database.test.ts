@@ -64,6 +64,7 @@ const EXPECTED_SESSION_COLUMNS = [
   'backend_type',
   'backend_session_id',
   'ticket_id',
+  'project_id',
   'agent_id',
   'status',
   'metadata',
@@ -74,6 +75,25 @@ const EXPECTED_SESSION_COLUMNS = [
   'last_event_seq',
   'created_at',
   'updated_at',
+]
+const EXPECTED_INVOCATION_COLUMNS = [
+  'id',
+  'agent_id',
+  'trigger_id',
+  'event_id',
+  'session_id',
+  'project_id',
+  'status',
+  'attempts',
+  'max_attempts',
+  'run_at',
+  'context',
+  'result',
+  'error',
+  'started_at',
+  'completed_at',
+  'created_at',
+  'kombuse_session_id',
 ]
 const EXPECTED_INDEXES = [
   'idx_tickets_project',
@@ -102,6 +122,7 @@ const EXPECTED_MIGRATIONS = [
   '016_session_state_machine',
   '017_ticket_triggers_enabled',
   '018_session_abort_diagnostics',
+  '019_session_invocation_project_scope',
 ]
 
 describe('database', () => {
@@ -154,6 +175,21 @@ describe('database', () => {
 
       for (const expected of EXPECTED_SESSION_COLUMNS) {
         expect(columnNames, `Missing column: sessions.${expected}`).toContain(
+          expected
+        )
+      }
+    })
+
+    it('should create agent_invocations table with all required columns', () => {
+      runMigrations(db)
+
+      const columns = db
+        .prepare('PRAGMA table_info(agent_invocations)')
+        .all() as { name: string }[]
+      const columnNames = columns.map((c) => c.name)
+
+      for (const expected of EXPECTED_INVOCATION_COLUMNS) {
+        expect(columnNames, `Missing column: agent_invocations.${expected}`).toContain(
           expected
         )
       }

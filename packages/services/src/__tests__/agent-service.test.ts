@@ -13,6 +13,7 @@ import {
 import {
   agentsRepository,
   agentTriggersRepository,
+  agentInvocationsRepository,
   eventsRepository,
   ticketsRepository,
   profilesRepository,
@@ -341,6 +342,100 @@ describe('agentService', () => {
 
       const matches = agentService.findMatchingTriggers(event)
       expect(matches, 'Should not match because author_type is agent, not user').toHaveLength(0)
+    })
+  })
+
+  describe('checkPermission scope resolution', () => {
+    function createInvocation(context: Record<string, unknown>) {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.updated',
+      })
+      return agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: trigger.id,
+        project_id:
+          typeof context.project_id === 'string' && context.project_id.trim().length > 0
+            ? context.project_id
+            : undefined,
+        context,
+      })
+    }
+
+    it('fails closed for project scope when project context is missing', () => {
+      agentsRepository.update(agentId, {
+        permissions: [{ type: 'resource', resource: 'ticket', actions: ['update'], scope: 'project' }],
+      })
+      const invocation = createInvocation({})
+      const agent = agentService.getAgent(agentId)!
+
+      const result = agentService.checkPermission(
+        agent,
+        {
+          type: 'resource',
+          resource: 'ticket',
+          action: 'update',
+          resourceId: testTicketId,
+          projectId: TEST_PROJECT_ID,
+        },
+        { invocation }
+      )
+
+      expect(result.allowed).toBe(false)
+    })
+
+    it('uses invocation context project_id when event context is absent', () => {
+      agentsRepository.update(agentId, {
+        permissions: [{ type: 'resource', resource: 'ticket', actions: ['update'], scope: 'project' }],
+      })
+      const invocation = createInvocation({ project_id: TEST_PROJECT_ID, ticket_id: testTicketId })
+      const agent = agentService.getAgent(agentId)!
+
+      const result = agentService.checkPermission(
+        agent,
+        {
+          type: 'resource',
+          resource: 'ticket',
+          action: 'update',
+          resourceId: testTicketId,
+          projectId: TEST_PROJECT_ID,
+        },
+        { invocation }
+      )
+
+      expect(result.allowed).toBe(true)
+    })
+
+    it('uses invocation context ticket_id for invocation scope checks', () => {
+      agentsRepository.update(agentId, {
+        permissions: [{ type: 'resource', resource: 'ticket', actions: ['update'], scope: 'invocation' }],
+      })
+      const invocation = createInvocation({ project_id: TEST_PROJECT_ID, ticket_id: testTicketId })
+      const agent = agentService.getAgent(agentId)!
+
+      const allowed = agentService.checkPermission(
+        agent,
+        {
+          type: 'resource',
+          resource: 'ticket',
+          action: 'update',
+          resourceId: testTicketId,
+        },
+        { invocation }
+      )
+      const denied = agentService.checkPermission(
+        agent,
+        {
+          type: 'resource',
+          resource: 'ticket',
+          action: 'update',
+          resourceId: testTicketId + 999,
+        },
+        { invocation }
+      )
+
+      expect(allowed.allowed).toBe(true)
+      expect(denied.allowed).toBe(false)
     })
   })
 })

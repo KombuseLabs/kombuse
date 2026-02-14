@@ -61,6 +61,7 @@ function makeSession(overrides: Partial<PublicSession> = {}): PublicSession {
     backend_type: 'mock',
     backend_session_id: null,
     ticket_id: null,
+    project_id: null,
     agent_id: null,
     status: 'completed',
     metadata: {},

@@ -1102,7 +1102,10 @@ describe('permission enforcement', () => {
   /**
    * Create a test agent with the given permissions and return its kombuse_session_id.
    */
-  function createTestAgentSession(permissions: Permission[]): string {
+  function createTestAgentSession(
+    permissions: Permission[],
+    invocationContext: Record<string, unknown> = {}
+  ): string {
     const id = `test-agent-${++agentCounter}-${Date.now()}`
     const sessionId = `session-${id}`
 
@@ -1116,7 +1119,7 @@ describe('permission enforcement', () => {
     const invocation = agentInvocationsRepository.create({
       agent_id: id,
       trigger_id: trigger.id,
-      context: {},
+      context: invocationContext,
     })
     agentInvocationsRepository.update(invocation.id, { kombuse_session_id: sessionId })
 
@@ -1153,6 +1156,53 @@ describe('permission enforcement', () => {
     const result = await client.callTool({
       name: 'update_ticket',
       arguments: { ticket_id: ticket.id, title: 'New title', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should allow project-scoped ticket updates in the same project', async () => {
+    const sessionId = createTestAgentSession(
+      [{ type: 'resource', resource: 'ticket', actions: ['update'], scope: 'project' }],
+      { project_id: TEST_PROJECT_ID }
+    )
+    const ticket = ticketsRepository.create({
+      title: 'Scoped ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, title: 'Scoped update', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { ticket: { title: string } }
+    expect(data.ticket.title).toBe('Scoped update')
+  })
+
+  it('should deny project-scoped ticket updates across projects', async () => {
+    const sessionId = createTestAgentSession(
+      [{ type: 'resource', resource: 'ticket', actions: ['update'], scope: 'project' }],
+      { project_id: TEST_PROJECT_ID }
+    )
+    const otherProject = projectsRepository.create({
+      id: `proj-${Date.now()}`,
+      name: 'Other Project',
+      owner_id: TEST_USER_ID,
+    })
+    const otherTicket = ticketsRepository.create({
+      title: 'Cross-project ticket',
+      project_id: otherProject.id,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: otherTicket.id, title: 'Should fail', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBe(true)

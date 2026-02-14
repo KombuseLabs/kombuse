@@ -519,7 +519,8 @@ export function startAgentChatSession(
     appSessionId,
     resolvedBackendType,
     options?.ticketId,
-    agent?.id
+    agent?.id,
+    projectId
   )
   const existingSession = dependencies.sessionPersistence.getSession(
     persistentSessionId
@@ -569,6 +570,11 @@ export function startAgentChatSession(
       trigger_id: lastInvocation.trigger_id,
       event_id: lastInvocation.event_id ?? undefined,
       session_id: persistentSessionId,
+      project_id:
+        lastInvocation.project_id
+        ?? (typeof lastInvocation.context.project_id === 'string'
+          ? lastInvocation.context.project_id
+          : undefined),
       context: lastInvocation.context,
     })
     agentInvocationsRepository.update(continuation.id, {

@@ -99,6 +99,7 @@ export const invocationFiltersSchema = z.object({
   trigger_id: z.coerce.number().int().positive().optional(),
   status: z.enum(['pending', 'running', 'completed', 'failed']).optional(),
   session_id: z.string().optional(),
+  project_id: z.string().optional(),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 })

@@ -183,6 +183,7 @@ describe('processEventAndRunAgents lifecycle session isolation', () => {
       trigger_id: 12,
       event_id: 9734,
       session_id: null,
+      project_id: '1',
       kombuse_session_id: null,
       status: 'pending' as const,
       attempts: 0,
@@ -290,6 +291,18 @@ describe('processEventAndRunAgents lifecycle session isolation', () => {
     await processEventAndRunAgents(event as any, deps as any)
 
     expect(getAssignedSessionId(invocation.id)).toBe(upstreamSessionId)
+  })
+
+  it('passes event project_id into session persistence', async () => {
+    const invocation = createInvocation('triage-agent')
+    const event = createLifecycleEvent('triage-agent')
+    const deps = createDeps(invocation)
+
+    await processEventAndRunAgents(event as any, deps as any)
+
+    const ensureSessionCalls = (deps.sessionPersistence.ensureSession as ReturnType<typeof vi.fn>).mock.calls
+    expect(ensureSessionCalls.length).toBeGreaterThan(0)
+    expect(ensureSessionCalls[0]?.[4]).toBe('1')
   })
 })
 
@@ -2509,6 +2522,7 @@ describe('continuation invocation tracking', () => {
     trigger_id: 5,
     event_id: 10,
     session_id: null,
+    project_id: '1',
     kombuse_session_id: 'trigger-continue-test',
     status: 'failed' as const,
     attempts: 1,
@@ -2580,6 +2594,7 @@ describe('continuation invocation tracking', () => {
         trigger_id: 5,
         event_id: 10,
         session_id: 'session-1',
+        project_id: '1',
         context: { ticket_id: 42, project_id: '1' },
       })
     )
