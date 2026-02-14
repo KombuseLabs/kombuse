@@ -1,13 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
-import type { SerializedAgentEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
+import { useMemo, type ReactElement } from 'react'
+import type { SerializedAgentEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { useScrollToBottom } from '../../hooks/use-scroll-to-bottom'
 import { isValidAskUserInput } from './ask-user-types'
-import { AddCommentRenderer, AskUserRenderer, BashRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GetTicketRenderer, GlobRenderer, GrepRenderer, MessageRenderer, PermissionRequestRenderer, PlanPermissionRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, UpdateTicketRenderer, WriteRenderer } from './renderers'
+import { AskUserRenderer, BashRenderer, EditRenderer, EnterPlanModeRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PlanPermissionRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 interface SessionViewerProps {
@@ -16,6 +16,59 @@ interface SessionViewerProps {
   emptyMessage?: string
   viewMode?: ViewMode
   className?: string
+}
+
+type MatchedToolRenderer = (args: {
+  key: string
+  toolUse: SerializedAgentToolUseEvent
+  result?: SerializedAgentToolResultEvent
+}) => ReactElement
+
+const TOOL_RENDERERS: Record<string, MatchedToolRenderer> = {
+  Bash: ({ key, toolUse, result }) => (
+    <BashRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  Task: ({ key, toolUse, result }) => (
+    <TaskRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  Read: ({ key, toolUse, result }) => (
+    <ReadRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  Write: ({ key, toolUse, result }) => (
+    <WriteRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  Edit: ({ key, toolUse, result }) => (
+    <EditRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  Glob: ({ key, toolUse, result }) => (
+    <GlobRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  Grep: ({ key, toolUse, result }) => (
+    <GrepRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  EnterPlanMode: ({ key, toolUse, result }) => (
+    <EnterPlanModeRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  ExitPlanMode: ({ key, toolUse, result }) => (
+    <PlanRenderer key={key} toolUse={toolUse} result={result} />
+  ),
+  TodoWrite: ({ key, toolUse }) => (
+    <TodoRenderer key={key} toolUse={toolUse} />
+  ),
+}
+
+function renderMatchedTool(
+  key: string,
+  toolUse: SerializedAgentToolUseEvent,
+  result?: SerializedAgentToolResultEvent
+): ReactElement | null {
+  if (isKombuseToolName(toolUse.name)) {
+    return <KombuseToolRenderer key={key} toolUse={toolUse} result={result} />
+  }
+
+  const renderer = TOOL_RENDERERS[toolUse.name]
+  if (!renderer) return null
+  return renderer({ key, toolUse, result })
 }
 
 function SessionViewer({ events, isLoading = false, emptyMessage = 'No events yet', viewMode = 'normal', className }: SessionViewerProps) {
@@ -118,45 +171,8 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (toolUseIdsWithResults.has(event.id)) {
             return null
           }
-          if (event.name === 'Bash') {
-            return <BashRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'Task') {
-            return <TaskRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'Read') {
-            return <ReadRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'Write') {
-            return <WriteRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'Edit') {
-            return <EditRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'Glob') {
-            return <GlobRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'Grep') {
-            return <GrepRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'EnterPlanMode') {
-            return <EnterPlanModeRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'ExitPlanMode') {
-            return <PlanRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'TodoWrite') {
-            return <TodoRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'mcp__kombuse__add_comment') {
-            return <AddCommentRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'mcp__kombuse__get_ticket') {
-            return <GetTicketRenderer key={event.eventId} toolUse={event} />
-          }
-          if (event.name === 'mcp__kombuse__update_ticket') {
-            return <UpdateTicketRenderer key={event.eventId} toolUse={event} />
-          }
+          const matched = renderMatchedTool(event.eventId, event)
+          if (matched) return matched
           return <ToolUseRenderer key={event.eventId} event={event} />
         }
 
@@ -164,45 +180,8 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         if (event.type === 'tool_result') {
           const toolUse = toolUseMap.get(event.toolUseId)
           if (toolUse) {
-            if (toolUse.name === 'Bash') {
-              return <BashRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'Task') {
-              return <TaskRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'Read') {
-              return <ReadRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'Write') {
-              return <WriteRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'Edit') {
-              return <EditRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'Glob') {
-              return <GlobRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'Grep') {
-              return <GrepRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'EnterPlanMode') {
-              return <EnterPlanModeRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'ExitPlanMode') {
-              return <PlanRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'TodoWrite') {
-              return <TodoRenderer key={event.eventId} toolUse={toolUse} />
-            }
-            if (toolUse.name === 'mcp__kombuse__add_comment') {
-              return <AddCommentRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'mcp__kombuse__get_ticket') {
-              return <GetTicketRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
-            if (toolUse.name === 'mcp__kombuse__update_ticket') {
-              return <UpdateTicketRenderer key={event.eventId} toolUse={toolUse} result={event} />
-            }
+            const matched = renderMatchedTool(event.eventId, toolUse, event)
+            if (matched) return matched
           }
           // Render with or without matching tool_use (orphaned results show output only)
           return (
