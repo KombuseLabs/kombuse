@@ -1,4 +1,6 @@
 export { PromptEditor } from './prompt-editor'
 export type { PromptEditorProps } from './prompt-editor'
+export { TEMPLATE_ENGINE_NOTE, TEMPLATE_SNIPPET_GROUPS } from './template-snippets'
+export type { TemplateSnippet, TemplateSnippetGroup } from './template-snippets'
 export { TEMPLATE_VARIABLE_GROUPS } from './template-variables'
 export type { TemplateVariable, TemplateVariableGroup } from './template-variables'

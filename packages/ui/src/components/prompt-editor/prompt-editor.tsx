@@ -8,8 +8,9 @@ import { Button } from '../../base/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../base/collapsible'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../base/tooltip'
 import { TEMPLATE_VARIABLE_GROUPS, type TemplateVariableGroup } from './template-variables'
+import { TEMPLATE_ENGINE_NOTE, TEMPLATE_SNIPPET_GROUPS } from './template-snippets'
 
-interface PromptEditorProps {
+export interface PromptEditorProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -57,11 +58,10 @@ function PromptEditor({
   const usedVariableSet = new Set(uniqueVariables)
   const variableGroups = availableVariables ?? TEMPLATE_VARIABLE_GROUPS
 
-  const insertAtCursor = (variableName: string) => {
+  const insertAtCursor = (insertText: string) => {
     const textarea = textareaRef.current
     if (!textarea || isPreview) return
 
-    const insertText = `{{ ${variableName} }}`
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
     const before = value.slice(0, start)
@@ -74,6 +74,14 @@ function PromptEditor({
       const newPos = start + insertText.length
       textarea.setSelectionRange(newPos, newPos)
     })
+  }
+
+  const insertVariable = (variableName: string) => {
+    insertAtCursor(`{{ ${variableName} }}`)
+  }
+
+  const insertSnippet = (snippet: string) => {
+    insertAtCursor(snippet)
   }
 
   // Rough token estimate (1 token ~ 4 chars for English)
@@ -180,6 +188,34 @@ function PromptEditor({
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-1">
             <div className="rounded-md border bg-muted/30 p-3 space-y-3 text-xs">
+              <div className="text-muted-foreground">{TEMPLATE_ENGINE_NOTE}</div>
+              <div className="space-y-2">
+                <div className="font-medium text-muted-foreground">Templating Blocks</div>
+                {TEMPLATE_SNIPPET_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <div className="font-medium text-muted-foreground mb-1">{group.label}</div>
+                    <div className="flex flex-wrap gap-1">
+                      {group.snippets.map((snippet) => (
+                        <button
+                          key={snippet.label}
+                          type="button"
+                          onClick={() => insertSnippet(snippet.template)}
+                          disabled={disabled || isPreview}
+                          className={cn(
+                            'inline-flex items-center rounded px-1.5 py-0.5 font-mono',
+                            'border transition-colors cursor-pointer',
+                            'hover:bg-primary/10 hover:border-primary/30',
+                            'disabled:cursor-not-allowed disabled:opacity-50',
+                            'bg-muted border-transparent text-muted-foreground'
+                          )}
+                        >
+                          {snippet.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
               {variableGroups.map((group) => (
                 <div key={group.label}>
                   <div className="font-medium text-muted-foreground mb-1">
@@ -193,7 +229,7 @@ function PromptEditor({
                           <TooltipTrigger asChild>
                             <button
                               type="button"
-                              onClick={() => insertAtCursor(variable.name)}
+                              onClick={() => insertVariable(variable.name)}
                               disabled={disabled || isPreview}
                               className={cn(
                                 'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono',
@@ -258,4 +294,3 @@ function PromptEditor({
 }
 
 export { PromptEditor }
-export type { PromptEditorProps }

@@ -802,7 +802,13 @@ Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users ca
 ```typescript
 import { PromptEditor } from '@kombuse/ui/components'
 import { TEMPLATE_VARIABLE_GROUPS } from '@kombuse/ui/components'
-import type { TemplateVariable, TemplateVariableGroup } from '@kombuse/ui/components'
+import { TEMPLATE_ENGINE_NOTE, TEMPLATE_SNIPPET_GROUPS } from '@kombuse/ui/components'
+import type {
+  TemplateVariable,
+  TemplateVariableGroup,
+  TemplateSnippet,
+  TemplateSnippetGroup,
+} from '@kombuse/ui/components'
 
 // Basic prompt editor
 <PromptEditor
@@ -844,7 +850,22 @@ Props:
 - `description`: What the variable provides
 - `availability` (optional): Condition-based availability guidance shown in hover help
 
-The available variables panel lists variables grouped by category (Event, Ticket, Project, Comment, Actor, Session). Clicking a variable badge inserts `{{ variable }}` at the cursor position. Variables already used in the prompt are highlighted with a checkmark. Hovering or focusing a variable badge opens a custom tooltip with both `description` and `availability` details. If a custom variable omits `availability`, the tooltip shows a fallback availability message.
+`TemplateSnippet` shape:
+- `label`: Button label shown in the helper panel
+- `template`: Raw Nunjucks snippet inserted into the prompt
+
+The available variables panel now includes:
+- A plain engine note: `Templating engine: Nunjucks` (`TEMPLATE_ENGINE_NOTE`)
+- Basic block snippets (`TEMPLATE_SNIPPET_GROUPS`) such as `if / else`, `for`, and comments
+- Existing grouped variable badges (Event, Ticket, Project, Comment, Actor, Session)
+
+Insertion behavior:
+- Clicking a variable badge inserts `{{ variable }}` at the cursor position.
+- Clicking a snippet inserts the raw snippet text verbatim (no automatic `{{ }}` wrapping).
+- In both cases, insertion replaces any selected text and leaves the cursor at the end of the inserted content.
+- Variable and snippet buttons are disabled when the editor is disabled or in preview mode.
+
+Variables already used in the prompt are highlighted with a checkmark. Hovering or focusing a variable badge opens a custom tooltip with both `description` and `availability` details. If a custom variable omits `availability`, the tooltip shows a fallback availability message.
 
 ### Chat Components
 
