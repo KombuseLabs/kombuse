@@ -191,4 +191,35 @@ describe('response validation hook', () => {
     expect(response.statusCode).toBe(204)
     expect(response.body).toBe('')
   })
+
+  it('normalizes error payloads even on no-body route keys', async () => {
+    const app = Fastify()
+    apps.push(app)
+
+    app.addHook(
+      'preSerialization',
+      createResponseValidationHook({
+        isNoBodyRoute: (routeKey) => routeKey === 'DELETE /api/test-no-body-error',
+      })
+    )
+
+    app.delete('/api/test-no-body-error', async (_request, reply) => {
+      return reply.status(404).send({ error: ['Not found details'] })
+    })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/test-no-body-error',
+    })
+
+    const body = response.json() as {
+      error: string
+      details?: unknown
+    }
+
+    expect(response.statusCode).toBe(404)
+    expect(body.error).toBe('Request failed')
+    expect(body.details).toEqual(['Not found details'])
+  })
 })

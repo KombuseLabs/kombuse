@@ -213,16 +213,20 @@ export function createResponseValidationHook(
     const routePath = normalizeRoutePath(request)
     const routeKey = toRouteKey(request.method, routePath)
 
-    // Explicitly bypass validation for stream responses and no-body routes.
+    if (reply.statusCode >= 400) {
+      // Keep non-JSON error payloads untouched.
+      if (isStreamPayload(payload)) {
+        return payload
+      }
+      return normalizeErrorPayload(payload, reply.statusCode)
+    }
+
+    // Explicitly bypass success validation for stream responses and no-body routes.
     if (reply.statusCode === 204 || isNoBodyRoute(routeKey)) {
       return payload
     }
     if (isStreamRoute(routeKey) || isStreamPayload(payload)) {
       return payload
-    }
-
-    if (reply.statusCode >= 400) {
-      return normalizeErrorPayload(payload, reply.statusCode)
     }
 
     const successSchema = resolveSuccessSchema(routeKey)
