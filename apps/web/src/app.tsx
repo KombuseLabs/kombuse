@@ -6,6 +6,7 @@ import { Toaster, toast } from "@kombuse/ui/base";
 import { getWsUrl } from "@kombuse/ui/lib/api";
 import { useDesktop } from "@kombuse/ui/hooks";
 import { CommandSetup, usePalette } from "./command-setup";
+import { useHistoryNavigationContext } from "./hooks/use-history-navigation";
 import { Home } from "./routes/home";
 import { Chats } from "./routes/chats";
 import { Projects } from "./routes/projects";
@@ -34,6 +35,7 @@ function AppContent() {
   const location = useLocation();
   const { open, setOpen } = usePalette();
   const { isDesktop } = useDesktop();
+  const { canGoBack, canGoForward, goBack, goForward } = useHistoryNavigationContext();
   const isHome = location.pathname === "/";
   useScrollbarActivity();
 
@@ -45,6 +47,10 @@ function AppContent() {
       {!isHome ? (
         <Header
           onNavigateHome={() => navigate("/")}
+          canGoBack={canGoBack}
+          canGoForward={canGoForward}
+          onGoBack={goBack}
+          onGoForward={goForward}
           center={
             <CommandPalette open={open} onOpenChange={setOpen} onNavigate={navigate} />
           }

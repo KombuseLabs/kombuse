@@ -12,6 +12,7 @@ import {
   useUpsertProfileSetting,
 } from "@kombuse/ui/hooks";
 import type { CommandContext } from "@kombuse/types";
+import { useHistoryNavigation, HistoryNavigationContext } from "./hooks/use-history-navigation";
 
 const USER_PROFILE_ID = "user-1";
 const SIDEBAR_EVENTS_SETTING_KEY = "sidebar.hidden.events";
@@ -41,6 +42,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
     useAppContext();
 
   const registry = useMemo(() => createCommandRegistry(), []);
+  const historyNav = useHistoryNavigation();
 
   const { data: eventsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_EVENTS_SETTING_KEY);
   const { data: permissionsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PERMISSIONS_SETTING_KEY);
@@ -213,10 +215,26 @@ export function CommandSetup({ children }: CommandSetupProps) {
           navigate(`/projects/${currentProjectId}/database`);
         },
       }),
+      registry.register({
+        id: "nav.back",
+        title: "Go Back",
+        category: "Navigation",
+        icon: "ChevronLeft",
+        keybinding: "mod+[",
+        handler: () => historyNav.goBack(),
+      }),
+      registry.register({
+        id: "nav.forward",
+        title: "Go Forward",
+        category: "Navigation",
+        icon: "ChevronRight",
+        keybinding: "mod+]",
+        handler: () => historyNav.goForward(),
+      }),
     ];
 
     return () => unregisterFns.forEach((fn) => fn());
-  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, databaseVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting]);
+  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, databaseVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting, historyNav.goBack, historyNav.goForward]);
 
   const context: CommandContext = useMemo(
     () => ({
@@ -239,7 +257,9 @@ export function CommandSetup({ children }: CommandSetupProps) {
   return (
     <CommandProvider registry={registry} context={context}>
       <PaletteCtx.Provider value={paletteState}>
-        {children}
+        <HistoryNavigationContext.Provider value={historyNav}>
+          {children}
+        </HistoryNavigationContext.Provider>
       </PaletteCtx.Provider>
     </CommandProvider>
   );

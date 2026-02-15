@@ -1,18 +1,35 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Button } from "../base/button";
 import { useDesktop } from "../hooks/use-desktop";
 import { ModeToggle } from "./mode-toggle";
 
 interface HeaderProps extends React.ComponentProps<"header"> {
   center?: ReactNode;
   onNavigateHome?: () => void;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
+  onGoBack?: () => void;
+  onGoForward?: () => void;
 }
 
-function Header({ className, center, onNavigateHome, children, ...props }: HeaderProps) {
+function Header({
+  className,
+  center,
+  onNavigateHome,
+  canGoBack,
+  canGoForward,
+  onGoBack,
+  onGoForward,
+  children,
+  ...props
+}: HeaderProps) {
   const { isDesktop, platform } = useDesktop();
   const isMac = platform === "darwin";
+  const showNavArrows = onGoBack !== undefined && onGoForward !== undefined;
 
   return (
     <header
@@ -24,6 +41,32 @@ function Header({ className, center, onNavigateHome, children, ...props }: Heade
       )}
       {...props}
     >
+      {showNavArrows && (
+        <div className="flex items-center gap-0.5 mr-2 electron-no-drag">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            disabled={!canGoBack}
+            onClick={onGoBack}
+            aria-label="Go back"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            disabled={!canGoForward}
+            onClick={onGoForward}
+            aria-label="Go forward"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      )}
       <button
         type="button"
         className="shrink-0 text-xl font-semibold cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0 electron-no-drag"

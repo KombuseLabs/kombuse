@@ -320,6 +320,13 @@ import { ProfileButton } from '@kombuse/ui/components'
 // - center: ReactNode rendered in the center between title and nav
 // - onNavigateHome: Optional callback when the "Kombuse" logo is clicked
 // - children: rendered in the right nav area
+// - canGoBack: Optional boolean, enables the back arrow button
+// - canGoForward: Optional boolean, enables the forward arrow button
+// - onGoBack: Optional callback when back arrow is clicked
+// - onGoForward: Optional callback when forward arrow is clicked
+// When onGoBack and onGoForward are both provided, back/forward chevron
+// buttons render to the left of the title. Buttons are disabled when
+// their corresponding can* prop is false.
 // Header chrome:
 // - No bottom border in any rendering context
 // - Preserves macOS title alignment (`pl-20`) while adding +5px breathing room to center search and right controls

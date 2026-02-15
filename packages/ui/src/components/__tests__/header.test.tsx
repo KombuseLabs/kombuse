@@ -89,4 +89,123 @@ describe('Header', () => {
 
     expect(onNavigateHome).toHaveBeenCalledTimes(1)
   })
+
+  it('does not render nav arrows when props are omitted', () => {
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    render(<Header />)
+
+    expect(screen.queryByRole('button', { name: 'Go back' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Go forward' })).toBeNull()
+  })
+
+  it('renders nav arrows when onGoBack and onGoForward are provided', () => {
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    render(
+      <Header
+        onGoBack={() => {}}
+        onGoForward={() => {}}
+        canGoBack={false}
+        canGoForward={false}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Go back' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Go forward' })).toBeDefined()
+  })
+
+  it('disables back button when canGoBack is false and forward when canGoForward is false', () => {
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    render(
+      <Header
+        onGoBack={() => {}}
+        onGoForward={() => {}}
+        canGoBack={false}
+        canGoForward={false}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Go back' })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: 'Go forward' })).toHaveProperty('disabled', true)
+  })
+
+  it('enables buttons when canGoBack and canGoForward are true', () => {
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    render(
+      <Header
+        onGoBack={() => {}}
+        onGoForward={() => {}}
+        canGoBack={true}
+        canGoForward={true}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Go back' })).toHaveProperty('disabled', false)
+    expect(screen.getByRole('button', { name: 'Go forward' })).toHaveProperty('disabled', false)
+  })
+
+  it('calls onGoBack and onGoForward when clicked', () => {
+    const onGoBack = vi.fn()
+    const onGoForward = vi.fn()
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    render(
+      <Header
+        onGoBack={onGoBack}
+        onGoForward={onGoForward}
+        canGoBack={true}
+        canGoForward={true}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go back' }))
+    expect(onGoBack).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go forward' }))
+    expect(onGoForward).toHaveBeenCalledTimes(1)
+  })
+
+  it('applies electron-no-drag to nav arrows wrapper', () => {
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    render(
+      <Header
+        onGoBack={() => {}}
+        onGoForward={() => {}}
+        canGoBack={true}
+        canGoForward={true}
+      />
+    )
+
+    const backBtn = screen.getByRole('button', { name: 'Go back' })
+    const wrapper = backBtn.parentElement
+    expect(wrapper?.className).toContain('electron-no-drag')
+  })
 })
