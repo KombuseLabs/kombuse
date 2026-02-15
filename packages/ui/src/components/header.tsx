@@ -31,10 +31,10 @@ function Header({ className, center, onNavigateHome, children, ...props }: Heade
       >
         Kombuse
       </button>
-      <div className="flex flex-1 justify-center px-[21px]">
+      <div className="flex flex-1 justify-center px-[21px] mt-[10px]">
         {center ? <div className="electron-no-drag">{center}</div> : null}
       </div>
-      <nav className="flex shrink-0 items-center gap-4 px-[5px] electron-no-drag">
+      <nav className="flex shrink-0 items-center gap-4 px-[5px] electron-no-drag mt-[5px]">
         {children}
         <ModeToggle />
       </nav>
