@@ -18,7 +18,7 @@ vi.mock('react-resizable-panels', () => ({
   ),
 }))
 
-import { ResizableHandle, ResizablePanelGroup } from '../resizable'
+import { ResizableCardHandle, ResizableCardPanel, ResizableHandle, ResizablePanelGroup } from '../resizable'
 
 describe('Resizable primitives', () => {
   beforeEach(() => {
@@ -75,5 +75,33 @@ describe('Resizable primitives', () => {
     expect(grip).not.toBeNull()
     expect((grip as HTMLElement).className).toContain('h-7')
     expect((grip as HTMLElement).className).toContain('w-4')
+  })
+
+  it('renders list/detail panel wrappers with consistent split-card spacing', () => {
+    const { rerender } = render(
+      <ResizableCardPanel side='list'>List</ResizableCardPanel>
+    )
+
+    const listPanel = screen.getByText('List') as HTMLElement
+    expect(listPanel.className).toContain('py-6')
+    expect(listPanel.className).toContain('pl-6')
+    expect(listPanel.className).toContain('pr-3')
+
+    rerender(<ResizableCardPanel side='detail'>Detail</ResizableCardPanel>)
+    const detailPanel = screen.getByText('Detail') as HTMLElement
+    expect(detailPanel.className).toContain('py-6')
+    expect(detailPanel.className).toContain('pl-3')
+    expect(detailPanel.className).toContain('pr-6')
+  })
+
+  it('renders a transparent split-card handle without extra divider line styling', () => {
+    render(<ResizableCardHandle />)
+
+    const separator = screen.getByRole('separator')
+    const className = separator.getAttribute('class') ?? ''
+    expect(className).toContain('w-0')
+    expect(className).toContain('bg-transparent')
+    expect(className).toContain('data-[separator=hover]:bg-transparent')
+    expect(className).toContain('data-[separator=active]:bg-transparent')
   })
 })

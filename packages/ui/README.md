@@ -75,16 +75,26 @@ Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dia
 ### Resizable Panels
 
 ```typescript
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@kombuse/ui/base'
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+  ResizableCardPanel,
+  ResizableCardHandle,
+} from '@kombuse/ui/base'
 
 // Horizontal split with drag handle
 <ResizablePanelGroup orientation="horizontal">
   <ResizablePanel id="list" defaultSize={50} minSize={25}>
-    <LeftContent />
+    <ResizableCardPanel side="list">
+      <LeftContent />
+    </ResizableCardPanel>
   </ResizablePanel>
-  <ResizableHandle withHandle />
+  <ResizableCardHandle />
   <ResizablePanel id="detail" defaultSize={50} minSize={25}>
-    <RightContent />
+    <ResizableCardPanel side="detail">
+      <RightContent />
+    </ResizableCardPanel>
   </ResizablePanel>
 </ResizablePanelGroup>
 ```
@@ -93,6 +103,8 @@ Props:
 - `ResizablePanelGroup`: `orientation` ("horizontal" | "vertical"), `defaultLayout`, `onLayoutChanged`, `className`, `resizeTargetMinimumSize` (defaults to `{ fine: 12, coarse: 24 }` for improved drag hit targets)
 - `ResizablePanel`: `id`, `defaultSize`, `minSize`, `maxSize`, `collapsible`, `collapsedSize`
 - `ResizableHandle`: `withHandle` (shows grip icon), `disabled`, `className`; supports `data-separator` interaction states (`inactive`, `hover`, `active`, `disabled`) with focus-visible ring styling
+- `ResizableCardPanel`: split-layout wrapper with consistent vertical padding and side-aware gutters (`side="list" | "detail"`) so list/detail cards remain separate and evenly spaced
+- `ResizableCardHandle`: transparent split-layout handle for card-separated panes (no extra visible divider line)
 
 ### Hooks
 

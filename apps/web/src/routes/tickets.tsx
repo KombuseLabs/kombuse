@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
+  ResizableCardHandle,
+  ResizableCardPanel,
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
@@ -795,15 +797,15 @@ export function Tickets() {
             onLayoutChanged={handleLayoutChanged}
           >
             <ResizablePanel id="list" defaultSize={50} minSize={25} className="min-h-0">
-              <div className="h-full min-h-0 p-6">
+              <ResizableCardPanel side="list">
                 {ticketListContent}
-              </div>
+              </ResizableCardPanel>
             </ResizablePanel>
 
-            <ResizableHandle withHandle />
+            <ResizableCardHandle />
 
             <ResizablePanel id="detail" defaultSize={50} minSize={25} className="min-h-0">
-              <div className="flex flex-col h-full">
+              <ResizableCardPanel side="detail">
                 {isCreating ? (
                   // Create Form
                   <Card className="h-full flex flex-col">
@@ -1021,7 +1023,7 @@ export function Tickets() {
                     )}
                   </>
                 )}
-              </div>
+              </ResizableCardPanel>
             </ResizablePanel>
 
             {chatSessionId && (

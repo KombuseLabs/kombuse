@@ -93,6 +93,8 @@ vi.mock('@kombuse/ui/base', () => ({
     </div>
   ),
   ResizableHandle: () => <div data-testid="resizable-handle" />,
+  ResizableCardPanel: ({ children }: any) => <div>{children}</div>,
+  ResizableCardHandle: () => <div data-testid="resizable-card-handle" />,
   Popover: ({ children }: any) => <div>{children}</div>,
   PopoverTrigger: ({ children }: any) => <>{children}</>,
   PopoverContent: ({ children }: any) => <div>{children}</div>,

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { GripVerticalIcon } from "lucide-react"
 import * as ResizablePrimitive from "react-resizable-panels"
 
@@ -57,4 +58,36 @@ function ResizableHandle({
   )
 }
 
-export { ResizableHandle, ResizablePanel, ResizablePanelGroup }
+interface ResizableCardPanelProps {
+  side: "list" | "detail"
+  className?: string
+  children: ReactNode
+}
+
+function ResizableCardPanel({ side, className, children }: ResizableCardPanelProps) {
+  return (
+    <div
+      className={cn(
+        "flex h-full min-h-0 flex-col py-6",
+        side === "list" ? "pl-6 pr-3" : "pl-3 pr-6",
+        className
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+function ResizableCardHandle({ className, ...props }: ResizablePrimitive.SeparatorProps) {
+  return (
+    <ResizableHandle
+      className={cn(
+        "w-0 bg-transparent data-[separator=hover]:bg-transparent data-[separator=active]:bg-transparent data-[separator=disabled]:bg-transparent",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { ResizableCardHandle, ResizableCardPanel, ResizableHandle, ResizablePanel, ResizablePanelGroup }

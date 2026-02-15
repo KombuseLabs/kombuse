@@ -9,6 +9,8 @@ import {
   Input,
   Label,
   Textarea,
+  ResizableCardHandle,
+  ResizableCardPanel,
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
@@ -266,6 +268,117 @@ export function Agents() {
     </>
   );
 
+  const agentDetailContent = isCreating ? (
+    // Create Form
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-4 shrink-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="size-12 rounded-lg bg-muted flex items-center justify-center">
+              <Plus className="size-6" />
+            </div>
+            <CardTitle className="text-xl">New Agent</CardTitle>
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleCloseDetail}>
+            <X className="size-4" />
+          </Button>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col gap-6">
+          {/* Name */}
+          <div className="space-y-2">
+            <Label htmlFor="new-agent-name">Name *</Label>
+            <Input
+              id="new-agent-name"
+              value={newAgentName}
+              onChange={(e) => setNewAgentName(e.target.value)}
+              placeholder="Agent name"
+              autoFocus
+            />
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Label htmlFor="new-agent-description">Description</Label>
+            <Textarea
+              id="new-agent-description"
+              value={newAgentDescription}
+              onChange={(e) => setNewAgentDescription(e.target.value)}
+              placeholder="What does this agent do?"
+              className="min-h-20"
+            />
+          </div>
+
+          {/* Avatar */}
+          <div className="space-y-2">
+            <Label>Avatar</Label>
+            <AvatarPicker value={newAgentAvatar} onChange={setNewAgentAvatar} />
+          </div>
+
+          {/* System Prompt */}
+          <div className="flex min-h-0 flex-1 flex-col space-y-2">
+            <Label>System Prompt *</Label>
+            <PromptEditor
+              value={newAgentPrompt}
+              onChange={setNewAgentPrompt}
+              placeholder="Enter the agent's system prompt..."
+              showAvailableVariables
+              fillHeight
+            />
+          </div>
+
+          {/* Create Button */}
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={handleCloseDetail}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateAgent}
+              disabled={
+                createAgent.isPending ||
+                !newAgentName.trim() ||
+                !newAgentPrompt.trim()
+              }
+            >
+              <Save className="size-4 mr-2" />
+              {createAgent.isPending ? "Creating..." : "Create Agent"}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  ) : (
+    // Edit existing agent
+    <>
+      {isLoadingAgent && (
+        <div className="text-center py-8 text-muted-foreground">
+          Loading agent...
+        </div>
+      )}
+
+      {selectedAgentData && (
+        <AgentDetail
+          agent={selectedAgentData.agent}
+          profile={selectedAgentData.profile}
+          triggers={triggers}
+          onClose={handleCloseDetail}
+          onSave={handleSaveAgent}
+          onDelete={handleDeleteAgent}
+          onCreateTrigger={handleCreateTrigger}
+          onUpdateTrigger={handleUpdateTrigger}
+          onDeleteTrigger={handleDeleteTrigger}
+          onToggleTrigger={handleToggleTrigger}
+          isSaving={isSaving}
+          isDeleting={deleteAgent.isPending}
+          isCreatingTrigger={createTrigger.isPending}
+          isUpdatingTrigger={updateTrigger.isPending}
+        />
+      )}
+    </>
+  );
+
   return (
     <Container className={isProjectContext ? "flex h-full min-h-0" : "flex flex-col h-full"}>
       {!isProjectContext && (
@@ -289,123 +402,26 @@ export function Agents() {
             onLayoutChanged={handleLayoutChanged}
           >
             <ResizablePanel id="list" defaultSize={50} minSize={25}>
-              <div className={isProjectContext ? "h-full min-h-0 p-6" : "h-full overflow-y-auto p-6"}>
-                {agentListContent}
-              </div>
+              {isProjectContext ? (
+                <ResizableCardPanel side="list">
+                  {agentListContent}
+                </ResizableCardPanel>
+              ) : (
+                <div className="h-full overflow-y-auto p-6">
+                  {agentListContent}
+                </div>
+              )}
             </ResizablePanel>
 
-            <ResizableHandle withHandle />
+            {isProjectContext ? <ResizableCardHandle /> : <ResizableHandle withHandle />}
 
             <ResizablePanel id="detail" defaultSize={50} minSize={25}>
-              {isCreating ? (
-                // Create Form
-                <Card className="h-full flex flex-col">
-                  <CardHeader className="pb-4 shrink-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="size-12 rounded-lg bg-muted flex items-center justify-center">
-                          <Plus className="size-6" />
-                        </div>
-                        <CardTitle className="text-xl">New Agent</CardTitle>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={handleCloseDetail}>
-                        <X className="size-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="flex-1 min-h-0 overflow-hidden">
-                    <div className="flex h-full min-h-0 flex-col gap-6">
-                      {/* Name */}
-                      <div className="space-y-2">
-                        <Label htmlFor="new-agent-name">Name *</Label>
-                        <Input
-                          id="new-agent-name"
-                          value={newAgentName}
-                          onChange={(e) => setNewAgentName(e.target.value)}
-                          placeholder="Agent name"
-                          autoFocus
-                        />
-                      </div>
-
-                      {/* Description */}
-                      <div className="space-y-2">
-                        <Label htmlFor="new-agent-description">Description</Label>
-                        <Textarea
-                          id="new-agent-description"
-                          value={newAgentDescription}
-                          onChange={(e) => setNewAgentDescription(e.target.value)}
-                          placeholder="What does this agent do?"
-                          className="min-h-20"
-                        />
-                      </div>
-
-                      {/* Avatar */}
-                      <div className="space-y-2">
-                        <Label>Avatar</Label>
-                        <AvatarPicker value={newAgentAvatar} onChange={setNewAgentAvatar} />
-                      </div>
-
-                      {/* System Prompt */}
-                      <div className="flex min-h-0 flex-1 flex-col space-y-2">
-                        <Label>System Prompt *</Label>
-                        <PromptEditor
-                          value={newAgentPrompt}
-                          onChange={setNewAgentPrompt}
-                          placeholder="Enter the agent's system prompt..."
-                          showAvailableVariables
-                          fillHeight
-                        />
-                      </div>
-
-                      {/* Create Button */}
-                      <div className="flex justify-end gap-2 pt-4 border-t">
-                        <Button variant="outline" onClick={handleCloseDetail}>
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleCreateAgent}
-                          disabled={
-                            createAgent.isPending ||
-                            !newAgentName.trim() ||
-                            !newAgentPrompt.trim()
-                          }
-                        >
-                          <Save className="size-4 mr-2" />
-                          {createAgent.isPending ? "Creating..." : "Create Agent"}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              {isProjectContext ? (
+                <ResizableCardPanel side="detail">
+                  {agentDetailContent}
+                </ResizableCardPanel>
               ) : (
-                // Edit existing agent
-                <>
-                  {isLoadingAgent && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Loading agent...
-                    </div>
-                  )}
-
-                  {selectedAgentData && (
-                    <AgentDetail
-                      agent={selectedAgentData.agent}
-                      profile={selectedAgentData.profile}
-                      triggers={triggers}
-                      onClose={handleCloseDetail}
-                      onSave={handleSaveAgent}
-                      onDelete={handleDeleteAgent}
-                      onCreateTrigger={handleCreateTrigger}
-                      onUpdateTrigger={handleUpdateTrigger}
-                      onDeleteTrigger={handleDeleteTrigger}
-                      onToggleTrigger={handleToggleTrigger}
-                      isSaving={isSaving}
-                      isDeleting={deleteAgent.isPending}
-                      isCreatingTrigger={createTrigger.isPending}
-                      isUpdatingTrigger={updateTrigger.isPending}
-                    />
-                  )}
-                </>
+                agentDetailContent
               )}
             </ResizablePanel>
           </ResizablePanelGroup>

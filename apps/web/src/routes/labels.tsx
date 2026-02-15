@@ -7,9 +7,10 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  ResizableCardHandle,
+  ResizableCardPanel,
   ResizablePanelGroup,
   ResizablePanel,
-  ResizableHandle,
 } from "@kombuse/ui/base";
 import { LabelCard, LabelDetail, LabelForm } from "@kombuse/ui/components";
 import {
@@ -180,6 +181,50 @@ export function Labels() {
     </>
   );
 
+  const labelDetailContent = isCreating ? (
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-4 shrink-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+              <Tags className="size-5" />
+            </div>
+            <CardTitle className="text-xl">New Label</CardTitle>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCloseDetail}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1 overflow-y-auto">
+        <LabelForm
+          onSubmit={handleCreateLabel}
+          onCancel={handleCloseDetail}
+          isLoading={createLabel.isPending}
+        />
+      </CardContent>
+    </Card>
+  ) : selectedLabel ? (
+    <LabelDetail
+      label={selectedLabel}
+      projectId={projectId ?? ""}
+      onClose={handleCloseDetail}
+      onSave={handleSaveLabel}
+      onDelete={handleDeleteLabel}
+      onNavigateToAgent={handleNavigateToAgent}
+      isSaving={updateLabel.isPending}
+      isDeleting={deleteLabel.isPending}
+    />
+  ) : (
+    <div className="text-center py-8 text-muted-foreground">
+      Label not found
+    </div>
+  );
+
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
@@ -190,57 +235,17 @@ export function Labels() {
             onLayoutChanged={handleLayoutChanged}
           >
             <ResizablePanel id="list" defaultSize={50} minSize={25}>
-              <div className="h-full min-h-0 p-6">
+              <ResizableCardPanel side="list">
                 {labelListContent}
-              </div>
+              </ResizableCardPanel>
             </ResizablePanel>
 
-            <ResizableHandle withHandle />
+            <ResizableCardHandle />
 
             <ResizablePanel id="detail" defaultSize={50} minSize={25}>
-              {isCreating ? (
-                <Card className="h-full flex flex-col">
-                  <CardHeader className="pb-4 shrink-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-full bg-muted flex items-center justify-center">
-                          <Tags className="size-5" />
-                        </div>
-                        <CardTitle className="text-xl">New Label</CardTitle>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleCloseDetail}
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 overflow-y-auto">
-                    <LabelForm
-                      onSubmit={handleCreateLabel}
-                      onCancel={handleCloseDetail}
-                      isLoading={createLabel.isPending}
-                    />
-                  </CardContent>
-                </Card>
-              ) : selectedLabel ? (
-                <LabelDetail
-                  label={selectedLabel}
-                  projectId={projectId ?? ""}
-                  onClose={handleCloseDetail}
-                  onSave={handleSaveLabel}
-                  onDelete={handleDeleteLabel}
-                  onNavigateToAgent={handleNavigateToAgent}
-                  isSaving={updateLabel.isPending}
-                  isDeleting={deleteLabel.isPending}
-                />
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Label not found
-                </div>
-              )}
+              <ResizableCardPanel side="detail">
+                {labelDetailContent}
+              </ResizableCardPanel>
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
