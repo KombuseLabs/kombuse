@@ -27,6 +27,7 @@ export const createSessionSchema = z.object({
   ]).optional(),
   model_preference: z.string().trim().optional(),
   agent_id: z.string().min(1).optional(),
+  project_id: z.string().min(1).optional(),
 })
 
 export const sessionEventFiltersSchema = z.object({

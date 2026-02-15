@@ -124,12 +124,10 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
 
   const { data: linkedSession } = useSessionByKombuseId(event.kombuse_session_id)
 
-  const sessionUrl = linkedSession
-    ? projectId && (linkedSession.ticket_id || event.ticket_id)
+  const sessionUrl = linkedSession && projectId
+    ? (linkedSession.ticket_id || event.ticket_id)
       ? `/projects/${projectId}/tickets/${linkedSession.ticket_id || event.ticket_id}?session=${linkedSession.kombuse_session_id}`
-      : projectId
-        ? `/projects/${projectId}/chats/${linkedSession.kombuse_session_id}`
-        : `/chats/${linkedSession.kombuse_session_id}`
+      : `/projects/${projectId}/chats/${linkedSession.kombuse_session_id}`
     : null
 
   const sessionOrigin = event.kombuse_session_id

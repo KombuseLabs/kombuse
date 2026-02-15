@@ -589,6 +589,7 @@ export const sessionsApi = {
     if (filters?.has_backend_session_id !== undefined) {
       params.set('has_backend_session_id', String(filters.has_backend_session_id))
     }
+    if (filters?.project_id) params.set('project_id', filters.project_id)
     if (filters?.sort_by) params.set('sort_by', filters.sort_by)
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
@@ -611,7 +612,7 @@ export const sessionsApi = {
     return handleResponse<PublicSession>(response)
   },
 
-  async create(input?: { backend_type?: BackendType; agent_id?: string; model_preference?: string }): Promise<PublicSession> {
+  async create(input?: { backend_type?: BackendType; agent_id?: string; model_preference?: string; project_id?: string }): Promise<PublicSession> {
     const response = await fetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

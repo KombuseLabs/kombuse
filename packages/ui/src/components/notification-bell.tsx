@@ -80,7 +80,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
     if (currentProjectId) {
       return `/projects/${currentProjectId}/chats/${permission.sessionId}`
     }
-    return `/chats/${permission.sessionId}`
+    return '/'
   }
 
   const renderPermissionCard = (permission: PendingPermission) => {

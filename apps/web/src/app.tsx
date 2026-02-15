@@ -61,8 +61,6 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/chats" element={<Chats />} />
-          <Route path="/chats/:sessionId" element={<Chats />} />
           <Route path="/projects" element={<Projects />} />
 
           {/* Project routes with sidebar */}

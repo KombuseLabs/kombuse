@@ -86,10 +86,8 @@ function CommentItem({
 
   const sessionTicketId = linkedSession?.ticket_id ?? comment.ticket_id
 
-  const sessionUrl = linkedSession
-    ? projectId
-      ? `/projects/${projectId}/tickets/${sessionTicketId}?session=${linkedSession.kombuse_session_id}`
-      : `/chats/${linkedSession.kombuse_session_id}`
+  const sessionUrl = linkedSession && projectId
+    ? `/projects/${projectId}/tickets/${sessionTicketId}?session=${linkedSession.kombuse_session_id}`
     : null
 
   const sessionOrigin = comment.kombuse_session_id

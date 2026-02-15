@@ -52,7 +52,7 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
     if (currentProjectId) {
       return `/projects/${currentProjectId}/chats/${session.kombuseSessionId}`
     }
-    return `/chats/${session.kombuseSessionId}`
+    return '/'
   }
 
   return (

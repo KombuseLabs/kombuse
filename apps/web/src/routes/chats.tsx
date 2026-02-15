@@ -1,5 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  ResizableCardHandle,
+  ResizableCardPanel,
+  ResizablePanelGroup,
+  ResizablePanel,
+} from "@kombuse/ui/base";
 import { AgentPicker, Chat, SessionList } from "@kombuse/ui/components";
 import {
   useCreateSession,
@@ -16,18 +22,18 @@ import { BACKEND_TYPES, type BackendType } from "@kombuse/types";
 const USER_PROFILE_ID = "user-1";
 const CHAT_DEFAULT_BACKEND_SETTING_KEY = "chat.default_backend_type";
 const CHAT_DEFAULT_MODEL_SETTING_KEY = "chat.default_model";
+const CHATS_PANEL_LAYOUT_KEY = "chats-panel-layout";
 
 export function Chats() {
   const navigate = useNavigate();
   const { projectId, sessionId } = useParams<{
-    projectId?: string;
+    projectId: string;
     sessionId?: string;
   }>();
-  const isProjectContext = Boolean(projectId);
   const selectedSessionId = sessionId ?? null;
   const isDraft = !selectedSessionId;
 
-  const { data: sessions, isLoading: sessionsLoading } = useSessions({ sort_by: 'updated_at' });
+  const { data: sessions, isLoading: sessionsLoading } = useSessions({ project_id: projectId, sort_by: 'updated_at' });
   const createSession = useCreateSession();
   const deleteSession = useDeleteSession();
   const { pendingPermissions } = useAppContext();
@@ -71,9 +77,8 @@ export function Chats() {
     return [...pendingPermissions.values()].some(p => p.sessionId === kombuseSessionId)
   }
 
-  const Container = isProjectContext ? "div" : "main";
   const chatsBasePath = useMemo(() => {
-    return projectId ? `/projects/${projectId}/chats` : "/chats";
+    return `/projects/${projectId}/chats`;
   }, [projectId]);
 
   const handleNewChat = () => {
@@ -92,6 +97,7 @@ export function Chats() {
       backend_type: draftBackendType,
       agent_id: selectedAgentId ?? undefined,
       model_preference: draftModelPreference.trim().length > 0 ? draftModelPreference.trim() : undefined,
+      project_id: projectId,
     });
     navigate(`${chatsBasePath}/${session.kombuse_session_id}`);
     return session.kombuse_session_id;
@@ -100,130 +106,152 @@ export function Chats() {
   // Determine the key for ChatProvider to force remount when switching
   const chatKey = selectedSessionId ? `session-${selectedSessionId}` : "draft";
 
-  return (
-    <Container className={cn(
-      "flex min-h-0",
-      "h-full"
-    )}>
-      {/* Sidebar with sessions list */}
-      <div className={cn(
-        "w-64 border-r flex flex-col min-h-0",
-        isProjectContext ? "" : "p-4"
-      )}>
-        {!isProjectContext && (
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">Sessions</h2>
-            <button
-              onClick={handleNewChat}
-              className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              New Chat
-            </button>
-          </div>
-        )}
+  // Resizable panel layout persistence
+  const [defaultLayout] = useState<Record<string, number> | undefined>(() => {
+    const stored = localStorage.getItem(CHATS_PANEL_LAYOUT_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  });
 
-        {/* Sessions list */}
-        <div className={cn("flex-1 min-h-0", !isProjectContext && "overflow-y-auto")}>
-          <SessionList
-            sessions={sessions ?? []}
-            className={isProjectContext ? "h-full min-h-0" : undefined}
-            variant={isProjectContext ? "card" : "default"}
-            header={isProjectContext ? (
-              <div className="flex items-center justify-between p-4">
-                <h2 className="font-semibold">Sessions</h2>
-                <button
-                  type="button"
-                  onClick={handleNewChat}
-                  className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  New Chat
-                </button>
-              </div>
-            ) : undefined}
-            selectedSessionId={selectedSessionId}
-            onSessionClick={(session) => handleSelectSession(session.kombuse_session_id!)}
-            onSessionDelete={(session) => {
-              deleteSession.mutate(session.kombuse_session_id!)
-              if (selectedSessionId === session.kombuse_session_id) {
-                navigate(chatsBasePath)
-              }
-            }}
-            isSessionPendingPermission={sessionHasPendingPermission}
-            isLoading={sessionsLoading}
+  const handleLayoutChanged = useCallback((layout: Record<string, number>) => {
+    localStorage.setItem(CHATS_PANEL_LAYOUT_KEY, JSON.stringify(layout));
+  }, []);
+
+  const showDetailPanel = selectedSessionId !== null;
+
+  const sessionListContent = (
+    <SessionList
+      sessions={sessions ?? []}
+      className="h-full min-h-0"
+      variant="card"
+      header={
+        <div className="flex items-center justify-between p-4">
+          <h2 className="font-semibold">Sessions</h2>
+          <button
+            type="button"
+            onClick={handleNewChat}
+            className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            New Chat
+          </button>
+        </div>
+      }
+      selectedSessionId={selectedSessionId}
+      onSessionClick={(session) => handleSelectSession(session.kombuse_session_id!)}
+      onSessionDelete={(session) => {
+        deleteSession.mutate(session.kombuse_session_id!)
+        if (selectedSessionId === session.kombuse_session_id) {
+          navigate(chatsBasePath)
+        }
+      }}
+      isSessionPendingPermission={sessionHasPendingPermission}
+      isLoading={sessionsLoading}
+    />
+  );
+
+  const chatDetailContent = (
+    <>
+      <div className={cn(
+        "flex items-center gap-4 mb-4 shrink-0 p-4 border-b"
+      )}>
+        <h1 className="text-2xl font-bold">Chats</h1>
+        <div className="flex items-center gap-2">
+          <label htmlFor="chat-backend-select" className="text-sm text-muted-foreground">Backend</label>
+          <select
+            id="chat-backend-select"
+            value={effectiveBackendType}
+            onChange={(event) => setSelectedBackendTypeOverride(event.target.value as BackendType)}
+            disabled={!isDraft}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
+            <option value={BACKEND_TYPES.CODEX}>Codex</option>
+            {effectiveBackendType === BACKEND_TYPES.MOCK ? (
+              <option value={BACKEND_TYPES.MOCK}>Mock</option>
+            ) : null}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="chat-model-input" className="text-sm text-muted-foreground">Model</label>
+          <input
+            id="chat-model-input"
+            value={effectiveModelPreference}
+            onChange={(event) => setSelectedModelPreferenceOverride(event.target.value)}
+            disabled={!isDraft}
+            placeholder="Use backend default"
+            className="h-9 w-52 rounded-md border border-input bg-background px-3 text-sm"
           />
         </div>
       </div>
 
-      {/* Main chat area */}
-      <div className={cn(
-        "flex-1 flex flex-col min-h-0",
-        isProjectContext ? "" : "p-4"
-      )}>
-        <div className={cn(
-          "flex items-center gap-4 mb-4 shrink-0",
-          isProjectContext && "p-4 border-b"
-        )}>
-          <h1 className="text-2xl font-bold">
-            {isProjectContext ? "Chats" : "Chat"}
-          </h1>
-          <div className="flex items-center gap-2">
-            <label htmlFor="chat-backend-select" className="text-sm text-muted-foreground">Backend</label>
-            <select
-              id="chat-backend-select"
-              value={effectiveBackendType}
-              onChange={(event) => setSelectedBackendTypeOverride(event.target.value as BackendType)}
-              disabled={!isDraft}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
-              <option value={BACKEND_TYPES.CODEX}>Codex</option>
-              {effectiveBackendType === BACKEND_TYPES.MOCK ? (
-                <option value={BACKEND_TYPES.MOCK}>Mock</option>
-              ) : null}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="chat-model-input" className="text-sm text-muted-foreground">Model</label>
-            <input
-              id="chat-model-input"
-              value={effectiveModelPreference}
-              onChange={(event) => setSelectedModelPreferenceOverride(event.target.value)}
-              disabled={!isDraft}
-              placeholder="Use backend default"
-              className="h-9 w-52 rounded-md border border-input bg-background px-3 text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <ChatProvider
-            key={chatKey}
-            sessionId={selectedSessionId}
-            agentId={effectiveAgentId ?? undefined}
-            projectId={projectId ?? null}
-            backendType={effectiveBackendType}
-            modelPreference={isDraft ? draftModelPreference : undefined}
-            onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
-          >
-            <Chat
-              emptyMessage={
-                selectedSessionId
-                  ? "Loading session..."
-                  : "Start a conversation..."
-              }
-              inputToolbarControls={
-                <AgentPicker
-                  value={effectiveAgentId}
-                  onChange={setSelectedAgentId}
-                  disabled={!isDraft}
-                  className="h-8 w-[220px] max-w-full"
-                />
-              }
-              className="h-full"
-            />
-          </ChatProvider>
-        </div>
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <ChatProvider
+          key={chatKey}
+          sessionId={selectedSessionId}
+          agentId={effectiveAgentId ?? undefined}
+          projectId={projectId ?? null}
+          backendType={effectiveBackendType}
+          modelPreference={isDraft ? draftModelPreference : undefined}
+          onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
+        >
+          <Chat
+            emptyMessage={
+              selectedSessionId
+                ? "Loading session..."
+                : "Start a conversation..."
+            }
+            inputToolbarControls={
+              <AgentPicker
+                value={effectiveAgentId}
+                onChange={setSelectedAgentId}
+                disabled={!isDraft}
+                className="h-8 w-[220px] max-w-full"
+              />
+            }
+            className="h-full"
+          />
+        </ChatProvider>
       </div>
-    </Container>
+    </>
+  );
+
+  return (
+    <div className="flex h-full min-h-0">
+      <div className="flex flex-1 overflow-hidden">
+        {showDetailPanel ? (
+          <ResizablePanelGroup
+            orientation="horizontal"
+            defaultLayout={defaultLayout}
+            onLayoutChanged={handleLayoutChanged}
+          >
+            <ResizablePanel id="list" defaultSize={50} minSize={25} className="min-h-0">
+              <ResizableCardPanel side="list">
+                {sessionListContent}
+              </ResizableCardPanel>
+            </ResizablePanel>
+
+            <ResizableCardHandle />
+
+            <ResizablePanel id="detail" defaultSize={50} minSize={25} className="min-h-0">
+              <ResizableCardPanel side="detail">
+                <div className="flex flex-col h-full min-h-0">
+                  {chatDetailContent}
+                </div>
+              </ResizableCardPanel>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <div className="w-full h-full min-h-0 p-6">
+            {sessionListContent}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

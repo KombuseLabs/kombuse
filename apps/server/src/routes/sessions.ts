@@ -82,6 +82,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       kombuse_session_id: kombuseId,
       backend_type: resolvedBackendType,
       agent_id: parseResult.data.agent_id,
+      project_id: parseResult.data.project_id,
       metadata: {
         effective_backend: resolvedBackendType,
         model_preference: modelPreference ?? null,
