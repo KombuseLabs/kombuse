@@ -38,13 +38,13 @@ export const labelsRepository = {
       const usageCountSql =
         filters.usage_scope === 'open'
           ? "COUNT(DISTINCT CASE WHEN t.status = 'open' THEN tl.ticket_id END)"
-          : 'COUNT(DISTINCT tl.ticket_id)'
+          : 'COUNT(DISTINCT t.id)'
 
       const stmt = db.prepare(`
         SELECT l.*, ${usageCountSql} AS usage_count
         FROM labels l
         LEFT JOIN ticket_labels tl ON l.id = tl.label_id
-        LEFT JOIN tickets t ON t.id = tl.ticket_id
+        LEFT JOIN tickets t ON t.id = tl.ticket_id AND t.project_id = l.project_id
         ${whereClause}
         GROUP BY l.id
         ORDER BY usage_count DESC, l.name ASC

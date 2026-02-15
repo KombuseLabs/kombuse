@@ -278,12 +278,15 @@ describe('Tickets label filters', () => {
     }
   })
 
-  it('renders hidden measurement controls as non-focusable elements', () => {
+  it('renders hidden measurement More button as non-focusable with tabIndex -1', () => {
     const view = renderTicketsRoute('/projects/1/tickets', () => {})
 
     const measureRoot = view.getByTestId('ticket-label-filters-measure')
-    expect(measureRoot.querySelector('button')).toBeNull()
-    expect(view.getByText('More (00)').closest('button')).toBeNull()
+    expect(measureRoot.getAttribute('aria-hidden')).toBe('true')
+
+    const moreButton = measureRoot.querySelector('button')
+    expect(moreButton).not.toBeNull()
+    expect(moreButton?.getAttribute('tabindex')).toBe('-1')
   })
 
   it('rehydrates label ID selections from URL and passes IDs to ticket query filters', () => {

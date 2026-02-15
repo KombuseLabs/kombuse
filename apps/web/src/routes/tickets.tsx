@@ -220,7 +220,7 @@ export function Tickets() {
   const [overflowLabelSearch, setOverflowLabelSearch] = useState("");
   const [visibleLabelCount, setVisibleLabelCount] = useState(0);
   const labelsRowRef = useRef<HTMLDivElement>(null);
-  const labelMeasureMoreRef = useRef<HTMLSpanElement>(null);
+  const labelMeasureMoreRef = useRef<HTMLButtonElement>(null);
   const labelMeasureClearRef = useRef<HTMLSpanElement>(null);
   const labelMeasureRefs = useRef(new Map<number, HTMLSpanElement>());
   const newTicketBodyRef = useRef<HTMLTextAreaElement>(null);
@@ -716,12 +716,16 @@ export function Tickets() {
                       className="pointer-events-none absolute -left-[9999px] top-0 opacity-0"
                     >
                       <div className="flex items-center gap-2">
-                        <span
+                        <Button
                           ref={labelMeasureMoreRef}
-                          className="inline-flex h-8 items-center rounded-md border px-3 text-xs"
+                          variant="outline"
+                          size="sm"
+                          tabIndex={-1}
+                          className="shrink-0"
                         >
+                          <ChevronsUpDown className="size-3.5" />
                           More (00)
-                        </span>
+                        </Button>
                         <span
                           ref={labelMeasureClearRef}
                           className="text-xs underline"

@@ -251,6 +251,91 @@ describe('labelsRepository', () => {
       expect(labels[1]?.name).toBe('zeta')
       expect(labels[1]?.usage_count).toBe(1)
     })
+
+    it('should not count cross-project ticket-label associations in usage_count (open scope)', () => {
+      const SECOND_PROJECT_ID = 'test-project-2'
+      db.prepare(
+        `INSERT INTO projects (id, name, owner_id) VALUES (?, 'Second Project', ?)`
+      ).run(SECOND_PROJECT_ID, TEST_USER_ID)
+
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'scoped-label',
+      })
+
+      const ticketA = ticketsRepository.create({
+        title: 'Ticket in project A',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'open',
+      })
+      labelsRepository.addToTicket(ticketA.id, label.id)
+
+      const ticketB = ticketsRepository.create({
+        title: 'Ticket in project B',
+        project_id: SECOND_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'open',
+      })
+      db.prepare('INSERT INTO ticket_labels (ticket_id, label_id) VALUES (?, ?)').run(
+        ticketB.id,
+        label.id
+      )
+
+      const labels = labelsRepository.list({
+        project_id: TEST_PROJECT_ID,
+        sort: 'usage',
+        usage_scope: 'open',
+      })
+
+      const scopedLabel = labels.find((l) => l.id === label.id)
+      expect(
+        scopedLabel?.usage_count,
+        'Cross-project ticket should not inflate usage_count'
+      ).toBe(1)
+    })
+
+    it('should not count cross-project ticket-label associations in usage_count (all-status scope)', () => {
+      const SECOND_PROJECT_ID = 'test-project-2'
+      db.prepare(
+        `INSERT INTO projects (id, name, owner_id) VALUES (?, 'Second Project', ?)`
+      ).run(SECOND_PROJECT_ID, TEST_USER_ID)
+
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'all-scope-label',
+      })
+
+      const ticketA = ticketsRepository.create({
+        title: 'Ticket in project A',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'open',
+      })
+      labelsRepository.addToTicket(ticketA.id, label.id)
+
+      const ticketB = ticketsRepository.create({
+        title: 'Ticket in project B',
+        project_id: SECOND_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'open',
+      })
+      db.prepare('INSERT INTO ticket_labels (ticket_id, label_id) VALUES (?, ?)').run(
+        ticketB.id,
+        label.id
+      )
+
+      const labels = labelsRepository.list({
+        project_id: TEST_PROJECT_ID,
+        sort: 'usage',
+      })
+
+      const scopedLabel = labels.find((l) => l.id === label.id)
+      expect(
+        scopedLabel?.usage_count,
+        'Cross-project ticket should not inflate usage_count for all-status scope'
+      ).toBe(1)
+    })
   })
 
   /*
