@@ -28,6 +28,7 @@ const SIDEBAR_PERMISSIONS_SETTING_KEY = 'sidebar.hidden.permissions'
 const SIDEBAR_DATABASE_SETTING_KEY = 'sidebar.hidden.database'
 const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
+const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
 
 function normalizeBackendType(value?: string | null): BackendType {
   if (
@@ -47,10 +48,12 @@ export function Settings() {
   const { data: databaseSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_DATABASE_SETTING_KEY)
   const { data: defaultBackendSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_BACKEND_SETTING_KEY)
   const { data: defaultModelSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_MODEL_SETTING_KEY)
+  const { data: maxChainDepthSetting } = useProfileSetting(USER_PROFILE_ID, AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const upsertSetting = useUpsertProfileSetting()
   const [defaultModelValue, setDefaultModelValue] = useState(defaultModelSetting?.setting_value ?? '')
+  const [maxChainDepthValue, setMaxChainDepthValue] = useState(maxChainDepthSetting?.setting_value ?? '')
 
   const showEvents = eventsSetting?.setting_value !== 'true'
   const showPermissions = permissionsSetting?.setting_value !== 'true'
@@ -61,6 +64,23 @@ export function Settings() {
   useEffect(() => {
     setDefaultModelValue(defaultModelSetting?.setting_value ?? '')
   }, [defaultModelSetting?.setting_value])
+
+  useEffect(() => {
+    setMaxChainDepthValue(maxChainDepthSetting?.setting_value ?? '')
+  }, [maxChainDepthSetting?.setting_value])
+
+  const persistMaxChainDepth = () => {
+    const normalizedValue = maxChainDepthValue.trim()
+    const currentValue = (maxChainDepthSetting?.setting_value ?? '').trim()
+    if (normalizedValue === currentValue) {
+      return
+    }
+    upsertSetting.mutate({
+      profile_id: USER_PROFILE_ID,
+      setting_key: AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+      setting_value: normalizedValue,
+    })
+  }
 
   const persistDefaultModel = () => {
     const normalizedValue = defaultModelValue.trim()
@@ -201,6 +221,32 @@ export function Settings() {
               />
               <p className="text-sm text-muted-foreground">
                 Model preference may be stored even when a backend cannot enforce it yet.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Agent */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Agent</CardTitle>
+            <CardDescription>Configure agent execution defaults.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="agent-max-chain-depth" className="font-normal">Default Loop Depth</Label>
+              <Input
+                id="agent-max-chain-depth"
+                type="number"
+                min="1"
+                max="100"
+                value={maxChainDepthValue}
+                onChange={(event) => setMaxChainDepthValue(event.target.value)}
+                onBlur={persistMaxChainDepth}
+                placeholder="15"
+              />
+              <p className="text-sm text-muted-foreground">
+                Maximum agent invocations per ticket per hour before loop protection triggers.
               </p>
             </div>
           </CardContent>

@@ -4,6 +4,7 @@ import { BACKEND_TYPES, type BackendType } from '@kombuse/types'
 export const DEFAULT_PREFERENCE_PROFILE_ID = 'user-1'
 export const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 export const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
+export const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
 
 interface BackendCapability {
   supportsModelSelection: boolean
@@ -93,4 +94,14 @@ export function readUserDefaultModelPreference(
 ): string | undefined {
   const setting = profileSettingsRepository.get(profileId, CHAT_DEFAULT_MODEL_SETTING_KEY)
   return normalizeModelPreference(setting?.setting_value)
+}
+
+export function readUserDefaultMaxChainDepth(
+  profileId: string = DEFAULT_PREFERENCE_PROFILE_ID
+): number | undefined {
+  const setting = profileSettingsRepository.get(profileId, AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY)
+  if (!setting?.setting_value) return undefined
+  const parsed = Number(setting.setting_value)
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 100) return undefined
+  return parsed
 }

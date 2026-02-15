@@ -78,6 +78,9 @@ export interface AgentConfig {
   /** Whether this agent appears in the chat agent picker */
   enabled_for_chat?: boolean
 
+  /** Maximum chain depth for loop detection */
+  max_chain_depth?: number
+
   /** Additional custom settings */
   [key: string]: unknown
 }

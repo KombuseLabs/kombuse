@@ -9,6 +9,7 @@ import { broadcastTicketAgentStatus } from './backend-registry'
 import { getTypePreset } from './presets'
 import { startAgentChatSession } from './chat-session-runner'
 import type { AgentExecutionDependencies } from './types'
+import { readUserDefaultMaxChainDepth } from '../session-preferences'
 
 /**
  * Emit an agent lifecycle event for ticket activity timeline.
@@ -89,6 +90,8 @@ function buildTriggerPrompt(
   )
 
   const userMessage = lines.join('\n')
+  /** For debugging trigger prompt construction — can be verbose, so only log for events that create invocations. */
+ /*
   console.log('[Server] Built trigger prompt for event:', {
     eventId: event.id,
     eventType: event.event_type,
@@ -97,6 +100,7 @@ function buildTriggerPrompt(
     systemPromptLength: systemPrompt.length,
     userMessage,
   })
+  */
 
   return { systemPrompt, userMessage }
 }
@@ -221,7 +225,7 @@ export async function processEventAndRunAgents(
 
     const ticketId = invocation.context.ticket_id as number | undefined
     if (ticketId) {
-      const maxDepth = (agent.config?.max_chain_depth as number) ?? MAX_CHAIN_DEPTH
+      const maxDepth = agent.config?.max_chain_depth ?? readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
       const recentCount = agentInvocationsRepository.countRecentByTicketId(ticketId)
       if (recentCount >= maxDepth) {
         const errorMessage = `Chain depth limit reached (${maxDepth} invocations on ticket #${ticketId} in the last hour). Halting to prevent infinite loops.`

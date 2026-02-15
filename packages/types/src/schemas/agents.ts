@@ -49,6 +49,7 @@ export const agentConfigSchema = z.object({
   max_retries: z.number().int().nonnegative().optional(),
   timeout_ms: z.number().int().positive().optional(),
   enabled_for_chat: z.boolean().optional(),
+  max_chain_depth: z.number().int().min(1).max(100).optional(),
 }).catchall(z.unknown())
 
 export const agentSchema = z.object({
