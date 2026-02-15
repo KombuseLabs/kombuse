@@ -12,6 +12,7 @@ const {
   mockUseScrollToComment,
   mockMarkViewed,
   mockUploadAsync,
+  mockCreateTicketMutate,
   mockCreateComment,
   mockUpdateComment,
   mockDeleteComment,
@@ -39,6 +40,7 @@ const {
   })),
   mockMarkViewed: vi.fn(),
   mockUploadAsync: vi.fn(async () => ({})),
+  mockCreateTicketMutate: vi.fn(),
   mockCreateComment: vi.fn(async () => ({ id: 99 })),
   mockUpdateComment: vi.fn(async () => ({})),
   mockDeleteComment: vi.fn(async () => ({})),
@@ -126,7 +128,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
     isLoading: false,
   }),
   useCreateTicket: () => ({
-    mutate: vi.fn(),
+    mutate: mockCreateTicketMutate,
     isPending: false,
   }),
   useAppContext: () => ({
@@ -240,6 +242,10 @@ beforeEach(() => {
   }))
   mockScrollToTop.mockReset()
   mockScrollToBottom.mockReset()
+  mockCreateTicketMutate.mockReset()
+  mockCreateTicketMutate.mockImplementation((_input, options) => {
+    options?.onSuccess?.({ id: 99 })
+  })
   mockMarkViewed.mockReset()
   mockUploadAsync.mockReset()
   mockCreateComment.mockReset()
@@ -375,6 +381,33 @@ describe('Tickets scroll controls', () => {
 
     await waitFor(() => {
       expect(locations[locations.length - 1]).toBe('/projects/1/tickets/43?status=open')
+    })
+  })
+
+  it('strips session query during create flow and after creating a ticket', async () => {
+    const locations: string[] = []
+
+    const { getByRole, getAllByRole, getByLabelText } = renderTicketsRoute(
+      '/projects/1/tickets/42?session=trigger-session-1&status=open',
+      (location) => locations.push(location)
+    )
+
+    fireEvent.click(getByRole('button', { name: 'Create Ticket' }))
+
+    await waitFor(() => {
+      expect(locations[locations.length - 1]).toBe('/projects/1/tickets/new?status=open')
+    })
+
+    fireEvent.change(getByLabelText('Title *'), { target: { value: 'New ticket from create flow' } })
+
+    const createButtons = getAllByRole('button', { name: 'Create Ticket' })
+    const activeCreateButton = createButtons.find((button) => !(button as HTMLButtonElement).disabled)
+    expect(activeCreateButton).toBeDefined()
+
+    fireEvent.click(activeCreateButton as HTMLButtonElement)
+
+    await waitFor(() => {
+      expect(locations[locations.length - 1]).toBe('/projects/1/tickets/99?status=open')
     })
   })
 })

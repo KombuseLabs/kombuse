@@ -362,7 +362,9 @@ export function Tickets() {
     setNewTicketTitle("");
     setNewTicketBody("");
     setNewTicketTriggersEnabled(true);
-    navigate({ pathname: `/projects/${projectId}/tickets/new`, search: searchParams.toString() });
+    const params = new URLSearchParams(searchParams);
+    params.delete('session');
+    navigate({ pathname: `/projects/${projectId}/tickets/new`, search: params.toString() });
   };
 
   const handleCreateTicket = () => {
@@ -392,7 +394,9 @@ export function Tickets() {
           setNewTicketTitle("");
           setNewTicketBody("");
           setNewTicketTriggersEnabled(true);
-          navigate({ pathname: `/projects/${projectId}/tickets/${newTicket.id}`, search: searchParams.toString() });
+          const params = new URLSearchParams(searchParams);
+          params.delete('session');
+          navigate({ pathname: `/projects/${projectId}/tickets/${newTicket.id}`, search: params.toString() });
         },
       }
     );
