@@ -88,6 +88,12 @@ describe('get_ticket', () => {
     const data = parseContent(result) as any
 
     expect(data.ticket.id).toBe(ticket.id)
+    expect(data.ticket.author_id).toBe(TEST_USER_ID)
+    expect(data.ticket.author).toBeDefined()
+    expect(data.ticket.author.id).toBe(TEST_USER_ID)
+    expect(data.ticket.author.type).toBe('user')
+    expect(data.ticket.author.name).toBe('Test User')
+    expect(data.ticket.assignee).toBeNull()
     expect(data.comments).toEqual([])
     expect(data.ticket_attachments).toBeUndefined()
     expect(data.comment_attachments).toBeUndefined()
@@ -1420,8 +1426,17 @@ describe('permission enforcement', () => {
     })
 
     expect(result.isError).toBeFalsy()
-    const data = parseContent(result) as { title: string }
+    const data = parseContent(result) as {
+      title: string
+      author_id: string
+      author: { id: string; type: string; name: string }
+      assignee: null
+    }
     expect(data.title).toBe('New ticket')
+    expect(data.author_id).toBe(data.author.id)
+    expect(data.author.type).toBe('agent')
+    expect(data.author.name.length).toBeGreaterThan(0)
+    expect(data.assignee).toBeNull()
   })
 
   it('should default MCP create_ticket to triggers disabled', async () => {
