@@ -320,6 +320,9 @@ import { ProfileButton } from '@kombuse/ui/components'
 // - center: ReactNode rendered in the center between title and nav
 // - onNavigateHome: Optional callback when the "Kombuse" logo is clicked
 // - children: rendered in the right nav area
+// Header chrome:
+// - No bottom border in any rendering context
+// - Preserves macOS title alignment (`pl-20`) while adding +5px breathing room to center search and right controls
 
 // Active agents indicator — shows running agent count with popover details
 import { ActiveAgentsIndicator } from '@kombuse/ui/components'

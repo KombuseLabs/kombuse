@@ -3,6 +3,7 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { Button } from "../base/button";
 import { useCommand } from "../hooks";
 
 function ModeToggle() {
@@ -15,9 +16,11 @@ function ModeToggle() {
   if (!mounted) return <div className="size-9" />;
 
   return (
-    <button
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
       onClick={() => execute()}
-      className="p-2 hover:bg-accent rounded-md"
       aria-label="Toggle theme"
     >
       {resolvedTheme === "dark" ? (
@@ -25,7 +28,7 @@ function ModeToggle() {
       ) : (
         <Moon className="size-5" />
       )}
-    </button>
+    </Button>
   );
 }
 

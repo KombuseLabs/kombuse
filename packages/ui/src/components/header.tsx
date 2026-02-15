@@ -17,7 +17,7 @@ function Header({ className, center, onNavigateHome, children, ...props }: Heade
   return (
     <header
       className={cn(
-        "flex items-center border-b px-6",
+        "flex items-center px-6",
         isDesktop ? "h-10 electron-drag" : "h-16",
         isMac && "pl-20",
         className
@@ -31,10 +31,10 @@ function Header({ className, center, onNavigateHome, children, ...props }: Heade
       >
         Kombuse
       </button>
-      <div className="flex flex-1 justify-center px-4">
+      <div className="flex flex-1 justify-center px-[21px]">
         {center ? <div className="electron-no-drag">{center}</div> : null}
       </div>
-      <nav className="flex shrink-0 items-center gap-4 electron-no-drag">
+      <nav className="flex shrink-0 items-center gap-4 px-[5px] electron-no-drag">
         {children}
         <ModeToggle />
       </nav>
