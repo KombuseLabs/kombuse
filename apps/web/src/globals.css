@@ -43,6 +43,8 @@
 @layer base {
   :root {
     --header-height: 4rem;
+    --scrollbar-size: 8px;
+    --scrollbar-fade-duration: 180ms;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -87,29 +89,68 @@
   *,
   ::after,
   ::before {
+    --scrollbar-thumb-color: transparent;
+    --scrollbar-track-color: transparent;
     border-color: var(--border);
     border-style: solid;
     border-width: 0;
     scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
   }
 
-  /* Webkit thin scrollbars (Chrome, Safari, Edge) */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  *:hover,
+  *:focus-within,
+  *.is-scrolling {
+    --scrollbar-thumb-color: var(--border);
+    --scrollbar-track-color: transparent;
   }
 
-  ::-webkit-scrollbar-track {
+  *:hover::-webkit-scrollbar-thumb:hover,
+  *:focus-within::-webkit-scrollbar-thumb:hover,
+  *.is-scrolling::-webkit-scrollbar-thumb:hover {
+    --scrollbar-thumb-color: var(--muted-foreground);
+  }
+
+  /* WebKit native thin scrollbars (Chrome, Safari, Edge) */
+  *::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-color);
+    border-radius: 999px;
+    transition: background-color var(--scrollbar-fade-duration) ease;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color);
+    border-radius: 999px;
+    transition: background-color var(--scrollbar-fade-duration) ease;
+  }
+
+  /* Monaco custom scrollbars */
+  .monaco-scrollable-element > .scrollbar {
     background: transparent;
+    transition: background-color var(--scrollbar-fade-duration) ease;
   }
 
-  ::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 4px;
+  .monaco-scrollable-element > .scrollbar > .slider {
+    background: transparent !important;
+    border-radius: 999px;
+    transition: background-color var(--scrollbar-fade-duration) ease;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--muted-foreground);
+  .monaco-scrollable-element:hover > .scrollbar > .slider,
+  .monaco-scrollable-element:focus-within > .scrollbar > .slider,
+  .monaco-scrollable-element.is-scrolling > .scrollbar > .slider {
+    background: var(--border) !important;
+  }
+
+  .monaco-scrollable-element:hover > .scrollbar > .slider:hover,
+  .monaco-scrollable-element:focus-within > .scrollbar > .slider:hover,
+  .monaco-scrollable-element.is-scrolling > .scrollbar > .slider:hover {
+    background: var(--muted-foreground) !important;
   }
 
   body {

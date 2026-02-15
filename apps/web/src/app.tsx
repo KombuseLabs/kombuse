@@ -19,6 +19,7 @@ import { ClaudeCodeSessionViewer } from "./routes/claude-code-session";
 import { Profile } from "./routes/profile";
 import { Settings } from "./routes/settings";
 import { ProjectLayout } from "./layouts/project-layout";
+import { useScrollbarActivity } from "./hooks/use-scrollbar-activity";
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
@@ -34,6 +35,7 @@ function AppContent() {
   const { open, setOpen } = usePalette();
   const { isDesktop } = useDesktop();
   const isHome = location.pathname === "/";
+  useScrollbarActivity();
 
   return (
     <div
