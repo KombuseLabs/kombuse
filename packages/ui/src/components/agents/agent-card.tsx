@@ -9,6 +9,7 @@ interface AgentCardProps {
   agent: Agent
   profile: Profile
   isSelected?: boolean
+  variant?: 'default' | 'card'
   onClick?: () => void
   onToggle?: (enabled: boolean) => void
   isToggling?: boolean
@@ -18,6 +19,7 @@ function AgentCard({
   agent,
   profile,
   isSelected,
+  variant = 'default',
   onClick,
   onToggle,
   isToggling,
@@ -27,10 +29,20 @@ function AgentCard({
   return (
     <div
       className={cn(
-        'px-4 py-3 cursor-pointer transition-colors border-l-2 border-l-transparent',
-        isSelected
-          ? 'bg-accent border-l-primary'
-          : 'hover:bg-accent/50'
+        variant === 'card'
+          ? 'cursor-pointer rounded-xl px-3 py-3 transition-colors'
+          : 'cursor-pointer border-l-2 border-l-transparent px-4 py-3 transition-colors',
+        variant === 'card'
+          ? (
+            isSelected
+              ? 'bg-accent/70 shadow-sm ring-1 ring-primary/35'
+              : 'hover:bg-accent/35'
+          )
+          : (
+            isSelected
+              ? 'bg-accent border-l-primary'
+              : 'hover:bg-accent/50'
+          )
       )}
       onClick={onClick}
     >
@@ -41,7 +53,13 @@ function AgentCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="text-sm font-medium truncate">{profile.name}</h3>
+              <h3 className={cn(
+                'text-sm truncate',
+                variant === 'card' && isSelected ? 'font-semibold' : 'font-medium',
+              )}
+              >
+                {profile.name}
+              </h3>
               <p className="font-mono text-[11px] text-muted-foreground/60 truncate">{agent.id}</p>
             </div>
             <Switch

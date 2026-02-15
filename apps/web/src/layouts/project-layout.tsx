@@ -1,18 +1,12 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Outlet, useParams, Link } from "react-router-dom";
 import { Sidebar, SidebarItem } from "@kombuse/ui/components";
 import { useProject, useProfileSetting, useAppContext } from "@kombuse/ui/hooks";
 import { Ticket, Bot, Folder, MessageSquare, History, Tags, Shield, Database } from "lucide-react";
 
-const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
-
 export function ProjectLayout() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project } = useProject(projectId ?? "");
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-    return stored === "true";
-  });
 
   const { setCurrentProjectId } = useAppContext();
   useEffect(() => {
@@ -27,10 +21,6 @@ export function ProjectLayout() {
   const showPermissions = permissionsSetting?.setting_value === "false";
   const showDatabase = databaseSetting?.setting_value === "false";
 
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(isCollapsed));
-  }, [isCollapsed]);
-
   if (!projectId) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -42,15 +32,16 @@ export function ProjectLayout() {
   return (
     <div className="flex h-full">
       <Sidebar
-        isCollapsed={isCollapsed}
-        onCollapsedChange={setIsCollapsed}
+        variant="rail"
         header={
           <Link
             to="/projects"
-            className="flex items-center gap-2 hover:text-foreground/80"
+            aria-label={project?.name ?? projectId}
+            title={project?.name ?? projectId}
+            className="flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
           >
             <Folder className="size-4 shrink-0" />
-            <span className="truncate">{project?.name ?? projectId}</span>
+            <span className="sr-only">{project?.name ?? projectId}</span>
           </Link>
         }
       >
@@ -58,32 +49,32 @@ export function ProjectLayout() {
           icon={<Ticket className="size-4" />}
           label="Tickets"
           to={`/projects/${projectId}/tickets`}
-          isCollapsed={isCollapsed}
+          variant="rail"
         />
         <SidebarItem
           icon={<MessageSquare className="size-4" />}
           label="Chats"
           to={`/projects/${projectId}/chats`}
-          isCollapsed={isCollapsed}
+          variant="rail"
         />
         <SidebarItem
           icon={<Bot className="size-4" />}
           label="Agents"
           to={`/projects/${projectId}/agents`}
-          isCollapsed={isCollapsed}
+          variant="rail"
         />
         <SidebarItem
           icon={<Tags className="size-4" />}
           label="Labels"
           to={`/projects/${projectId}/labels`}
-          isCollapsed={isCollapsed}
+          variant="rail"
         />
         {showEvents && (
           <SidebarItem
             icon={<History className="size-4" />}
             label="Events"
             to={`/projects/${projectId}/events`}
-            isCollapsed={isCollapsed}
+            variant="rail"
           />
         )}
         {showPermissions && (
@@ -91,7 +82,7 @@ export function ProjectLayout() {
             icon={<Shield className="size-4" />}
             label="Permissions"
             to={`/projects/${projectId}/permissions`}
-            isCollapsed={isCollapsed}
+            variant="rail"
           />
         )}
         {showDatabase && (
@@ -99,7 +90,7 @@ export function ProjectLayout() {
             icon={<Database className="size-4" />}
             label="Database"
             to={`/projects/${projectId}/database`}
-            isCollapsed={isCollapsed}
+            variant="rail"
           />
         )}
       </Sidebar>

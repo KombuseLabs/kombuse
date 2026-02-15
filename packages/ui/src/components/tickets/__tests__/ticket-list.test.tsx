@@ -82,4 +82,28 @@ describe('TicketList date display', () => {
     expect(screen.getByText('Not closed')).toBeDefined()
     expect(screen.queryByText(formatDate(ticket.created_at))).toBeNull()
   })
+
+  it('uses rounded selected card classes without left-border selection classes', () => {
+    const ticket = buildTicket()
+    const view = render(
+      <TicketList
+        tickets={[ticket]}
+        selectedTicketId={ticket.id}
+      />,
+    )
+
+    const item = view.getByTestId(`ticket-item-${ticket.id}`)
+    expect(item.className.includes('ring-1')).toBe(true)
+    expect(item.className.includes('border-l-')).toBe(false)
+  })
+
+  it('renders a clipped list shell with an internal scroll viewport', () => {
+    const ticket = buildTicket()
+    const view = render(<TicketList tickets={[ticket]} />)
+
+    const shell = view.getByTestId('ticket-list-shell')
+    const viewport = view.getByTestId('ticket-list-viewport')
+    expect(shell.className.includes('overflow-hidden')).toBe(true)
+    expect(viewport.className.includes('overflow-y-auto')).toBe(true)
+  })
 })

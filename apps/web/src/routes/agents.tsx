@@ -199,29 +199,58 @@ export function Agents() {
       )}
 
       {!isLoading && !error && agents && (
-        <div className="rounded-lg border divide-y">
+        <div className={isProjectContext
+          ? "flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm"
+          : "rounded-lg border divide-y"}
+        >
           {agents.length === 0 && !isCreating ? (
             <div className="text-center py-8 text-muted-foreground">
               No agents yet. Create one to get started.
             </div>
           ) : (
-            agents.map((agent) => {
-              const profile = profileMap.get(agent.id);
-              if (!profile) return null;
-              return (
-                <AgentCard
-                  key={agent.id}
-                  agent={agent}
-                  profile={profile}
-                  isSelected={agent.id === agentId}
-                  onClick={() => handleAgentClick(agent)}
-                  onToggle={(enabled) =>
-                    toggleAgent.mutate({ id: agent.id, is_enabled: enabled })
-                  }
-                  isToggling={toggleAgent.isPending}
-                />
-              );
-            })
+            isProjectContext ? (
+              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                <div className="space-y-1">
+                  {agents.map((agent) => {
+                    const profile = profileMap.get(agent.id);
+                    if (!profile) return null;
+                    return (
+                      <AgentCard
+                        key={agent.id}
+                        agent={agent}
+                        profile={profile}
+                        variant="card"
+                        isSelected={agent.id === agentId}
+                        onClick={() => handleAgentClick(agent)}
+                        onToggle={(enabled) =>
+                          toggleAgent.mutate({ id: agent.id, is_enabled: enabled })
+                        }
+                        isToggling={toggleAgent.isPending}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              agents.map((agent) => {
+                const profile = profileMap.get(agent.id);
+                if (!profile) return null;
+                return (
+                  <AgentCard
+                    key={agent.id}
+                    agent={agent}
+                    profile={profile}
+                    variant="default"
+                    isSelected={agent.id === agentId}
+                    onClick={() => handleAgentClick(agent)}
+                    onToggle={(enabled) =>
+                      toggleAgent.mutate({ id: agent.id, is_enabled: enabled })
+                    }
+                    isToggling={toggleAgent.isPending}
+                  />
+                );
+              })
+            )
           )}
         </div>
       )}
@@ -249,7 +278,7 @@ export function Agents() {
             onLayoutChanged={handleLayoutChanged}
           >
             <ResizablePanel id="list" defaultSize={50} minSize={25}>
-              <div className="overflow-y-auto p-6 h-full">
+              <div className={isProjectContext ? "h-full min-h-0 p-6" : "h-full overflow-y-auto p-6"}>
                 {agentListContent}
               </div>
             </ResizablePanel>
@@ -367,7 +396,7 @@ export function Agents() {
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
-          <div className="w-full overflow-y-auto p-6">
+          <div className={isProjectContext ? "w-full h-full min-h-0 p-6" : "w-full overflow-y-auto p-6"}>
             {agentListContent}
           </div>
         )}

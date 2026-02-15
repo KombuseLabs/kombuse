@@ -24,7 +24,7 @@ src/
 │   ├── labels/           - Label management components
 │   ├── milestones/       - Milestone management components
 │   ├── prompt-editor/    - System prompt editor with template variables
-│   ├── sidebar/          - Collapsible sidebar navigation
+│   ├── sidebar/          - Sidebar navigation (panel + icon rail variants)
 │   ├── permissions/      - Permission decision log components
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components

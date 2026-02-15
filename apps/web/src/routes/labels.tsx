@@ -139,7 +139,7 @@ export function Labels() {
       )}
 
       {!isLoading && !error && labels && (
-        <div className="rounded-lg border divide-y">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
           {filteredLabels.length === 0 && !isCreating ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchQuery
@@ -147,14 +147,18 @@ export function Labels() {
                 : "No labels yet. Create one to get started."}
             </div>
           ) : (
-            filteredLabels.map((label) => (
-              <LabelCard
-                key={label.id}
-                label={label}
-                isSelected={label.id === Number(labelId)}
-                onClick={() => handleLabelClick(label)}
-              />
-            ))
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
+              <div className="space-y-1">
+                {filteredLabels.map((label) => (
+                  <LabelCard
+                    key={label.id}
+                    label={label}
+                    isSelected={label.id === Number(labelId)}
+                    onClick={() => handleLabelClick(label)}
+                  />
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -189,7 +193,7 @@ export function Labels() {
             onLayoutChanged={handleLayoutChanged}
           >
             <ResizablePanel id="list" defaultSize={50} minSize={25}>
-              <div className="overflow-y-auto p-6 h-full">
+              <div className="h-full min-h-0 p-6">
                 {labelListContent}
               </div>
             </ResizablePanel>
@@ -243,7 +247,7 @@ export function Labels() {
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
-          <div className="w-full overflow-y-auto p-6">{labelListContent}</div>
+          <div className="w-full h-full min-h-0 p-6">{labelListContent}</div>
         )}
       </div>
     </div>

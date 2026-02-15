@@ -439,6 +439,7 @@ export function Tickets() {
       {!isLoading && !error && tickets && (
         <TicketList
           tickets={tickets}
+          className="h-full min-h-0"
           sortBy={sortBy}
           selectedTicketId={ticketId ? Number(ticketId) : undefined}
           onTicketClick={handleTicketClick}
@@ -607,8 +608,8 @@ export function Tickets() {
             defaultLayout={defaultLayout}
             onLayoutChanged={handleLayoutChanged}
           >
-            <ResizablePanel id="list" defaultSize={50} minSize={25}>
-              <div className="overflow-y-auto p-6 h-full">
+            <ResizablePanel id="list" defaultSize={50} minSize={25} className="min-h-0">
+              <div className="h-full min-h-0 p-6">
                 {ticketListContent}
               </div>
             </ResizablePanel>
@@ -873,7 +874,7 @@ export function Tickets() {
             )}
           </ResizablePanelGroup>
         ) : (
-          <div className="w-full overflow-y-auto p-6">
+          <div className="w-full h-full min-h-0 p-6">
             {ticketListContent}
           </div>
         )}

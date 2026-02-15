@@ -98,6 +98,7 @@ function getStatusText(session: PublicSession, hasPendingPermission: boolean): s
 export interface SessionItemProps {
   session: PublicSession
   isSelected?: boolean
+  variant?: 'default' | 'card'
   onClick?: () => void
   onDelete?: () => void
   hasPendingPermission?: boolean
@@ -106,6 +107,7 @@ export interface SessionItemProps {
 function SessionItem({
   session,
   isSelected,
+  variant = 'default',
   onClick,
   onDelete,
   hasPendingPermission = false,
@@ -117,11 +119,22 @@ function SessionItem({
 
   return (
     <div
+      data-testid={`session-item-${session.kombuse_session_id}`}
       className={cn(
-        'group px-4 py-3 cursor-pointer transition-colors border-l-2 border-l-transparent',
-        isSelected
-          ? 'bg-accent border-l-primary'
-          : 'hover:bg-accent/50'
+        variant === 'card'
+          ? 'group cursor-pointer rounded-xl px-3 py-3 transition-colors'
+          : 'group cursor-pointer border-l-2 border-l-transparent px-4 py-3 transition-colors',
+        variant === 'card'
+          ? (
+            isSelected
+              ? 'bg-accent/70 shadow-sm ring-1 ring-primary/35'
+              : 'hover:bg-accent/35'
+          )
+          : (
+            isSelected
+              ? 'bg-accent border-l-primary'
+              : 'hover:bg-accent/50'
+          )
       )}
       onClick={onClick}
     >
@@ -131,7 +144,13 @@ function SessionItem({
           <div className="flex items-center gap-2">
             <StatusIndicator status={indicatorStatus} size="sm" />
             <OriginIcon origin={origin} />
-            <span className="text-sm font-medium truncate">{label}</span>
+            <span className={cn(
+              'text-sm truncate',
+              variant === 'card' && isSelected ? 'font-semibold' : 'font-medium',
+            )}
+            >
+              {label}
+            </span>
           </div>
 
           {/* Meta row */}
@@ -199,6 +218,7 @@ function SessionItem({
 export interface SessionListProps {
   sessions: PublicSession[]
   className?: string
+  variant?: 'default' | 'card'
   selectedSessionId?: string | null
   onSessionClick?: (session: PublicSession) => void
   onSessionDelete?: (session: PublicSession) => void
@@ -210,6 +230,7 @@ export interface SessionListProps {
 function SessionList({
   sessions,
   className,
+  variant = 'default',
   selectedSessionId,
   onSessionClick,
   onSessionDelete,
@@ -233,12 +254,43 @@ function SessionList({
     )
   }
 
+  if (variant === 'card') {
+    return (
+      <div
+        className={cn(
+          'flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm',
+          className,
+        )}
+        data-testid="session-list-shell"
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto p-2" data-testid="session-list-viewport">
+          <div className="space-y-1">
+            {sessions.map((session) => (
+              <SessionItem
+                key={session.kombuse_session_id!}
+                session={session}
+                variant="card"
+                isSelected={selectedSessionId === session.kombuse_session_id}
+                onClick={() => onSessionClick?.(session)}
+                onDelete={onSessionDelete ? () => onSessionDelete(session) : undefined}
+                hasPendingPermission={
+                  isSessionPendingPermission?.(session.kombuse_session_id) ?? false
+                }
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={cn('rounded-lg border divide-y', className)}>
       {sessions.map((session) => (
         <SessionItem
           key={session.kombuse_session_id!}
           session={session}
+          variant="default"
           isSelected={selectedSessionId === session.kombuse_session_id}
           onClick={() => onSessionClick?.(session)}
           onDelete={onSessionDelete ? () => onSessionDelete(session) : undefined}

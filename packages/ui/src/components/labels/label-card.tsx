@@ -13,10 +13,10 @@ function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
   return (
     <div
       className={cn(
-        'px-4 py-3 cursor-pointer transition-colors border-l-2 border-l-transparent',
+        'cursor-pointer rounded-xl px-3 py-3 transition-colors',
         isSelected
-          ? 'bg-accent border-l-primary'
-          : 'hover:bg-accent/50'
+          ? 'bg-accent/70 shadow-sm ring-1 ring-primary/35'
+          : 'hover:bg-accent/35'
       )}
       onClick={onClick}
     >
@@ -26,7 +26,13 @@ function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
           style={{ backgroundColor: label.color }}
         />
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium truncate">{label.name}</h3>
+          <h3 className={cn(
+            'text-sm truncate',
+            isSelected ? 'font-semibold' : 'font-medium',
+          )}
+          >
+            {label.name}
+          </h3>
           {label.description && (
             <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
               {label.description}

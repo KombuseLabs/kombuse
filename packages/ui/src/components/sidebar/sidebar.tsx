@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 interface SidebarProps {
   children: React.ReactNode;
   className?: string;
+  variant?: "panel" | "rail";
   isCollapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   header?: React.ReactNode;
@@ -17,10 +18,33 @@ interface SidebarProps {
 function Sidebar({
   children,
   className,
+  variant = "panel",
   isCollapsed = false,
   onCollapsedChange,
   header,
 }: SidebarProps) {
+  if (variant === "rail") {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <aside
+          className={cn("shrink-0 p-3", className)}
+          data-sidebar-variant={variant}
+        >
+          <div className="flex h-full w-[4.5rem] flex-col rounded-3xl border bg-background/95 p-2 shadow-sm">
+            {header && (
+              <div className="flex justify-center pb-2">
+                {header}
+              </div>
+            )}
+            <nav className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+              {children}
+            </nav>
+          </div>
+        </aside>
+      </TooltipProvider>
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside
@@ -29,6 +53,7 @@ function Sidebar({
           isCollapsed ? "w-16" : "w-60",
           className
         )}
+        data-sidebar-variant={variant}
       >
         <div
           className={cn(

@@ -124,9 +124,11 @@ export function Chats() {
         </div>
 
         {/* Sessions list */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={cn("flex-1 min-h-0", !isProjectContext && "overflow-y-auto")}>
           <SessionList
             sessions={sessions ?? []}
+            className={isProjectContext ? "h-full min-h-0" : undefined}
+            variant={isProjectContext ? "card" : "default"}
             selectedSessionId={selectedSessionId}
             onSessionClick={(session) => handleSelectSession(session.kombuse_session_id!)}
             onSessionDelete={(session) => {

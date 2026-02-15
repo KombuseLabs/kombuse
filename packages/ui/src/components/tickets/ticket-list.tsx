@@ -58,11 +58,12 @@ function TicketItem({ ticket, isSelected, onTicketClick, sortBy }: TicketItemPro
 
   return (
     <div
+      data-testid={`ticket-item-${ticket.id}`}
       className={cn(
-        'group relative px-4 py-3 cursor-pointer transition-colors border-l-2 border-l-transparent',
+        'group relative cursor-pointer rounded-xl px-3 py-3 transition-colors',
         isSelected
-          ? 'bg-accent border-l-primary'
-          : 'hover:bg-accent/50'
+          ? 'bg-accent/70 shadow-sm ring-1 ring-primary/35'
+          : 'hover:bg-accent/35'
       )}
       onClick={() => onTicketClick?.(ticket)}
     >
@@ -81,7 +82,13 @@ function TicketItem({ ticket, isSelected, onTicketClick, sortBy }: TicketItemPro
             <StatusIndicator status={agentStatus} />
           )}
           <span className="text-xs text-muted-foreground font-mono">#{ticket.id}</span>
-          <span className={cn("text-sm truncate", hasUnread ? "font-semibold" : "font-medium")}>{ticket.title}</span>
+          <span className={cn(
+            "text-sm truncate",
+            hasUnread || isSelected ? "font-semibold" : "font-medium",
+          )}
+          >
+            {ticket.title}
+          </span>
         </div>
 
         {/* Meta row */}
@@ -125,16 +132,26 @@ function TicketList({ tickets, className, selectedTicketId, onTicketClick, sortB
   }
 
   return (
-    <div className={cn('rounded-lg border divide-y', className)}>
-      {tickets.map((ticket) => (
-        <TicketItem
-          key={ticket.id}
-          ticket={ticket}
-          isSelected={ticket.id === selectedTicketId}
-          onTicketClick={onTicketClick}
-          sortBy={sortBy}
-        />
-      ))}
+    <div
+      className={cn(
+        'flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm',
+        className,
+      )}
+      data-testid="ticket-list-shell"
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto p-2" data-testid="ticket-list-viewport">
+        <div className="space-y-1">
+          {tickets.map((ticket) => (
+            <TicketItem
+              key={ticket.id}
+              ticket={ticket}
+              isSelected={ticket.id === selectedTicketId}
+              onTicketClick={onTicketClick}
+              sortBy={sortBy}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
