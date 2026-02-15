@@ -140,6 +140,21 @@ export function Labels() {
 
       {!isLoading && !error && labels && (
         <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
+            <h1 className="text-2xl font-bold">Labels</h1>
+            <div className="flex items-center gap-3">
+              <Input
+                placeholder="Search labels..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-48"
+              />
+              <Button onClick={handleStartCreate} disabled={isCreating}>
+                <Plus className="size-4" />
+                Create Label
+              </Button>
+            </div>
+          </div>
           {filteredLabels.length === 0 && !isCreating ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchQuery
@@ -166,25 +181,7 @@ export function Labels() {
   );
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-6 border-b">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Labels</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <Input
-            placeholder="Search labels..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-48"
-          />
-          <Button onClick={handleStartCreate} disabled={isCreating}>
-            <Plus className="size-4" />
-            Create Label
-          </Button>
-        </div>
-      </div>
-
+    <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
         {showDetailPanel ? (
           <ResizablePanelGroup

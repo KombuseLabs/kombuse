@@ -93,6 +93,9 @@ vi.mock('@kombuse/ui/base', () => ({
     </div>
   ),
   ResizableHandle: () => <div data-testid="resizable-handle" />,
+  Popover: ({ children }: any) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: any) => <>{children}</>,
+  PopoverContent: ({ children }: any) => <div>{children}</div>,
 }))
 
 vi.mock('@kombuse/ui/components', () => ({
@@ -101,12 +104,21 @@ vi.mock('@kombuse/ui/components', () => ({
 
     return (
       <div data-testid="ticket-list">
+        {props.header}
         <button type="button" onClick={() => props.onTicketClick?.({ id: 43 })}>
           Open Ticket 43
         </button>
       </div>
     )
   },
+  TicketListHeader: ({ title, meta, controls, filters }: any) => (
+    <div>
+      {title}
+      {meta}
+      {controls}
+      {filters}
+    </div>
+  ),
   TicketDetail: () => <div data-testid="ticket-detail" />,
   ChatInput: () => (
     <div data-testid="ticket-chat-input">

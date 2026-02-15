@@ -10,6 +10,7 @@ import type {
   UpdateCommentInput,
   CommentFilters,
   Label,
+  LabelFilters,
   CreateLabelInput,
   UpdateLabelInput,
   Agent,
@@ -208,8 +209,14 @@ export const commentsApi = {
 }
 
 export const labelsApi = {
-  async listByProject(projectId: string): Promise<Label[]> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/labels`)
+  async listByProject(projectId: string, filters?: Pick<LabelFilters, 'search' | 'sort' | 'usage_scope'>): Promise<Label[]> {
+    const params = new URLSearchParams()
+    if (filters?.search) params.set('search', filters.search)
+    if (filters?.sort) params.set('sort', filters.sort)
+    if (filters?.usage_scope) params.set('usage_scope', filters.usage_scope)
+
+    const url = `${API_BASE}/projects/${projectId}/labels${params.toString() ? `?${params}` : ''}`
+    const response = await fetch(url)
     return handleResponse<Label[]>(response)
   },
 

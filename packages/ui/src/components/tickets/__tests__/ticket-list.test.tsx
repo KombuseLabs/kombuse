@@ -106,4 +106,17 @@ describe('TicketList date display', () => {
     expect(shell.className.includes('overflow-hidden')).toBe(true)
     expect(viewport.className.includes('overflow-y-auto')).toBe(true)
   })
+
+  it('renders a list-owned header section when header content is provided', () => {
+    const ticket = buildTicket()
+    const view = render(
+      <TicketList
+        tickets={[ticket]}
+        header={<div data-testid="header-slot">Filters and controls</div>}
+      />,
+    )
+
+    expect(view.getByTestId('ticket-list-header')).toBeDefined()
+    expect(view.getByTestId('header-slot')).toBeDefined()
+  })
 })

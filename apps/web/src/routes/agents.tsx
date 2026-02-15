@@ -203,6 +203,15 @@ export function Agents() {
           ? "flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm"
           : "rounded-lg border divide-y"}
         >
+          {isProjectContext && (
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
+              <h1 className="text-2xl font-bold">Agents</h1>
+              <Button onClick={handleStartCreate} disabled={isCreating}>
+                <Plus className="size-4" />
+                Create Agent
+              </Button>
+            </div>
+          )}
           {agents.length === 0 && !isCreating ? (
             <div className="text-center py-8 text-muted-foreground">
               No agents yet. Create one to get started.
@@ -258,19 +267,21 @@ export function Agents() {
   );
 
   return (
-    <Container className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-6 border-b">
-        <div className="flex items-center gap-4">
-          {!isProjectContext && <Bot className="size-6" />}
-          <h1 className="text-2xl font-bold">Agents</h1>
+    <Container className={isProjectContext ? "flex h-full min-h-0" : "flex flex-col h-full"}>
+      {!isProjectContext && (
+        <div className="flex items-center justify-between p-6 border-b">
+          <div className="flex items-center gap-4">
+            <Bot className="size-6" />
+            <h1 className="text-2xl font-bold">Agents</h1>
+          </div>
+          <Button onClick={handleStartCreate} disabled={isCreating}>
+            <Plus className="size-4" />
+            Create Agent
+          </Button>
         </div>
-        <Button onClick={handleStartCreate} disabled={isCreating}>
-          <Plus className="size-4" />
-          Create Agent
-        </Button>
-      </div>
+      )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {showDetailPanel ? (
           <ResizablePanelGroup
             orientation="horizontal"

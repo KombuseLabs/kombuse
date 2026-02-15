@@ -41,6 +41,7 @@ export const labelSchema = z.object({
   name: z.string().min(1),
   color: z.string().min(1),
   description: z.string().nullable(),
+  usage_count: z.number().int().nonnegative().optional(),
   created_at: timestampSchema,
 })
 

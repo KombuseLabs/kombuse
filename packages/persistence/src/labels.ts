@@ -23,21 +23,40 @@ export const labelsRepository = {
     const params: unknown[] = []
 
     if (filters?.project_id) {
-      conditions.push('project_id = ?')
+      conditions.push('l.project_id = ?')
       params.push(filters.project_id)
     }
     if (filters?.search) {
-      conditions.push('(name LIKE ? OR description LIKE ?)')
+      conditions.push('(l.name LIKE ? OR l.description LIKE ?)')
       params.push(`%${filters.search}%`, `%${filters.search}%`)
     }
 
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
+    if (filters?.sort === 'usage') {
+      const usageCountSql =
+        filters.usage_scope === 'open'
+          ? "COUNT(DISTINCT CASE WHEN t.status = 'open' THEN tl.ticket_id END)"
+          : 'COUNT(DISTINCT tl.ticket_id)'
+
+      const stmt = db.prepare(`
+        SELECT l.*, ${usageCountSql} AS usage_count
+        FROM labels l
+        LEFT JOIN ticket_labels tl ON l.id = tl.label_id
+        LEFT JOIN tickets t ON t.id = tl.ticket_id
+        ${whereClause}
+        GROUP BY l.id
+        ORDER BY usage_count DESC, l.name ASC
+      `)
+
+      return stmt.all(...params) as Label[]
+    }
+
     const stmt = db.prepare(`
-      SELECT * FROM labels
+      SELECT l.* FROM labels l
       ${whereClause}
-      ORDER BY name ASC
+      ORDER BY l.name ASC
     `)
 
     return stmt.all(...params) as Label[]

@@ -63,4 +63,18 @@ describe('SessionList card variant', () => {
     expect(shell.className.includes('overflow-hidden')).toBe(true)
     expect(viewport.className.includes('overflow-y-auto')).toBe(true)
   })
+
+  it('renders a list-owned header section in card mode when provided', () => {
+    const session = buildSession()
+    const view = render(
+      <SessionList
+        sessions={[session]}
+        variant="card"
+        header={<div data-testid="session-header-slot">Sessions</div>}
+      />,
+    )
+
+    expect(view.getByTestId('session-list-header')).toBeDefined()
+    expect(view.getByTestId('session-header-slot')).toBeDefined()
+  })
 })

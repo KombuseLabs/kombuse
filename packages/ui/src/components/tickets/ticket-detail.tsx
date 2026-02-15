@@ -191,7 +191,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
       {/* Sticky header — direct child of scroll container so sticky works correctly */}
       <div
         className={cn(
-          'sticky top-0 z-20 border-b bg-background/95 px-4 py-3 shadow-md backdrop-blur-sm',
+          'sticky top-0 z-20 border-b bg-card/95 px-4 py-3 shadow-md backdrop-blur-sm',
           className
         )}
       >

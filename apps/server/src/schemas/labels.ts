@@ -14,6 +14,8 @@ export const updateLabelSchema = z.object({
 
 export const labelFiltersSchema = z.object({
   search: z.string().optional(),
+  sort: z.enum(['name', 'usage']).optional(),
+  usage_scope: z.enum(['open']).optional(),
 })
 
 export type CreateLabelBody = z.infer<typeof createLabelSchema>

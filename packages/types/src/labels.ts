@@ -7,8 +7,12 @@ export interface Label {
   name: string
   color: string
   description: string | null
+  usage_count?: number
   created_at: string
 }
+
+export type LabelSortBy = 'name' | 'usage'
+export type LabelUsageScope = 'open'
 
 /**
  * Input for creating a label
@@ -35,4 +39,6 @@ export interface UpdateLabelInput {
 export interface LabelFilters {
   project_id?: string
   search?: string
+  sort?: LabelSortBy
+  usage_scope?: LabelUsageScope
 }

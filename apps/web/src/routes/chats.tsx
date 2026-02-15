@@ -110,18 +110,17 @@ export function Chats() {
         "w-64 border-r flex flex-col min-h-0",
         isProjectContext ? "" : "p-4"
       )}>
-        <div className={cn(
-          "flex items-center justify-between mb-4",
-          isProjectContext && "p-4 border-b"
-        )}>
-          <h2 className="font-semibold">Sessions</h2>
-          <button
-            onClick={handleNewChat}
-            className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            New Chat
-          </button>
-        </div>
+        {!isProjectContext && (
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold">Sessions</h2>
+            <button
+              onClick={handleNewChat}
+              className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              New Chat
+            </button>
+          </div>
+        )}
 
         {/* Sessions list */}
         <div className={cn("flex-1 min-h-0", !isProjectContext && "overflow-y-auto")}>
@@ -129,6 +128,18 @@ export function Chats() {
             sessions={sessions ?? []}
             className={isProjectContext ? "h-full min-h-0" : undefined}
             variant={isProjectContext ? "card" : "default"}
+            header={isProjectContext ? (
+              <div className="flex items-center justify-between p-4">
+                <h2 className="font-semibold">Sessions</h2>
+                <button
+                  type="button"
+                  onClick={handleNewChat}
+                  className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  New Chat
+                </button>
+              </div>
+            ) : undefined}
             selectedSessionId={selectedSessionId}
             onSessionClick={(session) => handleSelectSession(session.kombuse_session_id!)}
             onSessionDelete={(session) => {

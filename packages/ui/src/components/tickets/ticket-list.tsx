@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { TicketFilters, TicketWithLabels } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { LabelBadge } from '../labels/label-badge'
@@ -9,6 +10,8 @@ type TicketSortBy = NonNullable<TicketFilters['sort_by']>
 interface TicketListProps {
   tickets: TicketWithLabels[]
   className?: string
+  header?: ReactNode
+  emptyMessage?: ReactNode
   selectedTicketId?: number
   onTicketClick?: (ticket: TicketWithLabels) => void
   sortBy?: TicketSortBy
@@ -122,15 +125,15 @@ function TicketItem({ ticket, isSelected, onTicketClick, sortBy }: TicketItemPro
   )
 }
 
-function TicketList({ tickets, className, selectedTicketId, onTicketClick, sortBy = 'created_at' }: TicketListProps) {
-  if (tickets.length === 0) {
-    return (
-      <div className={cn('text-center py-8 text-muted-foreground', className)}>
-        No tickets found
-      </div>
-    )
-  }
-
+function TicketList({
+  tickets,
+  className,
+  header,
+  emptyMessage = 'No tickets found',
+  selectedTicketId,
+  onTicketClick,
+  sortBy = 'created_at',
+}: TicketListProps) {
   return (
     <div
       className={cn(
@@ -139,18 +142,29 @@ function TicketList({ tickets, className, selectedTicketId, onTicketClick, sortB
       )}
       data-testid="ticket-list-shell"
     >
-      <div className="min-h-0 flex-1 overflow-y-auto p-2" data-testid="ticket-list-viewport">
-        <div className="space-y-1">
-          {tickets.map((ticket) => (
-            <TicketItem
-              key={ticket.id}
-              ticket={ticket}
-              isSelected={ticket.id === selectedTicketId}
-              onTicketClick={onTicketClick}
-              sortBy={sortBy}
-            />
-          ))}
+      {header ? (
+        <div className="shrink-0 border-b" data-testid="ticket-list-header">
+          {header}
         </div>
+      ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto p-2" data-testid="ticket-list-viewport">
+        {tickets.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground">
+            {emptyMessage}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {tickets.map((ticket) => (
+              <TicketItem
+                key={ticket.id}
+                ticket={ticket}
+                isSelected={ticket.id === selectedTicketId}
+                onTicketClick={onTicketClick}
+                sortBy={sortBy}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

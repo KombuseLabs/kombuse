@@ -611,11 +611,17 @@ Props:
 ### Ticket Components
 
 ```typescript
-import { TicketList, TicketDetail } from '@kombuse/ui/components'
+import { TicketList, TicketListHeader, TicketDetail } from '@kombuse/ui/components'
 
 // Render a ticket list with date metadata aligned to the active sort mode
 <TicketList
   tickets={tickets}
+  header={(
+    <TicketListHeader
+      title="Tickets"
+      controls={<button>Create Ticket</button>}
+    />
+  )}
   sortBy="closed_at"
   selectedTicketId={selectedTicketId}
   onTicketClick={setSelectedTicket}
@@ -632,6 +638,8 @@ Props:
 - `TicketList`:
   - `tickets`: `TicketWithLabels[]`
   - `className`: Optional class name
+  - `header`: Optional header content rendered inside the list card surface (above the scroll viewport)
+  - `emptyMessage`: Optional empty/loading/error message content
   - `selectedTicketId`: Optional selected ticket ID for active row styling
   - `onTicketClick`: `(ticket: TicketWithLabels) => void`
   - `sortBy`: Optional sort field (`created_at`, `updated_at`, `opened_at`, `last_activity_at`, `closed_at`); controls which timestamp is shown in each row metadata line
@@ -676,6 +684,7 @@ import { SessionItem, SessionList } from '@kombuse/ui/components'
 `SessionList` props:
 - `sessions`: `PublicSession[]` to render
 - `className`: Optional class name
+- `header`: Optional header content rendered inside the card list shell (`variant="card"`)
 - `selectedSessionId`: ID of the currently selected session
 - `onSessionClick`: `(session: PublicSession) => void`
 - `onSessionDelete`: `(session: PublicSession) => void`
@@ -1217,6 +1226,12 @@ import {
 
 // Fetch labels for a project
 const { data: labels } = useProjectLabels('project-id')
+
+// Fetch labels ordered by open-ticket usage count (desc, then name asc)
+const { data: usageLabels } = useProjectLabels('project-id', {
+  sort: 'usage',
+  usage_scope: 'open',
+})
 
 // Fetch labels assigned to a ticket
 const { data: ticketLabels } = useTicketLabels(ticketId)

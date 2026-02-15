@@ -175,6 +175,84 @@ describe('labelsRepository', () => {
     })
   })
 
+  describe('list usage sorting', () => {
+    it('should sort labels by open-ticket usage count and include usage_count metadata', () => {
+      const alpha = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'alpha' })
+      const beta = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'beta' })
+      const gamma = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'gamma' })
+
+      const openTicketOne = ticketsRepository.create({
+        title: 'Open 1',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'open',
+      })
+      const openTicketTwo = ticketsRepository.create({
+        title: 'Open 2',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'open',
+      })
+      const closedTicket = ticketsRepository.create({
+        title: 'Closed',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'closed',
+      })
+
+      labelsRepository.addToTicket(openTicketOne.id, beta.id)
+      labelsRepository.addToTicket(openTicketTwo.id, beta.id)
+      labelsRepository.addToTicket(openTicketOne.id, alpha.id)
+      labelsRepository.addToTicket(closedTicket.id, alpha.id)
+      labelsRepository.addToTicket(closedTicket.id, gamma.id)
+
+      const labels = labelsRepository.list({
+        project_id: TEST_PROJECT_ID,
+        sort: 'usage',
+        usage_scope: 'open',
+      })
+
+      expect(labels[0]?.name).toBe('beta')
+      expect(labels[0]?.usage_count).toBe(2)
+      expect(labels[1]?.name).toBe('alpha')
+      expect(labels[1]?.usage_count).toBe(1)
+      expect(labels[2]?.name).toBe('gamma')
+      expect(labels[2]?.usage_count).toBe(0)
+    })
+
+    it('should tie-break usage sorting by label name ascending', () => {
+      const zeta = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'zeta' })
+      const alpha = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'alpha' })
+
+      const openTicketOne = ticketsRepository.create({
+        title: 'Open 1',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'open',
+      })
+      const openTicketTwo = ticketsRepository.create({
+        title: 'Open 2',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'open',
+      })
+
+      labelsRepository.addToTicket(openTicketOne.id, zeta.id)
+      labelsRepository.addToTicket(openTicketTwo.id, alpha.id)
+
+      const labels = labelsRepository.list({
+        project_id: TEST_PROJECT_ID,
+        sort: 'usage',
+        usage_scope: 'open',
+      })
+
+      expect(labels[0]?.name).toBe('alpha')
+      expect(labels[0]?.usage_count).toBe(1)
+      expect(labels[1]?.name).toBe('zeta')
+      expect(labels[1]?.usage_count).toBe(1)
+    })
+  })
+
   /*
    * UPDATE TESTS
    */

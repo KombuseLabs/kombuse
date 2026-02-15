@@ -19,8 +19,11 @@ import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@kombuse/ui/base";
-import { TicketList, TicketDetail, ChatInput, ActivityTimeline, Chat } from "@kombuse/ui/components";
+import { TicketList, TicketListHeader, TicketDetail, ChatInput, ActivityTimeline, Chat } from "@kombuse/ui/components";
 import type { ReplyTarget } from "@kombuse/ui/components";
 import { ChatProvider } from "@kombuse/ui/providers";
 import {
@@ -44,7 +47,7 @@ import {
   useScrollToComment,
 } from "@kombuse/ui/hooks";
 import { LabelBadge, MilestoneBadge, StagedFilePreviews } from "@kombuse/ui/components";
-import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip } from "lucide-react";
+import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip, Check, ChevronsUpDown } from "lucide-react";
 import type { Ticket, TicketStatus, TicketFilters, CommentWithAuthor } from "@kombuse/types";
 
 const TICKETS_PANEL_LAYOUT_KEY = "tickets-panel-layout";
@@ -87,7 +90,10 @@ export function Tickets() {
     ? (rawStatus as TicketStatus | "all")
     : "open";
 
-  const { data: projectLabels } = useProjectLabels(projectId ?? "");
+  const { data: projectLabels } = useProjectLabels(projectId ?? "", {
+    sort: "usage",
+    usage_scope: "open",
+  });
   const { data: projectMilestones } = useProjectMilestones(projectId ?? "");
 
   const validSortByValues = new Set<TicketFilters["sort_by"]>(["created_at", "updated_at", "closed_at", "opened_at", "last_activity_at"]);
@@ -105,17 +111,31 @@ export function Tickets() {
 
   const selectedLabelIds: number[] = useMemo(() => {
     const raw = searchParams.get("labels");
-    if (!raw || !projectLabels) return [];
-    const names = raw.split(",").map((s) => s.trim().toLowerCase());
-    return projectLabels
-      .filter((l) => names.includes(l.name.toLowerCase()))
-      .map((l) => l.id);
-  }, [searchParams, projectLabels]);
+    if (!raw) return [];
+
+    const uniqueIds = new Set<number>();
+    for (const token of raw.split(",")) {
+      const id = Number.parseInt(token.trim(), 10);
+      if (Number.isInteger(id) && id > 0) {
+        uniqueIds.add(id);
+      }
+    }
+    return [...uniqueIds];
+  }, [searchParams]);
 
   const selectedMilestoneId: number | null = useMemo(() => {
     const raw = searchParams.get("milestone");
     return raw ? parseInt(raw, 10) : null;
   }, [searchParams]);
+
+  const usageSortedLabels = useMemo(() => {
+    if (!projectLabels) return [];
+    return [...projectLabels].sort((a, b) => {
+      const usageDiff = (b.usage_count ?? 0) - (a.usage_count ?? 0);
+      if (usageDiff !== 0) return usageDiff;
+      return a.name.localeCompare(b.name);
+    });
+  }, [projectLabels]);
 
   // Unfiltered query for counting tickets by status
   const { data: allTickets } = useTickets({ project_id: projectId });
@@ -194,6 +214,13 @@ export function Tickets() {
   const [newTicketTitle, setNewTicketTitle] = useState("");
   const [newTicketBody, setNewTicketBody] = useState("");
   const [newTicketTriggersEnabled, setNewTicketTriggersEnabled] = useState(true);
+  const [overflowLabelsOpen, setOverflowLabelsOpen] = useState(false);
+  const [overflowLabelSearch, setOverflowLabelSearch] = useState("");
+  const [visibleLabelCount, setVisibleLabelCount] = useState(0);
+  const labelsRowRef = useRef<HTMLDivElement>(null);
+  const labelMeasureMoreRef = useRef<HTMLButtonElement>(null);
+  const labelMeasureClearRef = useRef<HTMLButtonElement>(null);
+  const labelMeasureRefs = useRef(new Map<number, HTMLButtonElement>());
   const newTicketBodyRef = useRef<HTMLTextAreaElement>(null);
   const { textareaProps: newTicketAutocomplete, AutocompletePortal: NewTicketAutocomplete } = useTextareaAutocomplete({
     value: newTicketBody,
@@ -266,6 +293,77 @@ export function Tickets() {
   const handleLayoutChanged = useCallback((layout: Record<string, number>) => {
     localStorage.setItem(TICKETS_PANEL_LAYOUT_KEY, JSON.stringify(layout));
   }, []);
+
+  const setLabelMeasureRef = useCallback((labelId: number, node: HTMLButtonElement | null) => {
+    if (node) {
+      labelMeasureRefs.current.set(labelId, node);
+      return;
+    }
+    labelMeasureRefs.current.delete(labelId);
+  }, []);
+
+  useEffect(() => {
+    if (usageSortedLabels.length === 0) {
+      setVisibleLabelCount(0);
+      return;
+    }
+
+    const container = labelsRowRef.current;
+    if (!container) return;
+
+    const calculateVisibleCount = () => {
+      const availableWidth = container.clientWidth;
+      if (availableWidth <= 0) {
+        setVisibleLabelCount(0);
+        return;
+      }
+
+      const gap = 8;
+      const clearWidth = selectedLabelIds.length > 0
+        ? (labelMeasureClearRef.current?.offsetWidth ?? 0) + gap
+        : 0;
+      const moreWidth = (labelMeasureMoreRef.current?.offsetWidth ?? 0) + gap;
+      let consumedWidth = 0;
+      let nextVisibleCount = 0;
+
+      for (let index = 0; index < usageSortedLabels.length; index += 1) {
+        const label = usageSortedLabels[index];
+        const labelWidth = labelMeasureRefs.current.get(label.id)?.offsetWidth ?? 0;
+        const remainingLabels = usageSortedLabels.length - (index + 1);
+        const reservedWidth = clearWidth + (remainingLabels > 0 ? moreWidth : 0);
+
+        if (consumedWidth + labelWidth + reservedWidth > availableWidth) {
+          break;
+        }
+
+        consumedWidth += labelWidth + gap;
+        nextVisibleCount += 1;
+      }
+
+      setVisibleLabelCount(nextVisibleCount);
+    };
+
+    const rafId = window.requestAnimationFrame(calculateVisibleCount);
+    if (typeof ResizeObserver === "undefined") {
+      return () => {
+        window.cancelAnimationFrame(rafId);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(calculateVisibleCount);
+    resizeObserver.observe(container);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, [selectedLabelIds.length, usageSortedLabels]);
+
+  useEffect(() => {
+    if (!overflowLabelsOpen) {
+      setOverflowLabelSearch("");
+    }
+  }, [overflowLabelsOpen]);
 
   useEffect(() => {
     setView("tickets");
@@ -416,36 +514,264 @@ export function Tickets() {
     const nextIds = selectedLabelIds.includes(labelId)
       ? selectedLabelIds.filter((id) => id !== labelId)
       : [...selectedLabelIds, labelId];
-    const nextNames = projectLabels
-      ?.filter((l) => nextIds.includes(l.id))
-      .map((l) => l.name);
-    updateSearchParams({ labels: nextNames?.length ? nextNames.join(",") : null });
+    const serializedIds = nextIds.length > 0
+      ? [...new Set(nextIds)].sort((a, b) => a - b).join(",")
+      : null;
+    updateSearchParams({ labels: serializedIds });
   };
 
+  const visibleLabels = usageSortedLabels.slice(0, visibleLabelCount);
+  const overflowLabels = usageSortedLabels.slice(visibleLabelCount);
+  const filteredOverflowLabels = overflowLabels.filter((label) => {
+    if (!overflowLabelSearch.trim()) return true;
+    return label.name.toLowerCase().includes(overflowLabelSearch.toLowerCase());
+  });
+  const overflowSelectedCount = overflowLabels.filter((label) => selectedLabelIds.includes(label.id)).length;
+
   const ticketListContent = (
-    <>
-      {isLoading && (
-        <div className="text-center py-8 text-muted-foreground">
-          Loading tickets...
-        </div>
-      )}
-
-      {error && (
-        <div className="text-center py-8 text-destructive">
-          Error: {error.message}
-        </div>
-      )}
-
-      {!isLoading && !error && tickets && (
-        <TicketList
-          tickets={tickets}
-          className="h-full min-h-0"
-          sortBy={sortBy}
-          selectedTicketId={ticketId ? Number(ticketId) : undefined}
-          onTicketClick={handleTicketClick}
-        />
-      )}
-    </>
+    <div className="relative h-full min-h-0">
+      <TicketList
+        tickets={!isLoading && !error && tickets ? tickets : []}
+        className="h-full min-h-0"
+        sortBy={sortBy}
+        emptyMessage={isLoading ? "Loading tickets..." : error ? `Error: ${error.message}` : "No tickets found"}
+        selectedTicketId={ticketId ? Number(ticketId) : undefined}
+        onTicketClick={handleTicketClick}
+        header={(
+          <TicketListHeader
+            title="Tickets"
+            meta={
+              allTickets ? (
+                <span>
+                  <button
+                    type="button"
+                    onClick={() => updateSearchParams({ status: "all" })}
+                    className={`hover:text-foreground transition-colors ${statusFilter === "all" ? "text-foreground font-medium" : ""}`}
+                  >
+                    All
+                  </button>
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={() => updateSearchParams({ status: statusFilter === "open" ? "all" : "open" })}
+                    className={`hover:text-foreground transition-colors ${statusFilter === "open" ? "text-foreground font-medium" : ""}`}
+                  >
+                    {openCount} Open
+                  </button>
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={() => updateSearchParams({ status: statusFilter === "in_progress" ? "all" : "in_progress" })}
+                    className={`hover:text-foreground transition-colors ${statusFilter === "in_progress" ? "text-foreground font-medium" : ""}`}
+                  >
+                    {inProgressCount} In Progress
+                  </button>
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={() => updateSearchParams({ status: statusFilter === "blocked" ? "all" : "blocked" })}
+                    className={`hover:text-foreground transition-colors ${statusFilter === "blocked" ? "text-foreground font-medium" : ""}`}
+                  >
+                    {blockedCount} Blocked
+                  </button>
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={() => updateSearchParams({ status: statusFilter === "closed" ? "all" : "closed" })}
+                    className={`hover:text-foreground transition-colors ${statusFilter === "closed" ? "text-foreground font-medium" : ""}`}
+                  >
+                    {closedCount} Closed
+                  </button>
+                </span>
+              ) : null
+            }
+            controls={(
+              <Button onClick={handleStartCreate} disabled={isCreating}>
+                <Plus className="size-4" />
+                Create Ticket
+              </Button>
+            )}
+            filters={(
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Sort:</span>
+                  <Select
+                    value={sortBy}
+                    onValueChange={(value) => updateSearchParams({ sort_by: value === "created_at" ? null : value })}
+                  >
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="created_at">Created</SelectItem>
+                      <SelectItem value="updated_at">Updated</SelectItem>
+                      <SelectItem value="opened_at">Opened</SelectItem>
+                      <SelectItem value="last_activity_at">Activity</SelectItem>
+                      {showClosedSort && (
+                        <SelectItem value="closed_at">Closed</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => updateSearchParams({ sort_order: sortOrder === "desc" ? "asc" : null })}
+                    title={sortOrder === "asc" ? "Ascending" : "Descending"}
+                  >
+                    {sortOrder === "asc" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
+                  </Button>
+                </div>
+                {usageSortedLabels.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-sm text-muted-foreground">Labels</span>
+                    <div
+                      ref={labelsRowRef}
+                      className="flex min-w-0 items-center gap-2 overflow-hidden"
+                    >
+                      {visibleLabels.map((label) => (
+                        <button
+                          key={label.id}
+                          type="button"
+                          onClick={() => toggleLabelFilter(label.id)}
+                          className={`shrink-0 transition-opacity ${
+                            selectedLabelIds.length > 0 && !selectedLabelIds.includes(label.id)
+                              ? "opacity-40 hover:opacity-70"
+                              : ""
+                          }`}
+                        >
+                          <LabelBadge label={label} size="sm" />
+                        </button>
+                      ))}
+                      {overflowLabels.length > 0 && (
+                        <Popover open={overflowLabelsOpen} onOpenChange={setOverflowLabelsOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="shrink-0"
+                            >
+                              <ChevronsUpDown className="size-3.5" />
+                              More ({overflowSelectedCount > 0 ? overflowSelectedCount : overflowLabels.length})
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 p-2" align="start">
+                            <Input
+                              value={overflowLabelSearch}
+                              onChange={(event) => setOverflowLabelSearch(event.target.value)}
+                              placeholder="Search labels..."
+                              className="h-8"
+                            />
+                            <div className="mt-2 max-h-60 space-y-1 overflow-y-auto">
+                              {filteredOverflowLabels.length === 0 ? (
+                                <div className="px-2 py-3 text-sm text-muted-foreground">
+                                  No labels found.
+                                </div>
+                              ) : (
+                                filteredOverflowLabels.map((label) => {
+                                  const isSelected = selectedLabelIds.includes(label.id);
+                                  return (
+                                    <button
+                                      key={label.id}
+                                      type="button"
+                                      onClick={() => toggleLabelFilter(label.id)}
+                                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                                    >
+                                      <span
+                                        className="size-2.5 shrink-0 rounded-full"
+                                        style={{ backgroundColor: label.color }}
+                                      />
+                                      <span className="min-w-0 flex-1 truncate">{label.name}</span>
+                                      <span className="text-xs text-muted-foreground">{label.usage_count ?? 0}</span>
+                                      {isSelected && <Check className="size-4 text-primary" />}
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                      {selectedLabelIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => updateSearchParams({ labels: null })}
+                          className="shrink-0 text-xs text-muted-foreground hover:text-foreground underline"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute -left-[9999px] top-0 opacity-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <button
+                          ref={labelMeasureMoreRef}
+                          type="button"
+                          className="h-8 rounded-md border px-3 text-xs"
+                        >
+                          More (00)
+                        </button>
+                        <button
+                          ref={labelMeasureClearRef}
+                          type="button"
+                          className="text-xs underline"
+                        >
+                          Clear
+                        </button>
+                        {usageSortedLabels.map((label) => (
+                          <button
+                            key={`label-measure-${label.id}`}
+                            type="button"
+                            ref={(node) => setLabelMeasureRef(label.id, node)}
+                          >
+                            <LabelBadge label={label} size="sm" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {projectMilestones && projectMilestones.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-muted-foreground">Milestones:</span>
+                    {projectMilestones.map((milestone) => (
+                      <button
+                        key={milestone.id}
+                        type="button"
+                        onClick={() =>
+                          updateSearchParams({
+                            milestone: selectedMilestoneId === milestone.id ? null : String(milestone.id),
+                          })
+                        }
+                        className={`transition-opacity ${
+                          selectedMilestoneId !== null && selectedMilestoneId !== milestone.id
+                            ? "opacity-40 hover:opacity-70"
+                            : ""
+                        }`}
+                      >
+                        <MilestoneBadge milestone={milestone} size="sm" showProgress />
+                      </button>
+                    ))}
+                    {selectedMilestoneId !== null && (
+                      <button
+                        type="button"
+                        onClick={() => updateSearchParams({ milestone: null })}
+                        className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          />
+        )}
+      />
+    </div>
   );
 
   if (!projectId) {
@@ -460,147 +786,7 @@ export function Tickets() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex flex-col gap-3 p-6 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold">Tickets</h1>
-            {allTickets && (
-              <span className="text-sm text-muted-foreground">
-                <button
-                  type="button"
-                  onClick={() => updateSearchParams({ status: "all" })}
-                  className={`hover:text-foreground transition-colors ${statusFilter === "all" ? "text-foreground font-medium" : ""}`}
-                >
-                  All
-                </button>
-                {" · "}
-                <button
-                  type="button"
-                  onClick={() => updateSearchParams({ status: statusFilter === "open" ? "all" : "open" })}
-                  className={`hover:text-foreground transition-colors ${statusFilter === "open" ? "text-foreground font-medium" : ""}`}
-                >
-                  {openCount} Open
-                </button>
-                {" · "}
-                <button
-                  type="button"
-                  onClick={() => updateSearchParams({ status: statusFilter === "in_progress" ? "all" : "in_progress" })}
-                  className={`hover:text-foreground transition-colors ${statusFilter === "in_progress" ? "text-foreground font-medium" : ""}`}
-                >
-                  {inProgressCount} In Progress
-                </button>
-                {" · "}
-                <button
-                  type="button"
-                  onClick={() => updateSearchParams({ status: statusFilter === "blocked" ? "all" : "blocked" })}
-                  className={`hover:text-foreground transition-colors ${statusFilter === "blocked" ? "text-foreground font-medium" : ""}`}
-                >
-                  {blockedCount} Blocked
-                </button>
-                {" · "}
-                <button
-                  type="button"
-                  onClick={() => updateSearchParams({ status: statusFilter === "closed" ? "all" : "closed" })}
-                  className={`hover:text-foreground transition-colors ${statusFilter === "closed" ? "text-foreground font-medium" : ""}`}
-                >
-                  {closedCount} Closed
-                </button>
-              </span>
-            )}
-            <Select
-              value={sortBy}
-              onValueChange={(value) => updateSearchParams({ sort_by: value === "created_at" ? null : value })}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="created_at">Created</SelectItem>
-                <SelectItem value="updated_at">Updated</SelectItem>
-                <SelectItem value="opened_at">Opened</SelectItem>
-                <SelectItem value="last_activity_at">Activity</SelectItem>
-                {showClosedSort && (
-                  <SelectItem value="closed_at">Closed</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => updateSearchParams({ sort_order: sortOrder === "desc" ? "asc" : null })}
-              title={sortOrder === "asc" ? "Ascending" : "Descending"}
-            >
-              {sortOrder === "asc" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
-            </Button>
-          </div>
-          <Button onClick={handleStartCreate} disabled={isCreating}>
-            <Plus className="size-4" />
-            Create Ticket
-          </Button>
-        </div>
-        {projectLabels && projectLabels.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground">Labels:</span>
-            {projectLabels.map((label) => (
-              <button
-                key={label.id}
-                type="button"
-                onClick={() => toggleLabelFilter(label.id)}
-                className={`transition-opacity ${
-                  selectedLabelIds.length > 0 && !selectedLabelIds.includes(label.id)
-                    ? "opacity-40 hover:opacity-70"
-                    : ""
-                }`}
-              >
-                <LabelBadge label={label} size="sm" />
-              </button>
-            ))}
-            {selectedLabelIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => updateSearchParams({ labels: null })}
-                className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        )}
-        {projectMilestones && projectMilestones.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground">Milestones:</span>
-            {projectMilestones.map((milestone) => (
-              <button
-                key={milestone.id}
-                type="button"
-                onClick={() =>
-                  updateSearchParams({
-                    milestone: selectedMilestoneId === milestone.id ? null : String(milestone.id),
-                  })
-                }
-                className={`transition-opacity ${
-                  selectedMilestoneId !== null && selectedMilestoneId !== milestone.id
-                    ? "opacity-40 hover:opacity-70"
-                    : ""
-                }`}
-              >
-                <MilestoneBadge milestone={milestone} size="sm" showProgress />
-              </button>
-            ))}
-            {selectedMilestoneId !== null && (
-              <button
-                type="button"
-                onClick={() => updateSearchParams({ milestone: null })}
-                className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
+    <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
         {ticketId ? (
           <ResizablePanelGroup
@@ -722,118 +908,116 @@ export function Tickets() {
                     )}
 
                     {selectedTicket && (
-                      <div className="flex flex-col flex-1 min-h-0">
-                        <div
-                          className="relative flex-1 min-h-0"
-                          data-testid="ticket-scroll-viewport"
-                        >
-                          {/* Scrollable area: ticket detail + comments */}
-                          <div ref={ticketScrollRef} onScroll={ticketOnScroll} className="h-full overflow-y-auto">
-                            <TicketDetail
-                              onClose={handleCloseDetail}
-                              isEditable
-                            />
+                      <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+                        <div className="flex min-h-0 flex-1 flex-col">
+                          <div
+                            className="relative flex-1 min-h-0"
+                            data-testid="ticket-scroll-viewport"
+                          >
+                            <div ref={ticketScrollRef} onScroll={ticketOnScroll} className="h-full overflow-y-auto">
+                              <TicketDetail
+                                onClose={handleCloseDetail}
+                                isEditable
+                              />
 
-                            {/* Activity Timeline */}
-                            <div className="mt-6 px-4 pb-4">
-                              <h3 className="text-sm font-medium mb-4">
-                                Activity {timeline?.total ? `(${timeline.total})` : ""}
-                              </h3>
+                              <div className="mt-6 px-4 pb-4">
+                                <h3 className="text-sm font-medium mb-4">
+                                  Activity {timeline?.total ? `(${timeline.total})` : ""}
+                                </h3>
 
-                              <ActivityTimeline
-                                items={timeline?.items ?? []}
-                                projectId={projectId}
-                                attachmentsByCommentId={attachmentsByCommentId}
-                                highlightedCommentId={highlightedCommentId}
-                                editingCommentId={editingCommentId}
-                                editBody={editBody}
-                                onEditBodyChange={setEditBody}
-                                onStartEditComment={(comment) => {
-                                  setEditingCommentId(comment.id);
-                                  setEditBody(comment.body);
-                                }}
-                                onSaveEditComment={async (stagedFiles?: File[]) => {
-                                  if (editingCommentId) {
-                                    await updateComment(editingCommentId, editBody);
-                                    if (stagedFiles?.length) {
-                                      for (const file of stagedFiles) {
-                                        try {
-                                          await uploadAttachment.mutateAsync({
-                                            commentId: editingCommentId,
-                                            file,
-                                            uploadedById: "user-1", // TODO: Get from auth context
-                                          });
-                                        } catch {
-                                          // Individual upload failures don't block remaining uploads
+                                <ActivityTimeline
+                                  items={timeline?.items ?? []}
+                                  projectId={projectId}
+                                  attachmentsByCommentId={attachmentsByCommentId}
+                                  highlightedCommentId={highlightedCommentId}
+                                  editingCommentId={editingCommentId}
+                                  editBody={editBody}
+                                  onEditBodyChange={setEditBody}
+                                  onStartEditComment={(comment) => {
+                                    setEditingCommentId(comment.id);
+                                    setEditBody(comment.body);
+                                  }}
+                                  onSaveEditComment={async (stagedFiles?: File[]) => {
+                                    if (editingCommentId) {
+                                      await updateComment(editingCommentId, editBody);
+                                      if (stagedFiles?.length) {
+                                        for (const file of stagedFiles) {
+                                          try {
+                                            await uploadAttachment.mutateAsync({
+                                              commentId: editingCommentId,
+                                              file,
+                                              uploadedById: "user-1", // TODO: Get from auth context
+                                            });
+                                          } catch {
+                                            // Individual upload failures don't block remaining uploads
+                                          }
                                         }
                                       }
+                                      setEditingCommentId(null);
+                                      setEditBody("");
                                     }
+                                  }}
+                                  onCancelEditComment={() => {
                                     setEditingCommentId(null);
                                     setEditBody("");
-                                  }
-                                }}
-                                onCancelEditComment={() => {
-                                  setEditingCommentId(null);
-                                  setEditBody("");
-                                }}
-                                onDeleteComment={deleteComment}
-                                onReplyComment={handleReplyToComment}
-                                onSessionClick={(sessionId) => updateSearchParams({ session: sessionId })}
-                                isUpdatingComment={isUpdatingComment}
-                                isDeletingComment={isDeletingComment}
-                              />
+                                  }}
+                                  onDeleteComment={deleteComment}
+                                  onReplyComment={handleReplyToComment}
+                                  onSessionClick={(sessionId) => updateSearchParams({ session: sessionId })}
+                                  isUpdatingComment={isUpdatingComment}
+                                  isDeletingComment={isDeletingComment}
+                                />
+                              </div>
                             </div>
+
+                            {(!ticketIsAtTop || !ticketIsAtBottom) && (
+                              <div
+                                data-testid="ticket-scroll-controls"
+                                className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10"
+                              >
+                                {!ticketIsAtTop && (
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="pointer-events-auto rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+                                    onClick={ticketScrollToTop}
+                                    aria-label="Scroll to top"
+                                  >
+                                    <ArrowUp className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {!ticketIsAtBottom && (
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="pointer-events-auto rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+                                    onClick={ticketScrollToBottom}
+                                    aria-label="Scroll to bottom"
+                                  >
+                                    <ArrowDown className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            )}
                           </div>
 
-                          {/* Floating scroll navigation buttons */}
-                          {(!ticketIsAtTop || !ticketIsAtBottom) && (
-                            <div
-                              data-testid="ticket-scroll-controls"
-                              className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10"
-                            >
-                              {!ticketIsAtTop && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="pointer-events-auto rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
-                                  onClick={ticketScrollToTop}
-                                  aria-label="Scroll to top"
-                                >
-                                  <ArrowUp className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {!ticketIsAtBottom && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="pointer-events-auto rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
-                                  onClick={ticketScrollToBottom}
-                                  aria-label="Scroll to bottom"
-                                >
-                                  <ArrowDown className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                          <div className="border-t p-4 shrink-0" data-testid="ticket-composer-shell">
+                            {agentReplySessionId && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 animate-pulse">
+                                <span className="inline-block size-2 rounded-full bg-primary" />
+                                Agent is thinking...
+                              </div>
+                            )}
+                            <ChatInput
+                              onSubmit={handleAddComment}
+                              isLoading={isCreatingComment}
+                              placeholder="Add a comment..."
+                              replyTarget={replyTarget}
+                              onCancelReply={handleCancelReply}
+                            />
+                          </div>
                         </div>
-
-                        {/* Fixed ChatInput at bottom */}
-                        <div className="border-t p-4 shrink-0" data-testid="ticket-composer-shell">
-                          {agentReplySessionId && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 animate-pulse">
-                              <span className="inline-block size-2 rounded-full bg-primary" />
-                              Agent is thinking...
-                            </div>
-                          )}
-                          <ChatInput
-                            onSubmit={handleAddComment}
-                            isLoading={isCreatingComment}
-                            placeholder="Add a comment..."
-                            replyTarget={replyTarget}
-                            onCancelReply={handleCancelReply}
-                          />
-                        </div>
-                      </div>
+                      </Card>
                     )}
                   </>
                 )}

@@ -1,10 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { LabelFilters } from '@kombuse/types'
 import { labelsApi } from '../lib/api'
 
-export function useProjectLabels(projectId: string) {
+type ProjectLabelListOptions = Pick<LabelFilters, 'search' | 'sort' | 'usage_scope'>
+
+export function useProjectLabels(projectId: string, options?: ProjectLabelListOptions) {
+  const search = options?.search ?? null
+  const sort = options?.sort ?? null
+  const usageScope = options?.usage_scope ?? null
+
   return useQuery({
-    queryKey: ['labels', 'project', projectId],
-    queryFn: () => labelsApi.listByProject(projectId),
+    queryKey: ['labels', 'project', projectId, { search, sort, usageScope }],
+    queryFn: () => labelsApi.listByProject(projectId, options),
     enabled: !!projectId,
   })
 }

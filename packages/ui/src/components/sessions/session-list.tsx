@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import type { PublicSession } from '@kombuse/types'
 import { parseSessionId } from '@kombuse/types'
 import { formatDistanceToNowStrict } from 'date-fns'
@@ -219,6 +220,7 @@ export interface SessionListProps {
   sessions: PublicSession[]
   className?: string
   variant?: 'default' | 'card'
+  header?: ReactNode
   selectedSessionId?: string | null
   onSessionClick?: (session: PublicSession) => void
   onSessionDelete?: (session: PublicSession) => void
@@ -231,6 +233,7 @@ function SessionList({
   sessions,
   className,
   variant = 'default',
+  header,
   selectedSessionId,
   onSessionClick,
   onSessionDelete,
@@ -238,6 +241,51 @@ function SessionList({
   isLoading,
   emptyMessage = 'No sessions yet',
 }: SessionListProps) {
+  if (variant === 'card') {
+    return (
+      <div
+        className={cn(
+          'flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm',
+          className,
+        )}
+        data-testid="session-list-shell"
+      >
+        {header ? (
+          <div className="shrink-0 border-b" data-testid="session-list-header">
+            {header}
+          </div>
+        ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto p-2" data-testid="session-list-viewport">
+          {isLoading ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              Loading sessions...
+            </div>
+          ) : !sessions || sessions.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              {emptyMessage}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {sessions.map((session) => (
+                <SessionItem
+                  key={session.kombuse_session_id!}
+                  session={session}
+                  variant="card"
+                  isSelected={selectedSessionId === session.kombuse_session_id}
+                  onClick={() => onSessionClick?.(session)}
+                  onDelete={onSessionDelete ? () => onSessionDelete(session) : undefined}
+                  hasPendingPermission={
+                    isSessionPendingPermission?.(session.kombuse_session_id) ?? false
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className={cn('text-sm text-muted-foreground px-3 py-2', className)}>
@@ -250,36 +298,6 @@ function SessionList({
     return (
       <div className={cn('text-sm text-muted-foreground px-3 py-2', className)}>
         {emptyMessage}
-      </div>
-    )
-  }
-
-  if (variant === 'card') {
-    return (
-      <div
-        className={cn(
-          'flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm',
-          className,
-        )}
-        data-testid="session-list-shell"
-      >
-        <div className="min-h-0 flex-1 overflow-y-auto p-2" data-testid="session-list-viewport">
-          <div className="space-y-1">
-            {sessions.map((session) => (
-              <SessionItem
-                key={session.kombuse_session_id!}
-                session={session}
-                variant="card"
-                isSelected={selectedSessionId === session.kombuse_session_id}
-                onClick={() => onSessionClick?.(session)}
-                onDelete={onSessionDelete ? () => onSessionDelete(session) : undefined}
-                hasPendingPermission={
-                  isSessionPendingPermission?.(session.kombuse_session_id) ?? false
-                }
-              />
-            ))}
-          </div>
-        </div>
       </div>
     )
   }
