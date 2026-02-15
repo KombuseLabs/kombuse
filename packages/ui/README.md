@@ -371,6 +371,8 @@ import { Ticket, Bot } from 'lucide-react'
 Props:
 - `Sidebar`: `variant` (`"panel"` | `"rail"`), `isCollapsed`, `onCollapsedChange`, `header`, `children`, `className`
 - `SidebarItem`: `icon`, `label`, `to` (React Router path), `variant` (`"panel"` | `"rail"`), `isCollapsed` (panel mode)
+- `rail` `Sidebar` renders a rounded, content-height shell with increased vertical spacing between icon items.
+- `rail` `SidebarItem` renders as a circular bordered icon button (`size-12`) with tooltip labels and a stronger active border/ring state.
 
 ### Label Components
 

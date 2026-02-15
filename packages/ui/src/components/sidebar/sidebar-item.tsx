@@ -24,7 +24,7 @@ const sidebarItemVariants = cva(
     variants: {
       variant: {
         panel: "rounded-md hover:bg-accent hover:text-accent-foreground",
-        rail: "size-12 justify-center rounded-full border border-transparent text-muted-foreground hover:border-border hover:bg-accent/50 hover:text-foreground",
+        rail: "size-12 justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground hover:border-border hover:bg-accent/50 hover:text-foreground",
       },
       active: {
         false: "",
@@ -40,7 +40,7 @@ const sidebarItemVariants = cva(
       {
         variant: "rail",
         active: true,
-        className: "border-primary/45 bg-accent text-foreground shadow-sm ring-2 ring-primary/20",
+        className: "border-primary/80 bg-primary/10 text-primary shadow-sm ring-2 ring-primary/35",
       },
     ],
   }
