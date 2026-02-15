@@ -1005,6 +1005,147 @@ describe('startAgentChatSession continuation project scoping', () => {
       })
     )
   })
+
+  it('uses persisted session project_id over message projectId for continuation', async () => {
+    const backend = createPassiveBackend()
+    const deps = createDependencies(backend)
+
+    ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'session-1',
+      kombuse_session_id: 'trigger-session-abc',
+      backend_type: BACKEND_TYPES.CLAUDE_CODE,
+      backend_session_id: 'backend-abc',
+      ticket_id: 42,
+      project_id: 'proj-A',
+      agent_id: 'ticket-analyzer',
+      status: 'completed',
+      metadata: {},
+      started_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      failed_at: null,
+      last_event_seq: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([
+      {
+        id: 17,
+        agent_id: 'ticket-analyzer',
+        trigger_id: 11,
+        event_id: 99,
+        session_id: 'session-1',
+        project_id: 'proj-A',
+        kombuse_session_id: 'trigger-session-abc',
+        status: 'completed',
+        attempts: 1,
+        max_attempts: 3,
+        run_at: new Date().toISOString(),
+        context: {},
+        result: null,
+        error: null,
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      },
+    ])
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'resume this session',
+        kombuseSessionId: 'trigger-session-abc' as KombuseSessionId,
+        projectId: 'proj-B',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(agentInvocationsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        session_id: 'session-1',
+        project_id: 'proj-A',
+      })
+    )
+  })
+
+  it('resolves runtime project path from persisted session project, not message project', async () => {
+    let capturedStartOptions: StartOptions | undefined
+    const backend: AgentBackend = {
+      name: BACKEND_TYPES.CLAUDE_CODE,
+      start: vi.fn(async (options: StartOptions) => {
+        capturedStartOptions = options
+      }),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+    const deps = createDependencies(backend)
+
+    ;(deps as any).resolveProjectPathForProject = vi.fn((pid: string | null) =>
+      pid === 'proj-A' ? '/projects/proj-A' : pid === 'proj-B' ? '/projects/proj-B' : undefined
+    )
+
+    ;(deps.sessionPersistence.getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'session-1',
+      kombuse_session_id: 'trigger-session-abc',
+      backend_type: BACKEND_TYPES.CLAUDE_CODE,
+      backend_session_id: 'backend-abc',
+      ticket_id: 42,
+      project_id: 'proj-A',
+      agent_id: 'ticket-analyzer',
+      status: 'completed',
+      metadata: {},
+      started_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      failed_at: null,
+      last_event_seq: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+
+    ;(agentInvocationsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([
+      {
+        id: 17,
+        agent_id: 'ticket-analyzer',
+        trigger_id: 11,
+        event_id: 99,
+        session_id: 'session-1',
+        project_id: 'proj-A',
+        kombuse_session_id: 'trigger-session-abc',
+        status: 'completed',
+        attempts: 1,
+        max_attempts: 3,
+        run_at: new Date().toISOString(),
+        context: {},
+        result: null,
+        error: null,
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      },
+    ])
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'resume this session',
+        kombuseSessionId: 'trigger-session-abc' as KombuseSessionId,
+        projectId: 'proj-B',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect((deps as any).resolveProjectPathForProject).toHaveBeenCalledWith('proj-A')
+    expect(capturedStartOptions?.projectPath).toBe('/projects/proj-A')
+  })
 })
 
 describe('startAgentChatSession agent resolution from session context', () => {

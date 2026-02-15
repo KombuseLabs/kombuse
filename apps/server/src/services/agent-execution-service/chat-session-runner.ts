@@ -227,9 +227,9 @@ function resolveContinuationProjectId(options: {
   invocationContext: Record<string, unknown>
 }): string | undefined {
   const trustedProjectId =
-    normalizeProjectId(options.messageProjectId)
-    ?? normalizeProjectId(options.persistedSessionProjectId)
+    normalizeProjectId(options.persistedSessionProjectId)
     ?? normalizeProjectId(options.invocationProjectId)
+    ?? normalizeProjectId(options.messageProjectId)
 
   if (trustedProjectId) {
     return trustedProjectId
@@ -606,6 +606,7 @@ export function startAgentChatSession(
     : undefined
 
   let continuationInvocationId: number | null = null
+  let continuationProjectId: string | undefined
   const existingInvocations = agentInvocationsRepository.list({
     kombuse_session_id: appSessionId,
   })
@@ -619,7 +620,7 @@ export function startAgentChatSession(
     lastInvocation &&
     (lastInvocation.status === 'failed' || lastInvocation.status === 'completed')
   ) {
-    const continuationProjectId = resolveContinuationProjectId({
+    continuationProjectId = resolveContinuationProjectId({
       messageProjectId: projectId,
       persistedSessionProjectId: existingSession?.project_id,
       invocationProjectId: lastInvocation.project_id,
@@ -640,6 +641,9 @@ export function startAgentChatSession(
     })
     continuationInvocationId = continuation.id
   }
+
+  const effectiveProjectId: string | undefined =
+    continuationProjectId ?? normalizeProjectId(projectId)
 
   let existingBackend = activeBackends.get(appSessionId)
   if (
@@ -831,8 +835,8 @@ export function startAgentChatSession(
 
   const projectPathOverride =
     options?.projectPath ??
-    (typeof projectId === 'string' && projectId.trim().length > 0
-      ? dependencies.resolveProjectPathForProject?.(projectId.trim())
+    (effectiveProjectId
+      ? dependencies.resolveProjectPathForProject?.(effectiveProjectId)
       : undefined)
 
   const agentType = (agent?.config as { type?: string } | undefined)?.type
@@ -845,7 +849,7 @@ export function startAgentChatSession(
     const preambleContext = {
       event_type: '',
       ticket_id: ticketId ?? null,
-      project_id: projectId ?? null,
+      project_id: effectiveProjectId ?? null,
       comment_id: null,
       actor_id: null,
       actor_type: 'user' as const,
