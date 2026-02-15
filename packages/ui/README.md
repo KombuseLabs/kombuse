@@ -44,6 +44,7 @@ src/
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
 │   ├── use-permissions.ts     - Permission log query hook
+│   ├── use-models.ts          - Model catalog query hook
 │   ├── use-profile-settings.ts - Profile settings read/write hooks (single + all)
 │   ├── use-projects.ts        - Project CRUD hooks
 │   ├── use-shiki.ts           - Shiki syntax highlighter hook (singleton, lazy-loaded)
@@ -52,7 +53,7 @@ src/
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
-    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions)
+    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models)
     ├── ticket-utils.ts        - Shared ticket display utilities (statusColors)
     └── utils.ts               - cn() class merging
 ```
@@ -160,6 +161,16 @@ upsertSetting.mutate({
   setting_value: 'false',
 })
 // Automatically invalidates both single-key and list query keys on success
+```
+
+```typescript
+import { useModels } from '@kombuse/ui/hooks'
+
+// Fetch the model catalog for a backend type
+const { data: catalog, isLoading } = useModels('codex')
+// catalog?.supports_model_selection => true
+// catalog?.models => ModelOption[] (id, name, description)
+// catalog?.default_model_id => 'o3'
 ```
 
 ```typescript

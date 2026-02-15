@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import {
   useCodexMcpStatus,
+  useModels,
   useProfileSetting,
   useSetCodexMcpEnabled,
   useUpsertProfileSetting,
@@ -52,7 +53,6 @@ export function Settings() {
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const upsertSetting = useUpsertProfileSetting()
-  const [defaultModelValue, setDefaultModelValue] = useState(defaultModelSetting?.setting_value ?? '')
   const [maxChainDepthValue, setMaxChainDepthValue] = useState(maxChainDepthSetting?.setting_value ?? '')
 
   const showEvents = eventsSetting?.setting_value !== 'true'
@@ -60,10 +60,6 @@ export function Settings() {
   const showDatabase = databaseSetting?.setting_value === 'false'
   const defaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value)
   const codexMcpEnabled = codexMcpStatus?.enabled === true
-
-  useEffect(() => {
-    setDefaultModelValue(defaultModelSetting?.setting_value ?? '')
-  }, [defaultModelSetting?.setting_value])
 
   useEffect(() => {
     setMaxChainDepthValue(maxChainDepthSetting?.setting_value ?? '')
@@ -82,18 +78,11 @@ export function Settings() {
     })
   }
 
-  const persistDefaultModel = () => {
-    const normalizedValue = defaultModelValue.trim()
-    const currentValue = (defaultModelSetting?.setting_value ?? '').trim()
-    if (normalizedValue === currentValue) {
-      return
-    }
-    upsertSetting.mutate({
-      profile_id: USER_PROFILE_ID,
-      setting_key: CHAT_DEFAULT_MODEL_SETTING_KEY,
-      setting_value: normalizedValue,
-    })
-  }
+  const { data: modelCatalog, isLoading: isModelsLoading } = useModels(defaultBackendType)
+  const currentModelValue = defaultModelSetting?.setting_value?.trim() ?? ''
+  const isLegacyModel = currentModelValue !== ''
+    && modelCatalog?.supports_model_selection === true
+    && !modelCatalog.models.some((m) => m.id === currentModelValue)
 
   return (
     <main className="mx-auto max-w-2xl p-8">
@@ -212,16 +201,44 @@ export function Settings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="chat-default-model" className="font-normal">Default Model Preference</Label>
-              <Input
-                id="chat-default-model"
-                value={defaultModelValue}
-                onChange={(event) => setDefaultModelValue(event.target.value)}
-                onBlur={persistDefaultModel}
-                placeholder="Leave empty to use backend default"
-              />
-              <p className="text-sm text-muted-foreground">
-                Model preference may be stored even when a backend cannot enforce it yet.
-              </p>
+              {modelCatalog?.supports_model_selection ? (
+                <>
+                  <select
+                    id="chat-default-model"
+                    value={currentModelValue}
+                    disabled={isModelsLoading}
+                    onChange={(event) => {
+                      upsertSetting.mutate({
+                        profile_id: USER_PROFILE_ID,
+                        setting_key: CHAT_DEFAULT_MODEL_SETTING_KEY,
+                        setting_value: event.target.value,
+                      })
+                    }}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">Use backend default</option>
+                    {modelCatalog.models.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                    {isLegacyModel && (
+                      <option value={currentModelValue}>
+                        {currentModelValue} (custom)
+                      </option>
+                    )}
+                  </select>
+                  <p className="text-sm text-muted-foreground">
+                    {modelCatalog.default_model_id
+                      ? `Backend default: ${modelCatalog.default_model_id}`
+                      : 'Select a model for new chat sessions.'}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  The {defaultBackendType} backend does not support model selection.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

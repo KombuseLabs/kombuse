@@ -36,6 +36,7 @@ import {
   claudeCodeRoutes,
   profileSettingsRoutes,
   codexMcpRoutes,
+  modelRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
 import {
@@ -147,6 +148,7 @@ export async function createServer({ port, db }: ServerOptions) {
   fastify.register(claudeCodeRoutes, { prefix: "/api" });
   fastify.register(profileSettingsRoutes, { prefix: "/api" });
   fastify.register(codexMcpRoutes, { prefix: "/api" });
+  fastify.register(modelRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {
     return { hello: "world" };

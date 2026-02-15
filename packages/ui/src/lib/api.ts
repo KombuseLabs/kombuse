@@ -52,6 +52,7 @@ import type {
   DatabaseTablesResponse,
   DatabaseQueryInput,
   DatabaseQueryResponse,
+  ModelCatalogResponse,
 } from '@kombuse/types'
 
 declare global {
@@ -797,6 +798,14 @@ export const codexApi = {
       body: JSON.stringify({ enabled }),
     })
     return handleResponse<CodexMcpStatus>(response)
+  },
+}
+
+export const modelsApi = {
+  async getModels(backendType: string): Promise<ModelCatalogResponse> {
+    const params = new URLSearchParams({ backend_type: backendType })
+    const response = await fetch(`${API_BASE}/models?${params}`)
+    return handleResponse<ModelCatalogResponse>(response)
   },
 }
 

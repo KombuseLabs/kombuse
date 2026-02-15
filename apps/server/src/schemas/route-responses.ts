@@ -115,6 +115,19 @@ const codexMcpUpdateResponseSchema = codexMcpStatusSchema.extend({
   stopped_sessions: z.number().int().nonnegative(),
 })
 
+const modelOptionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().optional(),
+})
+
+const modelCatalogResponseSchema = z.object({
+  backend_type: backendTypeSchema,
+  supports_model_selection: z.boolean(),
+  models: z.array(modelOptionSchema),
+  default_model_id: z.string().min(1).optional(),
+})
+
 const updateInfoSchema = z.object({
   version: z.string().min(1),
   downloadUrl: z.string().min(1),
@@ -258,6 +271,9 @@ registerSuccessSchema('GET', '/api/claude-code/sessions/:sessionId', claudeCodeS
 // Codex MCP routes
 registerSuccessSchema('GET', '/api/codex/mcp', codexMcpStatusSchema)
 registerSuccessSchema('PUT', '/api/codex/mcp', codexMcpUpdateResponseSchema)
+
+// Model routes
+registerSuccessSchema('GET', '/api/models', modelCatalogResponseSchema)
 
 // Comment routes
 registerSuccessSchema('GET', '/api/tickets/:ticketId/comments', z.array(commentWithAuthorSchema))
