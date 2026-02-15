@@ -204,6 +204,35 @@ describe('TicketDetail priority editing', () => {
   })
 })
 
+describe('TicketDetail inline priority editing (view mode)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    currentTicket = buildTicket({ priority: 2 })
+  })
+
+  it('shows a priority Select in view mode when isEditable is true', () => {
+    render(<TicketDetail isEditable />)
+
+    const combobox = screen.getByRole('combobox')
+    expect(combobox).toBeDefined()
+    expect(screen.getByText('Medium')).toBeDefined()
+  })
+
+  it('shows static priority text when isEditable is false', () => {
+    render(<TicketDetail />)
+
+    expect(screen.getByText('Priority: Medium')).toBeDefined()
+    expect(screen.queryByRole('combobox')).toBeNull()
+  })
+
+  it('shows No priority in Select when ticket.priority is null', () => {
+    currentTicket = buildTicket({ priority: null })
+    render(<TicketDetail isEditable />)
+
+    expect(screen.getByText('No priority')).toBeDefined()
+  })
+})
+
 describe('TicketDetail description toggle', () => {
   beforeEach(() => {
     vi.clearAllMocks()

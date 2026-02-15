@@ -242,9 +242,32 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                       {ticket.status.replace('_', ' ')}
                     </span>
                   )}
-                  <span className="text-xs text-muted-foreground">
-                    Priority: {getPriorityLabel(ticket.priority)}
-                  </span>
+                  {isEditable ? (
+                    <Select
+                      value={priorityToSelectValue(ticket.priority)}
+                      onValueChange={(v) =>
+                        updateCurrentTicket({ priority: selectValueToPriority(v) })
+                      }
+                    >
+                      <SelectTrigger
+                        className="h-6 w-auto min-w-[7rem] gap-1 rounded-full border-0 px-2 text-xs shadow-none"
+                        disabled={isUpdating}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Priority: {getPriorityLabel(ticket.priority)}
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <h1 className="text-lg font-semibold leading-tight tracking-tight">{ticket.title}</h1>
