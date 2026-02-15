@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useMemo, type ReactNode } from 'react'
 import type { ActiveSessionInfo, AppContextValue } from '@kombuse/types'
@@ -38,10 +38,10 @@ function TestProvider({
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
 }
 
-function renderIndicator(sessions: ActiveSessionInfo[]) {
+function renderIndicator(sessions: ActiveSessionInfo[], onNavigate?: (path: string) => void) {
   render(
     <TestProvider sessions={sessions}>
-      <ActiveAgentsIndicator />
+      <ActiveAgentsIndicator onNavigate={onNavigate} />
     </TestProvider>
   )
 
@@ -90,5 +90,36 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
     ])
 
     expect(screen.getByText('Chat')).toBeDefined()
+  })
+
+  it('navigates to ticket with session query when both ids exist', () => {
+    const onNavigate = vi.fn()
+
+    renderIndicator([
+      {
+        kombuseSessionId: 'session-4',
+        agentName: 'Coding Agent',
+        ticketId: 290,
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+    ], onNavigate)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(onNavigate).toHaveBeenCalledWith('/projects/1/tickets/290?session=session-4')
+  })
+
+  it('navigates to chat route when ticket id is missing', () => {
+    const onNavigate = vi.fn()
+
+    renderIndicator([
+      {
+        kombuseSessionId: 'session-5',
+        agentName: 'Coding Agent',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+    ], onNavigate)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(onNavigate).toHaveBeenCalledWith('/projects/1/chats/session-5')
   })
 })

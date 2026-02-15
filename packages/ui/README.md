@@ -191,7 +191,9 @@ const { data: comment, isLoading } = useComment(commentId)
 import { useSessionByKombuseId } from '@kombuse/ui/hooks'
 
 // Resolve a kombuse session ID (e.g. "trigger-abc123") to its Session object
-// Used internally by CommentItem to render session links on agent comments
+// Session-aware components should prefer ticket URLs when ticket_id exists:
+// /projects/:projectId/tickets/:ticketId?session=:sessionId
+// Fallback to /projects/:projectId/chats/:sessionId only when no ticket context exists.
 const { data: session } = useSessionByKombuseId(kombuseSessionId)
 ```
 

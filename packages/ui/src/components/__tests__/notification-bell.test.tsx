@@ -18,26 +18,34 @@ function createPermission(permission: PendingPermission): PendingPermission {
   return permission
 }
 
-function TestProvider({ children }: { children: ReactNode }) {
+function TestProvider({
+  children,
+  initialPermissions,
+}: {
+  children: ReactNode
+  initialPermissions?: PendingPermission[]
+}) {
   const [pendingPermissions, setPendingPermissions] = useState(
-    new Map<string, PendingPermission>([
-      ['chat-alpha:req-1', createPermission({
-        permissionKey: 'chat-alpha:req-1',
-        sessionId: 'chat-alpha',
-        requestId: 'req-1',
-        toolName: 'Bash',
-        input: { command: 'ls' },
-        description: 'Permission A',
-      })],
-      ['chat-beta:req-1', createPermission({
-        permissionKey: 'chat-beta:req-1',
-        sessionId: 'chat-beta',
-        requestId: 'req-1',
-        toolName: 'Bash',
-        input: { command: 'pwd' },
-        description: 'Permission B',
-      })],
-    ])
+    new Map<string, PendingPermission>(
+      (initialPermissions ?? [
+        createPermission({
+          permissionKey: 'chat-alpha:req-1',
+          sessionId: 'chat-alpha',
+          requestId: 'req-1',
+          toolName: 'Bash',
+          input: { command: 'ls' },
+          description: 'Permission A',
+        }),
+        createPermission({
+          permissionKey: 'chat-beta:req-1',
+          sessionId: 'chat-beta',
+          requestId: 'req-1',
+          toolName: 'Bash',
+          input: { command: 'pwd' },
+          description: 'Permission B',
+        }),
+      ]).map((permission) => [permission.permissionKey, permission])
+    )
   )
 
   const value = useMemo<AppContextValue>(() => ({
@@ -128,5 +136,72 @@ describe('NotificationBell permission key handling', () => {
       expect(screen.queryByText('Permission A')).toBeNull()
       expect(screen.getByText('Permission B')).toBeDefined()
     })
+  })
+
+  it('navigates to ticket with session query when both ticket and session ids exist', () => {
+    const onNavigate = vi.fn()
+
+    render(
+      <TestProvider
+        initialPermissions={[
+          createPermission({
+            permissionKey: 'chat-ticket:req-1',
+            sessionId: 'chat-ticket',
+            requestId: 'req-1',
+            toolName: 'AskUserQuestion',
+            input: {
+              questions: [
+                {
+                  question: 'Proceed?',
+                  options: [{ label: 'Yes' }],
+                },
+              ],
+            },
+            description: 'Needs user input',
+            ticketId: 42,
+          }),
+        ]}
+      >
+        <NotificationBell onNavigate={onNavigate} />
+      </TestProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }))
+
+    expect(onNavigate).toHaveBeenCalledWith('/projects/1/tickets/42?session=chat-ticket')
+  })
+
+  it('falls back to chat route when ticket id is unavailable', () => {
+    const onNavigate = vi.fn()
+
+    render(
+      <TestProvider
+        initialPermissions={[
+          createPermission({
+            permissionKey: 'chat-only:req-1',
+            sessionId: 'chat-only',
+            requestId: 'req-1',
+            toolName: 'AskUserQuestion',
+            input: {
+              questions: [
+                {
+                  question: 'Proceed?',
+                  options: [{ label: 'Yes' }],
+                },
+              ],
+            },
+            description: 'Needs user input',
+          }),
+        ]}
+      >
+        <NotificationBell onNavigate={onNavigate} />
+      </TestProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }))
+
+    expect(onNavigate).toHaveBeenCalledWith('/projects/1/chats/chat-only')
   })
 })

@@ -84,12 +84,12 @@ function CommentItem({
     onCancelEdit?.()
   }, [clearFiles, onCancelEdit])
 
+  const sessionTicketId = linkedSession?.ticket_id ?? comment.ticket_id
+
   const sessionUrl = linkedSession
-    ? projectId && linkedSession.ticket_id
-      ? `/projects/${projectId}/tickets/${linkedSession.ticket_id}?session=${linkedSession.kombuse_session_id}`
-      : projectId
-        ? `/projects/${projectId}/chats/${linkedSession.kombuse_session_id}`
-        : `/chats/${linkedSession.kombuse_session_id}`
+    ? projectId
+      ? `/projects/${projectId}/tickets/${sessionTicketId}?session=${linkedSession.kombuse_session_id}`
+      : `/chats/${linkedSession.kombuse_session_id}`
     : null
 
   const sessionOrigin = comment.kombuse_session_id

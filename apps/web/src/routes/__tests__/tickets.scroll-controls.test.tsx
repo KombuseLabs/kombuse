@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { fireEvent, render, waitFor, within } from '@testing-library/react'
+import { useEffect } from 'react'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 
 const {
   mockScrollState,
@@ -91,7 +92,13 @@ vi.mock('@kombuse/ui/base', () => ({
 }))
 
 vi.mock('@kombuse/ui/components', () => ({
-  TicketList: () => <div data-testid="ticket-list" />,
+  TicketList: ({ onTicketClick }: any) => (
+    <div data-testid="ticket-list">
+      <button type="button" onClick={() => onTicketClick?.({ id: 43 })}>
+        Open Ticket 43
+      </button>
+    </div>
+  ),
   TicketDetail: () => <div data-testid="ticket-detail" />,
   ChatInput: () => (
     <div data-testid="ticket-chat-input">
@@ -178,18 +185,42 @@ vi.mock('@kombuse/ui/hooks', () => ({
 
 import { Tickets } from '../tickets'
 
-function ticketsRouteElement() {
+function LocationProbe({ onChange }: { onChange: (location: string) => void }) {
+  const location = useLocation()
+
+  useEffect(() => {
+    onChange(`${location.pathname}${location.search}`)
+  }, [location.pathname, location.search, onChange])
+
+  return null
+}
+
+function ticketsRouteElement(
+  initialEntry = '/projects/1/tickets/42',
+  onLocationChange?: (location: string) => void
+) {
   return (
-    <MemoryRouter initialEntries={['/projects/1/tickets/42']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/projects/:projectId/tickets/:ticketId" element={<Tickets />} />
+        <Route
+          path="/projects/:projectId/tickets/:ticketId"
+          element={
+            <>
+              {onLocationChange ? <LocationProbe onChange={onLocationChange} /> : null}
+              <Tickets />
+            </>
+          }
+        />
       </Routes>
     </MemoryRouter>
   )
 }
 
-function renderTicketsRoute() {
-  return render(ticketsRouteElement())
+function renderTicketsRoute(
+  initialEntry = '/projects/1/tickets/42',
+  onLocationChange?: (location: string) => void
+) {
+  return render(ticketsRouteElement(initialEntry, onLocationChange))
 }
 
 function setScrollState(isAtTop: boolean, isAtBottom: boolean) {
@@ -300,5 +331,50 @@ describe('Tickets scroll controls', () => {
     view.rerender(ticketsRouteElement())
 
     expect(mockUseScrollToComment).toHaveBeenLastCalledWith({ isTimelineLoaded: true })
+  })
+
+  it('preserves session query on deep link and renders the chat panel', async () => {
+    const locations: string[] = []
+
+    const { getByTestId } = renderTicketsRoute(
+      '/projects/1/tickets/42?session=trigger-session-1',
+      (location) => locations.push(location)
+    )
+
+    expect(getByTestId('panel-chat')).toBeDefined()
+    await waitFor(() => {
+      expect(locations[locations.length - 1]).toBe('/projects/1/tickets/42?session=trigger-session-1')
+    })
+  })
+
+  it('removes only the session query when closing the chat panel', async () => {
+    const locations: string[] = []
+
+    const { getByTestId } = renderTicketsRoute(
+      '/projects/1/tickets/42?status=open&session=trigger-session-1',
+      (location) => locations.push(location)
+    )
+
+    const chatPanel = getByTestId('panel-chat')
+    fireEvent.click(within(chatPanel).getByRole('button'))
+
+    await waitFor(() => {
+      expect(locations[locations.length - 1]).toBe('/projects/1/tickets/42?status=open')
+    })
+  })
+
+  it('clears session query when navigating to another ticket from the list', async () => {
+    const locations: string[] = []
+
+    const { getByRole } = renderTicketsRoute(
+      '/projects/1/tickets/42?session=trigger-session-1&status=open',
+      (location) => locations.push(location)
+    )
+
+    fireEvent.click(getByRole('button', { name: 'Open Ticket 43' }))
+
+    await waitFor(() => {
+      expect(locations[locations.length - 1]).toBe('/projects/1/tickets/43?status=open')
+    })
   })
 })
