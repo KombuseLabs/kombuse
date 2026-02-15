@@ -124,7 +124,8 @@ describe('Agents create layout', () => {
     const promptEditor = getByTestId('create-agent-prompt-editor')
     const lastPromptEditorProps = mockPromptEditorProps[mockPromptEditorProps.length - 1]
 
-    expect(formScrollRegion.className).toContain('overflow-y-auto')
+    expect(formScrollRegion.className).not.toContain('overflow-y-auto')
+    expect(formScrollRegion.className).toContain('min-h-0')
     expect(promptSection.className).toContain('flex-1')
     expect(promptSection.className).toContain('min-h-0')
     expect(promptEditor.getAttribute('data-fill-height')).toBe('true')

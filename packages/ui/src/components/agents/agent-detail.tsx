@@ -225,9 +225,9 @@ function AgentDetail({
               forceMount
               hidden={activeTab !== 'basic-info'}
               data-testid="agent-basic-info-scroll"
-              className="h-full min-h-0 overflow-y-auto pr-1 data-[state=inactive]:hidden"
+              className="flex h-full min-h-0 flex-col pr-1 data-[state=inactive]:hidden"
             >
-              <div className="flex min-h-full flex-col gap-6">
+              <div className="flex h-full min-h-0 flex-col gap-6">
                 {/* Name */}
                 <div className="space-y-2">
                   <Label htmlFor="agent-name">Name</Label>

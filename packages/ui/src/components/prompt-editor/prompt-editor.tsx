@@ -195,7 +195,7 @@ function PromptEditor({
               Available Variables
             </Button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="pt-1">
+          <CollapsibleContent className="pt-1 max-h-48 overflow-y-auto">
             <div className="rounded-md border bg-muted/30 p-3 space-y-3 text-xs">
               <div className="text-muted-foreground">{TEMPLATE_ENGINE_NOTE}</div>
               <div className="space-y-2">

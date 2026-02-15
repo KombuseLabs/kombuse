@@ -204,6 +204,77 @@ describe('TicketDetail priority editing', () => {
   })
 })
 
+describe('TicketDetail description toggle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows "Show more" for a long body (>200 chars)', () => {
+    currentTicket = buildTicket({ body: 'a'.repeat(201) })
+    render(<TicketDetail />)
+
+    expect(screen.getByText('Show more')).toBeDefined()
+  })
+
+  it('shows "Show more" for a body with newlines', () => {
+    currentTicket = buildTicket({ body: 'line one\nline two' })
+    render(<TicketDetail />)
+
+    expect(screen.getByText('Show more')).toBeDefined()
+  })
+
+  it('does not show toggle for a short body without newlines', () => {
+    currentTicket = buildTicket({ body: 'Short body' })
+    render(<TicketDetail />)
+
+    expect(screen.queryByText('Show more')).toBeNull()
+    expect(screen.queryByText('Show less')).toBeNull()
+  })
+
+  it('does not show toggle when body is null', () => {
+    currentTicket = buildTicket({ body: null })
+    render(<TicketDetail />)
+
+    expect(screen.queryByText('Show more')).toBeNull()
+    expect(screen.queryByText('Show less')).toBeNull()
+  })
+
+  it('toggles between "Show more" and "Show less" on click', () => {
+    currentTicket = buildTicket({ body: 'a'.repeat(201) })
+    const { container } = render(<TicketDetail />)
+
+    const descriptionDiv = container.querySelector('.line-clamp-4')
+    expect(descriptionDiv).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Show more'))
+
+    expect(screen.getByText('Show less')).toBeDefined()
+    expect(screen.queryByText('Show more')).toBeNull()
+    expect(container.querySelector('.line-clamp-4')).toBeNull()
+
+    fireEvent.click(screen.getByText('Show less'))
+
+    expect(screen.getByText('Show more')).toBeDefined()
+    expect(container.querySelector('.line-clamp-4')).toBeTruthy()
+  })
+
+  it('resets expansion when switching tickets', () => {
+    currentTicket = buildTicket({ id: 1, body: 'a'.repeat(201) })
+    const { rerender, container } = render(<TicketDetail />)
+
+    fireEvent.click(screen.getByText('Show more'))
+    expect(screen.getByText('Show less')).toBeDefined()
+
+    // Switch to a different ticket
+    currentTicket = buildTicket({ id: 2, body: 'b'.repeat(201) })
+    rerender(<TicketDetail />)
+
+    expect(screen.getByText('Show more')).toBeDefined()
+    expect(screen.queryByText('Show less')).toBeNull()
+    expect(container.querySelector('.line-clamp-4')).toBeTruthy()
+  })
+})
+
 describe('TicketDetail header behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()

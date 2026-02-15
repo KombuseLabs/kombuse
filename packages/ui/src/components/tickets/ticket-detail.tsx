@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { TicketStatus, TicketPriority } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
@@ -131,30 +131,16 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
-  const [descriptionClamped, setDescriptionClamped] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const descriptionRef = useRef<HTMLDivElement>(null)
-
-  // Detect whether the description is long enough to need clamping
-  const checkDescriptionClamped = useCallback(() => {
-    const el = descriptionRef.current
-    if (!el) return
-    setDescriptionClamped(el.scrollHeight > el.clientHeight + 1)
-  }, [])
-
-  // Re-check on render and when ticket body changes
-  useLayoutEffect(() => {
-    if (!descriptionExpanded) {
-      checkDescriptionClamped()
-    }
-  }, [currentTicket?.body, descriptionExpanded, checkDescriptionClamped])
 
   // Reset expanded state when switching tickets
   useEffect(() => {
     setDescriptionExpanded(false)
-    setDescriptionClamped(false)
     setShowDeleteDialog(false)
   }, [currentTicket?.id])
+
+  const shouldShowDescriptionToggle = (body: string | null) =>
+    !!body && (body.length > 200 || body.includes('\n'))
 
   if (!currentTicket) {
     return null
@@ -459,12 +445,11 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
             {ticket.body && (
               <div className="text-sm text-muted-foreground">
                 <div
-                  ref={descriptionRef}
                   className={cn(!descriptionExpanded && 'line-clamp-4')}
                 >
                   <Markdown projectId={currentProjectId}>{ticket.body}</Markdown>
                 </div>
-                {(descriptionClamped || descriptionExpanded) && (
+                {shouldShowDescriptionToggle(ticket.body) && (
                   <button
                     type="button"
                     onClick={() => setDescriptionExpanded(!descriptionExpanded)}

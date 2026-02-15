@@ -131,7 +131,9 @@ describe('AgentDetail', () => {
       "Enter the agent's system prompt..."
     ) as HTMLTextAreaElement
 
-    expect(basicInfoScroll.className).toContain('overflow-y-auto')
+    expect(basicInfoScroll.className).not.toContain('overflow-y-auto')
+    expect(basicInfoScroll.className).toContain('h-full')
+    expect(basicInfoScroll.className).toContain('min-h-0')
     expect(systemPromptSection.className).toContain('flex-1')
     expect(systemPromptSection.className).toContain('min-h-0')
     expect(promptTextarea.className).toContain('flex-1')
@@ -140,7 +142,8 @@ describe('AgentDetail', () => {
     fireEvent.click(getByRole('button', { name: 'Available Variables' }))
 
     expect(getByText('Templating engine: Nunjucks')).toBeDefined()
-    expect(basicInfoScroll.className).toContain('overflow-y-auto')
+    expect(basicInfoScroll.className).toContain('h-full')
+    expect(basicInfoScroll.className).toContain('min-h-0')
   })
 
   it('shows Save Changes when only the system prompt is edited in Basic Info', () => {
