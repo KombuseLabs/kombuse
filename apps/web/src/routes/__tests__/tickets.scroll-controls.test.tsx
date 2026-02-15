@@ -290,12 +290,20 @@ describe('Tickets scroll controls', () => {
     const viewport = getByTestId('ticket-scroll-viewport')
     const controls = getByTestId('ticket-scroll-controls')
     const composerShell = getByTestId('ticket-composer-shell')
+    const scrollContainer = viewport.querySelector('.ticket-detail-scroll')
+    const topButton = getByRole('button', { name: 'Scroll to top' })
+    const bottomButton = getByRole('button', { name: 'Scroll to bottom' })
 
     expect(viewport.contains(controls)).toBe(true)
     expect(composerShell.contains(controls)).toBe(false)
+    expect(viewport.className).toContain('ticket-scroll-viewport')
+    expect(scrollContainer).not.toBeNull()
     expect(controls.className).toContain('pointer-events-none')
-    expect(getByRole('button', { name: 'Scroll to top' }).className).toContain('pointer-events-auto')
-    expect(getByRole('button', { name: 'Scroll to bottom' }).className).toContain('pointer-events-auto')
+    expect(controls.className).toContain('ticket-scroll-controls')
+    expect(topButton.className).toContain('ticket-scroll-control-button')
+    expect(bottomButton.className).toContain('ticket-scroll-control-button')
+    expect(topButton.className).not.toContain('opacity-80')
+    expect(bottomButton.className).not.toContain('opacity-80')
 
     const composerInput = getByLabelText('Ticket composer input') as HTMLTextAreaElement
     composerInput.focus()

@@ -913,10 +913,14 @@ export function Tickets() {
                       <Card className="flex h-full min-h-0 flex-col overflow-hidden">
                         <div className="flex min-h-0 flex-1 flex-col">
                           <div
-                            className="relative flex-1 min-h-0"
+                            className="ticket-scroll-viewport relative flex-1 min-h-0"
                             data-testid="ticket-scroll-viewport"
                           >
-                            <div ref={ticketScrollRef} onScroll={ticketOnScroll} className="h-full overflow-y-auto">
+                            <div
+                              ref={ticketScrollRef}
+                              onScroll={ticketOnScroll}
+                              className="ticket-detail-scroll h-full overflow-y-auto"
+                            >
                               <TicketDetail
                                 onClose={handleCloseDetail}
                                 isEditable
@@ -975,13 +979,13 @@ export function Tickets() {
                             {(!ticketIsAtTop || !ticketIsAtBottom) && (
                               <div
                                 data-testid="ticket-scroll-controls"
-                                className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10"
+                                className="ticket-scroll-controls pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10"
                               >
                                 {!ticketIsAtTop && (
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className="pointer-events-auto rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+                                    className="ticket-scroll-control-button rounded-full shadow-md h-8 w-8"
                                     onClick={ticketScrollToTop}
                                     aria-label="Scroll to top"
                                   >
@@ -992,7 +996,7 @@ export function Tickets() {
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className="pointer-events-auto rounded-full shadow-md h-8 w-8 opacity-80 hover:opacity-100 transition-opacity"
+                                    className="ticket-scroll-control-button rounded-full shadow-md h-8 w-8"
                                     onClick={ticketScrollToBottom}
                                     aria-label="Scroll to bottom"
                                   >

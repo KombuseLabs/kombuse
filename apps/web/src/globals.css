@@ -153,6 +153,25 @@
     background: var(--muted-foreground) !important;
   }
 
+  .ticket-scroll-controls .ticket-scroll-control-button {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--scrollbar-fade-duration) ease;
+  }
+
+  .ticket-scroll-viewport:hover .ticket-scroll-controls .ticket-scroll-control-button,
+  .ticket-scroll-viewport:focus-within .ticket-scroll-controls .ticket-scroll-control-button,
+  .ticket-detail-scroll.is-scrolling + .ticket-scroll-controls .ticket-scroll-control-button {
+    opacity: 0.8;
+    pointer-events: auto;
+  }
+
+  .ticket-scroll-viewport:hover .ticket-scroll-controls .ticket-scroll-control-button:hover,
+  .ticket-scroll-viewport:focus-within .ticket-scroll-controls .ticket-scroll-control-button:hover,
+  .ticket-detail-scroll.is-scrolling + .ticket-scroll-controls .ticket-scroll-control-button:hover {
+    opacity: 1;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: var(--background);
