@@ -41,32 +41,6 @@ function Header({
       )}
       {...props}
     >
-      {showNavArrows && (
-        <div className="flex items-center gap-0.5 mr-2 electron-no-drag">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            disabled={!canGoBack}
-            onClick={onGoBack}
-            aria-label="Go back"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            disabled={!canGoForward}
-            onClick={onGoForward}
-            aria-label="Go forward"
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      )}
       <button
         type="button"
         className="shrink-0 text-xl font-semibold cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0 electron-no-drag"
@@ -75,6 +49,32 @@ function Header({
         Kombuse
       </button>
       <div className="flex flex-1 justify-center px-[21px] mt-[10px]">
+        {showNavArrows && (
+          <div className="flex items-center gap-0.5 mr-2 electron-no-drag">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              disabled={!canGoBack}
+              onClick={onGoBack}
+              aria-label="Go back"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              disabled={!canGoForward}
+              onClick={onGoForward}
+              aria-label="Go forward"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        )}
         {center ? <div className="electron-no-drag">{center}</div> : null}
       </div>
       <nav className="flex shrink-0 items-center gap-4 px-[5px] electron-no-drag mt-[5px]">
