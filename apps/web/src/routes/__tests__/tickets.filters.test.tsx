@@ -327,4 +327,53 @@ describe('Tickets label filters', () => {
       expect(getLastFilteredTicketQuery()?.label_ids).toBeUndefined()
     })
   })
+
+  it('recovers label visibility when container initially has zero width', async () => {
+    let containerWidth = 0
+    let rafCallCount = 0
+
+    const clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function clientWidth() {
+      const element = this as HTMLElement
+      if (element.getAttribute('data-testid') === 'ticket-label-filters-row') {
+        return containerWidth
+      }
+      return 0
+    })
+
+    const offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function offsetWidth() {
+      const text = ((this as HTMLElement).textContent ?? '').trim()
+      if (text === 'More (00)' || /^More \(/.test(text)) return 80
+      if (text === 'Clear') return 40
+      const widths: Record<string, number> = { bug: 60, backend: 60, ui: 60 }
+      return widths[text] ?? 0
+    })
+
+    const originalRaf = window.requestAnimationFrame
+    const originalCaf = window.cancelAnimationFrame
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      rafCallCount += 1
+      if (rafCallCount >= 2) {
+        containerWidth = 196
+      }
+      cb(0)
+      return rafCallCount
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+
+    try {
+      const view = renderTicketsRoute('/projects/1/tickets', () => {})
+
+      await waitFor(() => {
+        const labelsRow = view.getByTestId('ticket-label-filters-row')
+        expect(within(labelsRow).getByRole('button', { name: 'bug' })).toBeDefined()
+        expect(within(labelsRow).getByRole('button', { name: 'backend' })).toBeDefined()
+        expect(within(labelsRow).getByRole('button', { name: 'ui' })).toBeDefined()
+      })
+    } finally {
+      clientWidthSpy.mockRestore()
+      offsetWidthSpy.mockRestore()
+      vi.stubGlobal('requestAnimationFrame', originalRaf)
+      vi.stubGlobal('cancelAnimationFrame', originalCaf)
+    }
+  })
 })

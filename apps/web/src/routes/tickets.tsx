@@ -316,7 +316,6 @@ export function Tickets() {
     const calculateVisibleCount = () => {
       const availableWidth = container.clientWidth;
       if (availableWidth <= 0) {
-        setVisibleLabelCount(0);
         return;
       }
 
@@ -350,10 +349,15 @@ export function Tickets() {
       setVisibleLabelCount(nextVisibleCount);
     };
 
-    const rafId = window.requestAnimationFrame(calculateVisibleCount);
+    let secondRafId: number | undefined;
+    const rafId = window.requestAnimationFrame(() => {
+      calculateVisibleCount();
+      secondRafId = window.requestAnimationFrame(calculateVisibleCount);
+    });
     if (typeof ResizeObserver === "undefined") {
       return () => {
         window.cancelAnimationFrame(rafId);
+        if (secondRafId !== undefined) window.cancelAnimationFrame(secondRafId);
       };
     }
 
@@ -362,6 +366,7 @@ export function Tickets() {
 
     return () => {
       window.cancelAnimationFrame(rafId);
+      if (secondRafId !== undefined) window.cancelAnimationFrame(secondRafId);
       resizeObserver.disconnect();
     };
   }, [selectedLabelIds.length, usageSortedLabels]);
