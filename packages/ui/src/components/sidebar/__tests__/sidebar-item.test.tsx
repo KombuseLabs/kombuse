@@ -56,6 +56,7 @@ describe('SidebarItem', () => {
     expect(link.className.includes('bg-accent')).toBe(true)
     expect(link.className.includes('shadow-md')).toBe(true)
     expect(link.className.includes('ring-2')).toBe(true)
+    expect(link.className.includes('ring-primary/40')).toBe(true)
     expect(screen.getByTestId('tooltip-content').textContent).toBe('Tickets')
   })
 
