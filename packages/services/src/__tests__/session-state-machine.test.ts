@@ -180,6 +180,16 @@ describe('SessionStateMachine', () => {
       expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
     })
 
+    it('aborted -> running via continue', () => {
+      const deps = createMockDeps({ status: 'aborted' })
+      const sm = new SessionStateMachine(deps)
+
+      sm.transition('session-1', 'continue', baseCtx())
+
+      expect(deps.sessionPersistence.markSessionRunning).toHaveBeenCalledWith('session-1')
+      expect(deps.backends.clearIdleTimeout).toHaveBeenCalledWith('chat-abc')
+    })
+
     it('completed -> stopped via stop', () => {
       const deps = createMockDeps({ status: 'completed' })
       const sm = new SessionStateMachine(deps)
@@ -221,7 +231,6 @@ describe('SessionStateMachine', () => {
       ['completed', 'fail'],
       ['completed', 'complete'],
       ['aborted', 'start'],
-      ['aborted', 'continue'],
       ['aborted', 'complete'],
       ['stopped', 'start'],
       ['stopped', 'complete'],

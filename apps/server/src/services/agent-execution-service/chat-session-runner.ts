@@ -468,6 +468,7 @@ export function startAgentChatSession(
     projectId,
     backendType: backendTypeOverride,
     modelPreference: modelPreferenceOverride,
+    userEventId,
   } = message
 
   const normalizedAgentId =
@@ -670,7 +671,7 @@ export function startAgentChatSession(
 
     const reusedUserEvent: AgentEvent = {
       type: 'message',
-      eventId: crypto.randomUUID(),
+      eventId: userEventId ?? crypto.randomUUID(),
       backend: existingBackend.name,
       timestamp: Date.now(),
       role: 'user',
@@ -820,7 +821,7 @@ export function startAgentChatSession(
 
   const userMessageEvent: AgentEvent = {
     type: 'message',
-    eventId: crypto.randomUUID(),
+    eventId: userEventId ?? crypto.randomUUID(),
     backend: backend.name,
     timestamp: Date.now(),
     role: 'user',

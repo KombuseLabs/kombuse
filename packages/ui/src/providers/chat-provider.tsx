@@ -453,6 +453,7 @@ export function ChatProvider({
           typeof modelPreference === 'string' && modelPreference.trim().length > 0
             ? modelPreference.trim()
             : undefined,
+        userEventId: userEvent.eventId,
       })
     },
     [

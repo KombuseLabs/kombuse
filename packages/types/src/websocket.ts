@@ -41,6 +41,8 @@ export type ClientMessage =
       backendType?: BackendType
       /** Optional per-session model preference override for first invocation. */
       modelPreference?: string
+      /** Client-generated eventId for the user message, used for deduplication. */
+      userEventId?: string
     }
   | {
       type: 'permission.response'

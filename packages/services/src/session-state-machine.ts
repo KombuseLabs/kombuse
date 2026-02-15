@@ -67,7 +67,9 @@ const TRANSITIONS: Record<SessionStatus, Partial<Record<SessionTransitionEvent, 
   failed: {
     continue: 'running',
   },
-  aborted: {},
+  aborted: {
+    continue: 'running',
+  },
   stopped: {
     continue: 'running',
   },
