@@ -598,6 +598,14 @@ Props:
 ```typescript
 import { TicketList, TicketDetail } from '@kombuse/ui/components'
 
+// Render a ticket list with date metadata aligned to the active sort mode
+<TicketList
+  tickets={tickets}
+  sortBy="closed_at"
+  selectedTicketId={selectedTicketId}
+  onTicketClick={setSelectedTicket}
+/>
+
 // Display ticket details with optional editing
 <TicketDetail
   onClose={() => setSelectedTicket(null)}
@@ -606,6 +614,13 @@ import { TicketList, TicketDetail } from '@kombuse/ui/components'
 ```
 
 Props:
+- `TicketList`:
+  - `tickets`: `TicketWithLabels[]`
+  - `className`: Optional class name
+  - `selectedTicketId`: Optional selected ticket ID for active row styling
+  - `onTicketClick`: `(ticket: TicketWithLabels) => void`
+  - `sortBy`: Optional sort field (`created_at`, `updated_at`, `opened_at`, `last_activity_at`, `closed_at`); controls which timestamp is shown in each row metadata line
+  - When `sortBy` is `closed_at` and a row has `closed_at = null`, the list shows `Not closed` instead of substituting another date
 - `className`: Optional class name for styling
 - `onClose`: Callback when close button is clicked
 - `isEditable`: When `true`, enables:

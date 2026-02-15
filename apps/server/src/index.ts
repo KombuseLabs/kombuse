@@ -195,7 +195,7 @@ if (isDirectExecution) {
   const { homedir } = await import("node:os");
 
   const portFile = join(homedir(), ".kombuse", "server-port");
-
+  console.log(`===> [Server] Starting Kombuse server...`, { portFile });
   const db = initializeDatabase();
   seedDatabase(db);
   const server = await createServer({ port: 3331, db });

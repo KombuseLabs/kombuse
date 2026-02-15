@@ -13,7 +13,7 @@
   },
   "scripts": {
     "prepare:native-deps": "node ../../scripts/ensure-node-better-sqlite3.mjs",
-    "dev": "bun run prepare:native-deps && tsx watch src/index.ts",
+    "_dev": "bun run prepare:native-deps && tsx watch src/index.ts",
     "mcp": "bun run src/mcp-bridge.ts",
     "build": "tsc",
     "start": "node dist/index.js",

@@ -16,6 +16,7 @@ const {
   mockCreateComment,
   mockUpdateComment,
   mockDeleteComment,
+  mockTicketListProps,
   mockSend,
   mockSetCurrentTicket,
   mockSetView,
@@ -44,6 +45,7 @@ const {
   mockCreateComment: vi.fn(async () => ({ id: 99 })),
   mockUpdateComment: vi.fn(async () => ({})),
   mockDeleteComment: vi.fn(async () => ({})),
+  mockTicketListProps: vi.fn(),
   mockSend: vi.fn(),
   mockSetCurrentTicket: vi.fn(),
   mockSetView: vi.fn(),
@@ -94,13 +96,17 @@ vi.mock('@kombuse/ui/base', () => ({
 }))
 
 vi.mock('@kombuse/ui/components', () => ({
-  TicketList: ({ onTicketClick }: any) => (
-    <div data-testid="ticket-list">
-      <button type="button" onClick={() => onTicketClick?.({ id: 43 })}>
-        Open Ticket 43
-      </button>
-    </div>
-  ),
+  TicketList: (props: any) => {
+    mockTicketListProps(props)
+
+    return (
+      <div data-testid="ticket-list">
+        <button type="button" onClick={() => props.onTicketClick?.({ id: 43 })}>
+          Open Ticket 43
+        </button>
+      </div>
+    )
+  },
   TicketDetail: () => <div data-testid="ticket-detail" />,
   ChatInput: () => (
     <div data-testid="ticket-chat-input">
@@ -230,6 +236,11 @@ function setScrollState(isAtTop: boolean, isAtBottom: boolean) {
   mockScrollState.isAtBottom = isAtBottom
 }
 
+function getLastTicketListProps() {
+  const calls = mockTicketListProps.mock.calls
+  return calls.length > 0 ? calls[calls.length - 1][0] : undefined
+}
+
 beforeEach(() => {
   setScrollState(false, false)
   mockSelectedTicket.value = { id: 42, title: 'Ticket 42', status: 'open' }
@@ -251,6 +262,7 @@ beforeEach(() => {
   mockCreateComment.mockReset()
   mockUpdateComment.mockReset()
   mockDeleteComment.mockReset()
+  mockTicketListProps.mockReset()
   mockSend.mockReset()
   mockSetCurrentTicket.mockReset()
   mockSetView.mockReset()
@@ -409,5 +421,17 @@ describe('Tickets scroll controls', () => {
     await waitFor(() => {
       expect(locations[locations.length - 1]).toBe('/projects/1/tickets/99?status=open')
     })
+  })
+
+  it('passes closed_at sortBy to TicketList when the status allows closed sorting', () => {
+    renderTicketsRoute('/projects/1/tickets/42?status=closed&sort_by=closed_at')
+
+    expect(getLastTicketListProps()?.sortBy).toBe('closed_at')
+  })
+
+  it('falls back to created_at sortBy when closed_at is disallowed by status', () => {
+    renderTicketsRoute('/projects/1/tickets/42?status=open&sort_by=closed_at')
+
+    expect(getLastTicketListProps()?.sortBy).toBe('created_at')
   })
 })

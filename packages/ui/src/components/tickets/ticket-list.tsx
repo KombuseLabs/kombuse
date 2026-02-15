@@ -1,14 +1,17 @@
-import type { TicketWithLabels } from '@kombuse/types'
+import type { TicketFilters, TicketWithLabels } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { LabelBadge } from '../labels/label-badge'
 import { StatusIndicator } from '../status-indicator'
 import { useTicketAgentStatus } from '../../hooks'
+
+type TicketSortBy = NonNullable<TicketFilters['sort_by']>
 
 interface TicketListProps {
   tickets: TicketWithLabels[]
   className?: string
   selectedTicketId?: number
   onTicketClick?: (ticket: TicketWithLabels) => void
+  sortBy?: TicketSortBy
 }
 
 const priorityLabels: Record<number, string> = {
@@ -23,9 +26,33 @@ interface TicketItemProps {
   ticket: TicketWithLabels
   isSelected?: boolean
   onTicketClick?: (ticket: TicketWithLabels) => void
+  sortBy: TicketSortBy
 }
 
-function TicketItem({ ticket, isSelected, onTicketClick }: TicketItemProps) {
+const sortDateFieldMap: Record<TicketSortBy, 'created_at' | 'updated_at' | 'opened_at' | 'last_activity_at' | 'closed_at'> = {
+  created_at: 'created_at',
+  updated_at: 'updated_at',
+  opened_at: 'opened_at',
+  last_activity_at: 'last_activity_at',
+  closed_at: 'closed_at',
+}
+
+const missingDateLabels: Partial<Record<TicketSortBy, string>> = {
+  closed_at: 'Not closed',
+}
+
+function getTicketDateLabel(ticket: TicketWithLabels, sortBy: TicketSortBy) {
+  const dateField = sortDateFieldMap[sortBy]
+  const dateValue = ticket[dateField]
+
+  if (!dateValue) {
+    return missingDateLabels[sortBy] ?? 'No date'
+  }
+
+  return new Date(dateValue).toLocaleDateString()
+}
+
+function TicketItem({ ticket, isSelected, onTicketClick, sortBy }: TicketItemProps) {
   const agentStatus = useTicketAgentStatus(ticket.id)
   const hasUnread = ticket.has_unread === 1
 
@@ -66,7 +93,7 @@ function TicketItem({ ticket, isSelected, onTicketClick }: TicketItemProps) {
             <span className="text-xs text-muted-foreground">{priorityLabels[ticket.priority]}</span>
           )}
           <span className="text-xs text-muted-foreground">
-            {new Date(ticket.created_at).toLocaleDateString()}
+            {getTicketDateLabel(ticket, sortBy)}
           </span>
           {ticket.labels && ticket.labels.length > 0 && (
             <>
@@ -88,7 +115,7 @@ function TicketItem({ ticket, isSelected, onTicketClick }: TicketItemProps) {
   )
 }
 
-function TicketList({ tickets, className, selectedTicketId, onTicketClick }: TicketListProps) {
+function TicketList({ tickets, className, selectedTicketId, onTicketClick, sortBy = 'created_at' }: TicketListProps) {
   if (tickets.length === 0) {
     return (
       <div className={cn('text-center py-8 text-muted-foreground', className)}>
@@ -105,6 +132,7 @@ function TicketList({ tickets, className, selectedTicketId, onTicketClick }: Tic
           ticket={ticket}
           isSelected={ticket.id === selectedTicketId}
           onTicketClick={onTicketClick}
+          sortBy={sortBy}
         />
       ))}
     </div>

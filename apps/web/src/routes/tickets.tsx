@@ -439,6 +439,7 @@ export function Tickets() {
       {!isLoading && !error && tickets && (
         <TicketList
           tickets={tickets}
+          sortBy={sortBy}
           selectedTicketId={ticketId ? Number(ticketId) : undefined}
           onTicketClick={handleTicketClick}
         />
