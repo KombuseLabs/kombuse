@@ -684,6 +684,8 @@ export function startAgentChatSession(
       ticketId,
       ticketTitle,
       agentName,
+      effectiveBackend: resolvedBackendType,
+      appliedModel: resolvedAppliedModel,
       startedAt: new Date().toISOString(),
     })
 
@@ -811,6 +813,8 @@ export function startAgentChatSession(
     ticketId,
     ticketTitle,
     agentName,
+    effectiveBackend: resolvedBackendType,
+    appliedModel: resolvedAppliedModel,
     startedAt: new Date().toISOString(),
   })
 

@@ -1,4 +1,5 @@
 import type { Ticket } from './tickets'
+import type { BackendType } from './agent'
 
 /**
  * View identifiers for the application
@@ -48,6 +49,8 @@ export interface ActiveSessionInfo {
   agentName: string
   ticketId?: number
   ticketTitle?: string
+  effectiveBackend?: BackendType
+  appliedModel?: string
   startedAt: string
 }
 

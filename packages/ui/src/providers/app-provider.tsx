@@ -122,9 +122,44 @@ export function AppProvider({
 
   const addActiveSession = useCallback((session: ActiveSessionInfo) => {
     setActiveSessions((prev) => {
-      if (prev.has(session.kombuseSessionId)) return prev
+      const existing = prev.get(session.kombuseSessionId)
+      if (!existing) {
+        const next = new Map(prev)
+        next.set(session.kombuseSessionId, session)
+        return next
+      }
+
+      const existingStartMs = Date.parse(existing.startedAt)
+      const incomingStartMs = Date.parse(session.startedAt)
+      const hasExistingStart = Number.isFinite(existingStartMs)
+      const hasIncomingStart = Number.isFinite(incomingStartMs)
+      const startedAt = hasExistingStart && hasIncomingStart
+        ? incomingStartMs < existingStartMs
+          ? session.startedAt
+          : existing.startedAt
+        : hasExistingStart
+          ? existing.startedAt
+          : session.startedAt
+
+      const merged: ActiveSessionInfo = {
+        ...existing,
+        ...session,
+        startedAt,
+      }
+
+      if (
+        existing.agentName === merged.agentName
+        && existing.ticketId === merged.ticketId
+        && existing.ticketTitle === merged.ticketTitle
+        && existing.effectiveBackend === merged.effectiveBackend
+        && existing.appliedModel === merged.appliedModel
+        && existing.startedAt === merged.startedAt
+      ) {
+        return prev
+      }
+
       const next = new Map(prev)
-      next.set(session.kombuseSessionId, session)
+      next.set(session.kombuseSessionId, merged)
       return next
     })
   }, [])
@@ -148,6 +183,8 @@ export function AppProvider({
             agentName: message.agentName ?? 'Agent',
             ticketId: message.ticketId,
             ticketTitle: message.ticketTitle,
+            effectiveBackend: message.effectiveBackend,
+            appliedModel: message.appliedModel,
             startedAt: message.startedAt ?? new Date().toISOString(),
           })
           void queryClient.invalidateQueries({ queryKey: ['sessions'] })

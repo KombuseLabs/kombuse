@@ -22,6 +22,8 @@ export type AgentExecutionEvent =
       ticketId?: number
       ticketTitle?: string
       agentName?: string
+      effectiveBackend?: BackendType
+      appliedModel?: string
       startedAt?: string
     }
   | { type: 'event'; kombuseSessionId: string; event: AgentEvent }

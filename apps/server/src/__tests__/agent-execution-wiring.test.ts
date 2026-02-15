@@ -183,8 +183,8 @@ describe('ticket title propagation for active sessions', () => {
     vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
   })
 
-  it('includes ticketTitle in started event when ticket is resolvable', () => {
-    const backend = createPassiveBackend()
+  it('includes ticketTitle, effectiveBackend, and appliedModel in started event when resolvable', () => {
+    const backend = createPassiveBackend(BACKEND_TYPES.CODEX)
     const deps = createDeps(backend)
     const emittedEvents: AgentExecutionEvent[] = []
 
@@ -198,6 +198,8 @@ describe('ticket title propagation for active sessions', () => {
         type: 'agent.invoke',
         message: 'hello',
         kombuseSessionId: 'chat-ticket-title-id' as KombuseSessionId,
+        backendType: BACKEND_TYPES.CODEX,
+        modelPreference: 'gpt-5-mini',
       },
       (event) => emittedEvents.push(event),
       deps as any
@@ -212,10 +214,12 @@ describe('ticket title propagation for active sessions', () => {
       kombuseSessionId: 'chat-ticket-title-id',
       ticketId: 42,
       ticketTitle: 'Improve active agent context row',
+      effectiveBackend: BACKEND_TYPES.CODEX,
+      appliedModel: 'gpt-5-mini',
     })
   })
 
-  it('keeps ticketTitle undefined in started event when ticket lookup fails', () => {
+  it('keeps ticketTitle and appliedModel undefined in started event when unavailable', () => {
     const backend = createPassiveBackend()
     const deps = createDeps(backend)
     const emittedEvents: AgentExecutionEvent[] = []
@@ -237,9 +241,11 @@ describe('ticket title propagation for active sessions', () => {
     expect(started).toBeDefined()
     expect(started?.ticketId).toBe(42)
     expect(started?.ticketTitle).toBeUndefined()
+    expect(started?.effectiveBackend).toBe(BACKEND_TYPES.CLAUDE_CODE)
+    expect(started?.appliedModel).toBeUndefined()
   })
 
-  it('enriches getActiveSessions with ticket titles and preserves fallback behavior', () => {
+  it('enriches getActiveSessions with ticket titles, backend metadata, and fallback behavior', () => {
     const activeBackend = createPassiveBackend()
     registerBackend('running-session-1', activeBackend)
     registerBackend('running-session-2', activeBackend)
@@ -250,12 +256,19 @@ describe('ticket title propagation for active sessions', () => {
         {
           kombuse_session_id: 'running-session-1',
           agent_name: 'Agent A',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          metadata: {
+            effective_backend: BACKEND_TYPES.CODEX,
+            applied_model: 'gpt-5-mini',
+          },
           ticket_id: 42,
           started_at: '2026-02-14T00:00:00.000Z',
         },
         {
           kombuse_session_id: 'running-session-2',
           agent_name: 'Agent B',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          metadata: {},
           ticket_id: 43,
           started_at: '2026-02-14T00:01:00.000Z',
         },
@@ -264,6 +277,10 @@ describe('ticket title propagation for active sessions', () => {
         {
           kombuse_session_id: 'running-session-3',
           agent_name: 'Agent C',
+          backend_type: BACKEND_TYPES.MOCK,
+          metadata: {
+            applied_model: null,
+          },
           ticket_id: null,
           started_at: '2026-02-14T00:02:00.000Z',
         },
@@ -286,16 +303,22 @@ describe('ticket title propagation for active sessions', () => {
         kombuseSessionId: 'running-session-1',
         ticketId: 42,
         ticketTitle: 'Show ticket title in active agents',
+        effectiveBackend: BACKEND_TYPES.CODEX,
+        appliedModel: 'gpt-5-mini',
       }),
       expect.objectContaining({
         kombuseSessionId: 'running-session-2',
         ticketId: 43,
         ticketTitle: undefined,
+        effectiveBackend: BACKEND_TYPES.CLAUDE_CODE,
+        appliedModel: undefined,
       }),
       expect.objectContaining({
         kombuseSessionId: 'running-session-3',
         ticketId: undefined,
         ticketTitle: undefined,
+        effectiveBackend: BACKEND_TYPES.MOCK,
+        appliedModel: undefined,
       }),
     ])
   })

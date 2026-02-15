@@ -354,6 +354,8 @@ export async function processEventAndRunAgents(
             ticketId: evt.ticketId,
             ticketTitle: evt.ticketTitle,
             agentName: evt.agentName,
+            effectiveBackend: evt.effectiveBackend,
+            appliedModel: evt.appliedModel,
             startedAt: evt.startedAt,
           }
           wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)

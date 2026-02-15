@@ -118,7 +118,7 @@ describe('AppProvider permission key collision handling', () => {
   })
 })
 
-describe('AppProvider active session ticketTitle handling', () => {
+describe('AppProvider active session metadata handling', () => {
   beforeEach(() => {
     mockWebSocketHandler = undefined
     mockGetState.mockReset()
@@ -129,7 +129,7 @@ describe('AppProvider active session ticketTitle handling', () => {
     })
   })
 
-  it('stores ticketTitle from websocket agent.started messages', async () => {
+  it('stores ticketTitle/backend/model from websocket agent.started messages', async () => {
     const { getCtx } = renderProvider()
 
     await waitFor(() => {
@@ -144,6 +144,8 @@ describe('AppProvider active session ticketTitle handling', () => {
         ticketId: 42,
         ticketTitle: 'Render title snippet beside ticket id',
         agentName: 'Coding Agent',
+        effectiveBackend: 'codex',
+        appliedModel: 'gpt-5-mini',
         startedAt: '2026-02-14T10:00:00.000Z',
       })
     })
@@ -151,9 +153,11 @@ describe('AppProvider active session ticketTitle handling', () => {
     const session = getCtx().activeSessions.get('chat-ticket-title')
     expect(session).toBeDefined()
     expect(session?.ticketTitle).toBe('Render title snippet beside ticket id')
+    expect(session?.effectiveBackend).toBe('codex')
+    expect(session?.appliedModel).toBe('gpt-5-mini')
   })
 
-  it('ingests ticketTitle from sync state active sessions', async () => {
+  it('ingests ticketTitle/backend/model from sync state active sessions', async () => {
     mockGetState.mockResolvedValue({
       pendingPermissions: [],
       ticketAgentStatuses: [],
@@ -162,6 +166,7 @@ describe('AppProvider active session ticketTitle handling', () => {
         agentName: 'Planning Agent',
         ticketId: 288,
         ticketTitle: 'In active agent component next to ticket id show a bit of the title for better context',
+        effectiveBackend: 'claude-code',
         startedAt: '2026-02-14T10:05:00.000Z',
       }],
     })
@@ -173,6 +178,49 @@ describe('AppProvider active session ticketTitle handling', () => {
       expect(session?.ticketTitle).toBe(
         'In active agent component next to ticket id show a bit of the title for better context'
       )
+      expect(session?.effectiveBackend).toBe('claude-code')
+      expect(session?.appliedModel).toBeUndefined()
     })
+  })
+
+  it('upserts backend/model metadata for existing sessions without resetting startedAt', async () => {
+    const { getCtx } = renderProvider()
+
+    await waitFor(() => {
+      expect(mockGetState).toHaveBeenCalled()
+    })
+    expect(mockWebSocketHandler).toBeDefined()
+
+    act(() => {
+      mockWebSocketHandler?.({
+        type: 'agent.started',
+        kombuseSessionId: 'chat-upsert',
+        ticketId: 42,
+        ticketTitle: 'Initial title',
+        agentName: 'Coding Agent',
+        effectiveBackend: 'codex',
+        appliedModel: 'gpt-5-mini',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      })
+    })
+
+    act(() => {
+      mockWebSocketHandler?.({
+        type: 'agent.started',
+        kombuseSessionId: 'chat-upsert',
+        ticketId: 42,
+        ticketTitle: 'Updated title',
+        agentName: 'Coding Agent',
+        effectiveBackend: 'claude-code',
+        startedAt: '2026-02-14T10:05:00.000Z',
+      })
+    })
+
+    const session = getCtx().activeSessions.get('chat-upsert')
+    expect(session).toBeDefined()
+    expect(session?.ticketTitle).toBe('Updated title')
+    expect(session?.effectiveBackend).toBe('claude-code')
+    expect(session?.appliedModel).toBeUndefined()
+    expect(session?.startedAt).toBe('2026-02-14T10:00:00.000Z')
   })
 })

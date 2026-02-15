@@ -56,6 +56,8 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
         agentName: 'Coding Agent',
         ticketId: 288,
         ticketTitle: 'Show title snippet in Active Agents indicator',
+        effectiveBackend: 'claude-code',
+        appliedModel: 'claude-sonnet-4-5',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ])
@@ -64,6 +66,8 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
     const title = screen.getByText('Show title snippet in Active Agents indicator')
     expect(title).toBeDefined()
     expect((title as HTMLElement).className).toContain('truncate')
+    expect(screen.getByText('Backend: Claude Code')).toBeDefined()
+    expect(screen.getByText('Model: claude-sonnet-4-5')).toBeDefined()
   })
 
   it('falls back to ticket id when title is unavailable', () => {
@@ -72,12 +76,15 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
         kombuseSessionId: 'session-2',
         agentName: 'Coding Agent',
         ticketId: 289,
+        effectiveBackend: 'codex',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ])
 
     expect(screen.getByText('#289')).toBeDefined()
     expect(screen.queryByText('Show title snippet in Active Agents indicator')).toBeNull()
+    expect(screen.getByText('Backend: Codex')).toBeDefined()
+    expect(screen.getByText('Model: Backend default')).toBeDefined()
   })
 
   it('falls back to Chat when ticket id is missing', () => {
@@ -85,11 +92,28 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
       {
         kombuseSessionId: 'session-3',
         agentName: 'Coding Agent',
+        effectiveBackend: 'mock',
+        appliedModel: 'mock-model',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ])
 
     expect(screen.getByText('Chat')).toBeDefined()
+    expect(screen.getByText('Backend: Mock')).toBeDefined()
+    expect(screen.getByText('Model: mock-model')).toBeDefined()
+  })
+
+  it('falls back to Unknown backend and Backend default model when metadata is missing', () => {
+    renderIndicator([
+      {
+        kombuseSessionId: 'session-unknown',
+        agentName: 'Coding Agent',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+    ])
+
+    expect(screen.getByText('Backend: Unknown')).toBeDefined()
+    expect(screen.getByText('Model: Backend default')).toBeDefined()
   })
 
   it('navigates to ticket with session query when both ids exist', () => {

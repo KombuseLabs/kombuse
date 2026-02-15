@@ -273,6 +273,15 @@ export function getActiveSessions(): ActiveSessionInfo[] {
     if (!session.kombuse_session_id || !activeBackends.has(session.kombuse_session_id)) {
       continue
     }
+    const effectiveBackend =
+      session.metadata?.effective_backend
+      ?? session.effective_backend
+      ?? session.backend_type
+      ?? undefined
+    const appliedModel =
+      session.metadata?.applied_model
+      ?? session.applied_model
+      ?? undefined
     const ticketId = session.ticket_id ?? undefined
     const ticketTitle =
       typeof ticketId === 'number'
@@ -283,6 +292,8 @@ export function getActiveSessions(): ActiveSessionInfo[] {
       agentName: session.agent_name ?? 'Agent',
       ticketId,
       ticketTitle,
+      effectiveBackend,
+      appliedModel,
       startedAt: session.started_at,
     })
   }

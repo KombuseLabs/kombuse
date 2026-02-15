@@ -71,6 +71,8 @@ export type ServerMessage =
       ticketId?: number
       ticketTitle?: string
       agentName?: string
+      effectiveBackend?: BackendType
+      appliedModel?: string
       startedAt?: string
     }
   | { type: 'agent.event'; kombuseSessionId: string; event: AgentStreamEvent }

@@ -12,6 +12,23 @@ export interface ActiveAgentsIndicatorProps {
   onNavigate?: (path: string) => void
 }
 
+function humanizeBackend(backend: ActiveSessionInfo['effectiveBackend']): string {
+  if (!backend) return 'Unknown'
+
+  const knownLabel = {
+    'claude-code': 'Claude Code',
+    codex: 'Codex',
+    mock: 'Mock',
+  }[backend]
+  if (knownLabel) return knownLabel
+
+  return backend
+    .split('-')
+    .filter(Boolean)
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 function formatDuration(startedAt: string): string {
   const elapsed = Date.now() - new Date(startedAt).getTime()
   const seconds = Math.floor(elapsed / 1000)
@@ -102,6 +119,20 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
                       Open
                     </Button>
                   )}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-3.5">
+                  <Badge
+                    variant="secondary"
+                    className="h-5 px-1.5 text-[10px] font-medium"
+                  >
+                    {`Backend: ${humanizeBackend(session.effectiveBackend)}`}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="h-5 px-1.5 text-[10px] font-medium"
+                  >
+                    {`Model: ${session.appliedModel ?? 'Backend default'}`}
+                  </Badge>
                 </div>
               </div>
             ))}

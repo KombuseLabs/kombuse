@@ -3,6 +3,7 @@ import {
   agentInvocationSchema,
   agentProcessEventResponseSchema,
   agentSchema,
+  backendTypeSchema,
   agentTriggerSchema,
   attachmentSchema,
   claudeCodeSessionResponseSchema,
@@ -204,6 +205,8 @@ const syncActiveSessionSchema = z.object({
   agentName: z.string().min(1),
   ticketId: z.number().int().positive().optional(),
   ticketTitle: z.string().optional(),
+  effectiveBackend: backendTypeSchema.optional(),
+  appliedModel: z.string().optional(),
   startedAt: z.string().min(1),
 })
 

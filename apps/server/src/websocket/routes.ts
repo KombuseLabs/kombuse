@@ -119,6 +119,8 @@ function handleAgentInvoke(
           ticketId: event.ticketId,
           ticketTitle: event.ticketTitle,
           agentName: event.agentName,
+          effectiveBackend: event.effectiveBackend,
+          appliedModel: event.appliedModel,
           startedAt: event.startedAt,
         }
         wsHub.broadcastAgentMessage(event.kombuseSessionId, msg, socket)

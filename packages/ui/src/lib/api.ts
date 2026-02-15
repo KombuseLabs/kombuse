@@ -692,6 +692,8 @@ export interface SyncState {
     agentName: string
     ticketId?: number
     ticketTitle?: string
+    effectiveBackend?: BackendType
+    appliedModel?: string
     startedAt: string
   }>
 }
