@@ -140,7 +140,7 @@ export function Labels() {
       )}
 
       {!isLoading && !error && labels && (
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
           <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
             <h1 className="text-2xl font-bold">Labels</h1>
             <div className="flex items-center gap-3">

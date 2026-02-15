@@ -202,7 +202,7 @@ export function Agents() {
 
       {!isLoading && !error && agents && (
         <div className={isProjectContext
-          ? "flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm"
+          ? "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm"
           : "rounded-lg border divide-y"}
         >
           {isProjectContext && (

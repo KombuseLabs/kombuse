@@ -40,7 +40,7 @@ const sidebarItemVariants = cva(
       {
         variant: "rail",
         active: true,
-        className: "border-primary/80 bg-primary/10 text-primary shadow-sm ring-2 ring-primary/35",
+        className: "border-border bg-accent text-foreground shadow-md",
       },
     ],
   }

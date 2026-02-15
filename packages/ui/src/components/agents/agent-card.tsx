@@ -47,7 +47,10 @@ function AgentCard({
       onClick={onClick}
     >
       <div className="flex items-center gap-3">
-        <div className="size-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+        <div className={cn(
+          "size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+          isSelected ? "bg-primary/15 ring-1 ring-primary/30" : "bg-muted"
+        )}>
           <Icon className="size-4" />
         </div>
         <div className="flex-1 min-w-0">

@@ -22,7 +22,10 @@ function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
     >
       <div className="flex items-center gap-3">
         <div
-          className="size-6 rounded-full shrink-0"
+          className={cn(
+            "size-6 rounded-full shrink-0 transition-shadow",
+            isSelected && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+          )}
           style={{ backgroundColor: label.color }}
         />
         <div className="flex-1 min-w-0">
