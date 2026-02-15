@@ -314,64 +314,67 @@ export function Agents() {
                     </div>
                   </CardHeader>
 
-                  <CardContent className="flex-1 overflow-y-auto space-y-6">
-                    {/* Name */}
-                    <div className="space-y-2">
-                      <Label htmlFor="new-agent-name">Name *</Label>
-                      <Input
-                        id="new-agent-name"
-                        value={newAgentName}
-                        onChange={(e) => setNewAgentName(e.target.value)}
-                        placeholder="Agent name"
-                        autoFocus
-                      />
-                    </div>
+                  <CardContent className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex h-full min-h-0 flex-col gap-6">
+                      {/* Name */}
+                      <div className="space-y-2">
+                        <Label htmlFor="new-agent-name">Name *</Label>
+                        <Input
+                          id="new-agent-name"
+                          value={newAgentName}
+                          onChange={(e) => setNewAgentName(e.target.value)}
+                          placeholder="Agent name"
+                          autoFocus
+                        />
+                      </div>
 
-                    {/* Description */}
-                    <div className="space-y-2">
-                      <Label htmlFor="new-agent-description">Description</Label>
-                      <Textarea
-                        id="new-agent-description"
-                        value={newAgentDescription}
-                        onChange={(e) => setNewAgentDescription(e.target.value)}
-                        placeholder="What does this agent do?"
-                        className="min-h-20"
-                      />
-                    </div>
+                      {/* Description */}
+                      <div className="space-y-2">
+                        <Label htmlFor="new-agent-description">Description</Label>
+                        <Textarea
+                          id="new-agent-description"
+                          value={newAgentDescription}
+                          onChange={(e) => setNewAgentDescription(e.target.value)}
+                          placeholder="What does this agent do?"
+                          className="min-h-20"
+                        />
+                      </div>
 
-                    {/* Avatar */}
-                    <div className="space-y-2">
-                      <Label>Avatar</Label>
-                      <AvatarPicker value={newAgentAvatar} onChange={setNewAgentAvatar} />
-                    </div>
+                      {/* Avatar */}
+                      <div className="space-y-2">
+                        <Label>Avatar</Label>
+                        <AvatarPicker value={newAgentAvatar} onChange={setNewAgentAvatar} />
+                      </div>
 
-                    {/* System Prompt */}
-                    <div className="space-y-2">
-                      <Label>System Prompt *</Label>
-                      <PromptEditor
-                        value={newAgentPrompt}
-                        onChange={setNewAgentPrompt}
-                        placeholder="Enter the agent's system prompt..."
-                        showAvailableVariables
-                      />
-                    </div>
+                      {/* System Prompt */}
+                      <div className="flex min-h-0 flex-1 flex-col space-y-2">
+                        <Label>System Prompt *</Label>
+                        <PromptEditor
+                          value={newAgentPrompt}
+                          onChange={setNewAgentPrompt}
+                          placeholder="Enter the agent's system prompt..."
+                          showAvailableVariables
+                          fillHeight
+                        />
+                      </div>
 
-                    {/* Create Button */}
-                    <div className="flex justify-end gap-2 pt-4 border-t">
-                      <Button variant="outline" onClick={handleCloseDetail}>
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleCreateAgent}
-                        disabled={
-                          createAgent.isPending ||
-                          !newAgentName.trim() ||
-                          !newAgentPrompt.trim()
-                        }
-                      >
-                        <Save className="size-4 mr-2" />
-                        {createAgent.isPending ? "Creating..." : "Create Agent"}
-                      </Button>
+                      {/* Create Button */}
+                      <div className="flex justify-end gap-2 pt-4 border-t">
+                        <Button variant="outline" onClick={handleCloseDetail}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleCreateAgent}
+                          disabled={
+                            createAgent.isPending ||
+                            !newAgentName.trim() ||
+                            !newAgentPrompt.trim()
+                          }
+                        >
+                          <Save className="size-4 mr-2" />
+                          {createAgent.isPending ? "Creating..." : "Create Agent"}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

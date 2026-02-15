@@ -117,6 +117,21 @@ describe('AgentDetail', () => {
     expect(getByText('Triggers')).toBeDefined()
   })
 
+  it('keeps System Prompt as the growable region in Basic Info', () => {
+    const { getByText, getByPlaceholderText } = render(<AgentDetail {...buildProps()} />)
+
+    const systemPromptLabel = getByText('System Prompt')
+    const systemPromptSection = systemPromptLabel.closest('div') as HTMLElement
+    const promptTextarea = getByPlaceholderText(
+      "Enter the agent's system prompt..."
+    ) as HTMLTextAreaElement
+
+    expect(systemPromptSection.className).toContain('flex-1')
+    expect(systemPromptSection.className).toContain('min-h-0')
+    expect(promptTextarea.className).toContain('flex-1')
+    expect(promptTextarea.className).toContain('min-h-0')
+  })
+
   it('shows Save Changes when only the system prompt is edited in Basic Info', () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     const { getByRole, getByPlaceholderText, queryByRole } = render(

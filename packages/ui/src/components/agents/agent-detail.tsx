@@ -214,7 +214,7 @@ function AgentDetail({
       </CardHeader>
 
         <CardContent className="flex-1 min-h-0 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full min-h-0 flex-col">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="basic-info">Basic Info</TabsTrigger>
               <TabsTrigger value="configuration">Configuration</TabsTrigger>
@@ -224,9 +224,9 @@ function AgentDetail({
               value="basic-info"
               forceMount
               hidden={activeTab !== 'basic-info'}
-              className="min-h-0 overflow-y-auto pr-1 data-[state=inactive]:hidden"
+              className="flex h-full min-h-0 flex-col pr-1 data-[state=inactive]:hidden"
             >
-              <div className="space-y-6">
+              <div className="flex h-full min-h-0 flex-col gap-6">
                 {/* Name */}
                 <div className="space-y-2">
                   <Label htmlFor="agent-name">Name</Label>
@@ -257,13 +257,14 @@ function AgentDetail({
                 </div>
 
                 {/* System Prompt */}
-                <div className="space-y-2">
+                <div className="flex min-h-0 flex-1 flex-col space-y-2">
                   <Label>System Prompt</Label>
                   <PromptEditor
                     value={systemPrompt}
                     onChange={setSystemPrompt}
                     placeholder="Enter the agent's system prompt..."
                     showAvailableVariables
+                    fillHeight
                   />
                 </div>
               </div>

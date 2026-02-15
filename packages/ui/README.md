@@ -895,6 +895,14 @@ import type {
   showAvailableVariables
   availableVariables={customGroups}
 />
+
+// Fill available panel height (for split/detail panes)
+<PromptEditor
+  value={prompt}
+  onChange={setPrompt}
+  showAvailableVariables
+  fillHeight
+/>
 ```
 
 Props:
@@ -904,6 +912,7 @@ Props:
 - `disabled`: Disable editing
 - `className`: Additional CSS class
 - `minHeight` / `maxHeight`: Textarea height constraints (default: 200 / 500)
+- `fillHeight`: Opt-in full-height mode (`h-full min-h-0 flex-1`) for layouts where the editor should consume remaining vertical space. In this mode, fixed `minHeight`/`maxHeight` constraints are not applied.
 - `showCounts`: Show character/token counts in footer (default: true)
 - `showPreview`: Show edit/preview toggle (default: true)
 - `showAvailableVariables`: Show collapsible panel of available template variables (default: false)

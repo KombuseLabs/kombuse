@@ -151,4 +151,55 @@ describe('PromptEditor', () => {
     expect(variableButton.hasAttribute('disabled')).toBe(true)
     expect(snippetButton.hasAttribute('disabled')).toBe(true)
   })
+
+  it('preserves fixed min/max height defaults when fillHeight is not enabled', () => {
+    const { getByPlaceholderText } = render(
+      <PromptEditor value="" onChange={() => undefined} />
+    )
+
+    const textarea = getByPlaceholderText("Enter your system prompt...") as HTMLTextAreaElement
+
+    expect(textarea.style.minHeight).toBe('200px')
+    expect(textarea.style.maxHeight).toBe('500px')
+    expect(textarea.className).not.toContain('flex-1')
+  })
+
+  it('uses fill-height classes in edit mode and keeps prompt controls available', () => {
+    const { container, getByPlaceholderText, getByRole } = render(
+      <PromptEditor value="" onChange={() => undefined} fillHeight />
+    )
+
+    const root = container.firstElementChild as HTMLElement
+    const textarea = getByPlaceholderText("Enter your system prompt...") as HTMLTextAreaElement
+
+    expect(root.className).toContain('h-full')
+    expect(root.className).toContain('min-h-0')
+    expect(textarea.className).toContain('flex-1')
+    expect(textarea.className).toContain('min-h-0')
+    expect(textarea.style.minHeight).toBe('')
+    expect(textarea.style.maxHeight).toBe('')
+    expect(getByRole('button', { name: 'Preview' })).toBeTruthy()
+    expect(getByRole('button', { name: 'Copy' })).toBeTruthy()
+  })
+
+  it('uses fill-height classes in preview mode with internal vertical overflow', () => {
+    const { getByRole, getByText } = render(
+      <PromptEditor
+        value="Hello {{ user.name }}"
+        onChange={() => undefined}
+        fillHeight
+      />
+    )
+
+    fireEvent.click(getByRole('button', { name: 'Preview' }))
+
+    const previewVariable = getByText('{{user.name}}')
+    const previewContainer = previewVariable.parentElement as HTMLElement
+
+    expect(previewContainer.className).toContain('flex-1')
+    expect(previewContainer.className).toContain('min-h-0')
+    expect(previewContainer.className).toContain('overflow-y-auto')
+    expect(previewContainer.style.minHeight).toBe('')
+    expect(previewContainer.style.maxHeight).toBe('')
+  })
 })

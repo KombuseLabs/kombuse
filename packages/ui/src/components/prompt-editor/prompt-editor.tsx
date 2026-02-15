@@ -18,6 +18,7 @@ export interface PromptEditorProps {
   className?: string
   minHeight?: number
   maxHeight?: number
+  fillHeight?: boolean
   showCounts?: boolean
   showPreview?: boolean
   showAvailableVariables?: boolean
@@ -36,6 +37,7 @@ function PromptEditor({
   className,
   minHeight = 200,
   maxHeight = 500,
+  fillHeight = false,
   showCounts = true,
   showPreview = true,
   showAvailableVariables = false,
@@ -86,6 +88,7 @@ function PromptEditor({
 
   // Rough token estimate (1 token ~ 4 chars for English)
   const estimatedTokens = Math.ceil(value.length / 4)
+  const editorStyle = fillHeight ? undefined : { minHeight, maxHeight }
 
   // Render preview with highlighted variables
   const renderPreview = () => {
@@ -111,7 +114,7 @@ function PromptEditor({
   }
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn(fillHeight ? 'flex h-full min-h-0 flex-col gap-2' : 'space-y-2', className)}>
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -151,8 +154,11 @@ function PromptEditor({
       {/* Editor / Preview */}
       {isPreview ? (
         <div
-          className="p-3 rounded-md border bg-muted/30 whitespace-pre-wrap overflow-auto"
-          style={{ minHeight, maxHeight }}
+          className={cn(
+            'p-3 rounded-md border bg-muted/30 whitespace-pre-wrap overflow-y-auto',
+            fillHeight && 'flex-1 min-h-0'
+          )}
+          style={editorStyle}
         >
           {renderPreview()}
         </div>
@@ -163,8 +169,11 @@ function PromptEditor({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className="font-mono text-sm resize-none overflow-y-auto"
-          style={{ minHeight, maxHeight }}
+          className={cn(
+            'font-mono text-sm resize-none overflow-y-auto',
+            fillHeight && 'h-full min-h-0 flex-1'
+          )}
+          style={editorStyle}
         />
       )}
 
