@@ -1,12 +1,12 @@
 import { useEffect } from "react";
-import { Outlet, useParams, Link } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 import { Sidebar, SidebarItem } from "@kombuse/ui/components";
 import { useProject, useProfileSetting, useAppContext } from "@kombuse/ui/hooks";
-import { Ticket, Bot, Folder, MessageSquare, History, Tags, Shield, Database } from "lucide-react";
+import { Ticket, Bot, MessageSquare, History, Tags, Shield, Database } from "lucide-react";
 
 export function ProjectLayout() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { data: project } = useProject(projectId ?? "");
+  useProject(projectId ?? "");
 
   const { setCurrentProjectId } = useAppContext();
   useEffect(() => {
@@ -31,20 +31,7 @@ export function ProjectLayout() {
 
   return (
     <div className="flex h-full">
-      <Sidebar
-        variant="rail"
-        header={
-          <Link
-            to="/projects"
-            aria-label={project?.name ?? projectId}
-            title={project?.name ?? projectId}
-            className="flex size-12 items-center justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground transition-colors hover:border-border hover:bg-accent/50 hover:text-foreground"
-          >
-            <Folder className="size-5 shrink-0" />
-            <span className="sr-only">{project?.name ?? projectId}</span>
-          </Link>
-        }
-      >
+      <Sidebar variant="rail">
         <SidebarItem
           icon={<Ticket className="size-4" />}
           label="Tickets"

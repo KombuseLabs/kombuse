@@ -106,7 +106,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
         category: "Projects",
         icon: "Folder",
         handler: () => {
-          navigate("/projects");
+          navigate("/");
         },
       }),
       registry.register({
@@ -114,7 +114,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
         title: "Create New Project",
         category: "Projects",
         handler: () => {
-          navigate("/projects?create=true");
+          navigate("/?create=true");
         },
       }),
       registry.register({

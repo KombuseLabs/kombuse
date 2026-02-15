@@ -9,7 +9,6 @@ import { CommandSetup, usePalette } from "./command-setup";
 import { useHistoryNavigationContext } from "./hooks/use-history-navigation";
 import { Home } from "./routes/home";
 import { Chats } from "./routes/chats";
-import { Projects } from "./routes/projects";
 import { Tickets } from "./routes/tickets";
 import { Agents } from "./routes/agents";
 import { Events } from "./routes/events";
@@ -67,8 +66,6 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/projects" element={<Projects />} />
-
           {/* Project routes with sidebar */}
           <Route path="/projects/:projectId" element={<ProjectLayout />}>
             <Route path="tickets" element={<Tickets />} />

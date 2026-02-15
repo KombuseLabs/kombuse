@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { deriveProjectNameFromPath } from '../projects-path'
+import { deriveProjectNameFromPath } from '../../utils/projects-path'
 
 describe('deriveProjectNameFromPath', () => {
   it('returns the last directory segment for POSIX paths', () => {

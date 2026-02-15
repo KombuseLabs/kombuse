@@ -794,7 +794,7 @@ export function Tickets() {
     return (
       <main className="flex flex-col items-center justify-center p-8">
         <p className="text-muted-foreground">No project selected</p>
-        <Link to="/projects" className="text-primary hover:underline mt-2">
+        <Link to="/" className="text-primary hover:underline mt-2">
           Go to projects
         </Link>
       </main>
