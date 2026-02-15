@@ -83,13 +83,15 @@ describe('Resizable primitives', () => {
     )
 
     const listPanel = screen.getByText('List') as HTMLElement
-    expect(listPanel.className).toContain('py-6')
+    expect(listPanel.className).toContain('pt-3')
+    expect(listPanel.className).toContain('pb-6')
     expect(listPanel.className).toContain('pl-6')
     expect(listPanel.className).toContain('pr-3')
 
     rerender(<ResizableCardPanel side='detail'>Detail</ResizableCardPanel>)
     const detailPanel = screen.getByText('Detail') as HTMLElement
-    expect(detailPanel.className).toContain('py-6')
+    expect(detailPanel.className).toContain('pt-3')
+    expect(detailPanel.className).toContain('pb-6')
     expect(detailPanel.className).toContain('pl-3')
     expect(detailPanel.className).toContain('pr-6')
   })

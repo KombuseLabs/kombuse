@@ -1069,7 +1069,7 @@ export function Tickets() {
             )}
           </ResizablePanelGroup>
         ) : (
-          <div className="w-full h-full min-h-0 p-6">
+          <div className="w-full h-full min-h-0 pt-3 px-6 pb-6">
             {ticketListContent}
           </div>
         )}

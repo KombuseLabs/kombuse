@@ -103,7 +103,7 @@ Props:
 - `ResizablePanelGroup`: `orientation` ("horizontal" | "vertical"), `defaultLayout`, `onLayoutChanged`, `className`, `resizeTargetMinimumSize` (defaults to `{ fine: 12, coarse: 24 }` for improved drag hit targets)
 - `ResizablePanel`: `id`, `defaultSize`, `minSize`, `maxSize`, `collapsible`, `collapsedSize`
 - `ResizableHandle`: `withHandle` (shows grip icon), `disabled`, `className`; supports `data-separator` interaction states (`inactive`, `hover`, `active`, `disabled`) with focus-visible ring styling
-- `ResizableCardPanel`: split-layout wrapper with consistent vertical padding and side-aware gutters (`side="list" | "detail"`) so list/detail cards remain separate and evenly spaced
+- `ResizableCardPanel`: split-layout wrapper with explicit top/bottom insets (`pt-3`/`pb-6`) and side-aware gutters (`side="list" | "detail"`) so list/detail cards align with the rail sidebar and remain evenly spaced
 - `ResizableCardHandle`: transparent split-layout handle for card-separated panes (no extra visible divider line)
 
 ### Hooks

@@ -426,7 +426,7 @@ export function Agents() {
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
-          <div className={isProjectContext ? "w-full h-full min-h-0 p-6" : "w-full overflow-y-auto p-6"}>
+          <div className={isProjectContext ? "w-full h-full min-h-0 pt-3 px-6 pb-6" : "w-full overflow-y-auto p-6"}>
             {agentListContent}
           </div>
         )}
