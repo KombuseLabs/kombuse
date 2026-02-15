@@ -334,8 +334,9 @@ import { Sidebar, SidebarItem } from '@kombuse/ui/components'
 import { Sidebar, SidebarItem } from '@kombuse/ui/components'
 import { Ticket, Bot } from 'lucide-react'
 
-// Collapsible sidebar with navigation items
+// Collapsible panel sidebar
 <Sidebar
+  variant="panel"
   isCollapsed={isCollapsed}
   onCollapsedChange={setIsCollapsed}
   header={<span>Project Name</span>}
@@ -344,20 +345,32 @@ import { Ticket, Bot } from 'lucide-react'
     icon={<Ticket className="size-4" />}
     label="Tickets"
     to="/projects/123/tickets"
+    variant="panel"
     isCollapsed={isCollapsed}
   />
   <SidebarItem
     icon={<Bot className="size-4" />}
     label="Agents"
     to="/projects/123/agents"
+    variant="panel"
     isCollapsed={isCollapsed}
+  />
+</Sidebar>
+
+// Icon rail sidebar for project navigation
+<Sidebar variant="rail" header={<ProjectIconButton />}>
+  <SidebarItem
+    icon={<Ticket className="size-5" />}
+    label="Tickets"
+    to="/projects/123/tickets"
+    variant="rail"
   />
 </Sidebar>
 ```
 
 Props:
-- `Sidebar`: `isCollapsed`, `onCollapsedChange`, `header`, `children`, `className`
-- `SidebarItem`: `icon`, `label`, `to` (React Router path), `isCollapsed`
+- `Sidebar`: `variant` (`"panel"` | `"rail"`), `isCollapsed`, `onCollapsedChange`, `header`, `children`, `className`
+- `SidebarItem`: `icon`, `label`, `to` (React Router path), `variant` (`"panel"` | `"rail"`), `isCollapsed` (panel mode)
 
 ### Label Components
 

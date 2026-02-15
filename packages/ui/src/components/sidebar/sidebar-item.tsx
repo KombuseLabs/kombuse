@@ -24,7 +24,7 @@ const sidebarItemVariants = cva(
     variants: {
       variant: {
         panel: "rounded-md hover:bg-accent hover:text-accent-foreground",
-        rail: "size-11 justify-center rounded-xl text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+        rail: "size-12 justify-center rounded-full border border-transparent text-muted-foreground hover:border-border hover:bg-accent/50 hover:text-foreground",
       },
       active: {
         false: "",
@@ -40,7 +40,7 @@ const sidebarItemVariants = cva(
       {
         variant: "rail",
         active: true,
-        className: "bg-accent text-foreground font-semibold shadow-sm ring-1 ring-primary/35",
+        className: "border-primary/45 bg-accent text-foreground shadow-sm ring-2 ring-primary/20",
       },
     ],
   }
@@ -69,7 +69,7 @@ function SidebarItem({
         )
       }
     >
-      <span className={cn("shrink-0", usesRailStyle ? "[&>svg]:size-5" : "[&>svg]:size-4")}>
+      <span className={cn("shrink-0", usesRailStyle ? "[&>svg]:size-6" : "[&>svg]:size-4")}>
         {icon}
       </span>
       {!usesRailStyle && <span>{label}</span>}

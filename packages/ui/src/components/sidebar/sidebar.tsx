@@ -27,16 +27,16 @@ function Sidebar({
     return (
       <TooltipProvider delayDuration={0}>
         <aside
-          className={cn("shrink-0 p-3", className)}
+          className={cn("h-full shrink-0 self-stretch px-3 pt-3", className)}
           data-sidebar-variant={variant}
         >
-          <div className="flex h-full w-[4.5rem] flex-col rounded-3xl border bg-background/95 p-2 shadow-sm">
+          <div className="flex h-full w-20 flex-col rounded-[1.75rem] border border-border/80 bg-background/95 p-2 shadow-sm">
             {header && (
-              <div className="flex justify-center pb-2">
+              <div className="flex justify-center pb-3">
                 {header}
               </div>
             )}
-            <nav className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+            <nav className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto pb-3">
               {children}
             </nav>
           </div>

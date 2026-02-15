@@ -51,8 +51,10 @@ describe('SidebarItem', () => {
     })
 
     const link = screen.getByRole('link', { name: 'Tickets' })
-    expect(link.className.includes('size-11')).toBe(true)
-    expect(link.className.includes('ring-1')).toBe(true)
+    expect(link.className.includes('size-12')).toBe(true)
+    expect(link.className.includes('rounded-full')).toBe(true)
+    expect(link.className.includes('ring-2')).toBe(true)
+    expect(link.className.includes('border-primary/45')).toBe(true)
     expect(screen.getByTestId('tooltip-content').textContent).toBe('Tickets')
   })
 

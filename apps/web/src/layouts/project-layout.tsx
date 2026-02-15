@@ -38,9 +38,9 @@ export function ProjectLayout() {
             to="/projects"
             aria-label={project?.name ?? projectId}
             title={project?.name ?? projectId}
-            className="flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+            className="flex size-12 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-accent/50 hover:text-foreground"
           >
-            <Folder className="size-4 shrink-0" />
+            <Folder className="size-5 shrink-0" />
             <span className="sr-only">{project?.name ?? projectId}</span>
           </Link>
         }
