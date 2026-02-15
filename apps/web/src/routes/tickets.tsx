@@ -369,7 +369,7 @@ export function Tickets() {
       if (secondRafId !== undefined) window.cancelAnimationFrame(secondRafId);
       resizeObserver.disconnect();
     };
-  }, [selectedLabelIds.length, usageSortedLabels]);
+  }, [selectedLabelIds.length, usageSortedLabels, ticketId]);
 
   useEffect(() => {
     if (!overflowLabelsOpen) {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react'
 import { useEffect } from 'react'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 const {
   mockUseTickets,
@@ -368,6 +368,83 @@ describe('Tickets label filters', () => {
         expect(within(labelsRow).getByRole('button', { name: 'bug' })).toBeDefined()
         expect(within(labelsRow).getByRole('button', { name: 'backend' })).toBeDefined()
         expect(within(labelsRow).getByRole('button', { name: 'ui' })).toBeDefined()
+      })
+    } finally {
+      clientWidthSpy.mockRestore()
+      offsetWidthSpy.mockRestore()
+      vi.stubGlobal('requestAnimationFrame', originalRaf)
+      vi.stubGlobal('cancelAnimationFrame', originalCaf)
+    }
+  })
+
+  it('recalculates label visibility when ticketId changes (layout transition)', async () => {
+    let containerWidth = 196
+
+    const clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function clientWidth() {
+      const element = this as HTMLElement
+      if (element.getAttribute('data-testid') === 'ticket-label-filters-row') {
+        return containerWidth
+      }
+      return 0
+    })
+
+    const offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function offsetWidth() {
+      const text = ((this as HTMLElement).textContent ?? '').trim()
+      if (text === 'More (00)' || /^More \(/.test(text)) return 80
+      if (text === 'Clear') return 40
+      const widths: Record<string, number> = { bug: 60, backend: 60, ui: 60 }
+      return widths[text] ?? 0
+    })
+
+    const originalRaf = window.requestAnimationFrame
+    const originalCaf = window.cancelAnimationFrame
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0)
+      return 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+
+    let navigateFn: ReturnType<typeof useNavigate> | undefined
+
+    function NavigateCapture() {
+      navigateFn = useNavigate()
+      return null
+    }
+
+    try {
+      const view = render(
+        <MemoryRouter initialEntries={['/projects/1/tickets']}>
+          <Routes>
+            <Route
+              path="/projects/:projectId/tickets/:ticketId?"
+              element={
+                <>
+                  <NavigateCapture />
+                  <Tickets />
+                </>
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      )
+
+      await waitFor(() => {
+        const labelsRow = view.getByTestId('ticket-label-filters-row')
+        expect(within(labelsRow).getByRole('button', { name: 'bug' })).toBeDefined()
+        expect(within(labelsRow).getByRole('button', { name: 'backend' })).toBeDefined()
+        expect(within(labelsRow).getByRole('button', { name: 'ui' })).toBeDefined()
+        expect(within(labelsRow).queryByRole('button', { name: /More \(/i })).toBeNull()
+      })
+
+      containerWidth = 148
+
+      act(() => {
+        navigateFn!('/projects/1/tickets/42')
+      })
+
+      await waitFor(() => {
+        const labelsRow = view.getByTestId('ticket-label-filters-row')
+        expect(within(labelsRow).queryByRole('button', { name: /More \(/i })).not.toBeNull()
       })
     } finally {
       clientWidthSpy.mockRestore()
