@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { cva } from "class-variance-authority";
 import {
@@ -24,7 +24,7 @@ const sidebarItemVariants = cva(
     variants: {
       variant: {
         panel: "rounded-md hover:bg-accent hover:text-accent-foreground",
-        rail: "size-12 justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground hover:border-border hover:bg-accent/50 hover:text-foreground",
+        rail: "size-12 justify-center rounded-2xl border border-transparent text-muted-foreground/70 hover:bg-primary/5 hover:text-foreground",
       },
       active: {
         false: "",
@@ -40,7 +40,7 @@ const sidebarItemVariants = cva(
       {
         variant: "rail",
         active: true,
-        className: "border-border bg-accent text-foreground shadow-md ring-2 ring-primary/40 ring-offset-2 ring-offset-background",
+        className: "border-transparent text-foreground rail-item-active",
       },
     ],
   }
@@ -54,20 +54,20 @@ function SidebarItem({
   isCollapsed,
 }: SidebarItemProps) {
   const usesRailStyle = variant === "rail" || isCollapsed;
+  const { pathname } = useLocation();
+  const isActive = pathname === to || pathname.startsWith(to + "/");
 
   const content = (
     <NavLink
       to={to}
       aria-label={usesRailStyle ? label : undefined}
-      className={({ isActive }) =>
-        cn(
-          sidebarItemVariants({
-            variant: usesRailStyle ? "rail" : "panel",
-            active: isActive,
-          }),
-          usesRailStyle ? "" : "gap-3 px-3 py-2"
-        )
-      }
+      className={cn(
+        sidebarItemVariants({
+          variant: usesRailStyle ? "rail" : "panel",
+          active: isActive,
+        }),
+        usesRailStyle ? "" : "gap-3 px-3 py-2"
+      )}
     >
       <span className={cn("shrink-0", usesRailStyle ? "[&>svg]:size-6" : "[&>svg]:size-4")}>
         {icon}

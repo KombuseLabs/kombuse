@@ -30,7 +30,7 @@ function Sidebar({
           className={cn("shrink-0 px-3 pt-3", className)}
           data-sidebar-variant={variant}
         >
-          <div className="flex w-20 flex-col rounded-[1.75rem] border border-border/80 bg-background/95 p-2 shadow-sm">
+          <div className="flex w-17 flex-col rounded-[1.5rem] border border-border/80 bg-background/95 p-2 shadow-sm">
             {header && (
               <div className="flex justify-center pb-4">
                 {header}
