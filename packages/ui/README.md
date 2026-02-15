@@ -928,6 +928,7 @@ Props:
 - `className`: Additional CSS class
 - `minHeight` / `maxHeight`: Textarea height constraints (default: 200 / 500)
 - `fillHeight`: Opt-in full-height mode (`h-full min-h-0 flex-1`) for layouts where the editor should consume remaining vertical space. In this mode, fixed `minHeight`/`maxHeight` constraints are not applied.
+- `fillHeight` in constrained panels: Keep the surrounding form/tab container scrollable (`overflow-y-auto`) so helper content and adjacent fields remain reachable at smaller heights.
 - `showCounts`: Show character/token counts in footer (default: true)
 - `showPreview`: Show edit/preview toggle (default: true)
 - `showAvailableVariables`: Show collapsible panel of available template variables (default: false)

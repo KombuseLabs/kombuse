@@ -117,19 +117,30 @@ describe('AgentDetail', () => {
     expect(getByText('Triggers')).toBeDefined()
   })
 
-  it('keeps System Prompt as the growable region in Basic Info', () => {
-    const { getByText, getByPlaceholderText } = render(<AgentDetail {...buildProps()} />)
+  it('keeps Basic Info scrollable while System Prompt remains the growable region', () => {
+    const { getByRole, getByTestId, getByText, getByPlaceholderText } = render(
+      <div style={{ height: '320px' }}>
+        <AgentDetail {...buildProps()} />
+      </div>
+    )
 
+    const basicInfoScroll = getByTestId('agent-basic-info-scroll')
     const systemPromptLabel = getByText('System Prompt')
     const systemPromptSection = systemPromptLabel.closest('div') as HTMLElement
     const promptTextarea = getByPlaceholderText(
       "Enter the agent's system prompt..."
     ) as HTMLTextAreaElement
 
+    expect(basicInfoScroll.className).toContain('overflow-y-auto')
     expect(systemPromptSection.className).toContain('flex-1')
     expect(systemPromptSection.className).toContain('min-h-0')
     expect(promptTextarea.className).toContain('flex-1')
     expect(promptTextarea.className).toContain('min-h-0')
+
+    fireEvent.click(getByRole('button', { name: 'Available Variables' }))
+
+    expect(getByText('Templating engine: Nunjucks')).toBeDefined()
+    expect(basicInfoScroll.className).toContain('overflow-y-auto')
   })
 
   it('shows Save Changes when only the system prompt is edited in Basic Info', () => {

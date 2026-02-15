@@ -285,8 +285,8 @@ export function Agents() {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 min-h-0 overflow-hidden">
-        <div className="flex h-full min-h-0 flex-col gap-6">
+      <CardContent data-testid="create-agent-form-scroll" className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex min-h-full flex-col gap-6 pr-1">
           {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="new-agent-name">Name *</Label>
