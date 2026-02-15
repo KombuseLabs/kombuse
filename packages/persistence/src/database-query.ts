@@ -25,13 +25,16 @@ export interface DatabaseTableDescription {
   indexes: unknown[]
 }
 
+function trimSql(sql: string): string {
+  return sql.trim().replace(/;+$/, '')
+}
+
 /**
  * Add a LIMIT clause if the query doesn't already have one.
- * Intentionally conservative — if LIMIT appears anywhere in the SQL, we leave it alone.
  */
 export function ensureLimit(sql: string, limit: number = DEFAULT_QUERY_LIMIT): string {
-  const trimmed = sql.trim().replace(/;+$/, '')
-  if (/\bLIMIT\b/i.test(trimmed)) {
+  const trimmed = trimSql(sql)
+  if (/\bLIMIT\s+\d+(\s+OFFSET\s+\d+)?\s*$/i.test(trimmed)) {
     return trimmed
   }
   return `${trimmed} LIMIT ${limit}`
@@ -70,7 +73,8 @@ export function queryDatabaseReadOnly(
   limit?: number
 ): DatabaseQueryResult {
   const db = getDatabase()
-  const safeSql = ensureLimit(sql, normalizeLimit(limit))
+  const safeSql = trimSql(sql)
+  const normalizedLimit = normalizeLimit(limit)
 
   let stmt
   try {
@@ -86,7 +90,14 @@ export function queryDatabaseReadOnly(
   }
 
   try {
-    const rows = (params ? stmt.all(...params) : stmt.all()) as DatabaseRow[]
+    const rows: DatabaseRow[] = []
+    const iterator = (params ? stmt.iterate(...params) : stmt.iterate()) as Iterable<DatabaseRow>
+    for (const row of iterator) {
+      rows.push(row)
+      if (rows.length >= normalizedLimit) {
+        break
+      }
+    }
     return { rows, count: rows.length, sql: safeSql }
   } catch (err) {
     throw new Error(`Query execution error: ${(err as Error).message}`)

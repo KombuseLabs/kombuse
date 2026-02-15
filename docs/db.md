@@ -12,6 +12,56 @@ Kombuse uses SQLite for persistence, designed for a ticket system where both use
 6. **Extensible Agent System**: Agents extend profiles with configuration, triggers, and permissions stored as flexible JSON for easy iteration
 7. **Profile-Scoped Settings**: User and agent preferences can be stored as profile-level key-value settings
 
+## Database Explorer + Shared Query API
+
+Kombuse includes a project-scoped database explorer for internal debugging and development workflows.
+
+### UI and navigation
+
+- Route: `/projects/:projectId/database` (`apps/web/src/routes/database.tsx`)
+- Sidebar item is controlled by `sidebar.hidden.database` and is hidden by default (`apps/web/src/layouts/project-layout.tsx`)
+- Visibility can be changed from:
+  - Settings (`apps/web/src/routes/settings.tsx`)
+  - Command palette toggle commands (`apps/web/src/command-setup.tsx`)
+- Page capabilities: table selection, paging, sorting, and single-column text filtering
+
+### API surface
+
+Server endpoints (`apps/server/src/routes/database.ts`):
+
+- `GET /api/database/tables`
+  - Returns database tables/views for explorer and tooling UIs
+- `POST /api/database/query`
+  - Executes read-only SQL queries
+  - Validated by `databaseQuerySchema` (`apps/server/src/schemas/database.ts`)
+  - Supports positional parameters and optional client limit input
+
+### Read-only and query-limit enforcement
+
+Shared persistence helpers (`packages/persistence/src/database-query.ts`) enforce the safety model:
+
+- Query must compile and be read-only (`stmt.readonly`)
+- Write operations (`INSERT`, `UPDATE`, `DELETE`, DDL, etc.) are rejected
+- Returned rows are hard-capped (default: `100`, max: `500`) even if submitted SQL already includes a larger `LIMIT`
+
+### Shared architecture (no duplicated SQL safety logic)
+
+- `queryDatabaseReadOnly` and table helpers live in persistence (`packages/persistence/src/database-query.ts`)
+- MCP tools reuse the same helpers (`packages/mcp/src/tools/database.ts`)
+- HTTP routes reuse the same helpers (`apps/server/src/routes/database.ts`)
+
+This keeps SQL safety and limit behavior centralized so MCP and REST paths cannot diverge.
+
+### Shared contracts and hooks
+
+- Shared types in `@kombuse/types` (`packages/types/src/database.ts`)
+  - `DatabaseTablesResponse`
+  - `DatabaseQueryInput`
+  - `DatabaseQueryResponse`
+- UI data hooks in `@kombuse/ui` (`packages/ui/src/hooks/use-database.ts`)
+  - `useDatabaseTables`
+  - `useDatabaseQuery`
+
 ## Entity Relationships
 
 ```

@@ -34,7 +34,7 @@ export function registerDatabaseTools(server: McpServer): void {
     'query_db',
     {
       description:
-        'Execute a read-only SQL query against the database. Only SELECT and other read-only statements are allowed; write operations are rejected. A default LIMIT of 100 is added if no LIMIT clause is present.',
+        'Execute a read-only SQL query against the database. Only SELECT and other read-only statements are allowed; write operations are rejected. Results are capped at 100 rows by default (max 500).',
       inputSchema: {
         sql: z
           .string()

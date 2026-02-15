@@ -54,7 +54,7 @@ export function Settings() {
 
   const showEvents = eventsSetting?.setting_value !== 'true'
   const showPermissions = permissionsSetting?.setting_value !== 'true'
-  const showDatabase = databaseSetting?.setting_value !== 'true'
+  const showDatabase = databaseSetting?.setting_value === 'false'
   const defaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value)
   const codexMcpEnabled = codexMcpStatus?.enabled === true
 
