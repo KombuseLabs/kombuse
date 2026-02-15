@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  Card,
   ResizableCardHandle,
   ResizableCardPanel,
   ResizablePanelGroup,
@@ -240,9 +241,9 @@ export function Chats() {
 
             <ResizablePanel id="detail" defaultSize={50} minSize={25} className="min-h-0">
               <ResizableCardPanel side="detail">
-                <div className="flex flex-col h-full min-h-0">
+                <Card className="flex h-full min-h-0 flex-col overflow-hidden">
                   {chatDetailContent}
-                </div>
+                </Card>
               </ResizableCardPanel>
             </ResizablePanel>
           </ResizablePanelGroup>
