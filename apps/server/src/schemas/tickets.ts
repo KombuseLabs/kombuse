@@ -29,7 +29,7 @@ export const updateTicketSchema = z.object({
   body: z.string().optional(),
   triggers_enabled: z.boolean().optional(),
   status: z.enum(['open', 'closed', 'in_progress', 'blocked']).optional(),
-  priority: prioritySchema.optional(),
+  priority: prioritySchema.nullable().optional(),
   assignee_id: z.string().nullable().optional(),
   milestone_id: z.number().int().positive().nullable().optional(),
   updated_by_id: z.string().min(1).optional(),

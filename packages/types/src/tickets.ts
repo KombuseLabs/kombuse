@@ -126,7 +126,7 @@ export interface UpdateTicketInput {
   body?: string
   triggers_enabled?: boolean
   status?: TicketStatus
-  priority?: TicketPriority
+  priority?: TicketPriority | null
   assignee_id?: string | null
   milestone_id?: number | null
   updated_by_id?: string

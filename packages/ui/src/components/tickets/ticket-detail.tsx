@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
-import type { TicketStatus } from '@kombuse/types'
+import type { TicketStatus, TicketPriority } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Textarea } from '../../base/textarea'
 import { Switch } from '../../base/switch'
 import { Tabs, TabsList, TabsTrigger } from '../../base/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../base/select'
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,25 @@ function getPriorityLabel(priority: number | null | undefined): string {
   return priorityLabels[priority] ?? 'No priority'
 }
 
+function priorityToSelectValue(priority: number | null | undefined): string {
+  if (priority == null) return 'none'
+  return String(priority)
+}
+
+function selectValueToPriority(value: string): TicketPriority | null {
+  if (value === 'none') return null
+  return Number(value) as TicketPriority
+}
+
+const PRIORITY_OPTIONS = [
+  { value: 'none', label: 'No priority' },
+  { value: '0', label: 'Lowest' },
+  { value: '1', label: 'Low' },
+  { value: '2', label: 'Medium' },
+  { value: '3', label: 'High' },
+  { value: '4', label: 'Highest' },
+] as const
+
 const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
   { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
@@ -71,6 +91,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
   const [editTitle, setEditTitle] = useState('')
   const [editBody, setEditBody] = useState('')
   const [editStatus, setEditStatus] = useState<TicketStatus>('open')
+  const [editPriority, setEditPriority] = useState<string>('none')
   const editBodyRef = useRef<HTMLTextAreaElement>(null)
   const { textareaProps: autocompleteProps, AutocompletePortal } = useTextareaAutocomplete({
     value: editBody,
@@ -156,6 +177,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
     setEditTitle(ticket.title)
     setEditBody(ticket.body ?? '')
     setEditStatus(ticket.status)
+    setEditPriority(priorityToSelectValue(ticket.priority))
     setMode('edit')
   }
 
@@ -165,6 +187,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
       title: editTitle.trim(),
       body: editBody.trim() || undefined,
       status: editStatus,
+      priority: selectValueToPriority(editPriority),
     })
     if (hasFiles) {
       for (const file of stagedFiles) {
@@ -266,9 +289,21 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
                       ))}
                     </TabsList>
                   </Tabs>
-                  <span className="text-xs text-muted-foreground">
-                    Priority: {getPriorityLabel(ticket.priority)}
-                  </span>
+                  <Select
+                    value={editPriority}
+                    onValueChange={setEditPriority}
+                  >
+                    <SelectTrigger className="h-6 w-auto min-w-[7rem] gap-1 rounded-full border-0 px-2 text-xs shadow-none">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <Input

@@ -158,13 +158,49 @@ describe('TicketDetail priority display', () => {
     expect(screen.getByText('Priority: Highest')).toBeDefined()
   })
 
-  it('shows priority in edit mode', () => {
+  it('shows priority Select in edit mode with current value', () => {
     currentTicket = buildTicket({ priority: null })
     render(<TicketDetail isEditable />)
 
     enterEditMode()
 
-    expect(screen.getByText('Priority: No priority')).toBeDefined()
+    const combobox = screen.getByRole('combobox')
+    expect(combobox).toBeDefined()
+    expect(screen.getByText('No priority')).toBeDefined()
+  })
+})
+
+describe('TicketDetail priority editing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    currentTicket = buildTicket({ priority: 2 })
+  })
+
+  it('initializes Select with current numeric priority', () => {
+    render(<TicketDetail isEditable />)
+    enterEditMode()
+
+    expect(screen.getByText('Medium')).toBeDefined()
+  })
+
+  it('includes priority in save payload', async () => {
+    render(<TicketDetail isEditable />)
+    enterEditMode()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(updateCurrentTicket).toHaveBeenCalledWith(
+      expect.objectContaining({ priority: 2 })
+    )
+  })
+
+  it('does not call update when Cancel is clicked', () => {
+    render(<TicketDetail isEditable />)
+    enterEditMode()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(updateCurrentTicket).not.toHaveBeenCalled()
   })
 })
 
