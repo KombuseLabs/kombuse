@@ -29,7 +29,7 @@ Source of truth: `packages/services/src/session-state-machine.ts`.
 | `running` | — | `completed` | `failed` | `aborted` | — | `running` |
 | `completed` | — | — | — | — | `stopped` | `running` |
 | `failed` | — | — | — | — | — | `running` |
-| `aborted` | — | — | — | — | — | — |
+| `aborted` | — | — | — | — | — | `running` |
 | `stopped` | — | — | — | — | — | `running` |
 
 ### Mermaid State Diagram
@@ -51,8 +51,7 @@ stateDiagram-v2
 
     failed --> running: continue
     stopped --> running: continue
-
-    aborted --> [*]
+    aborted --> running: continue
 ```
 
 ### ASCII State Diagram
@@ -66,8 +65,8 @@ stateDiagram-v2
     |                   |  +------ continue ----+
     |                   +--fail--> [failed] --continue-------------------------+
     +------abort--------------------------------------------------> [aborted]
-
-[aborted] has no outbound transitions.
+                                                                        |
+                         +------------------ continue -------------------+
 ```
 
 ## Sequence: User-Initiated WebSocket Flow
