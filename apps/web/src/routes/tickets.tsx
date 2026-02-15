@@ -1042,7 +1042,7 @@ export function Tickets() {
             {chatSessionId && (
               <>
                 <ResizableHandle withHandle />
-                <ResizablePanel id="chat" defaultSize={40} minSize={25} className="min-h-0">
+                <ResizablePanel id="chat" defaultSize={40} minSize={25} className="min-h-0 border-t">
                   <div className="flex flex-col h-full min-h-0">
                     <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
                       <h3 className="text-sm font-medium">Session</h3>
