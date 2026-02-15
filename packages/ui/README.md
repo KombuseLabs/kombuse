@@ -90,9 +90,9 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@kombuse/u
 ```
 
 Props:
-- `ResizablePanelGroup`: `orientation` ("horizontal" | "vertical"), `defaultLayout`, `onLayoutChanged`, `className`
+- `ResizablePanelGroup`: `orientation` ("horizontal" | "vertical"), `defaultLayout`, `onLayoutChanged`, `className`, `resizeTargetMinimumSize` (defaults to `{ fine: 12, coarse: 24 }` for improved drag hit targets)
 - `ResizablePanel`: `id`, `defaultSize`, `minSize`, `maxSize`, `collapsible`, `collapsedSize`
-- `ResizableHandle`: `withHandle` (shows grip icon), `disabled`, `className`
+- `ResizableHandle`: `withHandle` (shows grip icon), `disabled`, `className`; supports `data-separator` interaction states (`inactive`, `hover`, `active`, `disabled`) with focus-visible ring styling
 
 ### Hooks
 
