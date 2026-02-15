@@ -1,10 +1,21 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BACKEND_TYPES } from '@kombuse/types'
+
+vi.mock('@kombuse/persistence', () => ({
+  profileSettingsRepository: {
+    get: vi.fn(() => null),
+  },
+}))
+
+import { profileSettingsRepository } from '@kombuse/persistence'
 import {
   normalizeModelPreference,
+  readUserDefaultMaxChainDepth,
   resolveBackendType,
   resolveConfiguredBackendType,
   resolveModelPreference,
+  AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+  DEFAULT_PREFERENCE_PROFILE_ID,
 } from '../services/session-preferences'
 
 describe('session-preferences backend resolution', () => {
@@ -84,5 +95,74 @@ describe('session-preferences model resolution', () => {
     })
     expect(claudeResolved.modelPreference).toBe('gpt-5-mini')
     expect(claudeResolved.appliedModel).toBeUndefined()
+  })
+})
+
+describe('readUserDefaultMaxChainDepth', () => {
+  const mockGet = profileSettingsRepository.get as ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockGet.mockReturnValue(null)
+  })
+
+  it('returns a valid integer within range', () => {
+    mockGet.mockReturnValue({ setting_value: '10' })
+    expect(readUserDefaultMaxChainDepth()).toBe(10)
+  })
+
+  it('returns boundary values (1 and 100)', () => {
+    mockGet.mockReturnValue({ setting_value: '1' })
+    expect(readUserDefaultMaxChainDepth()).toBe(1)
+
+    mockGet.mockReturnValue({ setting_value: '100' })
+    expect(readUserDefaultMaxChainDepth()).toBe(100)
+  })
+
+  it('returns undefined when no setting exists', () => {
+    mockGet.mockReturnValue(null)
+    expect(readUserDefaultMaxChainDepth()).toBeUndefined()
+  })
+
+  it('returns undefined when setting_value is empty', () => {
+    mockGet.mockReturnValue({ setting_value: '' })
+    expect(readUserDefaultMaxChainDepth()).toBeUndefined()
+  })
+
+  it('returns undefined for non-numeric strings', () => {
+    mockGet.mockReturnValue({ setting_value: 'abc' })
+    expect(readUserDefaultMaxChainDepth()).toBeUndefined()
+  })
+
+  it('returns undefined for out-of-range values', () => {
+    mockGet.mockReturnValue({ setting_value: '0' })
+    expect(readUserDefaultMaxChainDepth()).toBeUndefined()
+
+    mockGet.mockReturnValue({ setting_value: '-1' })
+    expect(readUserDefaultMaxChainDepth()).toBeUndefined()
+
+    mockGet.mockReturnValue({ setting_value: '101' })
+    expect(readUserDefaultMaxChainDepth()).toBeUndefined()
+  })
+
+  it('returns undefined for float values', () => {
+    mockGet.mockReturnValue({ setting_value: '3.5' })
+    expect(readUserDefaultMaxChainDepth()).toBeUndefined()
+  })
+
+  it('uses default profileId when none provided', () => {
+    readUserDefaultMaxChainDepth()
+    expect(mockGet).toHaveBeenCalledWith(
+      DEFAULT_PREFERENCE_PROFILE_ID,
+      AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+    )
+  })
+
+  it('uses custom profileId when provided', () => {
+    readUserDefaultMaxChainDepth('custom-profile')
+    expect(mockGet).toHaveBeenCalledWith(
+      'custom-profile',
+      AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+    )
   })
 })
