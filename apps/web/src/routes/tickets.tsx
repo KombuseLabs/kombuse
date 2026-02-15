@@ -220,9 +220,9 @@ export function Tickets() {
   const [overflowLabelSearch, setOverflowLabelSearch] = useState("");
   const [visibleLabelCount, setVisibleLabelCount] = useState(0);
   const labelsRowRef = useRef<HTMLDivElement>(null);
-  const labelMeasureMoreRef = useRef<HTMLButtonElement>(null);
-  const labelMeasureClearRef = useRef<HTMLButtonElement>(null);
-  const labelMeasureRefs = useRef(new Map<number, HTMLButtonElement>());
+  const labelMeasureMoreRef = useRef<HTMLSpanElement>(null);
+  const labelMeasureClearRef = useRef<HTMLSpanElement>(null);
+  const labelMeasureRefs = useRef(new Map<number, HTMLSpanElement>());
   const newTicketBodyRef = useRef<HTMLTextAreaElement>(null);
   const { textareaProps: newTicketAutocomplete, AutocompletePortal: NewTicketAutocomplete } = useTextareaAutocomplete({
     value: newTicketBody,
@@ -296,7 +296,7 @@ export function Tickets() {
     localStorage.setItem(TICKETS_PANEL_LAYOUT_KEY, JSON.stringify(layout));
   }, []);
 
-  const setLabelMeasureRef = useCallback((labelId: number, node: HTMLButtonElement | null) => {
+  const setLabelMeasureRef = useCallback((labelId: number, node: HTMLSpanElement | null) => {
     if (node) {
       labelMeasureRefs.current.set(labelId, node);
       return;
@@ -321,25 +321,30 @@ export function Tickets() {
       }
 
       const gap = 8;
-      const clearWidth = selectedLabelIds.length > 0
-        ? (labelMeasureClearRef.current?.offsetWidth ?? 0) + gap
-        : 0;
-      const moreWidth = (labelMeasureMoreRef.current?.offsetWidth ?? 0) + gap;
-      let consumedWidth = 0;
+      const hasSelectedLabels = selectedLabelIds.length > 0;
+      const clearWidth = hasSelectedLabels ? (labelMeasureClearRef.current?.offsetWidth ?? 0) : 0;
+      const moreWidth = labelMeasureMoreRef.current?.offsetWidth ?? 0;
+      const labelWidths = usageSortedLabels.map((label) => labelMeasureRefs.current.get(label.id)?.offsetWidth ?? 0);
+      const prefixLabelWidths: number[] = [0];
+
+      for (let index = 0; index < labelWidths.length; index += 1) {
+        prefixLabelWidths[index + 1] = prefixLabelWidths[index] + labelWidths[index];
+      }
+
       let nextVisibleCount = 0;
+      for (let candidateCount = usageSortedLabels.length; candidateCount >= 0; candidateCount -= 1) {
+        const hasOverflow = candidateCount < usageSortedLabels.length;
+        const renderedItemCount = candidateCount + (hasOverflow ? 1 : 0) + (hasSelectedLabels ? 1 : 0);
+        const totalGapWidth = gap * Math.max(0, renderedItemCount - 1);
+        const totalWidth = prefixLabelWidths[candidateCount]
+          + (hasOverflow ? moreWidth : 0)
+          + (hasSelectedLabels ? clearWidth : 0)
+          + totalGapWidth;
 
-      for (let index = 0; index < usageSortedLabels.length; index += 1) {
-        const label = usageSortedLabels[index];
-        const labelWidth = labelMeasureRefs.current.get(label.id)?.offsetWidth ?? 0;
-        const remainingLabels = usageSortedLabels.length - (index + 1);
-        const reservedWidth = clearWidth + (remainingLabels > 0 ? moreWidth : 0);
-
-        if (consumedWidth + labelWidth + reservedWidth > availableWidth) {
+        if (totalWidth <= availableWidth) {
+          nextVisibleCount = candidateCount;
           break;
         }
-
-        consumedWidth += labelWidth + gap;
-        nextVisibleCount += 1;
       }
 
       setVisibleLabelCount(nextVisibleCount);
@@ -628,6 +633,7 @@ export function Tickets() {
                     <span className="text-sm text-muted-foreground">Labels</span>
                     <div
                       ref={labelsRowRef}
+                      data-testid="ticket-label-filters-row"
                       className="flex min-w-0 items-center gap-2 overflow-hidden"
                     >
                       {visibleLabels.map((label) => (
@@ -705,32 +711,31 @@ export function Tickets() {
                       )}
                     </div>
                     <div
+                      data-testid="ticket-label-filters-measure"
                       aria-hidden
                       className="pointer-events-none absolute -left-[9999px] top-0 opacity-0"
                     >
                       <div className="flex items-center gap-2">
-                        <button
+                        <span
                           ref={labelMeasureMoreRef}
-                          type="button"
-                          className="h-8 rounded-md border px-3 text-xs"
+                          className="inline-flex h-8 items-center rounded-md border px-3 text-xs"
                         >
                           More (00)
-                        </button>
-                        <button
+                        </span>
+                        <span
                           ref={labelMeasureClearRef}
-                          type="button"
                           className="text-xs underline"
                         >
                           Clear
-                        </button>
+                        </span>
                         {usageSortedLabels.map((label) => (
-                          <button
+                          <span
                             key={`label-measure-${label.id}`}
-                            type="button"
                             ref={(node) => setLabelMeasureRef(label.id, node)}
+                            className="inline-flex"
                           >
                             <LabelBadge label={label} size="sm" />
-                          </button>
+                          </span>
                         ))}
                       </div>
                     </div>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, waitFor } from '@testing-library/react'
+import { fireEvent, render, waitFor, within } from '@testing-library/react'
 import { useEffect } from 'react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 
@@ -205,6 +205,37 @@ function getLastFilteredTicketQuery() {
   return null
 }
 
+function mockLabelFilterMeasurements(config: {
+  rowWidth: number
+  labelWidths: Record<string, number>
+  moreWidth: number
+  clearWidth: number
+}) {
+  const clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function clientWidth() {
+    const element = this as HTMLElement
+    if (element.getAttribute('data-testid') === 'ticket-label-filters-row') {
+      return config.rowWidth
+    }
+    return 0
+  })
+
+  const offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function offsetWidth() {
+    const text = ((this as HTMLElement).textContent ?? '').trim()
+    if (text === 'More (00)' || /^More \(/.test(text)) {
+      return config.moreWidth
+    }
+    if (text === 'Clear') {
+      return config.clearWidth
+    }
+    return config.labelWidths[text] ?? 0
+  })
+
+  return () => {
+    clientWidthSpy.mockRestore()
+    offsetWidthSpy.mockRestore()
+  }
+}
+
 beforeEach(() => {
   mockUseTickets.mockReset()
   mockSetCurrentTicket.mockReset()
@@ -218,6 +249,43 @@ beforeEach(() => {
 })
 
 describe('Tickets label filters', () => {
+  it('shows all labels that fit without rendering an overflow trigger', async () => {
+    const restoreMeasurements = mockLabelFilterMeasurements({
+      rowWidth: 196,
+      labelWidths: {
+        bug: 60,
+        backend: 60,
+        ui: 60,
+      },
+      moreWidth: 80,
+      clearWidth: 40,
+    })
+
+    try {
+      const view = renderTicketsRoute('/projects/1/tickets', () => {})
+
+      await waitFor(() => {
+        const labelsRow = view.getByTestId('ticket-label-filters-row')
+        expect(within(labelsRow).queryByRole('button', { name: /More \(/i })).toBeNull()
+      })
+
+      const labelsRow = view.getByTestId('ticket-label-filters-row')
+      expect(within(labelsRow).getByRole('button', { name: 'bug' })).toBeDefined()
+      expect(within(labelsRow).getByRole('button', { name: 'backend' })).toBeDefined()
+      expect(within(labelsRow).getByRole('button', { name: 'ui' })).toBeDefined()
+    } finally {
+      restoreMeasurements()
+    }
+  })
+
+  it('renders hidden measurement controls as non-focusable elements', () => {
+    const view = renderTicketsRoute('/projects/1/tickets', () => {})
+
+    const measureRoot = view.getByTestId('ticket-label-filters-measure')
+    expect(measureRoot.querySelector('button')).toBeNull()
+    expect(view.getByText('More (00)').closest('button')).toBeNull()
+  })
+
   it('rehydrates label ID selections from URL and passes IDs to ticket query filters', () => {
     const locations: string[] = []
     renderTicketsRoute('/projects/1/tickets?labels=2,1', (location) => locations.push(location))
