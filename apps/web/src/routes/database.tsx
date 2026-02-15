@@ -86,6 +86,7 @@ export function DatabasePage() {
     return {
       sql: `SELECT * FROM ${quoteIdentifier(selectedTable)}${whereClause}${orderByClause} LIMIT ${limit} OFFSET ${offset}`,
       params: hasActiveFilter ? [`%${normalizedFilterValue}%`] : undefined,
+      limit,
     }
   }, [
     selectedTable,

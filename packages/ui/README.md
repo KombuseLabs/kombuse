@@ -40,6 +40,7 @@ src/
 │   ├── use-file-staging.ts     - File staging with validation, previews, drag-and-drop
 │   ├── use-scroll-to-bottom.ts - Auto-scroll and floating scroll button hook
 │   ├── use-claude-code.ts     - Claude Code project scanner hooks
+│   ├── use-database.ts        - Database table/query hooks
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
@@ -53,7 +54,7 @@ src/
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
-    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models)
+    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database)
     ├── ticket-utils.ts        - Shared ticket display utilities (statusColors)
     └── utils.ts               - cn() class merging
 ```
@@ -1253,6 +1254,29 @@ const { data: permissions, isLoading } = usePermissions('project-id', {
   offset: 0,
 })
 ```
+
+### Database Hooks
+
+```typescript
+import { useDatabaseTables, useDatabaseQuery } from '@kombuse/ui/hooks'
+
+// Fetch all database tables and views
+const { data: tablesResponse, isLoading, refetch } = useDatabaseTables()
+// tablesResponse?.tables => DatabaseTableInfo[] (name, type)
+
+// Execute a read-only database query
+const { data: queryResult } = useDatabaseQuery({
+  sql: 'SELECT * FROM tickets LIMIT 100',
+  params: ['%search%'],  // Optional positional bind parameters
+  limit: 100,            // Optional row limit (default: 100, max: 500)
+})
+// queryResult?.rows => DatabaseRow[]
+// queryResult?.count => number
+```
+
+- `useDatabaseTables`: Fetches the list of tables and views
+- `useDatabaseQuery`: Executes a read-only SQL query; disabled when `input?.sql` is falsy
+  - Backend enforces max 500 rows and read-only validation
 
 ### Label Hooks
 
