@@ -19,6 +19,7 @@ import {
 } from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
+import { Plus } from "lucide-react";
 import { BACKEND_TYPES, type BackendType } from "@kombuse/types";
 
 const USER_PROFILE_ID = "user-1";
@@ -135,7 +136,10 @@ export function Chats() {
       header={
         <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
           <h1 className="text-2xl font-bold">Sessions</h1>
-          <Button onClick={handleNewChat}>New Chat</Button>
+          <Button onClick={handleNewChat}>
+            <Plus className="size-4" />
+            New Chat
+          </Button>
         </div>
       }
       selectedSessionId={selectedSessionId}
