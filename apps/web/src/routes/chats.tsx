@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  Button,
   Card,
   ResizableCardHandle,
   ResizableCardPanel,
@@ -132,15 +133,9 @@ export function Chats() {
       className="h-full min-h-0"
       variant="card"
       header={
-        <div className="flex items-center justify-between p-4">
-          <h2 className="font-semibold">Sessions</h2>
-          <button
-            type="button"
-            onClick={handleNewChat}
-            className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            New Chat
-          </button>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
+          <h1 className="text-2xl font-bold">Sessions</h1>
+          <Button onClick={handleNewChat}>New Chat</Button>
         </div>
       }
       selectedSessionId={selectedSessionId}
@@ -159,7 +154,7 @@ export function Chats() {
   const chatDetailContent = (
     <>
       <div className={cn(
-        "flex items-center gap-4 mb-4 shrink-0 p-4 border-b"
+        "flex items-center gap-4 shrink-0 p-4 border-b"
       )}>
         <h1 className="text-2xl font-bold">Chats</h1>
         <div className="flex items-center gap-2">
