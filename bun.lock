@@ -71,7 +71,7 @@
         "@kombuse/types": "*",
         "@modelcontextprotocol/sdk": "^1.18.1",
         "fastify": "^5.7.4",
-        "zod": "^3.24.1",
+        "zod": "^4.0.0",
       },
       "devDependencies": {
         "@repo/eslint-config": "*",
@@ -120,7 +120,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@kombuse/types": "*",
-        "zod": "^3.24.1",
+        "zod": "^4.0.0",
       },
       "devDependencies": {
         "@kombuse/persistence": "*",
@@ -173,7 +173,7 @@
         "@kombuse/services": "*",
         "@kombuse/types": "*",
         "@modelcontextprotocol/sdk": "^1.18.1",
-        "zod": "^3.24.5",
+        "zod": "^4.0.0",
       },
       "devDependencies": {
         "@repo/eslint-config": "*",
@@ -220,6 +220,9 @@
     "packages/types": {
       "name": "@kombuse/types",
       "version": "0.1.0",
+      "dependencies": {
+        "zod": "^4.0.0",
+      },
       "devDependencies": {
         "@repo/eslint-config": "*",
         "@repo/typescript-config": "*",
@@ -2422,7 +2425,7 @@
 
     "yocto-queue": ["yocto-queue@0.1.0", "", {}, "sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q=="],
 
-    "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+    "zod": ["zod@4.3.6", "", {}, "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg=="],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.1", "", { "peerDependencies": { "zod": "^3.25 || ^4" } }, "sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA=="],
 
@@ -2471,6 +2474,8 @@
     "@malept/flatpak-bundler/fs-extra": ["fs-extra@9.1.0", "", { "dependencies": { "at-least-node": "^1.0.0", "graceful-fs": "^4.2.0", "jsonfile": "^6.0.1", "universalify": "^2.0.0" } }, "sha512-hcg3ZmepS30/7BSFqRvoo3DOMQu7IjqxO5nCDt+zM9XWjb33Wg7ziNT+Qvqbuc3+gWpzO02JubVyk2G4Zvo1OQ=="],
 
     "@modelcontextprotocol/sdk/ajv": ["ajv@8.17.1", "", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g=="],
+
+    "@modelcontextprotocol/sdk/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@npmcli/agent/lru-cache": ["lru-cache@10.4.3", "", {}, "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="],
 

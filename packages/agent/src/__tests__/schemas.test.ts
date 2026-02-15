@@ -69,7 +69,7 @@ describe('claudeContentBlockSchema', () => {
     expect(result.success, 'tool_result with array content should be valid').toBe(true)
   })
 
-  it('allows extra properties via passthrough', () => {
+  it('allows extra properties via loose object schemas', () => {
     const result = claudeContentBlockSchema.safeParse({
       type: 'text',
       text: 'hello',

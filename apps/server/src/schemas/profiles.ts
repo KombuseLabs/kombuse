@@ -4,7 +4,7 @@ export const createProfileSchema = z.object({
   id: z.string().optional(),
   type: z.enum(['user', 'agent']),
   name: z.string().min(1),
-  email: z.string().email().optional(),
+  email: z.email().optional(),
   description: z.string().optional(),
   avatar_url: z.string().optional(), // Can be URL or icon name
   external_source: z.string().optional(),
@@ -13,7 +13,7 @@ export const createProfileSchema = z.object({
 
 export const updateProfileSchema = z.object({
   name: z.string().min(1).optional(),
-  email: z.string().email().optional(),
+  email: z.email().optional(),
   description: z.string().optional(),
   avatar_url: z.string().optional(), // Can be URL or icon name
   is_active: z.boolean().optional(),

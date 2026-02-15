@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { z } from 'zod'
+import { z } from 'zod/v3'
 
 export interface ApiRouteInfo {
   method: string
@@ -36,7 +36,13 @@ export function registerApiTools(
   injectable: InjectableServer,
   routes: ApiRouteInfo[]
 ): void {
-  server.registerTool(
+  const registerTool = (server as unknown as { registerTool: (...args: unknown[]) => unknown }).registerTool.bind(server) as (
+    name: string,
+    config: Record<string, unknown>,
+    handler: (args: any) => Promise<any>
+  ) => void
+
+  registerTool(
     'list_api_endpoints',
     {
       description:
@@ -60,7 +66,7 @@ export function registerApiTools(
     }
   )
 
-  server.registerTool(
+  registerTool(
     'call_api',
     {
       description:
@@ -73,7 +79,7 @@ export function registerApiTools(
             'API path including /api prefix, e.g. "/api/tickets" or "/api/projects/1"'
           ),
         query: z
-          .record(z.string())
+          .record(z.string(), z.string())
           .optional()
           .describe(
             'Optional query parameters as key-value pairs, e.g. {"status": "open", "limit": "10"}'

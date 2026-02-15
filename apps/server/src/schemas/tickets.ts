@@ -21,7 +21,7 @@ export const createTicketSchema = z.object({
   label_ids: z.array(z.coerce.number().int().positive()).optional(),
   external_source: z.string().optional(),
   external_id: z.string().optional(),
-  external_url: z.string().url().optional(),
+  external_url: z.url().optional(),
 })
 
 export const updateTicketSchema = z.object({
@@ -35,7 +35,7 @@ export const updateTicketSchema = z.object({
   updated_by_id: z.string().min(1).optional(),
   external_source: z.string().optional(),
   external_id: z.string().optional(),
-  external_url: z.string().url().optional(),
+  external_url: z.url().optional(),
 })
 
 export const claimTicketSchema = z.object({

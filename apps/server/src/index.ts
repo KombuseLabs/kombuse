@@ -43,6 +43,7 @@ import {
   cleanupOrphanedSessions,
   stopAllActiveBackends,
 } from "./services/agent-execution-service";
+import { createResponseValidationHook } from "./schemas/response-validation";
 
 // Re-export for desktop shell integration
 export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
@@ -86,6 +87,8 @@ export async function createServer({ port, db }: ServerOptions) {
   const fastify = Fastify({
     logger: false,
   });
+
+  fastify.addHook("preSerialization", createResponseValidationHook());
 
   // Enable CORS for web app
   // Note: app:// protocol sends null origin (opaque origin)

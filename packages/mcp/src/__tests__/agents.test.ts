@@ -148,6 +148,26 @@ describe('create_agent', () => {
     expect(data.is_enabled).toBe(false)
   })
 
+  it('should accept config.backend_type on create_agent', async () => {
+    createAgentProfile('backend-agent', 'Backend Agent')
+
+    const result = await client.callTool({
+      name: 'create_agent',
+      arguments: {
+        id: 'backend-agent',
+        system_prompt: 'Backend-aware agent',
+        config: {
+          backend_type: 'codex',
+          model: 'gpt-4.1',
+        },
+      },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as Agent
+    expect(data.config.backend_type).toBe('codex')
+  })
+
   it('should auto-create profile when it does not exist', async () => {
     const result = await client.callTool({
       name: 'create_agent',
@@ -242,6 +262,25 @@ describe('update_agent', () => {
     expect(result.isError).toBeFalsy()
     const data = parseContent(result) as Agent
     expect(data.permissions).toEqual(newPermissions)
+  })
+
+  it('should accept config.backend_type on update_agent', async () => {
+    createAgentProfile('backend-update-agent', 'Backend Update Agent')
+    agentsRepository.create({ id: 'backend-update-agent', system_prompt: 'Prompt' })
+
+    const result = await client.callTool({
+      name: 'update_agent',
+      arguments: {
+        agent_id: 'backend-update-agent',
+        config: {
+          backend_type: 'claude-code',
+        },
+      },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as Agent
+    expect(data.config.backend_type).toBe('claude-code')
   })
 
   it('should return error when agent does not exist', async () => {

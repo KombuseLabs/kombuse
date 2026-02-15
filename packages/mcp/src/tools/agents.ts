@@ -1,8 +1,21 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { agentsRepository, agentInvocationsRepository, eventsRepository } from '@kombuse/persistence'
-import type { Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Event } from '@kombuse/types'
+import type {
+  Agent,
+  AgentInvocation,
+  CreateAgentInput,
+  PermissionCheckRequest,
+  PermissionCheckResult,
+  PermissionContext,
+  Event,
+  UpdateAgentInput,
+} from '@kombuse/types'
+import {
+  createAgentInputSchema,
+  updateAgentInputSchema,
+} from '@kombuse/types/schemas'
 import { agentService } from '@kombuse/services'
-import { z } from 'zod'
+import { z } from 'zod/v3'
 
 function toOptionalNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -119,50 +132,41 @@ function permissionDeniedResponse(reason: string) {
   }
 }
 
-// Permission schemas (inline — same as apps/server/src/schemas/agents.ts but for MCP input)
-const resourcePermissionSchema = z.object({
-  type: z.literal('resource'),
-  resource: z.string().min(1),
-  actions: z.array(z.enum(['read', 'create', 'update', 'delete', '*'])).min(1),
-  scope: z.enum(['invocation', 'project', 'global']),
-  filter: z.string().optional(),
-})
+function validationErrorResponse(issues: unknown) {
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({ error: 'Invalid input', issues }),
+      },
+    ],
+    isError: true,
+  }
+}
 
-const toolPermissionSchema = z.object({
-  type: z.literal('tool'),
-  tool: z.string().min(1),
-  scope: z.enum(['invocation', 'project', 'global']),
-})
+type SharedParseResult = {
+  success: boolean
+  data?: unknown
+  error?: { issues: unknown }
+}
 
-const permissionSchema = z.discriminatedUnion('type', [
-  resourcePermissionSchema,
-  toolPermissionSchema,
-])
-
-const agentConfigSchema = z
-  .object({
-    model: z.string().optional(),
-    max_tokens: z.number().int().positive().optional(),
-    temperature: z.number().min(0).max(1).optional(),
-    anthropic: z.object({
-      thinking: z.boolean().optional(),
-      thinking_budget: z.number().int().positive().optional(),
-    }).optional(),
-    openai: z.object({
-      response_format: z.enum(['json', 'text']).optional(),
-    }).optional(),
-    retry_on_failure: z.boolean().optional(),
-    max_retries: z.number().int().nonnegative().optional(),
-    timeout_ms: z.number().int().positive().optional(),
-  })
-  .passthrough()
+function safeParseShared(schema: unknown, input: unknown): SharedParseResult {
+  const safeParse = (schema as { safeParse: (value: unknown) => unknown }).safeParse
+  return safeParse(input) as SharedParseResult
+}
 
 /**
  * Register agent management MCP tools
  */
 export function registerAgentTools(server: McpServer): void {
+  const registerTool = (server as unknown as { registerTool: (...args: unknown[]) => unknown }).registerTool.bind(server) as (
+    name: string,
+    config: Record<string, unknown>,
+    handler: (args: any) => Promise<any>
+  ) => void
+
   // Tool 1: list_agents
-  server.registerTool(
+  registerTool(
     'list_agents',
     {
       description:
@@ -206,7 +210,7 @@ export function registerAgentTools(server: McpServer): void {
   )
 
   // Tool 2: create_agent
-  server.registerTool(
+  registerTool(
     'create_agent',
     {
       description:
@@ -221,10 +225,11 @@ export function registerAgentTools(server: McpServer): void {
           .min(1)
           .describe('The system prompt that defines the agent\'s behavior'),
         permissions: z
-          .array(permissionSchema)
+          .array(z.unknown())
           .optional()
           .describe('Array of permission objects (resource or tool permissions)'),
-        config: agentConfigSchema
+        config: z
+          .record(z.string(), z.unknown())
           .optional()
           .describe('Agent configuration (model, max_tokens, temperature, provider settings, etc.)'),
         is_enabled: z
@@ -238,6 +243,18 @@ export function registerAgentTools(server: McpServer): void {
       },
     },
     async ({ id, system_prompt, permissions, config, is_enabled, kombuse_session_id }) => {
+      const sharedParse = safeParseShared(createAgentInputSchema, {
+        id,
+        system_prompt,
+        permissions,
+        config,
+        is_enabled,
+      })
+      if (!sharedParse.success) {
+        return validationErrorResponse(sharedParse.error?.issues ?? 'Invalid input')
+      }
+
+      const parsedInput = sharedParse.data as CreateAgentInput
       const agentContext = resolveAgentContext(kombuse_session_id)
       if (agentContext) {
         const result = checkAgentPermission(agentContext, {
@@ -251,13 +268,7 @@ export function registerAgentTools(server: McpServer): void {
       }
 
       try {
-        const agent = agentService.createAgent({
-          id,
-          system_prompt,
-          permissions,
-          config,
-          is_enabled,
-        })
+        const agent = agentService.createAgent(parsedInput)
 
         return {
           content: [
@@ -283,7 +294,7 @@ export function registerAgentTools(server: McpServer): void {
   )
 
   // Tool 3: update_agent
-  server.registerTool(
+  registerTool(
     'update_agent',
     {
       description:
@@ -299,10 +310,11 @@ export function registerAgentTools(server: McpServer): void {
           .optional()
           .describe('New system prompt for the agent'),
         permissions: z
-          .array(permissionSchema)
+          .array(z.unknown())
           .optional()
           .describe('New permissions array (replaces existing permissions)'),
-        config: agentConfigSchema
+        config: z
+          .record(z.string(), z.unknown())
           .optional()
           .describe('New agent configuration (replaces existing config)'),
         is_enabled: z
@@ -316,6 +328,17 @@ export function registerAgentTools(server: McpServer): void {
       },
     },
     async ({ agent_id, system_prompt, permissions, config, is_enabled, kombuse_session_id }) => {
+      const sharedParse = safeParseShared(updateAgentInputSchema, {
+        system_prompt,
+        permissions,
+        config,
+        is_enabled,
+      })
+      if (!sharedParse.success) {
+        return validationErrorResponse(sharedParse.error?.issues ?? 'Invalid input')
+      }
+
+      const parsedInput = sharedParse.data as UpdateAgentInput
       const agentContext = resolveAgentContext(kombuse_session_id)
       if (agentContext) {
         const result = checkAgentPermission(agentContext, {
@@ -330,12 +353,7 @@ export function registerAgentTools(server: McpServer): void {
       }
 
       try {
-        const agent = agentService.updateAgent(agent_id, {
-          system_prompt,
-          permissions,
-          config,
-          is_enabled,
-        })
+        const agent = agentService.updateAgent(agent_id, parsedInput)
 
         return {
           content: [

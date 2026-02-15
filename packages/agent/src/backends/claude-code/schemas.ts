@@ -7,32 +7,35 @@
  */
 import { z } from 'zod'
 
+const looseObject = <Shape extends z.ZodRawShape>(shape: Shape) =>
+  z.object(shape).catchall(z.unknown())
+
 // =============================================================================
 // Content Blocks
 // =============================================================================
 
-const textBlockSchema = z.object({
+const textBlockSchema = looseObject({
   type: z.literal('text'),
   text: z.string(),
-}).passthrough()
+})
 
-const thinkingBlockSchema = z.object({
+const thinkingBlockSchema = looseObject({
   type: z.literal('thinking'),
   thinking: z.string(),
-}).passthrough()
+})
 
-const toolUseBlockSchema = z.object({
+const toolUseBlockSchema = looseObject({
   type: z.literal('tool_use'),
   id: z.string(),
   name: z.string(),
-  input: z.record(z.unknown()),
-}).passthrough()
+  input: z.record(z.string(), z.unknown()),
+})
 
-const toolResultBlockSchema = z.object({
+const toolResultBlockSchema = looseObject({
   type: z.literal('tool_result'),
   tool_use_id: z.string(),
   content: z.union([z.string(), z.array(z.unknown())]),
-}).passthrough()
+})
 
 export const claudeContentBlockSchema = z.discriminatedUnion('type', [
   textBlockSchema,
@@ -62,7 +65,8 @@ const jsonlMetadataSchema = z.object({
 // SDK Message Types (also present in JSONL files)
 // =============================================================================
 
-export const claudeSystemMessageSchema = jsonlMetadataSchema.extend({
+export const claudeSystemMessageSchema = looseObject({
+  ...jsonlMetadataSchema.shape,
   type: z.literal('system'),
   subtype: z.string(),
   session_id: z.string().optional(),
@@ -76,31 +80,34 @@ export const claudeSystemMessageSchema = jsonlMetadataSchema.extend({
   apiKeySource: z.string().optional(),
   slash_commands: z.array(z.string()).optional(),
   output_style: z.string().optional(),
-}).passthrough()
+})
 
-export const claudeAssistantMessageSchema = jsonlMetadataSchema.extend({
+export const claudeAssistantMessageSchema = looseObject({
+  ...jsonlMetadataSchema.shape,
   type: z.literal('assistant'),
-  message: z.object({
+  message: looseObject({
     role: z.literal('assistant'),
     content: z.array(claudeContentBlockSchema),
-  }).passthrough(),
+  }),
   requestId: z.string().optional(),
-}).passthrough()
+})
 
-export const claudeUserMessageSchema = jsonlMetadataSchema.extend({
+export const claudeUserMessageSchema = looseObject({
+  ...jsonlMetadataSchema.shape,
   type: z.literal('user'),
-  message: z.object({
+  message: looseObject({
     role: z.literal('user'),
     content: z.union([z.array(z.unknown()), z.unknown()]),
-  }).passthrough(),
+  }),
   permissionMode: z.string().optional(),
   isMeta: z.boolean().optional(),
   toolUseResult: z.unknown().optional(),
   todos: z.unknown().optional(),
   sourceToolAssistantUUID: z.string().optional(),
-}).passthrough()
+})
 
-export const claudeResultSuccessSchema = jsonlMetadataSchema.extend({
+export const claudeResultSuccessSchema = looseObject({
+  ...jsonlMetadataSchema.shape,
   type: z.literal('result'),
   subtype: z.literal('success'),
   session_id: z.string(),
@@ -110,13 +117,14 @@ export const claudeResultSuccessSchema = jsonlMetadataSchema.extend({
   num_turns: z.number(),
   result: z.string(),
   total_cost_usd: z.number(),
-  usage: z.object({
+  usage: looseObject({
     input_tokens: z.number(),
     output_tokens: z.number(),
-  }).passthrough(),
-}).passthrough()
+  }),
+})
 
-export const claudeResultErrorSchema = jsonlMetadataSchema.extend({
+export const claudeResultErrorSchema = looseObject({
+  ...jsonlMetadataSchema.shape,
   type: z.literal('result'),
   subtype: z.enum([
     'error_max_turns',
@@ -131,43 +139,44 @@ export const claudeResultErrorSchema = jsonlMetadataSchema.extend({
   num_turns: z.number(),
   total_cost_usd: z.number(),
   errors: z.array(z.string()),
-}).passthrough()
+})
 
-export const claudeControlRequestSchema = z.object({
+export const claudeControlRequestSchema = looseObject({
   type: z.literal('control_request'),
   request_id: z.string(),
-  request: z.object({
+  request: looseObject({
     subtype: z.literal('can_use_tool'),
     tool_name: z.string(),
     tool_use_id: z.string(),
-    input: z.record(z.unknown()),
+    input: z.record(z.string(), z.unknown()),
   }),
-}).passthrough()
+})
 
 // =============================================================================
 // JSONL-only types (not in SDK stream-json output)
 // =============================================================================
 
-export const claudeProgressMessageSchema = jsonlMetadataSchema.extend({
+export const claudeProgressMessageSchema = looseObject({
+  ...jsonlMetadataSchema.shape,
   type: z.literal('progress'),
   data: z.unknown(),
   toolUseID: z.string().optional(),
   parentToolUseID: z.string().optional(),
-}).passthrough()
+})
 
-export const claudeQueueOperationSchema = z.object({
+export const claudeQueueOperationSchema = looseObject({
   type: z.literal('queue-operation'),
   operation: z.string(),
   timestamp: z.string(),
   sessionId: z.string(),
-}).passthrough()
+})
 
-export const claudeFileHistorySnapshotSchema = z.object({
+export const claudeFileHistorySnapshotSchema = looseObject({
   type: z.literal('file-history-snapshot'),
   messageId: z.string(),
   snapshot: z.unknown(),
   isSnapshotUpdate: z.boolean().optional(),
-}).passthrough()
+})
 
 // =============================================================================
 // Top-level discriminated union
@@ -191,11 +200,13 @@ export const claudeResultSchema = z.union([
   claudeResultErrorSchema,
 ])
 
+type ClaudeResult = z.infer<typeof claudeResultSchema>
+
 /**
  * Validate a single JSONL item. Handles both the discriminated union types
  * and result types which share the same type discriminator.
  */
-export function validateJsonlItem(item: unknown): z.SafeParseReturnType<unknown, unknown> {
+export function validateJsonlItem(item: unknown): z.ZodSafeParseResult<ClaudeJsonlItem | ClaudeResult> {
   if (typeof item === 'object' && item !== null && 'type' in item) {
     if ((item as Record<string, unknown>).type === 'result') {
       return claudeResultSchema.safeParse(item)

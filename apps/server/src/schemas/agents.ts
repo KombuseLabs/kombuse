@@ -1,57 +1,5 @@
 import { z } from 'zod'
-import { BACKEND_TYPES } from '@kombuse/types'
-
-// Permission schemas
-const resourcePermissionSchema = z.object({
-  type: z.literal('resource'),
-  resource: z.string().min(1),
-  actions: z
-    .array(z.enum(['read', 'create', 'update', 'delete', '*']))
-    .min(1),
-  scope: z.enum(['invocation', 'project', 'global']),
-  filter: z.string().optional(),
-})
-
-const toolPermissionSchema = z.object({
-  type: z.literal('tool'),
-  tool: z.string().min(1),
-  scope: z.enum(['invocation', 'project', 'global']),
-})
-
-const permissionSchema = z.discriminatedUnion('type', [
-  resourcePermissionSchema,
-  toolPermissionSchema,
-])
-
-// Agent config schema
-const anthropicConfigSchema = z.object({
-  thinking: z.boolean().optional(),
-  thinking_budget: z.number().int().positive().optional(),
-})
-
-const openaiConfigSchema = z.object({
-  response_format: z.enum(['json', 'text']).optional(),
-})
-
-const agentConfigSchema = z
-  .object({
-    backend_type: z
-      .enum([
-        BACKEND_TYPES.CLAUDE_CODE,
-        BACKEND_TYPES.CODEX,
-        BACKEND_TYPES.MOCK,
-      ])
-      .optional(),
-    model: z.string().optional(),
-    max_tokens: z.number().int().positive().optional(),
-    temperature: z.number().min(0).max(1).optional(),
-    anthropic: anthropicConfigSchema.optional(),
-    openai: openaiConfigSchema.optional(),
-    retry_on_failure: z.boolean().optional(),
-    max_retries: z.number().int().nonnegative().optional(),
-    timeout_ms: z.number().int().positive().optional(),
-  })
-  .passthrough() // Allow additional custom settings
+import { permissionSchema, agentConfigSchema } from '@kombuse/types/schemas'
 
 // Agent schemas
 export const createAgentSchema = z.object({
@@ -80,7 +28,7 @@ export const agentFiltersSchema = z.object({
 export const createTriggerSchema = z.object({
   event_type: z.string().min(1),
   project_id: z.string().optional(),
-  conditions: z.record(z.unknown()).optional(),
+  conditions: z.record(z.string(), z.unknown()).optional(),
   is_enabled: z.boolean().optional(),
   priority: z.coerce.number().int().nonnegative().optional(),
 })
@@ -88,7 +36,7 @@ export const createTriggerSchema = z.object({
 export const updateTriggerSchema = z.object({
   event_type: z.string().min(1).optional(),
   project_id: z.string().nullable().optional(),
-  conditions: z.record(z.unknown()).nullable().optional(),
+  conditions: z.record(z.string(), z.unknown()).nullable().optional(),
   is_enabled: z.boolean().optional(),
   priority: z.coerce.number().int().nonnegative().optional(),
 })

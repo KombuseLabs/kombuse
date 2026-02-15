@@ -8,6 +8,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./schemas": {
+      "types": "./src/schemas/index.ts",
+      "default": "./src/schemas/index.ts"
+    },
     "./agent": {
       "types": "./src/agent.ts",
       "default": "./src/agent.ts"
@@ -21,6 +25,9 @@
     "lint": "eslint --max-warnings 0",
     "check-types": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

@@ -7,7 +7,7 @@ export const createEventSchema = z.object({
   comment_id: z.coerce.number().int().positive().optional(),
   actor_id: z.string().optional(),
   actor_type: z.enum(['user', 'agent', 'system']),
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
 })
 
 export const eventFiltersSchema = z.object({

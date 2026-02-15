@@ -4,7 +4,7 @@ import {
   listDatabaseTables,
   queryDatabaseReadOnly,
 } from '@kombuse/persistence'
-import { z } from 'zod'
+import { z } from 'zod/v3'
 
 function errorResponse(message: string) {
   return {
@@ -24,7 +24,13 @@ function successResponse(data: unknown) {
  * These tools provide raw read-only SQL access for debugging and exploration.
  */
 export function registerDatabaseTools(server: McpServer): void {
-  server.registerTool(
+  const registerTool = (server as unknown as { registerTool: (...args: unknown[]) => unknown }).registerTool.bind(server) as (
+    name: string,
+    config: Record<string, unknown>,
+    handler: (args: any) => Promise<any>
+  ) => void
+
+  registerTool(
     'query_db',
     {
       description:
@@ -49,7 +55,7 @@ export function registerDatabaseTools(server: McpServer): void {
     }
   )
 
-  server.registerTool(
+  registerTool(
     'list_tables',
     {
       description:
@@ -61,7 +67,7 @@ export function registerDatabaseTools(server: McpServer): void {
     }
   )
 
-  server.registerTool(
+  registerTool(
     'describe_table',
     {
       description:

@@ -3,7 +3,7 @@ import { ticketsRepository, projectsRepository, commentsRepository, attachmentsR
 import type { Ticket, Project, Label, UpdateTicketInput, Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Attachment, CommentWithAuthor, CommentFilters, Event } from '@kombuse/types'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import { agentService, fileStorage } from '@kombuse/services'
-import { z } from 'zod'
+import { z } from 'zod/v3'
 
 const MAX_GET_TICKET_RESPONSE_BYTES = 25_000
 const DEFAULT_COMMENT_LIMIT = 20
@@ -545,8 +545,14 @@ function permissionDeniedResponse(reason: string) {
  * Register all ticket-related MCP tools
  */
 export function registerTicketTools(server: McpServer): void {
+  const registerTool = (server as unknown as { registerTool: (...args: unknown[]) => unknown }).registerTool.bind(server) as (
+    name: string,
+    config: Record<string, unknown>,
+    handler: (args: any) => Promise<any>
+  ) => void
+
   // Tool 1: get_ticket
-  server.registerTool(
+  registerTool(
     'get_ticket',
     {
       description:
@@ -806,7 +812,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 2: get_ticket_comment
-  server.registerTool(
+  registerTool(
     'get_ticket_comment',
     {
       description:
@@ -878,7 +884,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 3: add_comment
-  server.registerTool(
+  registerTool(
     'add_comment',
     {
       description:
@@ -964,7 +970,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 4: create_ticket
-  server.registerTool(
+  registerTool(
     'create_ticket',
     {
       description:
@@ -1038,7 +1044,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 5: update_comment
-  server.registerTool(
+  registerTool(
     'update_comment',
     {
       description:
@@ -1079,7 +1085,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 6: list_tickets
-  server.registerTool(
+  registerTool(
     'list_tickets',
     {
       description:
@@ -1148,7 +1154,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 7: search_tickets
-  server.registerTool(
+  registerTool(
     'search_tickets',
     {
       description:
@@ -1217,7 +1223,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 8: list_projects
-  server.registerTool(
+  registerTool(
     'list_projects',
     {
       description:
@@ -1261,7 +1267,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 9: list_labels
-  server.registerTool(
+  registerTool(
     'list_labels',
     {
       description:
@@ -1288,7 +1294,7 @@ export function registerTicketTools(server: McpServer): void {
   )
 
   // Tool 10: update_ticket
-  server.registerTool(
+  registerTool(
     'update_ticket',
     {
       description:
