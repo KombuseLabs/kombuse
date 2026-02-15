@@ -58,6 +58,7 @@ export function Chats() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedBackendTypeOverride, setSelectedBackendTypeOverride] = useState<BackendType | null>(null);
   const [selectedModelPreferenceOverride, setSelectedModelPreferenceOverride] = useState<string | null>(null);
+  const [draftCounter, setDraftCounter] = useState(0);
 
   const globalDefaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value);
   const globalDefaultModelPreference = (defaultModelSetting?.setting_value ?? "").trim();
@@ -88,6 +89,7 @@ export function Chats() {
     setSelectedAgentId(null);
     setSelectedBackendTypeOverride(null);
     setSelectedModelPreferenceOverride(null);
+    setDraftCounter((c) => c + 1);
     navigate(chatsBasePath);
   };
 
@@ -107,7 +109,9 @@ export function Chats() {
   };
 
   // Determine the key for ChatProvider to force remount when switching
-  const chatKey = selectedSessionId ? `session-${selectedSessionId}` : "draft";
+  const chatKey = selectedSessionId
+    ? `session-${selectedSessionId}`
+    : `draft-${draftCounter}`;
 
   // Resizable panel layout persistence
   const [defaultLayout] = useState<Record<string, number> | undefined>(() => {
@@ -126,7 +130,7 @@ export function Chats() {
     localStorage.setItem(CHATS_PANEL_LAYOUT_KEY, JSON.stringify(layout));
   }, []);
 
-  const showDetailPanel = selectedSessionId !== null;
+  const showDetailPanel = true;
 
   const sessionListContent = (
     <SessionList
