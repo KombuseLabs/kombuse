@@ -22,7 +22,7 @@ interface LabelSelectorProps {
   selectedLabelIds: number[]
   onLabelAdd: (labelId: number) => void
   onLabelRemove: (labelId: number) => void
-  onLabelCreate?: (data: { name: string; color: string }) => void
+  onLabelCreate?: (data: { name: string; color: string }) => Promise<Label | void>
   onLabelUpdate?: (id: number, data: { name: string; color: string }) => void
   onLabelDelete?: (id: number) => void
   isLoading?: boolean
@@ -49,6 +49,19 @@ function LabelSelector({
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'select' | 'create' | 'edit'>('select')
   const [editingLabel, setEditingLabel] = useState<Label | null>(null)
+  // Store newly created label temporarily until query refetches
+  const [pendingLabel, setPendingLabel] = useState<Label | null>(null)
+
+  // Clear pending label once it appears in availableLabels
+  if (pendingLabel && availableLabels.some((l) => l.id === pendingLabel.id)) {
+    setPendingLabel(null)
+  }
+
+  // Merge pending label into the display list so it's visible before refetch
+  const displayLabels =
+    pendingLabel && !availableLabels.some((l) => l.id === pendingLabel.id)
+      ? [...availableLabels, pendingLabel]
+      : availableLabels
 
   const isSelected = (labelId: number) => selectedLabelIds.includes(labelId)
   const canManage = onLabelCreate && onLabelUpdate && onLabelDelete
@@ -77,10 +90,22 @@ function LabelSelector({
     onLabelDelete?.(label.id)
   }
 
-  const handleFormSubmit = (data: { name: string; color: string }) => {
+  const handleFormSubmit = async (data: { name: string; color: string }) => {
     if (mode === 'create') {
-      onLabelCreate?.(data)
-    } else if (mode === 'edit' && editingLabel) {
+      try {
+        const newLabel = await onLabelCreate?.(data)
+        setMode('select')
+        setEditingLabel(null)
+        if (newLabel?.id) {
+          setPendingLabel(newLabel)
+          onLabelAdd(newLabel.id)
+        }
+      } catch {
+        // Stay in create mode so the user can retry
+      }
+      return
+    }
+    if (mode === 'edit' && editingLabel) {
       onLabelUpdate?.(editingLabel.id, data)
     }
     setMode('select')
@@ -118,7 +143,7 @@ function LabelSelector({
             <CommandList>
               <CommandEmpty>No labels found.</CommandEmpty>
               <CommandGroup>
-                {availableLabels.map((label) => (
+                {displayLabels.map((label) => (
                   <CommandItem
                     key={label.id}
                     value={label.name}

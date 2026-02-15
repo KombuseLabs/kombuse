@@ -447,12 +447,13 @@ import {
 />
 
 // Multi-select dropdown for assigning labels (with optional CRUD)
+// onLabelCreate is async: return the created Label to auto-assign it via onLabelAdd
 <LabelSelector
   availableLabels={projectLabels}
   selectedLabelIds={[1, 2]}
   onLabelAdd={(labelId) => ...}
   onLabelRemove={(labelId) => ...}
-  onLabelCreate={(data) => ...}    // Optional: enables "Create new label"
+  onLabelCreate={async (data) => { const label = await createLabel(data); return label }}
   onLabelUpdate={(id, data) => ...} // Optional: enables edit button
   onLabelDelete={(id) => ...}       // Optional: enables delete button
 />
