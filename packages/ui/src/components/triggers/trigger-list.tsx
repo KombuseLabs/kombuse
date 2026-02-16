@@ -1,11 +1,12 @@
 'use client'
 
-import type { AgentTrigger } from '@kombuse/types'
+import type { AgentTrigger, Label } from '@kombuse/types'
 import { Zap } from 'lucide-react'
 import { TriggerItem } from './trigger-item'
 
 interface TriggerListProps {
   triggers: AgentTrigger[]
+  labels?: Label[]
   onEdit: (trigger: AgentTrigger) => void
   onDelete: (triggerId: number) => void
   onToggle: (triggerId: number, enabled: boolean) => void
@@ -15,6 +16,7 @@ interface TriggerListProps {
 
 function TriggerList({
   triggers,
+  labels,
   onEdit,
   onDelete,
   onToggle,
@@ -42,6 +44,7 @@ function TriggerList({
         <TriggerItem
           key={trigger.id}
           trigger={trigger}
+          labels={labels}
           onEdit={() => onEdit(trigger)}
           onDelete={() => onDelete(trigger.id)}
           onToggle={(enabled) => onToggle(trigger.id, enabled)}

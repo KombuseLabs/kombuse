@@ -7,6 +7,8 @@ import { Button } from '../../base/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../base/collapsible'
 import { TriggerList } from './trigger-list'
 import { TriggerForm, type TriggerFormData } from './trigger-form'
+import { useProjectLabels } from '../../hooks/use-labels'
+import { useAppContext } from '../../hooks/use-app-context'
 
 interface TriggerEditorProps {
   agentId: string
@@ -37,6 +39,8 @@ function TriggerEditor({
   togglingId,
   className,
 }: TriggerEditorProps) {
+  const { currentProjectId } = useAppContext()
+  const { data: labels } = useProjectLabels(currentProjectId ?? '')
   const [isOpen, setIsOpen] = useState(true)
   const [mode, setMode] = useState<EditorMode>('list')
   const [editingTrigger, setEditingTrigger] = useState<AgentTrigger | null>(null)
@@ -99,6 +103,7 @@ function TriggerEditor({
         {mode === 'list' ? (
           <TriggerList
             triggers={triggers}
+            labels={labels}
             onEdit={handleEdit}
             onDelete={onDeleteTrigger}
             onToggle={onToggleTrigger}

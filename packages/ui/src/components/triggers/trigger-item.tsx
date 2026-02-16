@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentTrigger } from '@kombuse/types'
+import type { AgentTrigger, Label } from '@kombuse/types'
 import { Pencil, Trash2, Zap } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
@@ -11,6 +11,7 @@ import { getAuthorTypeLabel } from './author-type-picker'
 
 interface TriggerItemProps {
   trigger: AgentTrigger
+  labels?: Label[]
   onEdit: () => void
   onDelete: () => void
   onToggle: (enabled: boolean) => void
@@ -20,6 +21,7 @@ interface TriggerItemProps {
 
 function TriggerItem({
   trigger,
+  labels,
   onEdit,
   onDelete,
   onToggle,
@@ -27,6 +29,11 @@ function TriggerItem({
   isToggling,
 }: TriggerItemProps) {
   const eventOption = getEventTypeOption(trigger.event_type)
+
+  const resolvedLabel = (() => {
+    if (!trigger.conditions?.label_id || !labels) return null
+    return labels.find((l) => l.id === Number(trigger.conditions!.label_id)) ?? null
+  })()
 
   const conditionSummary = (() => {
     if (!trigger.conditions) return null
@@ -37,9 +44,22 @@ function TriggerItem({
     if (conditions.author_type) {
       return getAuthorTypeLabel(String(conditions.author_type))
     }
-    const count = Object.keys(conditions).length
-    if (count === 0) return null
-    return `${count} condition${count > 1 ? 's' : ''}`
+    if (conditions.label_id != null) {
+      if (resolvedLabel) return resolvedLabel.name
+      return `label_id: ${conditions.label_id}`
+    }
+    const entries = Object.entries(conditions)
+    if (entries.length === 0) return null
+    const parts = entries.slice(0, 2).map(([key, value]) => {
+      if (key.startsWith('exclude_')) {
+        return `not ${key.replace('exclude_', '')} = ${value}`
+      }
+      return `${key} = ${value}`
+    })
+    if (entries.length > 2) {
+      parts.push(`+${entries.length - 2} more`)
+    }
+    return parts.join(', ')
   })()
 
   return (
@@ -61,7 +81,17 @@ function TriggerItem({
           {eventOption?.label ?? trigger.event_type}
         </div>
         <div className="text-xs text-muted-foreground flex items-center gap-2">
-          {conditionSummary && <span>{conditionSummary}</span>}
+          {conditionSummary && (
+            <span className="flex items-center gap-1">
+              {resolvedLabel && (
+                <span
+                  className="inline-block size-2 rounded-full shrink-0"
+                  style={{ backgroundColor: resolvedLabel.color }}
+                />
+              )}
+              <span>{conditionSummary}</span>
+            </span>
+          )}
           {trigger.priority > 0 && <span>Priority: {trigger.priority}</span>}
         </div>
       </div>
