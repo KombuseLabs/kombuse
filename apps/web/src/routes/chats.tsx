@@ -153,16 +153,19 @@ export function Chats() {
         className="h-full min-h-0"
         variant="card"
         header={
-          <div className="flex shrink-0 items-center justify-between gap-3 p-4">
+          <div className="space-y-3 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="text-2xl font-bold leading-tight">Sessions</h1>
+              <Button onClick={handleNewChat}>
+                <Plus className="size-4" />
+                New Chat
+              </Button>
+            </div>
             <TabsList>
               <TabsTrigger value="chats">Chats</TabsTrigger>
               <TabsTrigger value="system">System</TabsTrigger>
               <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
-            <Button onClick={handleNewChat}>
-              <Plus className="size-4" />
-              New Chat
-            </Button>
           </div>
         }
         selectedSessionId={selectedSessionId}
