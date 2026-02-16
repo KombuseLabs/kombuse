@@ -6,6 +6,11 @@ import { modelCatalogQuerySchema } from '../schemas/models'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 
+export function inferModelProvider(modelId: string): string {
+  if (modelId.startsWith('claude-')) return 'Anthropic'
+  return 'OpenAI'
+}
+
 const modelCache = new Map<string, { models: ModelOption[]; fetchedAt: number }>()
 
 async function fetchCodexModels(): Promise<ModelOption[]> {
@@ -22,7 +27,7 @@ async function fetchCodexModels(): Promise<ModelOption[]> {
     const models: ModelOption[] = result.data.map((m) => ({
       id: m.id,
       name: m.displayName || m.model || m.id,
-      provider: 'Codex',
+      provider: inferModelProvider(m.id),
       displayName: m.displayName,
       isDefault: m.isDefault,
       inputModalities: m.inputModalities,

@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { modelRoutes } from '../routes/models'
+import { modelRoutes, inferModelProvider } from '../routes/models'
 
 describe('models route', () => {
   let app: FastifyInstance
@@ -27,6 +27,9 @@ describe('models route', () => {
     expect(body.supports_model_selection).toBe(true)
     expect(body.models.length).toBeGreaterThan(0)
     expect(body.default_model_id).toBeDefined()
+    for (const model of body.models) {
+      expect(['OpenAI', 'Anthropic']).toContain(model.provider)
+    }
   })
 
   it('returns 400 when backend_type query param is missing', async () => {
@@ -49,5 +52,20 @@ describe('models route', () => {
     expect(response.statusCode).toBe(400)
     const body = response.json()
     expect(Array.isArray(body.error)).toBe(true)
+  })
+})
+
+describe('inferModelProvider', () => {
+  it('returns Anthropic for claude-prefixed model IDs', () => {
+    expect(inferModelProvider('claude-sonnet-4-5')).toBe('Anthropic')
+    expect(inferModelProvider('claude-opus-4')).toBe('Anthropic')
+    expect(inferModelProvider('claude-sonnet-4')).toBe('Anthropic')
+  })
+
+  it('returns OpenAI for non-claude model IDs', () => {
+    expect(inferModelProvider('o3')).toBe('OpenAI')
+    expect(inferModelProvider('gpt-4.1')).toBe('OpenAI')
+    expect(inferModelProvider('gpt-4o-mini')).toBe('OpenAI')
+    expect(inferModelProvider('o4-mini')).toBe('OpenAI')
   })
 })
