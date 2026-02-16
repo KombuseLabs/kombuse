@@ -63,6 +63,7 @@ export interface ClaudeSystemMessage {
   permissionMode: PermissionMode
   slash_commands: string[]
   output_style: string
+  claude_code_version?: string
 }
 
 /** Compact boundary message - indicates conversation compaction */

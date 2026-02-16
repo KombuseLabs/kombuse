@@ -21,6 +21,16 @@ export interface SessionMetadata {
   model_preference?: string | null
   /** Model effectively applied by backend (null when backend cannot enforce). */
   applied_model?: string | null
+  /** CLI/server version reported by the backend at session start */
+  cli_version?: string | null
+  /** Permission mode the session ran with */
+  permission_mode?: string | null
+  /** Whether extended thinking was enabled */
+  thinking_enabled?: boolean | null
+  /** Thinking token budget if thinking was enabled */
+  thinking_budget?: number | null
+  /** Agent preset type (e.g. 'kombuse', 'coder', 'generic') */
+  agent_preset_type?: string | null
   terminal_reason?: string
   terminal_source?: string
   terminal_at?: string

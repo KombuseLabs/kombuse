@@ -39,6 +39,7 @@ export class SessionPersistenceService implements ISessionPersistenceService {
   private options: Required<SessionPersistenceOptions>
   private seqCounters: Map<string, number> = new Map()
   private sessionsWithBackendId: Set<string> = new Set()
+  private sessionsWithCliVersion: Set<string> = new Set()
 
   constructor(options: SessionPersistenceOptions = {}) {
     this.options = {
@@ -123,6 +124,17 @@ export class SessionPersistenceService implements ISessionPersistenceService {
     }
 
     sessionsRepository.update(sessionId, update)
+
+    // Extract CLI version from backend init events (once per session).
+    if (!this.sessionsWithCliVersion.has(sessionId)
+      && event.type === 'raw' && event.sourceType === 'init') {
+      const data = event.data as Record<string, unknown> | undefined
+      const version = data?.claude_code_version
+      if (typeof version === 'string' && version.length > 0) {
+        this.setMetadata(sessionId, { cli_version: version })
+        this.sessionsWithCliVersion.add(sessionId)
+      }
+    }
   }
 
   /**

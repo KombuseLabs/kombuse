@@ -702,6 +702,12 @@ export function startAgentChatSession(
 
     const agentType = (agent?.config as { type?: string } | undefined)?.type
     const preset = getTypePreset(agentType)
+    dependencies.stateMachine.setMetadata(persistentSessionId, {
+      agent_preset_type: agentType ?? 'kombuse',
+      permission_mode: preset.permissionMode ?? null,
+      thinking_enabled: !!agent?.config?.anthropic?.thinking,
+      thinking_budget: agent?.config?.anthropic?.thinking_budget ?? null,
+    })
     let followUpDidCallAddComment = false
     let followUpLastAssistantMessage = ''
 
@@ -847,6 +853,12 @@ export function startAgentChatSession(
 
   const agentType = (agent?.config as { type?: string } | undefined)?.type
   const preset = getTypePreset(agentType)
+  dependencies.stateMachine.setMetadata(persistentSessionId, {
+    agent_preset_type: agentType ?? 'kombuse',
+    permission_mode: preset.permissionMode ?? null,
+    thinking_enabled: !!agent?.config?.anthropic?.thinking,
+    thinking_budget: agent?.config?.anthropic?.thinking_budget ?? null,
+  })
 
   let resolvedSystemPrompt: string | undefined
   if (options?.systemPromptOverride) {

@@ -765,6 +765,82 @@ describe('startAgentChatSession backend selection', () => {
       })
     )
   })
+
+  it('persists runtime config metadata (preset type, permission mode, thinking)', async () => {
+    const backend = createPassiveBackend(BACKEND_TYPES.CLAUDE_CODE)
+    const createBackend = vi.fn(() => backend)
+    const deps = createDependencies(createBackend)
+
+    ;(deps.getAgent as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'agent-coder',
+      is_enabled: true,
+      system_prompt: 'You are a coder',
+      config: {
+        type: 'coder',
+        anthropic: {
+          thinking: true,
+          thinking_budget: 8000,
+        },
+      },
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'agent-coder',
+        message: 'hello',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(deps.stateMachine.setMetadata).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        agent_preset_type: 'coder',
+        permission_mode: 'plan',
+        thinking_enabled: true,
+        thinking_budget: 8000,
+      })
+    )
+  })
+
+  it('persists default runtime config when agent has no thinking config', async () => {
+    const backend = createPassiveBackend(BACKEND_TYPES.CLAUDE_CODE)
+    const createBackend = vi.fn(() => backend)
+    const deps = createDependencies(createBackend)
+
+    ;(deps.getAgent as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'agent-basic',
+      is_enabled: true,
+      system_prompt: 'You are basic',
+      config: {},
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        agentId: 'agent-basic',
+        message: 'hello',
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    expect(deps.stateMachine.setMetadata).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        agent_preset_type: 'kombuse',
+        permission_mode: null,
+        thinking_enabled: false,
+        thinking_budget: null,
+      })
+    )
+  })
 })
 
 describe('createServerAgentBackend codex MCP setting', () => {
