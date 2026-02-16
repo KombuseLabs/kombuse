@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Milestone, MilestoneWithStats } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
@@ -54,9 +54,11 @@ function MilestoneSelector({
     availableMilestones.find((m) => m.id === selectedMilestoneId) ??
     (pendingMilestone?.id === selectedMilestoneId ? pendingMilestone : null)
 
-  if (pendingMilestone && availableMilestones.some((m) => m.id === pendingMilestone.id)) {
-    setPendingMilestone(null)
-  }
+  useEffect(() => {
+    if (pendingMilestone && availableMilestones.some((m) => m.id === pendingMilestone.id)) {
+      setPendingMilestone(null)
+    }
+  }, [pendingMilestone, availableMilestones])
 
   const handleSelect = (milestoneId: number) => {
     if (selectedMilestoneId === milestoneId) {

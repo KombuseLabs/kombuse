@@ -46,8 +46,16 @@ export async function ticketRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const ticket = ticketService.create(parseResult.data)
-    return reply.status(201).send(ticket)
+    try {
+      const ticket = ticketService.create(parseResult.data)
+      return reply.status(201).send(ticket)
+    } catch (error) {
+      const message = (error as Error).message
+      if (message.includes('invalid for this project')) {
+        return reply.status(400).send({ error: message })
+      }
+      throw error
+    }
   })
 
   // Update ticket
@@ -69,7 +77,11 @@ export async function ticketRoutes(fastify: FastifyInstance) {
       const ticket = ticketService.update(id, input, updated_by_id)
       return ticket
     } catch (error) {
-      return reply.status(404).send({ error: (error as Error).message })
+      const message = (error as Error).message
+      if (message.includes('invalid for this project')) {
+        return reply.status(400).send({ error: message })
+      }
+      return reply.status(404).send({ error: message })
     }
   })
 

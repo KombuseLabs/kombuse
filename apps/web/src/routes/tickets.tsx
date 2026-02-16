@@ -128,7 +128,9 @@ export function Tickets() {
 
   const selectedMilestoneId: number | null = useMemo(() => {
     const raw = searchParams.get("milestone");
-    return raw ? parseInt(raw, 10) : null;
+    if (!raw) return null;
+    const id = parseInt(raw, 10);
+    return Number.isInteger(id) && id > 0 ? id : null;
   }, [searchParams]);
 
   const usageSortedLabels = useMemo(() => {

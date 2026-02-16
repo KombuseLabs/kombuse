@@ -76,7 +76,7 @@ export const milestonesRepository = {
           COALESCE(SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END), 0) AS closed_count,
           COALESCE(COUNT(t.id), 0) AS total_count
         FROM milestones m
-        LEFT JOIN tickets t ON t.milestone_id = m.id
+        LEFT JOIN tickets t ON t.milestone_id = m.id AND t.project_id = m.project_id
         ${whereClause}
         GROUP BY m.id
         ORDER BY m.due_date ASC NULLS LAST, m.created_at DESC`
@@ -94,7 +94,7 @@ export const milestonesRepository = {
           COALESCE(SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END), 0) AS closed_count,
           COALESCE(COUNT(t.id), 0) AS total_count
         FROM milestones m
-        LEFT JOIN tickets t ON t.milestone_id = m.id
+        LEFT JOIN tickets t ON t.milestone_id = m.id AND t.project_id = m.project_id
         WHERE m.id = ?
         GROUP BY m.id`
       )

@@ -422,6 +422,20 @@ export const ticketsRepository = {
         new Set((payload.label_ids ?? []).filter((id) => Number.isFinite(id)))
       )
 
+      if (payload.milestone_id) {
+        const milestoneRow = db
+          .prepare(
+            'SELECT id FROM milestones WHERE project_id = ? AND id = ?'
+          )
+          .get(payload.project_id, payload.milestone_id) as
+          | { id: number }
+          | undefined
+
+        if (!milestoneRow) {
+          throw new Error('Milestone is invalid for this project')
+        }
+      }
+
       const status = payload.status ?? 'open'
       const result = insertTicket.run(
         payload.project_id,
@@ -528,6 +542,19 @@ export const ticketsRepository = {
       params.push(input.assignee_id)
     }
     if (input.milestone_id !== undefined) {
+      if (input.milestone_id !== null) {
+        const milestoneRow = db
+          .prepare(
+            'SELECT id FROM milestones WHERE project_id = ? AND id = ?'
+          )
+          .get(currentTicket.project_id, input.milestone_id) as
+          | { id: number }
+          | undefined
+
+        if (!milestoneRow) {
+          throw new Error('Milestone is invalid for this project')
+        }
+      }
       fields.push('milestone_id = ?')
       params.push(input.milestone_id)
     }

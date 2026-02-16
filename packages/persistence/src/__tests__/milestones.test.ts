@@ -496,4 +496,153 @@ describe('milestonesRepository', () => {
       expect(filtered[0]?.title, 'Should be the assigned one').toBe('In M1')
     })
   })
+
+  describe('cross-project milestone validation', () => {
+    it('should reject assigning a milestone from another project on create', () => {
+      db.prepare(
+        "INSERT INTO projects (id, name, owner_id) VALUES ('project-2', 'Other Project', ?)"
+      ).run(TEST_USER_ID)
+
+      const milestone = milestonesRepository.create({
+        project_id: 'project-2',
+        title: 'Other project milestone',
+      })
+
+      expect(
+        () =>
+          ticketsRepository.create({
+            project_id: TEST_PROJECT_ID,
+            author_id: TEST_USER_ID,
+            title: 'Cross-project ticket',
+            milestone_id: milestone.id,
+          }),
+        'Should reject cross-project milestone on create'
+      ).toThrow('Milestone is invalid for this project')
+    })
+
+    it('should reject assigning a milestone from another project on update', () => {
+      db.prepare(
+        "INSERT INTO projects (id, name, owner_id) VALUES ('project-2', 'Other Project', ?)"
+      ).run(TEST_USER_ID)
+
+      const milestone = milestonesRepository.create({
+        project_id: 'project-2',
+        title: 'Other project milestone',
+      })
+
+      const ticket = ticketsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        title: 'Will try cross-project update',
+      })
+
+      expect(
+        () =>
+          ticketsRepository.update(ticket.id, {
+            milestone_id: milestone.id,
+          }),
+        'Should reject cross-project milestone on update'
+      ).toThrow('Milestone is invalid for this project')
+    })
+
+    it('should allow setting milestone_id to null on update', () => {
+      const milestone = milestonesRepository.create({
+        project_id: TEST_PROJECT_ID,
+        title: 'Same project milestone',
+      })
+
+      const ticket = ticketsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        title: 'Has milestone',
+        milestone_id: milestone.id,
+      })
+
+      const updated = ticketsRepository.update(ticket.id, {
+        milestone_id: null,
+      })
+
+      expect(updated?.milestone_id, 'Should be null after unsetting').toBeNull()
+    })
+
+    it('should reject non-existent milestone_id on create', () => {
+      expect(
+        () =>
+          ticketsRepository.create({
+            project_id: TEST_PROJECT_ID,
+            author_id: TEST_USER_ID,
+            title: 'Bad milestone ID',
+            milestone_id: 99999,
+          }),
+        'Should reject non-existent milestone'
+      ).toThrow('Milestone is invalid for this project')
+    })
+  })
+
+  describe('milestone stats isolation', () => {
+    it('should not count cross-project tickets in listWithStats', () => {
+      db.prepare(
+        "INSERT INTO projects (id, name, owner_id) VALUES ('project-2', 'Other Project', ?)"
+      ).run(TEST_USER_ID)
+
+      const milestone = milestonesRepository.create({
+        project_id: TEST_PROJECT_ID,
+        title: 'Stats test milestone',
+      })
+
+      ticketsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        title: 'Same project ticket',
+        milestone_id: milestone.id,
+      })
+
+      // Manually insert a cross-project ticket referencing this milestone
+      // (simulates pre-fix data or direct SQL manipulation)
+      db.prepare(
+        `INSERT INTO tickets (project_id, author_id, title, milestone_id, status)
+         VALUES ('project-2', ?, 'Cross project ticket', ?, 'open')`
+      ).run(TEST_USER_ID, milestone.id)
+
+      const milestones = milestonesRepository.listWithStats({
+        project_id: TEST_PROJECT_ID,
+      })
+
+      expect(milestones.length, 'Should have 1 milestone').toBe(1)
+      expect(
+        milestones[0]?.total_count,
+        'Should only count same-project ticket'
+      ).toBe(1)
+    })
+
+    it('should not count cross-project tickets in getWithStats', () => {
+      db.prepare(
+        "INSERT INTO projects (id, name, owner_id) VALUES ('project-2', 'Other Project', ?)"
+      ).run(TEST_USER_ID)
+
+      const milestone = milestonesRepository.create({
+        project_id: TEST_PROJECT_ID,
+        title: 'Stats test milestone',
+      })
+
+      ticketsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        title: 'Same project ticket',
+        milestone_id: milestone.id,
+      })
+
+      db.prepare(
+        `INSERT INTO tickets (project_id, author_id, title, milestone_id, status)
+         VALUES ('project-2', ?, 'Cross project ticket', ?, 'open')`
+      ).run(TEST_USER_ID, milestone.id)
+
+      const result = milestonesRepository.getWithStats(milestone.id)
+
+      expect(
+        result?.total_count,
+        'Should only count same-project ticket'
+      ).toBe(1)
+    })
+  })
 })
