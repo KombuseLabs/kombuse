@@ -21,6 +21,7 @@ import {
 } from '../agents'
 import { sessionsRepository } from '../sessions'
 import { profilesRepository } from '../profiles'
+import { eventsRepository } from '../events'
 
 // Helper to create unique agent profiles
 let agentCounter = 0
@@ -732,6 +733,80 @@ describe('agentInvocationsRepository', () => {
 
       const count3h = agentInvocationsRepository.countRecentByTicketId(100, 3)
       expect(count3h, 'Should count both invocations within 3 hours').toBe(2)
+    })
+
+    it('should not count invocations originating from user events', () => {
+      // Create a user-originated event (ticket_id omitted — FK not relevant here)
+      const userEvent = eventsRepository.create({
+        event_type: 'mention.created',
+        project_id: TEST_PROJECT_ID,
+        actor_id: TEST_USER_ID,
+        actor_type: 'user',
+        payload: {},
+      })
+
+      // Invocation linked to user event — should be excluded
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        event_id: userEvent.id,
+        context: { ticket_id: 100 },
+      })
+
+      // Create an agent-originated event
+      const agentEvent = eventsRepository.create({
+        event_type: 'agent.completed',
+        project_id: TEST_PROJECT_ID,
+        actor_id: agentId,
+        actor_type: 'agent',
+        payload: {},
+      })
+
+      // Invocation linked to agent event — should be counted
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        event_id: agentEvent.id,
+        context: { ticket_id: 100 },
+      })
+
+      const count = agentInvocationsRepository.countRecentByTicketId(100)
+      expect(count, 'Should exclude user-initiated invocations').toBe(1)
+    })
+
+    it('should not count loop-guard-failed invocations', () => {
+      // Normal invocation
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+
+      // Loop-guard-failed invocation
+      const loopInv = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+      agentInvocationsRepository.update(loopInv.id, {
+        status: 'failed',
+        error: 'Chain depth limit reached (15 invocations on ticket #100 in the last hour). Halting to prevent infinite loops.',
+      })
+
+      const count = agentInvocationsRepository.countRecentByTicketId(100)
+      expect(count, 'Should exclude loop-guard-failed invocations').toBe(1)
+    })
+
+    it('should still count invocations without event_id', () => {
+      // Invocation without event_id (NULL)
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 100 },
+      })
+
+      const count = agentInvocationsRepository.countRecentByTicketId(100)
+      expect(count, 'Invocations without event_id should be counted').toBe(1)
     })
   })
 

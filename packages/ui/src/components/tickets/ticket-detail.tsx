@@ -385,6 +385,21 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
                 </span>
               </div>
             )}
+            {isEditable && mode === 'view' && (
+              <div className="mr-1 flex items-center gap-1.5 rounded-md border px-2 py-1">
+                <Switch
+                  checked={ticket.loop_protection_enabled}
+                  onCheckedChange={(checked) => {
+                    void updateCurrentTicket({ loop_protection_enabled: checked })
+                  }}
+                  disabled={isUpdating}
+                  aria-label="Toggle loop protection"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {ticket.loop_protection_enabled ? 'Loop guard on' : 'Loop guard off'}
+                </span>
+              </div>
+            )}
             {isEditable && mode === 'edit' ? (
               <>
                 <Button

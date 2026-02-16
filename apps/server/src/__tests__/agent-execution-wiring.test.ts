@@ -515,6 +515,52 @@ describe('processEventAndRunAgents lifecycle session isolation', () => {
     expect(ensureSessionCalls.length).toBeGreaterThan(0)
     expect(ensureSessionCalls[0]?.[4]).toBe('1')
   })
+
+  it('should skip loop guard when loop_protection_enabled is false on ticket', async () => {
+    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 42,
+      triggers_enabled: true,
+      loop_protection_enabled: false,
+    })
+    ;(agentInvocationsRepository.countRecentByTicketId as ReturnType<typeof vi.fn>).mockReturnValue(100)
+
+    const invocation = createInvocation('triage-agent')
+    const event = createLifecycleEvent('triage-agent')
+    const deps = createDeps(invocation)
+
+    await processEventAndRunAgents(event as any, deps as any)
+
+    // Should NOT have been marked as failed despite high count
+    const failCalls = (agentInvocationsRepository.update as ReturnType<typeof vi.fn>).mock.calls
+      .filter((args: unknown[]) => {
+        const input = args[1] as Record<string, unknown> | undefined
+        return input?.status === 'failed' && typeof input.error === 'string' && (input.error as string).startsWith('Chain depth limit')
+      })
+    expect(failCalls).toHaveLength(0)
+  })
+
+  it('should enforce loop guard when loop_protection_enabled is true on ticket', async () => {
+    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 42,
+      triggers_enabled: true,
+      loop_protection_enabled: true,
+    })
+    ;(agentInvocationsRepository.countRecentByTicketId as ReturnType<typeof vi.fn>).mockReturnValue(100)
+
+    const invocation = createInvocation('triage-agent')
+    const event = createLifecycleEvent('triage-agent')
+    const deps = createDeps(invocation)
+
+    await processEventAndRunAgents(event as any, deps as any)
+
+    // Should be marked as failed due to loop guard
+    const failCalls = (agentInvocationsRepository.update as ReturnType<typeof vi.fn>).mock.calls
+      .filter((args: unknown[]) => {
+        const input = args[1] as Record<string, unknown> | undefined
+        return input?.status === 'failed' && typeof input.error === 'string' && (input.error as string).startsWith('Chain depth limit')
+      })
+    expect(failCalls.length).toBeGreaterThan(0)
+  })
 })
 
 describe('startAgentChatSession backend selection', () => {

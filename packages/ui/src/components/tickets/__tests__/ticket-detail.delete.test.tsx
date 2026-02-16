@@ -12,6 +12,7 @@ const testState = vi.hoisted(() => ({
     title: 'Delete dialog test ticket',
     body: 'Body',
     triggers_enabled: true,
+    loop_protection_enabled: true,
     status: 'open',
     priority: null,
     external_source: null,

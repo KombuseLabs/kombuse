@@ -445,8 +445,11 @@ export const agentInvocationsRepository = {
     const row = db
       .prepare(
         `SELECT COUNT(*) as count FROM agent_invocations
-         WHERE json_extract(context, '$.ticket_id') = ?
-           AND created_at >= datetime('now', '-' || ? || ' hours')`
+         LEFT JOIN events ON events.id = agent_invocations.event_id
+         WHERE json_extract(agent_invocations.context, '$.ticket_id') = ?
+           AND agent_invocations.created_at >= datetime('now', '-' || ? || ' hours')
+           AND (agent_invocations.event_id IS NULL OR events.actor_type != 'user')
+           AND (agent_invocations.error IS NULL OR agent_invocations.error NOT LIKE 'Chain depth limit%')`
       )
       .get(ticketId, sinceHoursAgo) as { count: number }
     return row.count

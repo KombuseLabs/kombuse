@@ -82,6 +82,7 @@ export const ticketSchema = z.object({
   title: z.string().min(1),
   body: z.string().nullable(),
   triggers_enabled: z.boolean(),
+  loop_protection_enabled: z.boolean(),
   status: ticketStatusSchema,
   priority: ticketPrioritySchema.nullable(),
   external_source: z.string().nullable(),

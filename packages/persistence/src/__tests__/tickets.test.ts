@@ -66,6 +66,7 @@ describe('ticketsRepository', () => {
       expect(ticket.status, 'Default status should be open').toBe('open')
       expect(ticket.body, 'Body should be null when not provided').toBeNull()
       expect(ticket.triggers_enabled, 'Default triggers_enabled should be true').toBe(true)
+      expect(ticket.loop_protection_enabled, 'Default loop_protection_enabled should be true').toBe(true)
     })
 
     it('should create a ticket with all optional fields', () => {
@@ -122,6 +123,15 @@ describe('ticketsRepository', () => {
       expect(ticket.triggers_enabled).toBe(false)
       const events = eventsRepository.list({ event_type: 'ticket.created' })
       expect(events).toHaveLength(0)
+    })
+
+    it('should create a ticket with loop protection disabled', () => {
+      const ticket = ticketsRepository.create({
+        ...TEST_TICKET,
+        loop_protection_enabled: false,
+      })
+
+      expect(ticket.loop_protection_enabled).toBe(false)
     })
   })
 
@@ -781,6 +791,17 @@ describe('ticketsRepository', () => {
 
       const enabled = ticketsRepository.update(ticket.id, { triggers_enabled: true })
       expect(enabled?.triggers_enabled).toBe(true)
+    })
+
+    it('should update loop_protection_enabled', () => {
+      const ticket = ticketsRepository.create(TEST_TICKET)
+      expect(ticket.loop_protection_enabled).toBe(true)
+
+      const disabled = ticketsRepository.update(ticket.id, { loop_protection_enabled: false })
+      expect(disabled?.loop_protection_enabled).toBe(false)
+
+      const enabled = ticketsRepository.update(ticket.id, { loop_protection_enabled: true })
+      expect(enabled?.loop_protection_enabled).toBe(true)
     })
   })
 

@@ -109,6 +109,7 @@ function buildTicket(overrides: Partial<Ticket> = {}): Ticket {
     title: 'Display ticket priority in ticket details',
     body: 'Ticket body',
     triggers_enabled: true,
+    loop_protection_enabled: true,
     status: 'open',
     priority: 2,
     external_source: null,
@@ -350,6 +351,19 @@ describe('TicketDetail header behavior', () => {
 
     enterEditMode()
     expect(screen.queryByRole('switch', { name: 'Toggle ticket triggers' })).toBeNull()
+  })
+
+  it('shows loop protection toggle only in editable view mode and updates ticket', () => {
+    render(<TicketDetail isEditable />)
+
+    const loopSwitch = screen.getByRole('switch', { name: 'Toggle loop protection' })
+    expect(loopSwitch).toBeDefined()
+
+    fireEvent.click(loopSwitch)
+    expect(updateCurrentTicket).toHaveBeenCalledWith({ loop_protection_enabled: false })
+
+    enterEditMode()
+    expect(screen.queryByRole('switch', { name: 'Toggle loop protection' })).toBeNull()
   })
 
   it('renders mode-specific action controls', () => {

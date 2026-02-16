@@ -43,6 +43,7 @@ const EXPECTED_TICKET_COLUMNS = [
   'title',
   'body',
   'triggers_enabled',
+  'loop_protection_enabled',
   'status',
   'priority',
   'claimed_at',
@@ -123,6 +124,7 @@ const EXPECTED_MIGRATIONS = [
   '017_ticket_triggers_enabled',
   '018_session_abort_diagnostics',
   '019_session_invocation_project_scope',
+  '020_ticket_loop_protection',
 ]
 
 describe('database', () => {

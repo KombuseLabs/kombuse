@@ -27,14 +27,16 @@ function sanitizeFtsQuery(input: string): string | null {
   return tokens.map((t) => `"${t}"*`).join(' ')
 }
 
-interface RawTicketRow extends Omit<Ticket, 'triggers_enabled'> {
+interface RawTicketRow extends Omit<Ticket, 'triggers_enabled' | 'loop_protection_enabled'> {
   triggers_enabled: number
+  loop_protection_enabled: number
 }
 
 function mapTicketRow(row: RawTicketRow): Ticket {
   return {
     ...row,
     triggers_enabled: row.triggers_enabled === 1,
+    loop_protection_enabled: row.loop_protection_enabled === 1,
   }
 }
 
@@ -48,6 +50,7 @@ interface RawTicketWithProfiles {
   title: string
   body: string | null
   triggers_enabled: number
+  loop_protection_enabled: number
   status: string
   priority: number | null
   external_source: string | null
@@ -111,6 +114,7 @@ function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelat
     title: row.title,
     body: row.body,
     triggers_enabled: row.triggers_enabled === 1,
+    loop_protection_enabled: row.loop_protection_enabled === 1,
     status: row.status as Ticket['status'],
     priority: row.priority as Ticket['priority'],
     milestone_id: row.milestone_id,
@@ -405,11 +409,11 @@ export const ticketsRepository = {
     const db = getDatabase()
     const insertTicket = db.prepare(`
       INSERT INTO tickets (
-        project_id, author_id, assignee_id, title, body, triggers_enabled, status, priority,
+        project_id, author_id, assignee_id, title, body, triggers_enabled, loop_protection_enabled, status, priority,
         milestone_id, external_source, external_id, external_url,
         opened_at, closed_at, last_activity_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
     `)
 
     const insertTicketLabels = db.prepare(`
@@ -444,6 +448,7 @@ export const ticketsRepository = {
         payload.title,
         payload.body ?? null,
         payload.triggers_enabled === false ? 0 : 1,
+        payload.loop_protection_enabled === false ? 0 : 1,
         status,
         payload.priority ?? null,
         payload.milestone_id ?? null,
@@ -519,6 +524,10 @@ export const ticketsRepository = {
     if (input.triggers_enabled !== undefined) {
       fields.push('triggers_enabled = ?')
       params.push(input.triggers_enabled ? 1 : 0)
+    }
+    if (input.loop_protection_enabled !== undefined) {
+      fields.push('loop_protection_enabled = ?')
+      params.push(input.loop_protection_enabled ? 1 : 0)
     }
     if (input.status !== undefined) {
       fields.push('status = ?')

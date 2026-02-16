@@ -861,6 +861,12 @@ const migrations = [
         AND session_id IS NOT NULL;
     `,
   },
+  {
+    name: '020_ticket_loop_protection',
+    sql: `
+      ALTER TABLE tickets ADD COLUMN loop_protection_enabled INTEGER NOT NULL DEFAULT 1;
+    `,
+  },
 ]
 
 /**

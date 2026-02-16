@@ -27,6 +27,7 @@ function buildTicket(overrides: Partial<TicketWithLabels> = {}): TicketWithLabel
     title: 'Render date by active sort mode',
     body: 'Ticket body',
     triggers_enabled: true,
+    loop_protection_enabled: true,
     status: 'open',
     priority: 2,
     external_source: null,

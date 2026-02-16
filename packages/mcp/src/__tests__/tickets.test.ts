@@ -1481,4 +1481,41 @@ describe('permission enforcement', () => {
     const createdEvents = eventsRepository.list({ event_type: 'ticket.created' }).length
     expect(createdEvents).toBe(existingCreatedEvents + 1)
   })
+
+  it('should default loop_protection_enabled to true for MCP-created tickets', async () => {
+    const sid = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['create'], scope: 'global' },
+    ])
+
+    const result = await client.callTool({
+      name: 'create_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, title: 'MCP default loop protection', kombuse_session_id: sid },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { title: string; loop_protection_enabled: boolean }
+    expect(data.title).toBe('MCP default loop protection')
+    expect(data.loop_protection_enabled).toBe(true)
+  })
+
+  it('should allow create_ticket to disable loop protection', async () => {
+    const sid = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['create'], scope: 'global' },
+    ])
+
+    const result = await client.callTool({
+      name: 'create_ticket',
+      arguments: {
+        project_id: TEST_PROJECT_ID,
+        title: 'MCP no loop protection',
+        loop_protection_enabled: false,
+        kombuse_session_id: sid,
+      },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { title: string; loop_protection_enabled: boolean }
+    expect(data.title).toBe('MCP no loop protection')
+    expect(data.loop_protection_enabled).toBe(false)
+  })
 })

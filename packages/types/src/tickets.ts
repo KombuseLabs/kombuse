@@ -25,6 +25,8 @@ export interface Ticket {
   body: string | null
   /** Whether agent triggers are enabled for this ticket */
   triggers_enabled: boolean
+  /** Whether agent loop protection is enabled for this ticket */
+  loop_protection_enabled: boolean
   status: TicketStatus
   priority: TicketPriority | null
   external_source: string | null
@@ -108,6 +110,7 @@ export interface CreateTicketInput {
   title: string
   body?: string
   triggers_enabled?: boolean
+  loop_protection_enabled?: boolean
   status?: TicketStatus
   priority?: TicketPriority
   assignee_id?: string
@@ -125,6 +128,7 @@ export interface UpdateTicketInput {
   title?: string
   body?: string
   triggers_enabled?: boolean
+  loop_protection_enabled?: boolean
   status?: TicketStatus
   priority?: TicketPriority | null
   assignee_id?: string | null

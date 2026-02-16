@@ -85,6 +85,7 @@ describe('shared entity schemas', () => {
       title: 'Migrate to zod 4.x',
       body: null,
       triggers_enabled: true,
+      loop_protection_enabled: true,
       status: 'in_progress',
       priority: 3,
       external_source: null,

@@ -225,37 +225,40 @@ export async function processEventAndRunAgents(
 
     const ticketId = invocation.context.ticket_id as number | undefined
     if (ticketId) {
-      const maxDepth = agent.config?.max_chain_depth ?? readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
-      const recentCount = agentInvocationsRepository.countRecentByTicketId(ticketId)
-      if (recentCount >= maxDepth) {
-        const errorMessage = `Chain depth limit reached (${maxDepth} invocations on ticket #${ticketId} in the last hour). Halting to prevent infinite loops.`
-        console.warn(`[Server] ${errorMessage}`)
-        agentInvocationsRepository.update(invocation.id, {
-          status: 'failed',
-          error: errorMessage,
-          completed_at: new Date().toISOString(),
-        })
-        emitAgentEvent(
-          EVENT_TYPES.AGENT_FAILED,
-          invocation.agent_id,
-          invocation.id,
-          invocation.context,
-          {
+      const ticket = ticketsRepository.get(ticketId)
+      if (ticket?.loop_protection_enabled !== false) {
+        const maxDepth = agent.config?.max_chain_depth ?? readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
+        const recentCount = agentInvocationsRepository.countRecentByTicketId(ticketId)
+        if (recentCount >= maxDepth) {
+          const errorMessage = `Chain depth limit reached (${maxDepth} invocations on ticket #${ticketId} in the last hour). Halting to prevent infinite loops.`
+          console.warn(`[Server] ${errorMessage}`)
+          agentInvocationsRepository.update(invocation.id, {
+            status: 'failed',
             error: errorMessage,
-            completing_agent_id: invocation.agent_id,
-            completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
-          }
-        )
-        try {
-          commentsRepository.create({
-            ticket_id: ticketId,
-            author_id: invocation.agent_id,
-            body: `**Agent loop detected** — ${errorMessage}`,
+            completed_at: new Date().toISOString(),
           })
-        } catch (commentError) {
-          console.warn(`[Server] Failed to post chain depth comment on ticket #${ticketId}:`, commentError)
+          emitAgentEvent(
+            EVENT_TYPES.AGENT_FAILED,
+            invocation.agent_id,
+            invocation.id,
+            invocation.context,
+            {
+              error: errorMessage,
+              completing_agent_id: invocation.agent_id,
+              completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
+            }
+          )
+          try {
+            commentsRepository.create({
+              ticket_id: ticketId,
+              author_id: invocation.agent_id,
+              body: `**Agent loop detected** — ${errorMessage}`,
+            })
+          } catch (commentError) {
+            console.warn(`[Server] Failed to post chain depth comment on ticket #${ticketId}:`, commentError)
+          }
+          continue
         }
-        continue
       }
     }
 
