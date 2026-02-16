@@ -74,6 +74,21 @@ import { Input } from '@kombuse/ui/base'
 
 Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `HoverCard`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Resizable`, `Select`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
 
+#### Textarea Auto-Resize
+
+The `Textarea` component supports auto-expanding to fit content:
+
+```typescript
+// Auto-expands as user types (max height: 60vh, then scrolls)
+<Textarea value={value} onChange={handleChange} autoResize />
+
+// With custom max height (pixels or CSS value)
+<Textarea value={value} onChange={handleChange} autoResize autoResizeMaxHeight={400} />
+```
+
+- `autoResize`: When true, textarea grows vertically to fit content and disables manual resize handle
+- `autoResizeMaxHeight`: Max height before overflow scrolling (default: `'60vh'`). Accepts number (px) or string (CSS value)
+
 ### Resizable Panels
 
 ```typescript
@@ -202,6 +217,24 @@ const { textareaProps, AutocompletePortal } = useTextareaAutocomplete({
 - `textareaProps`: `{ onChange, onKeyDown }` — spread onto the Textarea
 - `AutocompletePortal`: Component that renders the autocomplete popovers (profile and ticket)
 - Handles mention context detection, debounced search, keyboard navigation (Arrow keys, Enter/Tab, Escape), and mention insertion
+
+```typescript
+import { useAutoResizeTextarea } from '@kombuse/ui/hooks'
+
+// Auto-resize a textarea to fit its content
+const { textareaRef, resize } = useAutoResizeTextarea({
+  value: textValue,
+  maxHeight: '60vh', // default; accepts number (px) or string (CSS value)
+})
+
+<textarea ref={textareaRef} value={textValue} onChange={handleChange} />
+```
+
+- `value`: The controlled value — resize triggers on every change
+- `maxHeight`: Max height before scrollbar appears (default: `'60vh'`)
+- `enabled`: Set to `false` to disable auto-resize (default: `true`)
+- Returns `textareaRef` to attach to the element and `resize()` for manual triggers
+- Uses `useLayoutEffect` for flicker-free resize
 
 ```typescript
 import { useComment } from '@kombuse/ui/hooks'

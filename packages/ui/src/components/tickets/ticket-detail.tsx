@@ -542,6 +542,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
               onPaste={handlePaste}
               placeholder="Add a description..."
               className="min-h-[100px]"
+              autoResize
             />
             <AutocompletePortal />
             <StagedFilePreviews stagedFiles={stagedFiles} previewUrls={previewUrls} onRemove={removeFile} className="mt-1" />

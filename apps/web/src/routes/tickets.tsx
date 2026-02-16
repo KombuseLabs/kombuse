@@ -876,6 +876,7 @@ export function Tickets() {
                             onPaste={createHandlePaste}
                             placeholder="Describe the ticket..."
                             className="min-h-32"
+                            autoResize
                           />
                           <NewTicketAutocomplete />
                           <StagedFilePreviews stagedFiles={createStagedFiles} previewUrls={createPreviewUrls} onRemove={createRemoveFile} className="mt-1" />

@@ -233,6 +233,7 @@ function CommentItem({
             onPaste={handlePaste}
             className="min-h-15 text-sm"
             autoFocus
+            autoResize
           />
           <AutocompletePortal />
           <StagedFilePreviews stagedFiles={stagedFiles} previewUrls={previewUrls} onRemove={removeFile} className="mt-1" />
