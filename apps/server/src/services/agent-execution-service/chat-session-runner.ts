@@ -12,6 +12,7 @@ import {
   type AgentBackend,
   type AgentEvent,
   type ConversationContext,
+  type ImageAttachment,
   type KombuseSessionId,
   type PermissionMode,
   type ServerMessage,
@@ -65,6 +66,20 @@ interface ChatRunnerOptions {
   onResumeFailed?: () => void
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${Math.round(bytes)} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function buildPersistedContent(message: string, images?: ImageAttachment[]): string {
+  if (!images || images.length === 0) return message
+  const placeholders = images.map(
+    (img) => `[image: ${img.mediaType}, ${formatBytes(img.data.length * 0.75)}]`
+  )
+  return [message, ...placeholders].filter(Boolean).join('\n')
+}
+
 /**
  * Run a chat message through an agent backend.
  * Returns immediately after starting - events come via callbacks.
@@ -73,7 +88,8 @@ async function runAgentChat(
   backend: AgentBackend,
   message: string,
   kombuseSessionId: KombuseSessionId,
-  options: ChatRunnerOptions
+  options: ChatRunnerOptions,
+  images?: ImageAttachment[]
 ): Promise<ConversationContext> {
   const appSessionId = kombuseSessionId
   let didComplete = false
@@ -139,6 +155,7 @@ async function runAgentChat(
       allowedTools: options.allowedTools,
       permissionMode: options.permissionMode,
       initialMessage: message,
+      initialImages: images,
     })
   } catch (error) {
     if (didComplete) {
@@ -165,7 +182,8 @@ function runFollowUpChat(
   backend: AgentBackend,
   message: string,
   kombuseSessionId: KombuseSessionId,
-  options: Omit<ChatRunnerOptions, 'resumeSessionId'>
+  options: Omit<ChatRunnerOptions, 'resumeSessionId'>,
+  images?: ImageAttachment[]
 ): void {
   let didComplete = false
 
@@ -199,7 +217,7 @@ function runFollowUpChat(
     }
   })
 
-  backend.send(message)
+  backend.send(message, images)
 }
 
 function clearTerminalMetadataPatch(): Partial<SessionMetadata> {
@@ -464,6 +482,7 @@ export function startAgentChatSession(
   const {
     agentId,
     message: userMessage,
+    images,
     kombuseSessionId,
     projectId,
     backendType: backendTypeOverride,
@@ -679,7 +698,7 @@ export function startAgentChatSession(
       backend: existingBackend.name,
       timestamp: Date.now(),
       role: 'user',
-      content: userMessage,
+      content: buildPersistedContent(userMessage, images),
     }
     dependencies.sessionPersistence.persistEvent(persistentSessionId, reusedUserEvent)
 
@@ -791,7 +810,7 @@ export function startAgentChatSession(
           messageText: error.message,
         })
       },
-    })
+    }, images)
 
     return
   }
@@ -829,7 +848,7 @@ export function startAgentChatSession(
     backend: backend.name,
     timestamp: Date.now(),
     role: 'user',
-    content: userMessage,
+    content: buildPersistedContent(userMessage, images),
   }
   dependencies.sessionPersistence.persistEvent(persistentSessionId, userMessageEvent)
 
@@ -1156,7 +1175,7 @@ export function startAgentChatSession(
             messageText: error.message,
           })
         },
-      }).catch((retryError: unknown) => {
+      }, images).catch((retryError: unknown) => {
         setSessionTurnActive(appSessionId, false)
         logger.close()
         const messageText = retryError instanceof Error ? retryError.message : String(retryError)
@@ -1194,7 +1213,7 @@ export function startAgentChatSession(
         messageText: error.message,
       })
     },
-  }).catch((error: unknown) => {
+  }, images).catch((error: unknown) => {
     setSessionTurnActive(appSessionId, false)
     logger.close()
 

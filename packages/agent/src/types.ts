@@ -2,6 +2,7 @@ export { BACKEND_TYPES } from '@kombuse/types'
 export type {
   AgentBackend,
   AgentBackendLifecycleState,
+  ImageAttachment,
   AgentCompleteEvent,
   AgentCompleteReason,
   AgentErrorEvent,

@@ -4,6 +4,7 @@ import type {
   AgentCompleteEvent,
   AgentEvent,
   BackendType,
+  ImageAttachment,
   PermissionResponseOptions,
   StartOptions,
 } from '../types'
@@ -36,7 +37,7 @@ export abstract class BaseAgentBackend implements AgentBackend {
 
   abstract start(options: StartOptions): Promise<void>
   abstract stop(): Promise<void>
-  abstract send(message: string): void
+  abstract send(message: string, images?: ImageAttachment[]): void
 
   respondToPermission?(
     _requestId: string,

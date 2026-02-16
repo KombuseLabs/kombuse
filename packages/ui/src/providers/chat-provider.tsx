@@ -12,6 +12,7 @@ import type {
   PendingPermission,
   JsonObject,
   BackendType,
+  ImageAttachment,
 } from '@kombuse/types'
 import { useWebSocket } from '../hooks/use-websocket'
 import { useSessionByKombuseId, useSessionEvents } from '../hooks/use-sessions'
@@ -19,6 +20,24 @@ import { useAppContext } from '../hooks/use-app-context'
 import { ChatCtx } from './chat-context'
 
 const INITIAL_SESSION_EVENTS_LIMIT = 1000
+
+function filesToImageAttachments(files: File[]): Promise<ImageAttachment[]> {
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise<ImageAttachment>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const dataUrl = reader.result as string
+            const base64 = dataUrl.split(',')[1]!
+            resolve({ data: base64, mediaType: file.type })
+          }
+          reader.onerror = () => reject(reader.error)
+          reader.readAsDataURL(file)
+        })
+    )
+  )
+}
 
 interface ChatProviderProps {
   children: ReactNode
@@ -379,7 +398,7 @@ export function ChatProvider({
   })
 
   const send = useCallback(
-    async (message: string) => {
+    async (message: string, files?: File[]) => {
       if (isLoading) return
       if (!isConnected) {
         const errorEvent: SerializedAgentErrorEvent = {
@@ -430,12 +449,28 @@ export function ChatProvider({
         }
       }
 
+      // Convert files to base64 image attachments
+      let images: ImageAttachment[] | undefined
+      if (files && files.length > 0) {
+        try {
+          images = await filesToImageAttachments(files)
+        } catch {
+          // If file reading fails, proceed without images
+        }
+      }
+
+      // Build display content with placeholders for images
+      const placeholders = images
+        ? images.map((img) => `[image: ${img.mediaType}]`)
+        : []
+      const displayContent = [message, ...placeholders].filter(Boolean).join('\n')
+
       // Add user message as a proper event
       const userEvent: SerializedAgentMessageEvent = {
         type: 'message',
         eventId: crypto.randomUUID(),
         role: 'user',
-        content: message,
+        content: displayContent,
         backend: 'mock',
         timestamp: Date.now(),
       }
@@ -446,6 +481,7 @@ export function ChatProvider({
         type: 'agent.invoke',
         agentId,
         message,
+        images,
         kombuseSessionId: targetSessionId,
         projectId: projectId ?? undefined,
         backendType,

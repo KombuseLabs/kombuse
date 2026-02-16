@@ -35,8 +35,8 @@ export interface ChatContextValue {
   modelPreference: string | null
   /** Pending permission request awaiting user response */
   pendingPermission: SerializedAgentPermissionRequestEvent | null
-  /** Send a message to the agent */
-  send: (message: string) => void | Promise<void>
+  /** Send a message (with optional image files) to the agent */
+  send: (message: string, files?: File[]) => void | Promise<void>
   /** Respond to a permission request */
   respondToPermission: (
     requestId: string,

@@ -1,4 +1,4 @@
-import { BACKEND_TYPES, type StartOptions } from '../types'
+import { BACKEND_TYPES, type ImageAttachment, type StartOptions } from '../types'
 import { BaseAgentBackend } from './base-agent-backend'
 
 export interface MockClientOptions {
@@ -60,7 +60,7 @@ export class MockAgentClient extends BaseAgentBackend {
     })
   }
 
-  send(message: string): void {
+  send(message: string, _images?: ImageAttachment[]): void {
     if (!this.isRunning()) {
       throw new Error('Cannot send message: mock client is not running')
     }

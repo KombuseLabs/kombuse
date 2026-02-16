@@ -8,6 +8,14 @@ import type { KombuseSessionId } from './session-id'
 /** CLI permission mode controlling how the agent interacts with tools. */
 export type PermissionMode = 'default' | 'plan' | 'acceptEdits' | 'bypassPermissions'
 
+/** A base64-encoded image attachment for multimodal messages. */
+export interface ImageAttachment {
+  /** Base64-encoded image data (no data: URI prefix) */
+  data: string
+  /** MIME type, e.g. 'image/png', 'image/jpeg' */
+  mediaType: string
+}
+
 /**
  * Configuration for starting an agent backend
  */
@@ -22,6 +30,8 @@ export interface StartOptions {
   systemPrompt?: string
   permissions?: PermissionConfig
   initialMessage?: string
+  /** Optional image attachments to include with the initial message. */
+  initialImages?: ImageAttachment[]
   /** Maximum number of agentic turns before stopping (default: 1) */
   maxTurns?: number
   /** Tools pre-approved at the subprocess level via --allowedTools. */
@@ -256,7 +266,7 @@ export interface AgentBackend {
   /**
    * Send a message to the agent
    */
-  send(message: string): void
+  send(message: string, images?: ImageAttachment[]): void
 
   /**
    * Optional capability for permission-response handling.

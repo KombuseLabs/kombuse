@@ -1,6 +1,7 @@
 import {
   BACKEND_TYPES,
   type AgentEvent,
+  type ImageAttachment,
   type PermissionResponseOptions,
   type StartOptions,
 } from '../../types'
@@ -241,7 +242,7 @@ export class CodexBackend extends BaseAgentBackend {
     })
   }
 
-  send(message: string): void {
+  send(message: string, _images?: ImageAttachment[]): void {
     if (!this.isRunning()) {
       throw new Error('Codex backend is not running')
     }

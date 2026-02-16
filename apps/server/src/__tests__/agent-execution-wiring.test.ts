@@ -2425,7 +2425,7 @@ describe('persistent backend reuse', () => {
     // Should NOT have created a second backend
     expect(deps.createBackend).toHaveBeenCalledTimes(1)
     // Should have called send() with the follow-up message
-    expect(backend.send).toHaveBeenCalledWith('follow-up')
+    expect(backend.send).toHaveBeenCalledWith('follow-up', undefined)
   })
 
   it('creates new backend when existing backend is not running', async () => {

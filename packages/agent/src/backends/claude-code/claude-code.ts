@@ -1,6 +1,7 @@
 import {
   BACKEND_TYPES,
   type AgentEvent,
+  type ImageAttachment,
   type PermissionResponseOptions,
   type StartOptions,
 } from '../../types'
@@ -18,11 +19,33 @@ export interface ClaudeCodeOptions {
   thinkingEnabled?: boolean
 }
 
+type MultimodalContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+
+function buildUserContent(
+  text: string,
+  images?: ImageAttachment[]
+): string | MultimodalContentBlock[] {
+  if (!images || images.length === 0) return text
+  const blocks: MultimodalContentBlock[] = []
+  if (text) {
+    blocks.push({ type: 'text', text })
+  }
+  for (const img of images) {
+    blocks.push({
+      type: 'image',
+      source: { type: 'base64', media_type: img.mediaType, data: img.data },
+    })
+  }
+  return blocks
+}
+
 /**
  * Input events sent to Claude CLI via stdin
  */
 export type ClaudeInputEvent =
-  | { type: 'user'; message: { role: 'user'; content: string } }
+  | { type: 'user'; message: { role: 'user'; content: string | MultimodalContentBlock[] } }
   | { type: 'tool_result'; tool_result: { id: string; output: string; is_error?: boolean } }
   | {
       type: 'control_response'
@@ -126,7 +149,10 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
         type: 'user',
         message: {
           role: 'user',
-          content: options.initialMessage || 'Message Error: No initial prompt provided.',
+          content: buildUserContent(
+            options.initialMessage || 'Message Error: No initial prompt provided.',
+            options.initialImages
+          ),
         },
       })
     } catch (error) {
@@ -168,10 +194,10 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
   /**
    * Send a user message (initial prompt or follow-up)
    */
-  send(content: string): void {
+  send(content: string, images?: ImageAttachment[]): void {
     this.sendRaw({
       type: 'user',
-      message: { role: 'user', content },
+      message: { role: 'user', content: buildUserContent(content, images) },
     })
   }
 

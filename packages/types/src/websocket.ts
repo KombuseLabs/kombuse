@@ -2,7 +2,7 @@ import type { ActorType } from './events'
 import type { UpdateStatus } from './updates'
 import type { SerializedAgentEvent } from './agent'
 import type { AgentActivityStatus } from './app-context'
-import type { BackendType } from './agent'
+import type { BackendType, ImageAttachment } from './agent'
 
 /**
  * Agent events streamed over websocket.
@@ -36,6 +36,8 @@ export type ClientMessage =
       type: 'agent.invoke'
       agentId?: string
       message: string
+      /** Base64-encoded image attachments for multimodal messages. */
+      images?: ImageAttachment[]
       kombuseSessionId?: string
       projectId?: string
       backendType?: BackendType

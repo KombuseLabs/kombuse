@@ -17,7 +17,7 @@ interface ChatProps {
   /** Events to display (optional if using ChatProvider) */
   events?: SerializedAgentEvent[]
   /** Handler for sending messages (optional if using ChatProvider) */
-  onSubmit?: (message: string) => void | Promise<void>
+  onSubmit?: (message: string, files?: File[]) => void | Promise<void>
   /** Loading state (optional if using ChatProvider) */
   isLoading?: boolean
   /** Connection state (optional if using ChatProvider) */
