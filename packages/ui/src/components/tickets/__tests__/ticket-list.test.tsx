@@ -46,8 +46,23 @@ function buildTicket(overrides: Partial<TicketWithLabels> = {}): TicketWithLabel
   }
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString()
+const sortDateLabelPrefixes: Record<TicketSortBy, string> = {
+  created_at: 'Created',
+  updated_at: 'Updated',
+  opened_at: 'Opened',
+  last_activity_at: 'Activity',
+  closed_at: 'Closed',
+}
+
+function formatDateLabel(date: string, sortBy: TicketSortBy) {
+  const formatted = new Date(date).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+  return `${sortDateLabelPrefixes[sortBy]}: ${formatted}`
 }
 
 const sortFieldCases: Array<[
@@ -64,7 +79,7 @@ const sortFieldCases: Array<[
 describe('TicketList date display', () => {
   it.each(sortFieldCases)('renders %s from ticket.%s', (sortBy, field) => {
     const ticket = buildTicket()
-    const expectedDate = formatDate(ticket[field] as string)
+    const expectedDate = formatDateLabel(ticket[field] as string, sortBy)
 
     render(<TicketList tickets={[ticket]} sortBy={sortBy} />)
 
@@ -80,7 +95,7 @@ describe('TicketList date display', () => {
     render(<TicketList tickets={[ticket]} sortBy="closed_at" />)
 
     expect(screen.getByText('Not closed')).toBeDefined()
-    expect(screen.queryByText(formatDate(ticket.created_at))).toBeNull()
+    expect(screen.queryByText(formatDateLabel(ticket.created_at, 'created_at'))).toBeNull()
   })
 
   it('uses rounded selected card classes without left-border selection classes', () => {

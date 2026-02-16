@@ -44,6 +44,24 @@ const missingDateLabels: Partial<Record<TicketSortBy, string>> = {
   closed_at: 'Not closed',
 }
 
+const sortDateLabelPrefixes: Record<TicketSortBy, string> = {
+  created_at: 'Created',
+  updated_at: 'Updated',
+  opened_at: 'Opened',
+  last_activity_at: 'Activity',
+  closed_at: 'Closed',
+}
+
+function formatDateTime(dateValue: string): string {
+  return new Date(dateValue).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 function getTicketDateLabel(ticket: TicketWithLabels, sortBy: TicketSortBy) {
   const dateField = sortDateFieldMap[sortBy]
   const dateValue = ticket[dateField]
@@ -52,7 +70,8 @@ function getTicketDateLabel(ticket: TicketWithLabels, sortBy: TicketSortBy) {
     return missingDateLabels[sortBy] ?? 'No date'
   }
 
-  return new Date(dateValue).toLocaleDateString()
+  const prefix = sortDateLabelPrefixes[sortBy]
+  return `${prefix}: ${formatDateTime(dateValue)}`
 }
 
 function TicketItem({ ticket, isSelected, onTicketClick, sortBy }: TicketItemProps) {
