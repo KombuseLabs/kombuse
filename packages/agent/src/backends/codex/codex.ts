@@ -16,6 +16,8 @@ import type {
   CodexItemNotificationParams,
   CodexInitializeParams,
   CodexInitializeResponse,
+  CodexModelListParams,
+  CodexModelListResult,
   CodexThreadItemAgentMessage,
   CodexThreadItemCommandExecution,
   CodexThreadItemFileChange,
@@ -271,6 +273,75 @@ export class CodexBackend extends BaseAgentBackend {
     }
 
     this.pendingApprovalRequests.delete(requestId)
+  }
+
+  async listModels(): Promise<CodexModelListResult> {
+    return this.sendRequest<CodexModelListResult>('model/list', { limit: 100 } satisfies CodexModelListParams)
+  }
+
+  async spawnAndInitialize(projectPath: string): Promise<void> {
+    if (this.isRunning()) {
+      throw new Error('Codex backend is already running')
+    }
+
+    this.starting()
+    this.clearBackendSessionId()
+
+    const args = this.buildArgs()
+    const jsonRpcBehavior = createJsonRpcLineBehavior({
+      onMessage: (message) => this.handleJsonRpcMessage(message),
+      onParseError: () => {},
+    })
+
+    this.process = new Process(
+      {
+        command: this.options.cliPath,
+        args,
+        cwd: projectPath,
+        env: createCleanEnv(),
+        inheritEnv: false,
+        name: 'codex-app-server',
+      },
+      {
+        onSpawn: () => {},
+        onStderr: () => {},
+        onExit: (_code, _signal) => {
+          this.process = null
+          this.rejectAllPendingRequests(new Error('Codex process exited'))
+          const lifecycleState = this.getLifecycleState()
+          if (lifecycleState !== 'stopping' && lifecycleState !== 'stopped') {
+            this.stopping('process_exit')
+          }
+          this.stopped({ reason: 'process_exit', complete: null })
+        },
+        onError: (error) => {
+          this.process = null
+          this.failed(error.message, { reason: 'process_error', error })
+        },
+      },
+      [jsonRpcBehavior]
+    )
+
+    try {
+      await this.process.spawn()
+      await waitForRunning(this.process)
+      await this.initialize()
+      this.sendNotification('initialized')
+      this.started()
+    } catch (error) {
+      this.rejectAllPendingRequests(
+        error instanceof Error ? error : new Error(String(error))
+      )
+      if (this.process?.isRunning) {
+        this.process.kill('SIGTERM')
+      }
+      this.process = null
+      if (this.getLifecycleState() !== 'failed' && this.getLifecycleState() !== 'stopped') {
+        const err = error instanceof Error ? error : new Error(String(error))
+        this.failed(err.message, { reason: 'start_failed', error: err })
+      }
+      throw error
+    }
   }
 
   private buildArgs(): string[] {

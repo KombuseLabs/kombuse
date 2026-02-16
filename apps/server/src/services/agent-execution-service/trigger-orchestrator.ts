@@ -9,7 +9,7 @@ import { broadcastTicketAgentStatus } from './backend-registry'
 import { getTypePreset } from './presets'
 import { startAgentChatSession } from './chat-session-runner'
 import type { AgentExecutionDependencies } from './types'
-import { readUserDefaultMaxChainDepth } from '../session-preferences'
+import { readUserDefaultMaxChainDepth } from '@kombuse/services'
 
 /**
  * Emit an agent lifecycle event for ticket activity timeline.

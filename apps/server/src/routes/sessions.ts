@@ -13,7 +13,7 @@ import {
   readUserDefaultBackendType,
   resolveBackendType,
   resolveConfiguredBackendType,
-} from '../services/session-preferences'
+} from '@kombuse/services'
 
 function toPublicSession({ id, ...rest }: Session): PublicSession {
   const metadata = rest.metadata ?? {}

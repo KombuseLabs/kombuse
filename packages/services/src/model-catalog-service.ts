@@ -1,7 +1,7 @@
 import { BACKEND_TYPES, type BackendType, type ModelOption, type ModelCatalogResponse } from '@kombuse/types'
-import { getBackendCapability } from './session-preferences'
+import { getBackendCapability } from './session-preferences-service'
 
-const CODEX_MODELS: ModelOption[] = [
+export const CODEX_FALLBACK_MODELS: ModelOption[] = [
   { id: 'o3', name: 'o3', description: 'Latest OpenAI reasoning model', provider: 'OpenAI' },
   { id: 'o4-mini', name: 'o4-mini', description: 'Fast, affordable reasoning model', provider: 'OpenAI' },
   { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Flagship GPT model', provider: 'OpenAI' },
@@ -18,7 +18,7 @@ const CODEX_DEFAULT_MODEL_ID = 'o3'
 
 const MODEL_CATALOGS: Record<BackendType, { models: ModelOption[]; defaultModelId?: string }> = {
   [BACKEND_TYPES.CODEX]: {
-    models: CODEX_MODELS,
+    models: CODEX_FALLBACK_MODELS,
     defaultModelId: CODEX_DEFAULT_MODEL_ID,
   },
   [BACKEND_TYPES.CLAUDE_CODE]: {
@@ -40,5 +40,27 @@ export function getModelCatalog(backendType: BackendType): ModelCatalogResponse 
     supports_model_selection: capability.supportsModelSelection,
     models: catalog.models,
     default_model_id: catalog.defaultModelId,
+  }
+}
+
+export async function getModelCatalogDynamic(
+  backendType: BackendType,
+  fetchModels?: () => Promise<ModelOption[]>
+): Promise<ModelCatalogResponse> {
+  if (!fetchModels || backendType !== BACKEND_TYPES.CODEX) {
+    return getModelCatalog(backendType)
+  }
+
+  try {
+    const models = await fetchModels()
+    const defaultModel = models.find((m) => m.isDefault)
+    return {
+      backend_type: backendType,
+      supports_model_selection: true,
+      models,
+      default_model_id: defaultModel?.id ?? models[0]?.id,
+    }
+  } catch {
+    return getModelCatalog(backendType)
   }
 }

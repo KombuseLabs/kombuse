@@ -44,6 +44,8 @@ export abstract class BaseAgentBackend implements AgentBackend {
     _options?: PermissionResponseOptions
   ): void
 
+  listModels?(): Promise<unknown>
+
   subscribe(handler: (event: AgentEvent) => void): () => void {
     this.subscribers.add(handler)
     return () => {

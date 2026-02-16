@@ -61,3 +61,27 @@ export {
   hasTemplateVariables,
   buildTemplateContext,
 } from './template'
+
+// Session preferences
+export {
+  DEFAULT_PREFERENCE_PROFILE_ID,
+  CHAT_DEFAULT_BACKEND_SETTING_KEY,
+  CHAT_DEFAULT_MODEL_SETTING_KEY,
+  AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+  getBackendCapability,
+  resolveConfiguredBackendType,
+  normalizeModelPreference,
+  resolveBackendType,
+  resolveModelPreference,
+  readUserDefaultBackendType,
+  readUserDefaultModelPreference,
+  readUserDefaultMaxChainDepth,
+} from './session-preferences-service'
+export type {
+  ResolveBackendTypeInput,
+  ResolveModelPreferenceInput,
+  ResolvedModelPreference,
+} from './session-preferences-service'
+
+// Model catalog
+export { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS } from './model-catalog-service'

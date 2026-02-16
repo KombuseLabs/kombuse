@@ -26,7 +26,7 @@ import {
   resolveBackendType,
   resolveConfiguredBackendType,
   resolveModelPreference,
-} from '../session-preferences'
+} from '@kombuse/services'
 import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registry'
 import { broadcastPermissionPending } from './permission-service'
 import { getTypePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from './presets'

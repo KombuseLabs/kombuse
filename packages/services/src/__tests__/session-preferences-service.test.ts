@@ -16,7 +16,7 @@ import {
   resolveModelPreference,
   AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
   DEFAULT_PREFERENCE_PROFILE_ID,
-} from '../services/session-preferences'
+} from '../session-preferences-service'
 
 describe('session-preferences backend resolution', () => {
   it('resolves backend in session -> agent -> user -> fallback order', () => {

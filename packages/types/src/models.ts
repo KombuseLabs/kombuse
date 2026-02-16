@@ -5,6 +5,9 @@ export interface ModelOption {
   name: string
   description?: string
   provider?: string
+  displayName?: string
+  isDefault?: boolean
+  inputModalities?: string[]
 }
 
 export interface ModelCatalogResponse {

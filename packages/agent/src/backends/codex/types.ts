@@ -243,3 +243,25 @@ export type CodexFileChangeApprovalDecision =
 export interface CodexFileChangeApprovalResponse {
   decision: CodexFileChangeApprovalDecision
 }
+
+export interface CodexModelInfo {
+  id: string
+  model: string
+  displayName: string
+  isDefault: boolean
+  upgrade?: string
+  defaultReasoningEffort?: string
+  reasoningEffort?: Array<{ effort: string; description: string }>
+  inputModalities?: string[]
+  supportsPersonality?: boolean
+}
+
+export interface CodexModelListParams {
+  limit?: number
+  cursor?: string
+}
+
+export interface CodexModelListResult {
+  data: CodexModelInfo[]
+  nextCursor: string | null
+}
