@@ -18,6 +18,10 @@ import {
   RadioGroupItem,
   Switch,
   Input,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   toast,
 } from '@kombuse/ui/base'
 import { Sun, Moon, Monitor } from 'lucide-react'
@@ -104,7 +108,14 @@ export function Settings() {
     <main className="mx-auto max-w-2xl p-8">
       <h1 className="mb-8 text-2xl font-bold">Settings</h1>
 
-      <div className="space-y-6">
+      <Tabs defaultValue="general">
+        <TabsList>
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
+          <TabsTrigger value="agent">Agent</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="space-y-6">
         {/* Appearance */}
         <Card>
           <CardHeader>
@@ -189,7 +200,9 @@ export function Settings() {
             </div>
           </CardContent>
         </Card>
+        </TabsContent>
 
+        <TabsContent value="chat" className="space-y-6">
         {/* Chat Defaults */}
         <Card>
           <CardHeader>
@@ -230,32 +243,6 @@ export function Settings() {
                 }}
                 showDefaultHint
               />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Agent */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Agent</CardTitle>
-            <CardDescription>Configure agent execution defaults.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="agent-max-chain-depth" className="font-normal">Default Loop Depth</Label>
-              <Input
-                id="agent-max-chain-depth"
-                type="number"
-                min="1"
-                max="100"
-                value={maxChainDepthValue}
-                onChange={(event) => setMaxChainDepthValue(event.target.value)}
-                onBlur={persistMaxChainDepth}
-                placeholder="15"
-              />
-              <p className="text-sm text-muted-foreground">
-                Maximum agent invocations per ticket per hour before loop protection triggers.
-              </p>
             </div>
           </CardContent>
         </Card>
@@ -321,7 +308,36 @@ export function Settings() {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="agent" className="space-y-6">
+        {/* Agent */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Agent</CardTitle>
+            <CardDescription>Configure agent execution defaults.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="agent-max-chain-depth" className="font-normal">Default Loop Depth</Label>
+              <Input
+                id="agent-max-chain-depth"
+                type="number"
+                min="1"
+                max="100"
+                value={maxChainDepthValue}
+                onChange={(event) => setMaxChainDepthValue(event.target.value)}
+                onBlur={persistMaxChainDepth}
+                placeholder="15"
+              />
+              <p className="text-sm text-muted-foreground">
+                Maximum agent invocations per ticket per hour before loop protection triggers.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        </TabsContent>
+      </Tabs>
     </main>
   )
 }
