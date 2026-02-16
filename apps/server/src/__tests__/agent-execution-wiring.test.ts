@@ -107,7 +107,7 @@ import {
   type AgentExecutionEvent,
 } from '../services/agent-execution-service'
 import { broadcastPermissionPending } from '../services/agent-execution-service/permission-service'
-import { serverPendingPermissions } from '../services/agent-execution-service/runtime-state'
+import { backendIdleTimeouts, serverPendingPermissions } from '../services/agent-execution-service/runtime-state'
 
 // Clean up persistent backends between tests to prevent cross-test state pollution
 afterEach(() => {
@@ -3822,6 +3822,92 @@ describe('backend idle timeout broadcasts agent.complete', () => {
         reason: 'idle_timeout',
       })
     )
+  })
+
+  it('does not schedule timeout when user setting is unlimited (empty string)', () => {
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockImplementation(
+      (_profileId: string, key: string) => {
+        if (key === 'chat.backend_idle_timeout_minutes') {
+          return { setting_value: '' }
+        }
+        return null
+      }
+    )
+
+    const mockBackend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => false),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+    registerBackend('test-session', mockBackend)
+    resetBackendIdleTimeout('test-session')
+
+    expect(backendIdleTimeouts.has('test-session')).toBe(false)
+
+    vi.advanceTimersByTime(60 * 60 * 1000)
+    expect(mockBackend.stop).not.toHaveBeenCalled()
+    expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()
+
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockReset()
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue(null)
+  })
+
+  it('uses user-configured timeout in minutes when set', () => {
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockImplementation(
+      (_profileId: string, key: string) => {
+        if (key === 'chat.backend_idle_timeout_minutes') {
+          return { setting_value: '10' }
+        }
+        return null
+      }
+    )
+
+    const mockSession = {
+      id: 'session-1',
+      kombuse_session_id: 'test-session',
+      ticket_id: 42,
+      status: 'completed',
+      backend_session_id: null,
+      backend_type: 'claude-code',
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    vi.mocked((sessionsRepository as any).get as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+    vi.mocked((sessionsRepository as any).getByKombuseSessionId as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+
+    const mockBackend: AgentBackend = {
+      name: 'claude-code' as const,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => false),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+    registerBackend('test-session', mockBackend)
+    resetBackendIdleTimeout('test-session')
+
+    // Should not fire at 9 minutes
+    vi.advanceTimersByTime(9 * 60 * 1000)
+    expect(wsHub.broadcastAgentMessage).not.toHaveBeenCalled()
+
+    // Should fire at 10 minutes
+    vi.advanceTimersByTime(1 * 60 * 1000)
+    expect(wsHub.broadcastAgentMessage).toHaveBeenCalledWith(
+      'test-session',
+      expect.objectContaining({
+        type: 'agent.complete',
+        reason: 'idle_timeout',
+      })
+    )
+
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockReset()
+    ;(profileSettingsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue(null)
   })
 })
 

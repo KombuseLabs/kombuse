@@ -5,6 +5,7 @@ export const DEFAULT_PREFERENCE_PROFILE_ID = 'user-1'
 export const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 export const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 export const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
+export const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
 
 interface BackendCapability {
   supportsModelSelection: boolean
@@ -103,5 +104,16 @@ export function readUserDefaultMaxChainDepth(
   if (!setting?.setting_value) return undefined
   const parsed = Number(setting.setting_value)
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 100) return undefined
+  return parsed
+}
+
+export function readUserBackendIdleTimeoutMinutes(
+  profileId: string = DEFAULT_PREFERENCE_PROFILE_ID
+): number | null | undefined {
+  const setting = profileSettingsRepository.get(profileId, CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY)
+  if (!setting) return undefined
+  if (!setting.setting_value?.trim()) return null
+  const parsed = Number(setting.setting_value)
+  if (!Number.isInteger(parsed) || parsed < 1) return undefined
   return parsed
 }

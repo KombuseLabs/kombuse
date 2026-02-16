@@ -30,6 +30,7 @@ const SIDEBAR_DATABASE_SETTING_KEY = 'sidebar.hidden.database'
 const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
+const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
 
 function normalizeBackendType(value?: string | null): BackendType {
   if (
@@ -50,10 +51,12 @@ export function Settings() {
   const { data: defaultBackendSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_BACKEND_SETTING_KEY)
   const { data: defaultModelSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_MODEL_SETTING_KEY)
   const { data: maxChainDepthSetting } = useProfileSetting(USER_PROFILE_ID, AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY)
+  const { data: backendTimeoutSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const upsertSetting = useUpsertProfileSetting()
   const [maxChainDepthValue, setMaxChainDepthValue] = useState(maxChainDepthSetting?.setting_value ?? '')
+  const [backendTimeoutValue, setBackendTimeoutValue] = useState(backendTimeoutSetting?.setting_value ?? '30')
 
   const showEvents = eventsSetting?.setting_value !== 'true'
   const showPermissions = permissionsSetting?.setting_value !== 'true'
@@ -65,6 +68,10 @@ export function Settings() {
     setMaxChainDepthValue(maxChainDepthSetting?.setting_value ?? '')
   }, [maxChainDepthSetting?.setting_value])
 
+  useEffect(() => {
+    setBackendTimeoutValue(backendTimeoutSetting?.setting_value ?? '30')
+  }, [backendTimeoutSetting?.setting_value])
+
   const persistMaxChainDepth = () => {
     const normalizedValue = maxChainDepthValue.trim()
     const currentValue = (maxChainDepthSetting?.setting_value ?? '').trim()
@@ -74,6 +81,19 @@ export function Settings() {
     upsertSetting.mutate({
       profile_id: USER_PROFILE_ID,
       setting_key: AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+      setting_value: normalizedValue,
+    })
+  }
+
+  const persistBackendTimeout = () => {
+    const normalizedValue = backendTimeoutValue.trim()
+    const currentValue = (backendTimeoutSetting?.setting_value ?? '').trim()
+    if (normalizedValue === currentValue) {
+      return
+    }
+    upsertSetting.mutate({
+      profile_id: USER_PROFILE_ID,
+      setting_key: CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
       setting_value: normalizedValue,
     })
   }
@@ -235,6 +255,35 @@ export function Settings() {
               />
               <p className="text-sm text-muted-foreground">
                 Maximum agent invocations per ticket per hour before loop protection triggers.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Backend */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Backend</CardTitle>
+            <CardDescription>Configure agent backend lifecycle.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="backend-idle-timeout" className="font-normal">
+                Idle Timeout (minutes)
+              </Label>
+              <Input
+                id="backend-idle-timeout"
+                type="number"
+                min="1"
+                value={backendTimeoutValue}
+                onChange={(event) => setBackendTimeoutValue(event.target.value)}
+                onBlur={persistBackendTimeout}
+                placeholder="30"
+              />
+              <p className="text-sm text-muted-foreground">
+                Time before idle backends are automatically removed. Clear to disable
+                automatic removal. This value should be short for lots of parallel
+                tasks and can be large for occasional chats.
               </p>
             </div>
           </CardContent>

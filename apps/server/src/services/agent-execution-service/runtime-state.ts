@@ -1,4 +1,5 @@
 import type { AgentBackend } from '@kombuse/types'
+import { readUserBackendIdleTimeoutMinutes } from '@kombuse/services'
 
 /**
  * Registry of active session backends for permission response routing.
@@ -26,6 +27,13 @@ function parseBackendIdleTimeoutMs(rawValue: string | undefined): number {
 export const BACKEND_IDLE_TIMEOUT_MS = parseBackendIdleTimeoutMs(
   process.env.KOMBUSE_BACKEND_IDLE_TIMEOUT_MS
 )
+
+export function resolveBackendIdleTimeoutMs(): number | null {
+  const userMinutes = readUserBackendIdleTimeoutMinutes()
+  if (userMinutes === null) return null
+  if (userMinutes !== undefined) return userMinutes * 60 * 1000
+  return BACKEND_IDLE_TIMEOUT_MS
+}
 
 export function setSessionTurnActive(sessionId: string, isActive: boolean): void {
   if (isActive) {

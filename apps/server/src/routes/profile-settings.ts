@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import { profileSettingsRepository } from '@kombuse/persistence'
+import { CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY } from '@kombuse/services'
 import { upsertProfileSettingSchema } from '../schemas/profile-settings'
+import { rescheduleAllIdleTimeouts } from '../services/agent-execution-service'
 
 export async function profileSettingsRoutes(fastify: FastifyInstance) {
   // List all settings for a profile
@@ -32,6 +34,11 @@ export async function profileSettingsRoutes(fastify: FastifyInstance) {
     }
 
     const setting = profileSettingsRepository.upsert(parseResult.data)
+
+    if (parseResult.data.setting_key === CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY) {
+      rescheduleAllIdleTimeouts()
+    }
+
     return setting
   })
 
@@ -46,6 +53,11 @@ export async function profileSettingsRoutes(fastify: FastifyInstance) {
     if (!deleted) {
       return reply.status(404).send({ error: 'Setting not found' })
     }
+
+    if (request.params.key === CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY) {
+      rescheduleAllIdleTimeouts()
+    }
+
     return reply.status(204).send()
   })
 }

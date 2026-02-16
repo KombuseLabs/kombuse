@@ -9,6 +9,7 @@ import {
   BACKEND_IDLE_TIMEOUT_MS,
   clearPendingPermissionsForSession,
   isSessionTurnActive,
+  resolveBackendIdleTimeoutMs,
   setSessionTurnActive,
 } from './runtime-state'
 import type { AgentExecutionDependencies } from './types'
@@ -79,6 +80,12 @@ export function unregisterBackend(sessionId: string): void {
  */
 export function resetBackendIdleTimeout(sessionId: string): void {
   clearBackendIdleTimeout(sessionId)
+
+  const timeoutMs = resolveBackendIdleTimeoutMs()
+  if (timeoutMs === null) {
+    return
+  }
+
   const timer = setTimeout(() => {
     if (isSessionTurnActive(sessionId)) {
       resetBackendIdleTimeout(sessionId)
@@ -133,9 +140,21 @@ export function resetBackendIdleTimeout(sessionId: string): void {
     if (session?.ticket_id) {
       broadcastTicketAgentStatus(session.ticket_id)
     }
-  }, BACKEND_IDLE_TIMEOUT_MS)
+  }, timeoutMs)
   if (timer.unref) timer.unref()
   backendIdleTimeouts.set(sessionId, timer)
+}
+
+/**
+ * Reschedule all active idle timeouts with the current timeout setting.
+ * Called when the user changes the backend idle timeout setting.
+ */
+export function rescheduleAllIdleTimeouts(): void {
+  const sessionIds = [...backendIdleTimeouts.keys()]
+  for (const sessionId of sessionIds) {
+    if (isSessionTurnActive(sessionId)) continue
+    resetBackendIdleTimeout(sessionId)
+  }
 }
 
 /**

@@ -11,10 +11,12 @@ import { profileSettingsRepository } from '@kombuse/persistence'
 import {
   normalizeModelPreference,
   readUserDefaultMaxChainDepth,
+  readUserBackendIdleTimeoutMinutes,
   resolveBackendType,
   resolveConfiguredBackendType,
   resolveModelPreference,
   AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+  CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
   DEFAULT_PREFERENCE_PROFILE_ID,
 } from '../session-preferences-service'
 
@@ -163,6 +165,76 @@ describe('readUserDefaultMaxChainDepth', () => {
     expect(mockGet).toHaveBeenCalledWith(
       'custom-profile',
       AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+    )
+  })
+})
+
+describe('readUserBackendIdleTimeoutMinutes', () => {
+  const mockGet = profileSettingsRepository.get as ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockGet.mockReturnValue(null)
+  })
+
+  it('returns a valid positive integer', () => {
+    mockGet.mockReturnValue({ setting_value: '45' })
+    expect(readUserBackendIdleTimeoutMinutes()).toBe(45)
+  })
+
+  it('returns null for empty string (unlimited)', () => {
+    mockGet.mockReturnValue({ setting_value: '' })
+    expect(readUserBackendIdleTimeoutMinutes()).toBeNull()
+  })
+
+  it('returns null for whitespace-only string (unlimited)', () => {
+    mockGet.mockReturnValue({ setting_value: '   ' })
+    expect(readUserBackendIdleTimeoutMinutes()).toBeNull()
+  })
+
+  it('returns undefined when no setting exists', () => {
+    mockGet.mockReturnValue(null)
+    expect(readUserBackendIdleTimeoutMinutes()).toBeUndefined()
+  })
+
+  it('returns undefined for non-numeric strings', () => {
+    mockGet.mockReturnValue({ setting_value: 'abc' })
+    expect(readUserBackendIdleTimeoutMinutes()).toBeUndefined()
+  })
+
+  it('returns undefined for zero', () => {
+    mockGet.mockReturnValue({ setting_value: '0' })
+    expect(readUserBackendIdleTimeoutMinutes()).toBeUndefined()
+  })
+
+  it('returns undefined for negative values', () => {
+    mockGet.mockReturnValue({ setting_value: '-5' })
+    expect(readUserBackendIdleTimeoutMinutes()).toBeUndefined()
+  })
+
+  it('returns undefined for float values', () => {
+    mockGet.mockReturnValue({ setting_value: '3.5' })
+    expect(readUserBackendIdleTimeoutMinutes()).toBeUndefined()
+  })
+
+  it('accepts large values (no max limit)', () => {
+    mockGet.mockReturnValue({ setting_value: '99999' })
+    expect(readUserBackendIdleTimeoutMinutes()).toBe(99999)
+  })
+
+  it('uses default profileId when none provided', () => {
+    readUserBackendIdleTimeoutMinutes()
+    expect(mockGet).toHaveBeenCalledWith(
+      DEFAULT_PREFERENCE_PROFILE_ID,
+      CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
+    )
+  })
+
+  it('uses custom profileId when provided', () => {
+    readUserBackendIdleTimeoutMinutes('custom-profile')
+    expect(mockGet).toHaveBeenCalledWith(
+      'custom-profile',
+      CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
     )
   })
 })

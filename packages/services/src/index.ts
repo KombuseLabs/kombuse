@@ -68,6 +68,7 @@ export {
   CHAT_DEFAULT_BACKEND_SETTING_KEY,
   CHAT_DEFAULT_MODEL_SETTING_KEY,
   AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+  CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
   getBackendCapability,
   resolveConfiguredBackendType,
   normalizeModelPreference,
@@ -76,6 +77,7 @@ export {
   readUserDefaultBackendType,
   readUserDefaultModelPreference,
   readUserDefaultMaxChainDepth,
+  readUserBackendIdleTimeoutMinutes,
 } from './session-preferences-service'
 export type {
   ResolveBackendTypeInput,
