@@ -7,6 +7,9 @@ import {
   ResizableCardPanel,
   ResizablePanelGroup,
   ResizablePanel,
+  Tabs,
+  TabsList,
+  TabsTrigger,
 } from "@kombuse/ui/base";
 import { AgentPicker, Chat, SessionList } from "@kombuse/ui/components";
 import {
@@ -20,7 +23,7 @@ import {
 import { ChatProvider } from "@kombuse/ui/providers";
 import { cn } from "@kombuse/ui/lib/utils";
 import { Plus } from "lucide-react";
-import { BACKEND_TYPES, type BackendType } from "@kombuse/types";
+import { BACKEND_TYPES, type BackendType, parseSessionId } from "@kombuse/types";
 
 const USER_PROFILE_ID = "user-1";
 const CHAT_DEFAULT_BACKEND_SETTING_KEY = "chat.default_backend_type";
@@ -42,6 +45,17 @@ export function Chats() {
   const { pendingPermissions } = useAppContext();
   const { data: defaultBackendSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_BACKEND_SETTING_KEY);
   const { data: defaultModelSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_MODEL_SETTING_KEY);
+
+  const [activeTab, setActiveTab] = useState<'all' | 'chats' | 'system'>('all');
+  const filteredSessions = useMemo(() => {
+    if (!sessions || activeTab === 'all') return sessions ?? [];
+    return sessions.filter((s) => {
+      const parsed = s.kombuse_session_id ? parseSessionId(s.kombuse_session_id) : null;
+      if (activeTab === 'chats') return parsed?.origin === 'chat';
+      if (activeTab === 'system') return parsed?.origin === 'trigger';
+      return true;
+    });
+  }, [sessions, activeTab]);
 
   const normalizeBackendType = (value?: string | null): BackendType => {
     if (
@@ -133,30 +147,36 @@ export function Chats() {
   const showDetailPanel = true;
 
   const sessionListContent = (
-    <SessionList
-      sessions={sessions ?? []}
-      className="h-full min-h-0"
-      variant="card"
-      header={
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
-          <h1 className="text-2xl font-bold">Sessions</h1>
-          <Button onClick={handleNewChat}>
-            <Plus className="size-4" />
-            New Chat
-          </Button>
-        </div>
-      }
-      selectedSessionId={selectedSessionId}
-      onSessionClick={(session) => handleSelectSession(session.kombuse_session_id!)}
-      onSessionDelete={(session) => {
-        deleteSession.mutate(session.kombuse_session_id!)
-        if (selectedSessionId === session.kombuse_session_id) {
-          navigate(chatsBasePath)
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'chats' | 'system')} className="h-full min-h-0">
+      <SessionList
+        sessions={filteredSessions}
+        className="h-full min-h-0"
+        variant="card"
+        header={
+          <div className="flex shrink-0 items-center justify-between gap-3 p-4">
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="chats">Chats</TabsTrigger>
+              <TabsTrigger value="system">System</TabsTrigger>
+            </TabsList>
+            <Button onClick={handleNewChat}>
+              <Plus className="size-4" />
+              New Chat
+            </Button>
+          </div>
         }
-      }}
-      isSessionPendingPermission={sessionHasPendingPermission}
-      isLoading={sessionsLoading}
-    />
+        selectedSessionId={selectedSessionId}
+        onSessionClick={(session) => handleSelectSession(session.kombuse_session_id!)}
+        onSessionDelete={(session) => {
+          deleteSession.mutate(session.kombuse_session_id!)
+          if (selectedSessionId === session.kombuse_session_id) {
+            navigate(chatsBasePath)
+          }
+        }}
+        isSessionPendingPermission={sessionHasPendingPermission}
+        isLoading={sessionsLoading}
+      />
+    </Tabs>
   );
 
   const chatDetailContent = (
