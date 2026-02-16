@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, type RefObject } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import type { Profile } from '@kombuse/types'
 import { AutocompletePopover } from './autocomplete-popover'
 import { getAvatarIcon } from '../agents/avatar-picker'
@@ -14,6 +15,7 @@ interface MentionAutocompleteProps {
   textareaRef: RefObject<HTMLTextAreaElement | null>
   onSelect: (profile: Profile) => void
   visible: boolean
+  triggersDisabled?: boolean
 }
 
 function MentionAutocomplete({
@@ -23,6 +25,7 @@ function MentionAutocomplete({
   textareaRef,
   onSelect,
   visible,
+  triggersDisabled,
 }: MentionAutocompleteProps) {
   const renderItem = useCallback((profile: Profile) => {
     const Icon = getAvatarIcon(profile.avatar_url)
@@ -36,6 +39,13 @@ function MentionAutocomplete({
 
   const keyExtractor = useCallback((profile: Profile) => profile.id, [])
 
+  const footer = triggersDisabled ? (
+    <div className="border-t px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
+      <AlertTriangle className="size-3 shrink-0" />
+      <span>Triggers off — agents won't be invoked</span>
+    </div>
+  ) : undefined
+
   return (
     <AutocompletePopover
       items={profiles}
@@ -46,6 +56,7 @@ function MentionAutocomplete({
       visible={visible}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
+      footer={footer}
     />
   )
 }

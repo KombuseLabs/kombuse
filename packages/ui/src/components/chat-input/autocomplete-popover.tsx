@@ -14,6 +14,7 @@ interface AutocompletePopoverProps<T> {
   renderItem: (item: T, selected: boolean) => ReactNode
   keyExtractor: (item: T) => string | number
   className?: string
+  footer?: ReactNode
 }
 
 function AutocompletePopover<T>({
@@ -26,6 +27,7 @@ function AutocompletePopover<T>({
   renderItem,
   keyExtractor,
   className,
+  footer,
 }: AutocompletePopoverProps<T>) {
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -76,6 +78,7 @@ function AutocompletePopover<T>({
           )
         })}
       </div>
+      {footer}
     </div>,
     document.body
   )

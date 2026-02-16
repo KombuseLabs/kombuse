@@ -24,6 +24,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  toast,
 } from "@kombuse/ui/base";
 import { TicketList, TicketListHeader, TicketDetail, ChatInput, ActivityTimeline, Chat } from "@kombuse/ui/components";
 import type { ReplyTarget } from "@kombuse/ui/components";
@@ -463,6 +464,15 @@ export function Tickets() {
           // Individual upload failures don't block remaining uploads
         }
       }
+    }
+
+    if (
+      selectedTicket?.triggers_enabled === false &&
+      /@\[[^\]]+\]\([^)]+\)/.test(body)
+    ) {
+      toast.warning(
+        "Triggers are off for this ticket — mentioned agents won't be invoked."
+      );
     }
 
     setReplyTarget(null);
@@ -1034,6 +1044,7 @@ export function Tickets() {
                               placeholder="Add a comment..."
                               replyTarget={replyTarget}
                               onCancelReply={handleCancelReply}
+                              triggersEnabled={selectedTicket?.triggers_enabled}
                             />
                           </div>
                         </div>

@@ -23,12 +23,14 @@ interface UseTextareaAutocompleteOptions {
   value: string
   onValueChange: (value: string) => void
   textareaRef: RefObject<HTMLTextAreaElement | null>
+  triggersEnabled?: boolean
 }
 
 export function useTextareaAutocomplete({
   value,
   onValueChange,
   textareaRef,
+  triggersEnabled,
 }: UseTextareaAutocompleteOptions) {
   const [mentionContext, setMentionContext] = useState(() =>
     getMentionContext('', 0)
@@ -212,6 +214,7 @@ export function useTextareaAutocomplete({
               textareaRef={textareaRef}
               onSelect={handleMentionSelect}
               visible={profileDropdownVisible}
+              triggersDisabled={triggersEnabled === false}
             />
             <TicketMentionAutocomplete
               tickets={mentionTickets}
@@ -235,6 +238,7 @@ export function useTextareaAutocomplete({
       selectedTicketIndex,
       handleTicketMentionSelect,
       ticketDropdownVisible,
+      triggersEnabled,
     ]
   )
 

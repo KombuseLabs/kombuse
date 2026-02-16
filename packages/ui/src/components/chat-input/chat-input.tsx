@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
 import { useFileStaging } from '../../hooks/use-file-staging'
 import { StagedFilePreviews } from '../staged-file-previews'
-import { Send, Loader2, X, Paperclip, Square } from 'lucide-react'
+import { Send, Loader2, X, Paperclip, Square, AlertTriangle } from 'lucide-react'
 
 export interface ReplyTarget {
   commentId: number
@@ -25,6 +25,7 @@ interface ChatInputProps {
   onCancelReply?: () => void
   onStop?: () => void
   className?: string
+  triggersEnabled?: boolean
 }
 
 function ChatInput({
@@ -37,6 +38,7 @@ function ChatInput({
   onCancelReply,
   onStop,
   className,
+  triggersEnabled,
 }: ChatInputProps) {
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -58,6 +60,7 @@ function ChatInput({
     value: message,
     onValueChange: setMessage,
     textareaRef,
+    triggersEnabled,
   })
   const { onChange: handleAutocompleteChange, onKeyDown: handleAutocompleteKeyDown } = autocompleteProps
 
@@ -91,6 +94,7 @@ function ChatInput({
 
   const isDisabled = disabled || isLoading
   const canSubmit = (message.trim().length > 0 || hasFiles) && !isDisabled
+  const showTriggersWarning = triggersEnabled === false && message.includes('@')
 
   const effectivePlaceholder = replyTarget
     ? `Reply to ${replyTarget.authorId}...`
@@ -128,6 +132,12 @@ function ChatInput({
         onRemove={removeFile}
         className={cn(stagedFiles.length > 0 && 'mb-2')}
       />
+      {showTriggersWarning && (
+        <div className="mb-2 flex items-center gap-1.5 rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="size-3 shrink-0" />
+          <span>Triggers are off — agents won't respond to mentions</span>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <Textarea
           ref={textareaRef}
