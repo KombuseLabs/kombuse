@@ -366,6 +366,12 @@ describe('TicketDetail header behavior', () => {
     expect(screen.queryByRole('switch', { name: 'Toggle loop protection' })).toBeNull()
   })
 
+  it('hides loop protection toggle when loop_protection_enabled is false', () => {
+    currentTicket = buildTicket({ loop_protection_enabled: false })
+    render(<TicketDetail isEditable />)
+    expect(screen.queryByRole('switch', { name: 'Toggle loop protection' })).toBeNull()
+  })
+
   it('renders mode-specific action controls', () => {
     render(<TicketDetail isEditable />)
 
