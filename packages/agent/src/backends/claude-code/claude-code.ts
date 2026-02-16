@@ -233,6 +233,10 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
       args.push('--resume', options.resumeSessionId.trim())
     }
 
+    if (typeof options.model === 'string' && options.model.trim().length > 0) {
+      args.push('--model', options.model.trim())
+    }
+
     // Set permission mode (e.g. 'plan' forces plan-first workflow)
     if (options.permissionMode && options.permissionMode !== 'default') {
       args.push('--permission-mode', options.permissionMode)

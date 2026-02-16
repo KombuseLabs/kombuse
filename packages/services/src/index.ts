@@ -84,4 +84,4 @@ export type {
 } from './session-preferences-service'
 
 // Model catalog
-export { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS } from './model-catalog-service'
+export { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS, CLAUDE_CODE_MODELS } from './model-catalog-service'

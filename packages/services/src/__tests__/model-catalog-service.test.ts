@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { BACKEND_TYPES } from '@kombuse/types'
-import { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS } from '../model-catalog-service'
+import { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS, CLAUDE_CODE_MODELS } from '../model-catalog-service'
 
 describe('model-catalog', () => {
   describe('getModelCatalog', () => {
@@ -12,12 +12,29 @@ describe('model-catalog', () => {
       expect(catalog.default_model_id).toBeDefined()
     })
 
-    it('returns empty model list for claude-code backend', () => {
+    it('returns non-empty model list for claude-code backend', () => {
       const catalog = getModelCatalog(BACKEND_TYPES.CLAUDE_CODE)
       expect(catalog.backend_type).toBe('claude-code')
-      expect(catalog.supports_model_selection).toBe(false)
-      expect(catalog.models).toEqual([])
-      expect(catalog.default_model_id).toBeUndefined()
+      expect(catalog.supports_model_selection).toBe(true)
+      expect(catalog.models.length).toBeGreaterThan(0)
+      expect(catalog.default_model_id).toBeDefined()
+    })
+
+    it('claude-code models have required fields', () => {
+      const catalog = getModelCatalog(BACKEND_TYPES.CLAUDE_CODE)
+      for (const model of catalog.models) {
+        expect(model.id).toBeTruthy()
+        expect(model.name).toBeTruthy()
+        expect(model.provider).toBe('Anthropic')
+      }
+    })
+
+    it('claude-code default model exists in catalog', () => {
+      const catalog = getModelCatalog(BACKEND_TYPES.CLAUDE_CODE)
+      const defaultExists = catalog.models.some(
+        (m) => m.id === catalog.default_model_id
+      )
+      expect(defaultExists).toBe(true)
     })
 
     it('returns empty model list for mock backend', () => {
@@ -87,8 +104,8 @@ describe('model-catalog', () => {
 
       const catalog = await getModelCatalogDynamic(BACKEND_TYPES.CLAUDE_CODE, fetcher)
       expect(catalog.backend_type).toBe('claude-code')
-      expect(catalog.supports_model_selection).toBe(false)
-      expect(catalog.models).toEqual([])
+      expect(catalog.supports_model_selection).toBe(true)
+      expect(catalog.models).toEqual(CLAUDE_CODE_MODELS)
     })
 
     it('uses first model as default when no isDefault flag set', async () => {

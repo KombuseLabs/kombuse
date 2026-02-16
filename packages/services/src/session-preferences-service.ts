@@ -11,7 +11,7 @@ interface BackendCapability {
 }
 
 const BACKEND_CAPABILITIES: Record<BackendType, BackendCapability> = {
-  [BACKEND_TYPES.CLAUDE_CODE]: { supportsModelSelection: false },
+  [BACKEND_TYPES.CLAUDE_CODE]: { supportsModelSelection: true },
   [BACKEND_TYPES.CODEX]: { supportsModelSelection: true },
   [BACKEND_TYPES.MOCK]: { supportsModelSelection: false },
 }

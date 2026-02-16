@@ -87,14 +87,14 @@ describe('session-preferences model resolution', () => {
     })
     expect(codexResolved.appliedModel).toBe('gpt-5-mini')
 
-    const claudeResolved = resolveModelPreference({
+    const mockResolved = resolveModelPreference({
       sessionModelPreference: undefined,
       agentModelPreference: 'gpt-5-mini',
       userDefaultModelPreference: undefined,
-      backendType: BACKEND_TYPES.CLAUDE_CODE,
+      backendType: BACKEND_TYPES.MOCK,
     })
-    expect(claudeResolved.modelPreference).toBe('gpt-5-mini')
-    expect(claudeResolved.appliedModel).toBeUndefined()
+    expect(mockResolved.modelPreference).toBe('gpt-5-mini')
+    expect(mockResolved.appliedModel).toBeUndefined()
   })
 })
 

@@ -32,6 +32,23 @@ describe('models route', () => {
     }
   })
 
+  it('returns model catalog for claude-code backend', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/models?backend_type=claude-code',
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json()
+    expect(body.backend_type).toBe('claude-code')
+    expect(body.supports_model_selection).toBe(true)
+    expect(body.models.length).toBeGreaterThan(0)
+    expect(body.default_model_id).toBeDefined()
+    for (const model of body.models) {
+      expect(model.provider).toBe('Anthropic')
+    }
+  })
+
   it('returns 400 when backend_type query param is missing', async () => {
     const response = await app.inject({
       method: 'GET',
