@@ -29,6 +29,7 @@ import {
   resolveModelPreference,
 } from '@kombuse/services'
 import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registry'
+import { buildPersistedContent } from './content-helpers'
 import { broadcastPermissionPending } from './permission-service'
 import { getTypePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from './presets'
 import { activeBackends, createPermissionKey, setSessionTurnActive } from './runtime-state'
@@ -64,20 +65,6 @@ interface ChatRunnerOptions {
   onError?: (error: Error) => void
   /** Callback when resume fails (e.g. "session does not exist") — allows retry without --resume */
   onResumeFailed?: () => void
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${Math.round(bytes)} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function buildPersistedContent(message: string, images?: ImageAttachment[]): string {
-  if (!images || images.length === 0) return message
-  const placeholders = images.map(
-    (img) => `[image: ${img.mediaType}, ${formatBytes(img.data.length * 0.75)}]`
-  )
-  return [message, ...placeholders].filter(Boolean).join('\n')
 }
 
 /**

@@ -1,4 +1,4 @@
-export { ClaudeCodeBackend, type ClaudeCodeOptions, type ClaudeInputEvent } from './claude-code'
+export { ClaudeCodeBackend, type ClaudeCodeOptions, type ClaudeInputEvent, buildUserContent, type MultimodalContentBlock } from './claude-code'
 export {
   resolveClaudePath,
   createCleanEnv,

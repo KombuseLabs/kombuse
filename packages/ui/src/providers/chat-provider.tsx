@@ -30,7 +30,7 @@ function filesToImageAttachments(files: File[]): Promise<ImageAttachment[]> {
           reader.onload = () => {
             const dataUrl = reader.result as string
             const base64 = dataUrl.split(',')[1]!
-            resolve({ data: base64, mediaType: file.type })
+            resolve({ data: base64, mediaType: file.type || 'application/octet-stream' })
           }
           reader.onerror = () => reject(reader.error)
           reader.readAsDataURL(file)
@@ -455,7 +455,14 @@ export function ChatProvider({
         try {
           images = await filesToImageAttachments(files)
         } catch {
-          // If file reading fails, proceed without images
+          const warningEvent: SerializedAgentErrorEvent = {
+            type: 'error',
+            eventId: crypto.randomUUID(),
+            message: 'Could not attach images. The message will be sent without them.',
+            backend: 'mock',
+            timestamp: Date.now(),
+          }
+          setEvents((prev) => [...prev, warningEvent])
         }
       }
 

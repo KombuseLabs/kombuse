@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createSessionId } from '@kombuse/types'
 import { ClaudeCodeBackend } from '../backends/claude-code'
 import type { ParsedClaudeMessage } from '../backends/claude-code'
@@ -472,6 +472,45 @@ describe('ClaudeCodeBackend', () => {
         expect(preNorm.sourceType).toBe('cli_pre_normalization')
         expect(preNorm.data).toEqual(msg.data)
       }
+    })
+  })
+
+  describe('send', () => {
+    it('passes multimodal content to sendRaw when images are provided', () => {
+      const backend = new ClaudeCodeBackend()
+      const sendRawSpy = vi.fn()
+      backend.sendRaw = sendRawSpy
+
+      const images = [{ data: 'base64data', mediaType: 'image/png' }]
+      backend.send('describe this image', images)
+
+      expect(sendRawSpy).toHaveBeenCalledOnce()
+      const payload = sendRawSpy.mock.calls[0]![0]
+      expect(payload.type).toBe('user')
+      expect(payload.message.role).toBe('user')
+
+      const content = payload.message.content
+      expect(Array.isArray(content)).toBe(true)
+      expect(content).toHaveLength(2)
+      expect(content[0]).toEqual({ type: 'text', text: 'describe this image' })
+      expect(content[1]).toEqual({
+        type: 'image',
+        source: { type: 'base64', media_type: 'image/png', data: 'base64data' },
+      })
+    })
+
+    it('passes plain string to sendRaw when no images are provided', () => {
+      const backend = new ClaudeCodeBackend()
+      const sendRawSpy = vi.fn()
+      backend.sendRaw = sendRawSpy
+
+      backend.send('just text')
+
+      expect(sendRawSpy).toHaveBeenCalledOnce()
+      const payload = sendRawSpy.mock.calls[0]![0]
+      expect(payload.type).toBe('user')
+      expect(payload.message.role).toBe('user')
+      expect(payload.message.content).toBe('just text')
     })
   })
 })

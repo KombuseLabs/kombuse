@@ -19,11 +19,11 @@ export interface ClaudeCodeOptions {
   thinkingEnabled?: boolean
 }
 
-type MultimodalContentBlock =
+export type MultimodalContentBlock =
   | { type: 'text'; text: string }
   | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
 
-function buildUserContent(
+export function buildUserContent(
   text: string,
   images?: ImageAttachment[]
 ): string | MultimodalContentBlock[] {
