@@ -193,6 +193,46 @@ describe('ClaudeCodeBackend', () => {
 
       expect(args).not.toContain('--permission-mode')
     })
+
+    it('omits --max-turns when maxTurns is undefined', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+      })
+
+      expect(args).not.toContain('--max-turns')
+    })
+
+    it('includes --max-turns when maxTurns is provided', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        maxTurns: 10,
+      })
+
+      expect(args).toContain('--max-turns')
+      expect(args).toContain('10')
+    })
+
+    it('includes --max-turns when maxTurns is 1', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        maxTurns: 1,
+      })
+
+      expect(args).toContain('--max-turns')
+      expect(args).toContain('1')
+    })
   })
 
   describe('handleMessage', () => {

@@ -32,7 +32,7 @@ export interface StartOptions {
   initialMessage?: string
   /** Optional image attachments to include with the initial message. */
   initialImages?: ImageAttachment[]
-  /** Maximum number of agentic turns before stopping (default: 1) */
+  /** Maximum number of agentic turns before stopping. No limit by default (matches Claude Code CLI default). */
   maxTurns?: number
   /** Tools pre-approved at the subprocess level via --allowedTools. */
   allowedTools?: string[]

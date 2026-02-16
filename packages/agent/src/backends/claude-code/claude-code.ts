@@ -243,9 +243,12 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
       '--permission-prompt-tool',
       'stdio', // Route permission requests to stdin/stdout
       '--verbose', // Enable verbose output
-      '--max-turns',
-      String(options.maxTurns ?? 150),
     ]
+
+    // Disabled: no turn limit by default. See #302 for potential future re-integration as a user setting.
+    if (options.maxTurns !== undefined) {
+      args.push('--max-turns', String(options.maxTurns))
+    }
 
     // Pre-approve tools at the subprocess level to avoid permission round-trips
     if (options.allowedTools && options.allowedTools.length > 0) {
