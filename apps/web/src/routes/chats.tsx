@@ -147,7 +147,7 @@ export function Chats() {
   const showDetailPanel = true;
 
   const sessionListContent = (
-    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'chats' | 'system')} className="h-full min-h-0">
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'chats' | 'system')} className="h-full min-h-0 gap-0">
       <SessionList
         sessions={filteredSessions}
         className="h-full min-h-0"
@@ -155,9 +155,9 @@ export function Chats() {
         header={
           <div className="flex shrink-0 items-center justify-between gap-3 p-4">
             <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="chats">Chats</TabsTrigger>
               <TabsTrigger value="system">System</TabsTrigger>
+              <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
             <Button onClick={handleNewChat}>
               <Plus className="size-4" />
