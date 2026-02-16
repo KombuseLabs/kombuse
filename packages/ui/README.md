@@ -542,6 +542,8 @@ import {
 <MilestoneBadge milestone={milestone} size="sm" showProgress />
 
 // Single-select dropdown for assigning a milestone (with optional inline creation)
+// When a milestone is selected, renders as a badge-style trigger (colored pill).
+// When no milestone is selected, renders as an outline button.
 <MilestoneSelector
   availableMilestones={projectMilestones}
   selectedMilestoneId={ticket.milestone_id ?? null}
@@ -549,6 +551,7 @@ import {
   onMilestoneCreate={(data) => createMilestone(data)}
   isCreating={isCreating}
   placeholder="Set milestone..."
+  showProgress  // Display progress (closed/total) in badge-style trigger
 />
 
 // Inline form for creating/editing milestones

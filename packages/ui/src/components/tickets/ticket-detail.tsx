@@ -354,7 +354,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
               )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-1">
-              {currentMilestone && (
+              {currentMilestone && !isEditable && (
                 <MilestoneBadge milestone={currentMilestone} size="sm" showProgress />
               )}
               {isEditable && (
@@ -364,6 +364,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
                   onSelect={(milestoneId) => updateCurrentTicket({ milestone_id: milestoneId })}
                   onMilestoneCreate={(data) => createMilestone(data)}
                   isCreating={isCreatingMilestone}
+                  showProgress
                 />
               )}
             </div>

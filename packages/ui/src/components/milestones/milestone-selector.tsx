@@ -17,6 +17,12 @@ import {
 import { Check, ChevronsUpDown, Target, Plus } from 'lucide-react'
 import { MilestoneForm } from './milestone-form'
 
+function hasMilestoneStats(
+  milestone: MilestoneWithStats | Milestone | null
+): milestone is MilestoneWithStats {
+  return milestone !== null && 'total_count' in milestone
+}
+
 interface MilestoneSelectorProps {
   availableMilestones: MilestoneWithStats[]
   selectedMilestoneId: number | null
@@ -26,6 +32,7 @@ interface MilestoneSelectorProps {
   isCreating?: boolean
   className?: string
   placeholder?: string
+  showProgress?: boolean
 }
 
 function MilestoneSelector({
@@ -37,6 +44,7 @@ function MilestoneSelector({
   isCreating,
   className,
   placeholder = 'Set milestone...',
+  showProgress = false,
 }: MilestoneSelectorProps) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'select' | 'create'>('select')
@@ -80,28 +88,43 @@ function MilestoneSelector({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn('justify-between', className)}
-          disabled={isLoading}
-        >
-          <span className="flex items-center gap-2">
-            {selectedMilestone ? (
-              <>
-                <Target className="size-4" />
-                <span className="truncate">{selectedMilestone.title}</span>
-              </>
-            ) : (
-              <>
-                <Target className="size-4" />
-                <span>{placeholder}</span>
-              </>
+        {selectedMilestone ? (
+          <button
+            type="button"
+            disabled={isLoading}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full font-medium transition-opacity hover:opacity-80 cursor-pointer',
+              'px-2 py-0.5 text-[10px]',
+              selectedMilestone.status === 'closed'
+                ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+              className
             )}
-          </span>
-          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
+          >
+            <Target className="size-3" />
+            <span className="truncate max-w-32">{selectedMilestone.title}</span>
+            {showProgress && hasMilestoneStats(selectedMilestone) && selectedMilestone.total_count > 0 && (
+              <span className="opacity-70">
+                {selectedMilestone.closed_count}/{selectedMilestone.total_count}
+              </span>
+            )}
+            <ChevronsUpDown className="ml-0.5 size-3 shrink-0 opacity-50" />
+          </button>
+        ) : (
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn('justify-between', className)}
+            disabled={isLoading}
+          >
+            <span className="flex items-center gap-2">
+              <Target className="size-4" />
+              <span>{placeholder}</span>
+            </span>
+            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[280px] p-0" align="start">
         {mode === 'select' ? (
