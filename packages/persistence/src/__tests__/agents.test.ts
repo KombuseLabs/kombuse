@@ -157,6 +157,34 @@ describe('agentsRepository', () => {
       const page1 = agentsRepository.list({ limit: 2 })
       expect(page1).toHaveLength(2)
     })
+
+    it('should filter agents by enabled_for_chat', () => {
+      const chatEnabledId = createAgentProfile()
+      const chatDisabledId = createAgentProfile()
+      const noConfigId = createAgentProfile()
+
+      agentsRepository.create({
+        id: chatEnabledId,
+        system_prompt: 'Chat enabled',
+        config: { enabled_for_chat: true },
+      })
+      agentsRepository.create({
+        id: chatDisabledId,
+        system_prompt: 'Chat disabled',
+        config: { enabled_for_chat: false },
+      })
+      agentsRepository.create({
+        id: noConfigId,
+        system_prompt: 'No config flag',
+      })
+
+      const chatAgents = agentsRepository.list({ enabled_for_chat: true })
+
+      expect(chatAgents.every((a) => a.config.enabled_for_chat === true)).toBe(true)
+      expect(chatAgents.some((a) => a.id === chatEnabledId)).toBe(true)
+      expect(chatAgents.some((a) => a.id === chatDisabledId)).toBe(false)
+      expect(chatAgents.some((a) => a.id === noConfigId)).toBe(false)
+    })
   })
 
   describe('update', () => {

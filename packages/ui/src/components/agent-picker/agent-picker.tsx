@@ -15,6 +15,7 @@ import {
 } from '../../base/command'
 import { Bot, Check, ChevronsUpDown } from 'lucide-react'
 import { useAgents, useAgentProfiles } from '../../hooks/use-agents'
+import { useCommandContext } from '../../hooks/use-command-context'
 
 interface AgentPickerProps {
   value: string | null
@@ -26,6 +27,7 @@ interface AgentPickerProps {
 function AgentPicker({ value, onChange, disabled, className }: AgentPickerProps) {
   const [open, setOpen] = useState(false)
 
+  const { registry } = useCommandContext()
   const { data: agents } = useAgents({ is_enabled: true, enabled_for_chat: true })
   const { data: profiles } = useAgentProfiles()
 
@@ -53,23 +55,19 @@ function AgentPicker({ value, onChange, disabled, className }: AgentPickerProps)
     [onChange],
   )
 
-  // Shift+Tab cycles through agents
+  // Shift+Tab cycles through agents (via command system)
   useEffect(() => {
     if (disabled) return
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Tab' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Only intercept if no input/textarea is focused
-        const target = e.target as HTMLElement
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-          return
-        }
-
-        e.preventDefault()
+    const unregister = registry.register({
+      id: 'agent-picker.cycle',
+      title: 'Cycle Agent',
+      category: 'Chat',
+      keybinding: 'shift+tab',
+      handler: () => {
         if (chatAgents.length === 0) return
 
         const currentIndex = value ? chatAgents.findIndex((a) => a.id === value) : -1
-        // Cycle: null → first → second → ... → last → null → first → ...
         if (currentIndex === -1) {
           onChange(chatAgents[0]!.id)
         } else if (currentIndex === chatAgents.length - 1) {
@@ -77,12 +75,11 @@ function AgentPicker({ value, onChange, disabled, className }: AgentPickerProps)
         } else {
           onChange(chatAgents[currentIndex + 1]!.id)
         }
-      }
-    }
+      },
+    })
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [disabled, value, chatAgents, onChange])
+    return unregister
+  }, [registry, disabled, value, chatAgents, onChange])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

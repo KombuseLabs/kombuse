@@ -63,6 +63,15 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     const agent = parseResult.data.agent_id
       ? agentsRepository.get(parseResult.data.agent_id)
       : null
+    if (parseResult.data.agent_id && !agent) {
+      return reply.status(404).send({ error: 'Agent not found' })
+    }
+    if (agent && !agent.is_enabled) {
+      return reply.status(400).send({ error: 'Agent is disabled' })
+    }
+    if (agent && !agent.config?.enabled_for_chat) {
+      return reply.status(400).send({ error: 'Agent is not enabled for chat' })
+    }
     const backendTypeFromAgentConfig = resolveConfiguredBackendType(
       (agent?.config as { backend_type?: unknown } | undefined)?.backend_type
     )
