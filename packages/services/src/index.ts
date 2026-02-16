@@ -42,18 +42,18 @@ export type {
 export { AttachmentService, attachmentService } from './attachment-service'
 export type { IAttachmentService, UploadParams } from './attachment-service'
 
-export { FileStorage, fileStorage, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from './file-storage'
-export type { IFileStorage } from './file-storage'
+export { FileStorage, fileStorage, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from './file-storage-service'
+export type { IFileStorage } from './file-storage-service'
 
-export { ClaudeCodeScanner, claudeCodeScanner } from './claude-code-scanner'
-export type { IClaudeCodeScanner, SessionEntry } from './claude-code-scanner'
+export { ClaudeCodeScanner, claudeCodeScanner } from './claude-code-scanner-service'
+export type { IClaudeCodeScanner, SessionEntry } from './claude-code-scanner-service'
 
-export { SessionStateMachine } from './session-state-machine'
+export { SessionStateMachine } from './session-state-machine-service'
 export type {
   SessionTransitionEvent,
   TransitionContext,
   StateMachineDeps,
-} from './session-state-machine'
+} from './session-state-machine-service'
 
 // Template rendering
 export {
@@ -87,3 +87,7 @@ export type {
 
 // Model catalog
 export { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS, CLAUDE_CODE_MODELS } from './model-catalog-service'
+
+// Agent type presets
+export { getTypePreset, presetToAllowedTools, shouldAutoApprove } from './agent-type-preset-service'
+export type { AgentTypePreset } from './agent-type-preset-service'

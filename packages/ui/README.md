@@ -55,6 +55,10 @@ src/
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
     ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database)
+    ├── remark-comment-links.ts  - Remark plugin: #N/c/M comment link syntax
+    ├── remark-label-mentions.ts - Remark plugin: ~[Name](id) label mention syntax
+    ├── remark-profile-mentions.ts - Remark plugin: @mention syntax
+    ├── remark-ticket-links.ts   - Remark plugin: #N ticket link syntax
     ├── ticket-utils.ts        - Shared ticket display utilities (statusColors)
     └── utils.ts               - cn() class merging
 ```

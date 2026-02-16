@@ -8,7 +8,7 @@ import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
   type IFileStorage,
-} from './file-storage'
+} from './file-storage-service'
 
 export interface UploadParams {
   filename: string

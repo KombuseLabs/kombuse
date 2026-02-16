@@ -23,7 +23,7 @@ import {
 } from './backend-registry'
 import { startAgentChatSession as startAgentChatSessionImpl } from './chat-session-runner'
 import { getPendingPermissions, respondToPermission } from './permission-service'
-import { getTypePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from './presets'
+import { getTypePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from '@kombuse/services'
 import {
   processEventAndRunAgents as processEventAndRunAgentsImpl,
   resolveDefaultProjectPath,

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Session, SessionStatus, SessionMetadata, KombuseSessionId } from '@kombuse/types'
-import { SessionStateMachine, type StateMachineDeps, type TransitionContext } from '../session-state-machine'
+import { SessionStateMachine, type StateMachineDeps, type TransitionContext } from '../session-state-machine-service'
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {

@@ -1,15 +1,13 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 import { agentInvocationsRepository, commentsRepository, eventsRepository, ticketsRepository } from '@kombuse/persistence'
-import { buildTemplateContext, projectService, renderTemplate } from '@kombuse/services'
+import { buildTemplateContext, getTypePreset, projectService, readUserDefaultMaxChainDepth, renderTemplate } from '@kombuse/services'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, type KombuseSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import { serializeAgentStreamEvent } from '../../websocket/serialize-agent-event'
 import { broadcastTicketAgentStatus } from './backend-registry'
-import { getTypePreset } from './presets'
 import { startAgentChatSession } from './chat-session-runner'
 import type { AgentExecutionDependencies } from './types'
-import { readUserDefaultMaxChainDepth } from '@kombuse/services'
 
 /**
  * Emit an agent lifecycle event for ticket activity timeline.

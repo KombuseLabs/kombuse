@@ -31,7 +31,7 @@ import {
 import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registry'
 import { buildPersistedContent } from './content-helpers'
 import { broadcastPermissionPending } from './permission-service'
-import { getTypePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from './presets'
+import { getTypePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from '@kombuse/services'
 import { activeBackends, createPermissionKey, setSessionTurnActive } from './runtime-state'
 import type {
   AgentExecutionDependencies,
