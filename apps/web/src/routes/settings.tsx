@@ -201,12 +201,13 @@ export function Settings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="chat-default-model" className="font-normal">Default Model Preference</Label>
-              {modelCatalog?.supports_model_selection ? (
+              {isModelsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading models...</p>
+              ) : modelCatalog?.supports_model_selection ? (
                 <>
                   <select
                     id="chat-default-model"
                     value={currentModelValue}
-                    disabled={isModelsLoading}
                     onChange={(event) => {
                       upsertSetting.mutate({
                         profile_id: USER_PROFILE_ID,
