@@ -23,11 +23,11 @@ function Textarea({
 
   const mergedRef = React.useCallback(
     (node: HTMLTextAreaElement | null) => {
-      (autoResizeRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+      autoResizeRef.current = node;
       if (typeof externalRef === 'function') {
         externalRef(node);
       } else if (externalRef) {
-        (externalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+        externalRef.current = node;
       }
     },
     [autoResizeRef, externalRef],

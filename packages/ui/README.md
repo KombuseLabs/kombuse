@@ -731,6 +731,9 @@ import { TicketList, TicketListHeader, TicketDetail } from '@kombuse/ui/componen
 <TicketDetail
   onClose={() => setSelectedTicket(null)}
   isEditable={true}
+  onEditModeChange={(mode) => {
+    if (mode === 'edit') scrollToTop()
+  }}
 />
 ```
 
@@ -750,6 +753,7 @@ Props:
   - Edit button to toggle edit mode (title, description, status)
   - Delete button with confirmation dialog before permanent removal
   - Label management
+- `onEditModeChange`: Optional `(mode: 'view' | 'edit') => void` callback fired when the user enters or exits edit mode. Useful for scrolling the parent container to top when editing begins
 - Edit mode supports image attachments via paperclip button, drag-and-drop, and clipboard paste. Staged files are uploaded on save
 - View mode displays ticket attachments as clickable thumbnails with lightbox
 - Delete confirmation warns that related comments and attachments are also removed; confirm action shows `Deleting...` while pending

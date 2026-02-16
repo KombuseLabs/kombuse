@@ -949,6 +949,9 @@ export function Tickets() {
                               <TicketDetail
                                 onClose={handleCloseDetail}
                                 isEditable
+                                onEditModeChange={(mode) => {
+                                  if (mode === 'edit') ticketScrollToTop()
+                                }}
                               />
 
                               <div className="mt-6 px-4 pb-4">

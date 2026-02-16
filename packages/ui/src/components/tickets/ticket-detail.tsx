@@ -34,6 +34,7 @@ interface TicketDetailProps {
   className?: string
   onClose?: () => void
   isEditable?: boolean
+  onEditModeChange?: (mode: 'view' | 'edit') => void
 }
 
 const statusColors: Record<string, string> = {
@@ -83,7 +84,7 @@ const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
   { value: 'closed', label: 'Closed' },
 ]
 
-function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
+function TicketDetail({ className, onClose, isEditable, onEditModeChange }: TicketDetailProps) {
   const { currentTicket, deleteCurrentTicket, updateCurrentTicket, isDeleting, isUpdating } =
     useTicketOperations()
 
@@ -165,6 +166,7 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
     setEditStatus(ticket.status)
     setEditPriority(priorityToSelectValue(ticket.priority))
     setMode('edit')
+    onEditModeChange?.('edit')
   }
 
   const handleSave = async () => {
@@ -188,11 +190,13 @@ function TicketDetail({ className, onClose, isEditable }: TicketDetailProps) {
     }
     clearFiles()
     setMode('view')
+    onEditModeChange?.('view')
   }
 
   const handleCancel = () => {
     clearFiles()
     setMode('view')
+    onEditModeChange?.('view')
   }
 
   return (
