@@ -6,6 +6,7 @@ export const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 export const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 export const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
 export const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
+export const MAX_CHAIN_DEPTH = 15
 
 interface BackendCapability {
   supportsModelSelection: boolean

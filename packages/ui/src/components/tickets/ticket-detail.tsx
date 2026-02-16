@@ -385,7 +385,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
                 </span>
               </div>
             )}
-            {isEditable && mode === 'view' && ticket.loop_protection_enabled && (
+            {isEditable && mode === 'view' && ticket.loop_protection_tripped && (
               <div className="mr-1 flex items-center gap-1.5 rounded-md border px-2 py-1">
                 <Switch
                   checked={ticket.loop_protection_enabled}

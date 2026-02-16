@@ -27,6 +27,8 @@ export interface Ticket {
   triggers_enabled: boolean
   /** Whether agent loop protection is enabled for this ticket */
   loop_protection_enabled: boolean
+  /** Whether the loop guard has fired (invocation count >= maxDepth). Computed on each GET, not persisted. */
+  loop_protection_tripped?: boolean
   status: TicketStatus
   priority: TicketPriority | null
   external_source: string | null

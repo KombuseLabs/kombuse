@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 import { agentInvocationsRepository, commentsRepository, eventsRepository, ticketsRepository } from '@kombuse/persistence'
-import { buildTemplateContext, getTypePreset, projectService, readUserDefaultMaxChainDepth, renderTemplate } from '@kombuse/services'
+import { buildTemplateContext, getTypePreset, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplate } from '@kombuse/services'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, type KombuseSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import { serializeAgentStreamEvent } from '../../websocket/serialize-agent-event'
@@ -162,8 +162,6 @@ const AGENT_PASSTHROUGH_EVENTS = [
   ...AGENT_LIFECYCLE_EVENTS,
   EVENT_TYPES.MENTION_CREATED,
 ] as const
-
-const MAX_CHAIN_DEPTH = 15
 
 /**
  * Process a domain event by creating invocations and running them via chat infrastructure.

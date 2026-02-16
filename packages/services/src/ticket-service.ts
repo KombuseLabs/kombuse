@@ -9,7 +9,8 @@ import type {
   ClaimTicketInput,
   ClaimResult,
 } from '@kombuse/types'
-import { ticketsRepository, ticketViewsRepository } from '@kombuse/persistence'
+import { ticketsRepository, ticketViewsRepository, agentInvocationsRepository } from '@kombuse/persistence'
+import { readUserDefaultMaxChainDepth, MAX_CHAIN_DEPTH } from './session-preferences-service'
 
 /**
  * Service interface for ticket operations
@@ -50,7 +51,16 @@ export class TicketService implements ITicketService {
   }
 
   getWithRelations(id: number): TicketWithRelations | null {
-    return ticketsRepository.getWithRelations(id)
+    const ticket = ticketsRepository.getWithRelations(id)
+    if (!ticket) return null
+
+    if (ticket.loop_protection_enabled) {
+      const maxDepth = readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
+      const recentCount = agentInvocationsRepository.countRecentByTicketId(ticket.id)
+      ticket.loop_protection_tripped = recentCount >= maxDepth
+    }
+
+    return ticket
   }
 
   create(input: CreateTicketInput): Ticket {

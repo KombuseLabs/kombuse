@@ -110,6 +110,7 @@ function buildTicket(overrides: Partial<Ticket> = {}): Ticket {
     body: 'Ticket body',
     triggers_enabled: true,
     loop_protection_enabled: true,
+    loop_protection_tripped: true,
     status: 'open',
     priority: 2,
     external_source: null,
@@ -353,7 +354,7 @@ describe('TicketDetail header behavior', () => {
     expect(screen.queryByRole('switch', { name: 'Toggle ticket triggers' })).toBeNull()
   })
 
-  it('shows loop protection toggle only in editable view mode and updates ticket', () => {
+  it('shows loop protection toggle when loop guard has tripped and updates ticket', () => {
     render(<TicketDetail isEditable />)
 
     const loopSwitch = screen.getByRole('switch', { name: 'Toggle loop protection' })
@@ -366,8 +367,14 @@ describe('TicketDetail header behavior', () => {
     expect(screen.queryByRole('switch', { name: 'Toggle loop protection' })).toBeNull()
   })
 
-  it('hides loop protection toggle when loop_protection_enabled is false', () => {
-    currentTicket = buildTicket({ loop_protection_enabled: false })
+  it('hides loop protection toggle when loop_protection_tripped is false', () => {
+    currentTicket = buildTicket({ loop_protection_tripped: false })
+    render(<TicketDetail isEditable />)
+    expect(screen.queryByRole('switch', { name: 'Toggle loop protection' })).toBeNull()
+  })
+
+  it('hides loop protection toggle when loop_protection_tripped is undefined', () => {
+    currentTicket = buildTicket({ loop_protection_tripped: undefined })
     render(<TicketDetail isEditable />)
     expect(screen.queryByRole('switch', { name: 'Toggle loop protection' })).toBeNull()
   })
