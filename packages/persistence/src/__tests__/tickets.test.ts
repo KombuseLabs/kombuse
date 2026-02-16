@@ -1429,4 +1429,53 @@ describe('ticketsRepository', () => {
       expect(events[0]?.actor_type, 'User-closed ticket should have actor_type "user"').toBe('user')
     })
   })
+
+  describe('countByStatus', () => {
+    it('should return zero counts for a project with no tickets', () => {
+      const counts = ticketsRepository.countByStatus('nonexistent-project')
+      expect(counts).toEqual({ open: 0, in_progress: 0, blocked: 0, closed: 0 })
+    })
+
+    it('should return correct counts for each status', () => {
+      ticketsRepository.create({ ...TEST_TICKET, status: 'open' })
+      ticketsRepository.create({ ...TEST_TICKET, status: 'open' })
+      ticketsRepository.create({ ...TEST_TICKET, status: 'in_progress' })
+      ticketsRepository.create({ ...TEST_TICKET, status: 'blocked' })
+      ticketsRepository.create({ ...TEST_TICKET, status: 'closed' })
+      ticketsRepository.create({ ...TEST_TICKET, status: 'closed' })
+      ticketsRepository.create({ ...TEST_TICKET, status: 'closed' })
+
+      const counts = ticketsRepository.countByStatus(TEST_PROJECT_ID)
+      expect(counts.open, 'open count').toBe(2)
+      expect(counts.in_progress, 'in_progress count').toBe(1)
+      expect(counts.blocked, 'blocked count').toBe(1)
+      expect(counts.closed, 'closed count').toBe(3)
+    })
+
+    it('should return accurate counts beyond the default 100-row page limit', () => {
+      // Create 120 tickets: 40 open, 35 in_progress, 15 blocked, 30 closed
+      for (let i = 0; i < 40; i++) ticketsRepository.create({ ...TEST_TICKET, status: 'open' })
+      for (let i = 0; i < 35; i++) ticketsRepository.create({ ...TEST_TICKET, status: 'in_progress' })
+      for (let i = 0; i < 15; i++) ticketsRepository.create({ ...TEST_TICKET, status: 'blocked' })
+      for (let i = 0; i < 30; i++) ticketsRepository.create({ ...TEST_TICKET, status: 'closed' })
+
+      const counts = ticketsRepository.countByStatus(TEST_PROJECT_ID)
+      expect(counts.open, 'open count should not be capped at 100').toBe(40)
+      expect(counts.in_progress, 'in_progress count').toBe(35)
+      expect(counts.blocked, 'blocked count').toBe(15)
+      expect(counts.closed, 'closed count').toBe(30)
+    })
+
+    it('should only count tickets for the specified project', () => {
+      // Create a second project for isolation test
+      db.prepare(`INSERT INTO projects (id, name, owner_id) VALUES (?, 'Other Project', ?)`).run('other-project', TEST_USER_ID)
+
+      ticketsRepository.create({ ...TEST_TICKET, status: 'open' })
+      ticketsRepository.create({ ...TEST_TICKET, status: 'open' })
+      ticketsRepository.create({ title: 'Other project', project_id: 'other-project', author_id: TEST_USER_ID, status: 'open' })
+
+      const counts = ticketsRepository.countByStatus(TEST_PROJECT_ID)
+      expect(counts.open, 'should only count tickets in the specified project').toBe(2)
+    })
+  })
 })

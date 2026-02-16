@@ -23,6 +23,7 @@ import {
   publicSessionSchema,
   sessionEventSchema,
   ticketSchema,
+  ticketStatusCountsSchema,
   ticketTimelineResponseSchema,
   ticketViewSchema,
   ticketWithRelationsSchema,
@@ -342,6 +343,7 @@ registerSuccessSchema('GET', '/api/sync/state', syncStateSchema)
 
 // Ticket routes
 registerSuccessSchema('GET', '/api/tickets', z.array(ticketWithRelationsSchema))
+registerSuccessSchema('GET', '/api/tickets/counts', ticketStatusCountsSchema)
 registerSuccessSchema('GET', '/api/tickets/:id', ticketWithRelationsSchema)
 registerSuccessSchema('POST', '/api/tickets', ticketSchema)
 registerSuccessSchema('PATCH', '/api/tickets/:id', ticketSchema)

@@ -45,6 +45,7 @@ import {
   useUploadTicketAttachment,
   useTextareaAutocomplete,
   useMarkTicketViewed,
+  useTicketStatusCounts,
   useFileStaging,
   useScrollToBottom,
   useScrollToComment,
@@ -142,18 +143,12 @@ export function Tickets() {
     });
   }, [projectLabels]);
 
-  // Unfiltered query for counting tickets by status
-  const { data: allTickets } = useTickets({ project_id: projectId });
-
-  const { openCount, closedCount, inProgressCount, blockedCount } = useMemo(() => {
-    if (!allTickets) return { openCount: 0, closedCount: 0, inProgressCount: 0, blockedCount: 0 };
-    return {
-      openCount: allTickets.filter((t) => t.status === "open").length,
-      closedCount: allTickets.filter((t) => t.status === "closed").length,
-      inProgressCount: allTickets.filter((t) => t.status === "in_progress").length,
-      blockedCount: allTickets.filter((t) => t.status === "blocked").length,
-    };
-  }, [allTickets]);
+  // Server-side status counts (not affected by pagination limits)
+  const { data: statusCounts } = useTicketStatusCounts(projectId);
+  const openCount = statusCounts?.open ?? 0;
+  const closedCount = statusCounts?.closed ?? 0;
+  const inProgressCount = statusCounts?.in_progress ?? 0;
+  const blockedCount = statusCounts?.blocked ?? 0;
 
   const {
     data: tickets,
@@ -551,7 +546,6 @@ export function Tickets() {
     return label.name.toLowerCase().includes(overflowLabelSearch.toLowerCase());
   });
   const overflowSelectedCount = overflowLabels.filter((label) => selectedLabelIds.includes(label.id)).length;
-
   const ticketListContent = (
     <div className="relative h-full min-h-0">
       <TicketList
@@ -565,7 +559,7 @@ export function Tickets() {
           <TicketListHeader
             title="Tickets"
             meta={
-              allTickets ? (
+              statusCounts ? (
                 <span>
                   <button
                     type="button"

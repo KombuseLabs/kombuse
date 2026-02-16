@@ -169,3 +169,10 @@ export interface ClaimResult {
   /** Reason if claim failed (e.g., already claimed by another) */
   reason?: string
 }
+
+export interface TicketStatusCounts {
+  open: number
+  in_progress: number
+  blocked: number
+  closed: number
+}

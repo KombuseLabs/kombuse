@@ -7,6 +7,7 @@ import {
   extendClaimSchema,
   updateTicketSchema,
   ticketFiltersSchema,
+  ticketCountsQuerySchema,
   unclaimTicketSchema,
   markTicketViewedSchema,
 } from '../schemas/tickets'
@@ -21,6 +22,16 @@ export async function ticketRoutes(fastify: FastifyInstance) {
 
     const filters = parseResult.data
     return ticketService.listWithRelations(filters)
+  })
+
+  // Get ticket status counts (must be before /:id to avoid path conflict)
+  fastify.get('/tickets/counts', async (request, reply) => {
+    const parseResult = ticketCountsQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    return ticketService.countByStatus(parseResult.data.project_id)
   })
 
   // Get single ticket with activities

@@ -1,5 +1,6 @@
 import type {
   Ticket,
+  TicketStatusCounts,
   TicketView,
   TicketWithLabels,
   TicketWithRelations,
@@ -27,6 +28,7 @@ export interface ITicketService {
   claim(input: ClaimTicketInput): ClaimResult
   unclaim(ticketId: number, requesterId?: string, force?: boolean): ClaimResult
   extendClaim(ticketId: number, additionalMinutes: number): ClaimResult
+  countByStatus(projectId: string): TicketStatusCounts
   markViewed(ticketId: number, profileId: string): TicketView
 }
 
@@ -101,6 +103,10 @@ export class TicketService implements ITicketService {
 
   extendClaim(ticketId: number, additionalMinutes: number): ClaimResult {
     return ticketsRepository.extendClaim(ticketId, additionalMinutes)
+  }
+
+  countByStatus(projectId: string): TicketStatusCounts {
+    return ticketsRepository.countByStatus(projectId)
   }
 
   markViewed(ticketId: number, profileId: string): TicketView {

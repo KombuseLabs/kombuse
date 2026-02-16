@@ -12,6 +12,7 @@ export { useCommands } from './use-commands'
 export {
   useTickets,
   useTicket,
+  useTicketStatusCounts,
   useCreateTicket,
   useUpdateTicket,
   useDeleteTicket,

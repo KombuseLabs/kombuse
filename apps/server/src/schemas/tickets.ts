@@ -83,6 +83,10 @@ export const ticketFiltersSchema = z.object({
   offset: z.coerce.number().int().nonnegative().optional(),
 })
 
+export const ticketCountsQuerySchema = z.object({
+  project_id: z.string().min(1),
+})
+
 export const markTicketViewedSchema = z.object({
   profile_id: z.string().min(1),
 })

@@ -115,6 +115,13 @@ export const ticketWithLabelsSchema = ticketSchema.extend({
   match_source: z.enum(['title', 'body', 'comment']).nullable().optional(),
 })
 
+export const ticketStatusCountsSchema = z.object({
+  open: z.number().int().nonnegative(),
+  in_progress: z.number().int().nonnegative(),
+  blocked: z.number().int().nonnegative(),
+  closed: z.number().int().nonnegative(),
+})
+
 export const ticketViewSchema = z.object({
   id: z.number().int().positive(),
   ticket_id: z.number().int().positive(),

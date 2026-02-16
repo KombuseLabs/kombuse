@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { TicketFilters, TicketWithLabels, TicketWithRelations, CreateTicketInput, UpdateTicketInput } from '@kombuse/types'
+import type { TicketFilters, TicketStatusCounts, TicketWithLabels, TicketWithRelations, CreateTicketInput, UpdateTicketInput } from '@kombuse/types'
 import { ticketsApi } from '../lib/api'
 
 export function useTickets(filters?: TicketFilters) {
@@ -59,5 +59,13 @@ export function useMarkTicketViewed() {
         (old) => Array.isArray(old) ? old.map((t) => t.id === id ? { ...t, has_unread: 0 } : t) : old,
       )
     },
+  })
+}
+
+export function useTicketStatusCounts(projectId: string) {
+  return useQuery({
+    queryKey: ['tickets', 'counts', projectId],
+    queryFn: () => ticketsApi.statusCounts(projectId),
+    enabled: !!projectId,
   })
 }

@@ -1,5 +1,6 @@
 import type {
   Ticket,
+  TicketStatusCounts,
   TicketWithRelations,
   TicketWithLabels,
   TicketFilters,
@@ -161,6 +162,11 @@ export const ticketsApi = {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
+  },
+
+  async statusCounts(projectId: string): Promise<TicketStatusCounts> {
+    const response = await fetch(`${API_BASE}/tickets/counts?project_id=${encodeURIComponent(projectId)}`)
+    return handleResponse<TicketStatusCounts>(response)
   },
 }
 

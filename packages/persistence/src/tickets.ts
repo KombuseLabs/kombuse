@@ -1,6 +1,7 @@
 import type {
   ActorType,
   Ticket,
+  TicketStatusCounts,
   TicketWithLabels,
   TicketWithRelations,
   TicketFilters,
@@ -817,5 +818,22 @@ export const ticketsRepository = {
       .all() as RawTicketRow[]
 
     return rows.map((row) => mapTicketRow(row))
+  },
+
+  countByStatus(projectId: string): TicketStatusCounts {
+    const db = getDatabase()
+    const rows = db
+      .prepare(
+        `SELECT status, COUNT(*) as count FROM tickets WHERE project_id = ? GROUP BY status`
+      )
+      .all(projectId) as { status: string; count: number }[]
+
+    const counts: TicketStatusCounts = { open: 0, in_progress: 0, blocked: 0, closed: 0 }
+    for (const row of rows) {
+      if (row.status in counts) {
+        counts[row.status as keyof TicketStatusCounts] = row.count
+      }
+    }
+    return counts
   },
 }
