@@ -116,6 +116,45 @@ describe('ClaudeCodeBackend', () => {
       expect(args).not.toContain('--allowedTools')
     })
 
+    it('includes --model when model is provided', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        model: 'claude-opus-4-6',
+      })
+
+      expect(args).toContain('--model')
+      expect(args).toContain('claude-opus-4-6')
+    })
+
+    it('omits --model when model is undefined', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+      })
+
+      expect(args).not.toContain('--model')
+    })
+
+    it('omits --model when model is whitespace-only', () => {
+      const backend = new ClaudeCodeBackend()
+
+      // @ts-expect-error accessing private method for testing
+      const args = backend.buildArgs({
+        kombuseSessionId: createSessionId('chat'),
+        projectPath: '/tmp',
+        model: '  ',
+      })
+
+      expect(args).not.toContain('--model')
+    })
+
     it('includes --permission-mode when permissionMode is plan', () => {
       const backend = new ClaudeCodeBackend()
 
