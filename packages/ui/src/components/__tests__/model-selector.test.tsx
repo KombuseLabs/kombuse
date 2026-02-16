@@ -68,7 +68,7 @@ describe('ModelSelector', () => {
       expect(screen.getByText('Loading models...')).toBeDefined()
     })
 
-    it('renders an informational message when backend does not support model selection', () => {
+    it('renders a disabled select when backend does not support model selection', () => {
       mockLoaded(
         buildModelCatalog({
           backend_type: 'claude-code',
@@ -78,12 +78,9 @@ describe('ModelSelector', () => {
 
       render(<ModelSelector backendType="claude-code" value="" onChange={vi.fn()} />)
 
-      expect(screen.queryByRole('combobox')).toBeNull()
-      expect(
-        screen.getByText(
-          'The claude-code backend does not support model selection.',
-        ),
-      ).toBeDefined()
+      const select = screen.getByRole('combobox') as HTMLSelectElement
+      expect(select.disabled).toBe(true)
+      expect(screen.getByText('Not supported')).toBeDefined()
     })
 
     it('renders only the default option when model catalog is empty', () => {

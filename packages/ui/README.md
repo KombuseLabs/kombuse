@@ -331,6 +331,9 @@ import { ModelSelector } from '@kombuse/ui/components'
 // - id?: string — HTML id for label association
 // - className?: string
 // - showDefaultHint?: boolean (default: true) — show "Backend default: X" hint
+//
+// When a backend does not support model selection, renders a disabled
+// <select> with "Not supported" instead of a model dropdown.
 ```
 
 ```typescript

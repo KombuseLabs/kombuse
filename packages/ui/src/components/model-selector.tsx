@@ -45,9 +45,9 @@ export function ModelSelector({
 
   if (!modelCatalog?.supports_model_selection) {
     return (
-      <p className="text-sm text-muted-foreground">
-        The {backendType} backend does not support model selection.
-      </p>
+      <select id={id} disabled className={cn(selectBaseClass, className)}>
+        <option>Not supported</option>
+      </select>
     )
   }
 

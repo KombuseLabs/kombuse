@@ -21,7 +21,6 @@ import {
   useProfileSetting,
 } from "@kombuse/ui/hooks";
 import { ChatProvider } from "@kombuse/ui/providers";
-import { cn } from "@kombuse/ui/lib/utils";
 import { Plus } from "lucide-react";
 import { BACKEND_TYPES, type BackendType, parseSessionId } from "@kombuse/types";
 
@@ -183,69 +182,56 @@ export function Chats() {
   );
 
   const chatDetailContent = (
-    <>
-      <div className={cn(
-        "flex items-center gap-4 shrink-0 p-4 border-b"
-      )}>
-        <div className="flex items-center gap-2">
-          <label htmlFor="chat-backend-select" className="text-sm text-muted-foreground">Backend</label>
-          <select
-            id="chat-backend-select"
-            value={effectiveBackendType}
-            onChange={(event) => setSelectedBackendTypeOverride(event.target.value as BackendType)}
-            disabled={!isDraft}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
-            <option value={BACKEND_TYPES.CODEX}>Codex</option>
-            {effectiveBackendType === BACKEND_TYPES.MOCK ? (
-              <option value={BACKEND_TYPES.MOCK}>Mock</option>
-            ) : null}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="chat-model-input" className="text-sm text-muted-foreground">Model</label>
-          <ModelSelector
-            id="chat-model-input"
-            backendType={effectiveBackendType}
-            value={effectiveModelPreference}
-            onChange={(modelId) => setSelectedModelPreferenceOverride(modelId)}
-            disabled={!isDraft}
-            className="w-52"
-            showDefaultHint={false}
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        <ChatProvider
-          key={chatKey}
-          sessionId={selectedSessionId}
-          agentId={effectiveAgentId ?? undefined}
-          projectId={projectId ?? null}
-          backendType={effectiveBackendType}
-          modelPreference={isDraft ? draftModelPreference : undefined}
-          onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
-        >
-          <Chat
-            emptyMessage={
-              selectedSessionId
-                ? "Loading session..."
-                : "Start a conversation..."
-            }
-            inputToolbarControls={
+    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+      <ChatProvider
+        key={chatKey}
+        sessionId={selectedSessionId}
+        agentId={effectiveAgentId ?? undefined}
+        projectId={projectId ?? null}
+        backendType={effectiveBackendType}
+        modelPreference={isDraft ? draftModelPreference : undefined}
+        onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
+      >
+        <Chat
+          emptyMessage={
+            selectedSessionId
+              ? "Loading session..."
+              : "Start a conversation..."
+          }
+          inputToolbarControls={
+            <>
+              <select
+                value={effectiveBackendType}
+                onChange={(e) => setSelectedBackendTypeOverride(e.target.value as BackendType)}
+                disabled={!isDraft}
+                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
+                <option value={BACKEND_TYPES.CODEX}>Codex</option>
+                {effectiveBackendType === BACKEND_TYPES.MOCK && (
+                  <option value={BACKEND_TYPES.MOCK}>Mock</option>
+                )}
+              </select>
+              <ModelSelector
+                backendType={effectiveBackendType}
+                value={effectiveModelPreference}
+                onChange={(modelId) => setSelectedModelPreferenceOverride(modelId)}
+                disabled={!isDraft}
+                className="w-40"
+                showDefaultHint={false}
+              />
               <AgentPicker
                 value={effectiveAgentId}
                 onChange={setSelectedAgentId}
                 disabled={!isDraft}
-                className="h-8 w-[220px] max-w-full"
+                className="h-8 w-[180px] max-w-full"
               />
-            }
-            className="h-full"
-          />
-        </ChatProvider>
-      </div>
-    </>
+            </>
+          }
+          className="h-full"
+        />
+      </ChatProvider>
+    </div>
   );
 
   return (
