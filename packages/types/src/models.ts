@@ -4,6 +4,7 @@ export interface ModelOption {
   id: string
   name: string
   description?: string
+  provider?: string
 }
 
 export interface ModelCatalogResponse {

@@ -4,6 +4,7 @@ export {
   useCurrentProject,
   useAppView,
   useGenerating,
+  useDefaultBackendType,
 } from './use-app-context'
 export { useCommandContext } from './use-command-context'
 export { useCommand } from './use-command'

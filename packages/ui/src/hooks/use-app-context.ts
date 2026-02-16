@@ -47,3 +47,11 @@ export function useGenerating() {
   const { isGenerating, setIsGenerating } = useAppContext()
   return { isGenerating, setIsGenerating }
 }
+
+/**
+ * Hook to access the default backend type from profile settings.
+ */
+export function useDefaultBackendType() {
+  const { defaultBackendType, setDefaultBackendType } = useAppContext()
+  return { defaultBackendType, setDefaultBackendType }
+}

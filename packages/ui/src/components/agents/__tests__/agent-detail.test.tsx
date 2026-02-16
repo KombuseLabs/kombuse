@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, fireEvent, waitFor } from '@testing-library/react'
-import { BACKEND_TYPES, type Agent, type Profile } from '@kombuse/types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { BACKEND_TYPES, type Agent, type AppContextValue, type Profile } from '@kombuse/types'
 import { AgentDetail, type AgentDetailProps } from '../agent-detail'
+import { AppCtx } from '../../../providers/app-context'
+import type { ReactNode } from 'react'
 
 if (!('ResizeObserver' in globalThis)) {
   const ResizeObserverStub = class {
@@ -68,6 +71,43 @@ function buildProps(overrides: Partial<AgentDetailProps> = {}): AgentDetailProps
   }
 }
 
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+const mockAppContext: AppContextValue = {
+  currentTicket: null,
+  currentProjectId: '1',
+  view: null,
+  isGenerating: false,
+  currentSession: null,
+  pendingPermissions: new Map(),
+  ticketAgentStatus: new Map(),
+  activeSessions: new Map(),
+  defaultBackendType: 'claude-code',
+  setCurrentTicket: () => {},
+  setCurrentProjectId: () => {},
+  setView: () => {},
+  setIsGenerating: () => {},
+  setCurrentSession: () => {},
+  addPendingPermission: () => {},
+  removePendingPermission: () => {},
+  clearPendingPermissionsForSession: () => {},
+  updateTicketAgentStatus: () => {},
+  getTicketAgentStatus: () => undefined,
+  addActiveSession: () => {},
+  removeActiveSession: () => {},
+  setDefaultBackendType: () => {},
+}
+
+function TestWrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppCtx.Provider value={mockAppContext}>
+        {children}
+      </AppCtx.Provider>
+    </QueryClientProvider>
+  )
+}
+
 function activateConfigurationTab(getByRole: (role: string, options: { name: string }) => HTMLElement) {
   const configurationTab = getByRole('tab', { name: 'Configuration' })
   fireEvent.mouseDown(configurationTab)
@@ -77,7 +117,8 @@ function activateConfigurationTab(getByRole: (role: string, options: { name: str
 describe('AgentDetail', () => {
   it('renders Basic Info and Configuration tabs with Basic Info selected by default', () => {
     const { getAllByRole, getByRole, getByLabelText, queryByRole } = render(
-      <AgentDetail {...buildProps()} />
+      <AgentDetail {...buildProps()} />,
+      { wrapper: TestWrapper }
     )
 
     expect(getAllByRole('tab')).toHaveLength(2)
@@ -102,7 +143,8 @@ describe('AgentDetail', () => {
           onDeleteTrigger,
           onToggleTrigger,
         })}
-      />
+      />,
+      { wrapper: TestWrapper }
     )
 
     expect(getByText('System Prompt')).toBeDefined()
@@ -121,7 +163,8 @@ describe('AgentDetail', () => {
     const { getByRole, getByTestId, getByText, getByPlaceholderText } = render(
       <div style={{ height: '320px' }}>
         <AgentDetail {...buildProps()} />
-      </div>
+      </div>,
+      { wrapper: TestWrapper }
     )
 
     const basicInfoScroll = getByTestId('agent-basic-info-scroll')
@@ -149,7 +192,8 @@ describe('AgentDetail', () => {
   it('shows Save Changes when only the system prompt is edited in Basic Info', () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     const { getByRole, getByPlaceholderText, queryByRole } = render(
-      <AgentDetail {...buildProps({ onSave })} />
+      <AgentDetail {...buildProps({ onSave })} />,
+      { wrapper: TestWrapper }
     )
 
     expect(queryByRole('button', { name: 'Save Changes' })).toBeNull()
@@ -164,7 +208,8 @@ describe('AgentDetail', () => {
   it('keeps cross-tab unsaved edits and save action visible across tab switches', () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     const { getByRole, getByLabelText, queryByRole } = render(
-      <AgentDetail {...buildProps({ onSave })} />
+      <AgentDetail {...buildProps({ onSave })} />,
+      { wrapper: TestWrapper }
     )
 
     expect(queryByRole('button', { name: 'Save Changes' })).toBeNull()
@@ -180,7 +225,7 @@ describe('AgentDetail', () => {
   })
 
   it('preserves in-progress permission drafts across tab switches', () => {
-    const { getByRole, getByPlaceholderText } = render(<AgentDetail {...buildProps()} />)
+    const { getByRole, getByPlaceholderText } = render(<AgentDetail {...buildProps()} />, { wrapper: TestWrapper })
 
     activateConfigurationTab(getByRole)
     fireEvent.click(getByRole('button', { name: 'Add Permission' }))
@@ -198,7 +243,7 @@ describe('AgentDetail', () => {
   })
 
   it('resets the active tab to Basic Info when switching to another agent', () => {
-    const { getByRole, rerender } = render(<AgentDetail {...buildProps()} />)
+    const { getByRole, rerender } = render(<AgentDetail {...buildProps()} />, { wrapper: TestWrapper })
 
     const configurationTab = activateConfigurationTab(getByRole)
     expect(configurationTab.getAttribute('aria-selected')).toBe('true')
@@ -227,19 +272,19 @@ describe('AgentDetail', () => {
             config: {
               enabled_for_chat: true,
               backend_type: BACKEND_TYPES.CODEX,
-              model: 'gpt-4o-mini',
+              model: '',
               temperature: 0.7,
             },
           }),
           onSave,
         })}
-      />
+      />,
+      { wrapper: TestWrapper }
     )
 
     const configurationTab = activateConfigurationTab(getByRole)
     expect(configurationTab.getAttribute('aria-selected')).toBe('true')
     fireEvent.change(getByLabelText('Backend Override'), { target: { value: 'global' } })
-    fireEvent.change(getByLabelText('Model Override'), { target: { value: '   ' } })
     fireEvent.click(getByRole('button', { name: 'Save Changes' }))
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))

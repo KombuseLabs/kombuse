@@ -296,6 +296,15 @@ const { ready, highlight } = useShiki()
 
 Used internally by `Markdown` for fenced code block highlighting. Preloads 16 common languages (TypeScript, JavaScript, TSX, JSX, Python, Bash, JSON, HTML, CSS, Go, Rust, YAML, SQL, Markdown, Diff). Supports dual themes (`github-light` / `github-dark`) with automatic dark mode switching via CSS variables.
 
+```typescript
+import { useDefaultBackendType } from '@kombuse/ui/hooks'
+
+// Access the global default backend type from AppContext
+const { defaultBackendType, setDefaultBackendType } = useDefaultBackendType()
+// defaultBackendType: BackendType — current default ('claude-code', 'codex', etc.)
+// setDefaultBackendType: (backendType: BackendType) => void
+```
+
 ### Providers
 
 ```typescript
@@ -303,6 +312,26 @@ import { CommandProvider, ThemeProvider } from '@kombuse/ui/providers'
 ```
 
 ### Components
+
+```typescript
+import { ModelSelector } from '@kombuse/ui/components'
+
+// Model dropdown scoped to a backend type, with provider optgroup grouping
+<ModelSelector
+  backendType="codex"
+  value={selectedModel}
+  onChange={(modelId) => setSelectedModel(modelId)}
+/>
+
+// Props:
+// - backendType: BackendType | undefined — backend to fetch models for
+// - value: string — selected model ID ("" = use backend default)
+// - onChange: (modelId: string) => void — selection callback
+// - disabled?: boolean
+// - id?: string — HTML id for label association
+// - className?: string
+// - showDefaultHint?: boolean (default: true) — show "Backend default: X" hint
+```
 
 ```typescript
 import { CommandPalette, SearchBar, Header, ModeToggle } from '@kombuse/ui/components'

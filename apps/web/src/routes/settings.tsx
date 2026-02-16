@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import {
   useCodexMcpStatus,
-  useModels,
   useProfileSetting,
   useSetCodexMcpEnabled,
   useUpsertProfileSetting,
 } from '@kombuse/ui/hooks'
+import { ModelSelector } from '@kombuse/ui/components'
 import {
   Card,
   CardContent,
@@ -78,11 +78,7 @@ export function Settings() {
     })
   }
 
-  const { data: modelCatalog, isLoading: isModelsLoading } = useModels(defaultBackendType)
   const currentModelValue = defaultModelSetting?.setting_value?.trim() ?? ''
-  const isLegacyModel = currentModelValue !== ''
-    && modelCatalog?.supports_model_selection === true
-    && !modelCatalog.models.some((m) => m.id === currentModelValue)
 
   return (
     <main className="mx-auto max-w-2xl p-8">
@@ -201,45 +197,19 @@ export function Settings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="chat-default-model" className="font-normal">Default Model Preference</Label>
-              {isModelsLoading ? (
-                <p className="text-sm text-muted-foreground">Loading models...</p>
-              ) : modelCatalog?.supports_model_selection ? (
-                <>
-                  <select
-                    id="chat-default-model"
-                    value={currentModelValue}
-                    onChange={(event) => {
-                      upsertSetting.mutate({
-                        profile_id: USER_PROFILE_ID,
-                        setting_key: CHAT_DEFAULT_MODEL_SETTING_KEY,
-                        setting_value: event.target.value,
-                      })
-                    }}
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="">Use backend default</option>
-                    {modelCatalog.models.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                    {isLegacyModel && (
-                      <option value={currentModelValue}>
-                        {currentModelValue} (custom)
-                      </option>
-                    )}
-                  </select>
-                  <p className="text-sm text-muted-foreground">
-                    {modelCatalog.default_model_id
-                      ? `Backend default: ${modelCatalog.default_model_id}`
-                      : 'Select a model for new chat sessions.'}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  The {defaultBackendType} backend does not support model selection.
-                </p>
-              )}
+              <ModelSelector
+                id="chat-default-model"
+                backendType={defaultBackendType}
+                value={currentModelValue}
+                onChange={(modelId) => {
+                  upsertSetting.mutate({
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: CHAT_DEFAULT_MODEL_SETTING_KEY,
+                    setting_value: modelId,
+                  })
+                }}
+                showDefaultHint
+              />
             </div>
           </CardContent>
         </Card>

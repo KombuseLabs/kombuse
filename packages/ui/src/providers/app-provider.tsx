@@ -11,7 +11,9 @@ import type {
   PendingPermission,
   TicketAgentStatus,
   ActiveSessionInfo,
+  BackendType,
 } from '@kombuse/types'
+import { BACKEND_TYPES } from '@kombuse/types'
 import { AppCtx } from './app-context'
 import { useWebSocket } from '../hooks/use-websocket'
 import { syncApi } from '../lib/api'
@@ -50,6 +52,7 @@ export function AppProvider({
   const [activeSessions, setActiveSessions] = useState<
     Map<string, ActiveSessionInfo>
   >(() => new Map())
+  const [defaultBackendType, setDefaultBackendTypeState] = useState<BackendType>(BACKEND_TYPES.CLAUDE_CODE)
 
   // Wrap setters in useCallback for stable references
   const setCurrentTicket = useCallback((ticket: Ticket | null) => {
@@ -171,6 +174,10 @@ export function AppProvider({
       next.delete(kombuseSessionId)
       return next
     })
+  }, [])
+
+  const setDefaultBackendType = useCallback((backendType: BackendType) => {
+    setDefaultBackendTypeState(backendType)
   }, [])
 
   // Global WebSocket handler to track pending permissions and ticket agent status
@@ -298,6 +305,7 @@ export function AppProvider({
       pendingPermissions,
       ticketAgentStatus,
       activeSessions,
+      defaultBackendType,
       // Actions
       setCurrentTicket,
       setCurrentProjectId,
@@ -311,6 +319,7 @@ export function AppProvider({
       getTicketAgentStatus,
       addActiveSession,
       removeActiveSession,
+      setDefaultBackendType,
     }),
     [
       currentTicket,
@@ -321,6 +330,7 @@ export function AppProvider({
       pendingPermissions,
       ticketAgentStatus,
       activeSessions,
+      defaultBackendType,
       setCurrentTicket,
       setCurrentProjectId,
       setView,
@@ -333,6 +343,7 @@ export function AppProvider({
       getTicketAgentStatus,
       addActiveSession,
       removeActiveSession,
+      setDefaultBackendType,
     ]
   )
 

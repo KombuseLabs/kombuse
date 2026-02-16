@@ -42,5 +42,12 @@ describe('model-catalog', () => {
       )
       expect(defaultExists).toBe(true)
     })
+
+    it('codex models have provider field', () => {
+      const catalog = getModelCatalog(BACKEND_TYPES.CODEX)
+      for (const model of catalog.models) {
+        expect(model.provider, `model ${model.id} should have a provider`).toBeTruthy()
+      }
+    })
   })
 })

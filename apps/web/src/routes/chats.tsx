@@ -11,7 +11,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@kombuse/ui/base";
-import { AgentPicker, Chat, SessionList } from "@kombuse/ui/components";
+import { AgentPicker, Chat, ModelSelector, SessionList } from "@kombuse/ui/components";
 import {
   useCreateSession,
   useSessions,
@@ -187,7 +187,6 @@ export function Chats() {
       <div className={cn(
         "flex items-center gap-4 shrink-0 p-4 border-b"
       )}>
-        <h1 className="text-2xl font-bold">Chats</h1>
         <div className="flex items-center gap-2">
           <label htmlFor="chat-backend-select" className="text-sm text-muted-foreground">Backend</label>
           <select
@@ -206,13 +205,14 @@ export function Chats() {
         </div>
         <div className="flex items-center gap-2">
           <label htmlFor="chat-model-input" className="text-sm text-muted-foreground">Model</label>
-          <input
+          <ModelSelector
             id="chat-model-input"
+            backendType={effectiveBackendType}
             value={effectiveModelPreference}
-            onChange={(event) => setSelectedModelPreferenceOverride(event.target.value)}
+            onChange={(modelId) => setSelectedModelPreferenceOverride(modelId)}
             disabled={!isDraft}
-            placeholder="Use backend default"
-            className="h-9 w-52 rounded-md border border-input bg-background px-3 text-sm"
+            className="w-52"
+            showDefaultHint={false}
           />
         </div>
       </div>

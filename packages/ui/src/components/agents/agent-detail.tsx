@@ -15,6 +15,8 @@ import { PromptEditor } from '../prompt-editor'
 import { AvatarPicker, getAvatarIcon } from './avatar-picker'
 import { TriggerEditor, type TriggerFormData } from '../triggers'
 import { PermissionEditor } from '../permission-editor'
+import { ModelSelector } from '../model-selector'
+import { useDefaultBackendType } from '../../hooks/use-app-context'
 
 type BackendChoice = 'global' | BackendType
 
@@ -82,6 +84,9 @@ function AgentDetail({
     typeof agent.config?.model === 'string' ? agent.config.model : ''
   )
   const [activeTab, setActiveTab] = useState('basic-info')
+  const { defaultBackendType } = useDefaultBackendType()
+  const effectiveBackendForModels: BackendType | undefined =
+    backendChoice === 'global' ? defaultBackendType : backendChoice
 
   const [idCopied, setIdCopied] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -312,11 +317,12 @@ function AgentDetail({
 
                   <div className="space-y-2">
                     <Label htmlFor="agent-model-override">Model Override</Label>
-                    <Input
+                    <ModelSelector
                       id="agent-model-override"
+                      backendType={effectiveBackendForModels}
                       value={modelPreference}
-                      onChange={(event) => setModelPreference(event.target.value)}
-                      placeholder="Leave empty to use global default"
+                      onChange={setModelPreference}
+                      showDefaultHint={false}
                     />
                     <p className="text-xs text-muted-foreground">
                       Stored as a preference and applied when the selected backend supports explicit model selection.

@@ -7,6 +7,7 @@ import { getWsUrl } from "@kombuse/ui/lib/api";
 import { useDesktop } from "@kombuse/ui/hooks";
 import { CommandSetup, usePalette } from "./command-setup";
 import { useHistoryNavigationContext } from "./hooks/use-history-navigation";
+import { useSyncDefaultBackend } from "./hooks/use-sync-default-backend";
 import { Home } from "./routes/home";
 import { Chats } from "./routes/chats";
 import { Tickets } from "./routes/tickets";
@@ -37,6 +38,7 @@ function AppContent() {
   const { canGoBack, canGoForward, goBack, goForward } = useHistoryNavigationContext();
   const isHome = location.pathname === "/";
   useScrollbarActivity();
+  useSyncDefaultBackend();
 
   return (
     <div

@@ -57,6 +57,7 @@ function TestProvider({
     pendingPermissions,
     ticketAgentStatus: new Map(),
     activeSessions: new Map(),
+    defaultBackendType: 'claude-code',
     setCurrentTicket: () => {},
     setCurrentProjectId: () => {},
     setView: () => {},
@@ -99,6 +100,7 @@ function TestProvider({
     getTicketAgentStatus: () => undefined,
     addActiveSession: () => {},
     removeActiveSession: () => {},
+    setDefaultBackendType: () => {},
   }), [pendingPermissions])
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>

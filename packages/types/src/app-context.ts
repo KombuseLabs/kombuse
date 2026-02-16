@@ -74,6 +74,8 @@ export interface AppState {
   ticketAgentStatus: Map<number, TicketAgentStatus>
   /** Map of kombuseSessionId -> active session info */
   activeSessions: Map<string, ActiveSessionInfo>
+  /** Default backend type from user profile settings */
+  defaultBackendType: BackendType
 }
 
 /**
@@ -96,6 +98,8 @@ export interface AppActions {
   addActiveSession: (session: ActiveSessionInfo) => void
   /** Remove an active agent session */
   removeActiveSession: (kombuseSessionId: string) => void
+  /** Set the default backend type */
+  setDefaultBackendType: (backendType: BackendType) => void
 }
 
 /**

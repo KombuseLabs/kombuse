@@ -21,6 +21,7 @@ function TestProvider({
     pendingPermissions: new Map(),
     ticketAgentStatus: new Map(),
     activeSessions: new Map(sessions.map((session) => [session.kombuseSessionId, session])),
+    defaultBackendType: 'claude-code',
     setCurrentTicket: () => {},
     setCurrentProjectId: () => {},
     setView: () => {},
@@ -33,6 +34,7 @@ function TestProvider({
     getTicketAgentStatus: () => undefined,
     addActiveSession: () => {},
     removeActiveSession: () => {},
+    setDefaultBackendType: () => {},
   }), [sessions])
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
