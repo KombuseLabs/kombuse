@@ -40,6 +40,16 @@ export const pluginUninstallQuerySchema = z.object({
   mode: z.enum(['orphan', 'delete']).optional().default('orphan'),
 })
 
+export const pluginInstallResultSchema = z.object({
+  plugin_id: z.string().min(1),
+  plugin_name: z.string().min(1),
+  agents_created: z.number().int().nonnegative(),
+  labels_created: z.number().int().nonnegative(),
+  labels_merged: z.number().int().nonnegative(),
+  triggers_created: z.number().int().nonnegative(),
+  warnings: z.array(z.string()),
+})
+
 export type PluginInstallBody = z.infer<typeof pluginInstallSchema>
 export type PluginUpdateBody = z.infer<typeof pluginUpdateSchema>
 export type PluginFiltersQuery = z.infer<typeof pluginFiltersSchema>

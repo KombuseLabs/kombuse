@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { agentExportResultSchema } from './agents'
-import { pluginExportResultSchema } from './plugins'
+import { pluginExportResultSchema, pluginInstallResultSchema } from './plugins'
 import {
   agentInvocationSchema,
   agentProcessEventResponseSchema,
@@ -15,10 +15,12 @@ import {
   eventSchema,
   eventSubscriptionSchema,
   eventWithActorSchema,
+  availablePluginSchema,
   labelSchema,
   milestoneSchema,
   milestoneWithStatsSchema,
   permissionLogEntrySchema,
+  pluginSchema,
   profileSchema,
   profileSettingSchema,
   projectSchema,
@@ -51,6 +53,7 @@ const noBodyResponseRouteKeys = new Set<string>([
   'DELETE /api/projects/:id',
   'DELETE /api/sessions/:id',
   'DELETE /api/tickets/:id',
+  'DELETE /api/plugins/:id',
 ])
 
 const successFlagSchema = z.object({
@@ -256,6 +259,11 @@ registerSuccessSchema('POST', '/api/agents/process-event', agentProcessEventResp
 registerSuccessSchema('POST', '/api/agents/export', agentExportResultSchema)
 
 // Plugin routes
+registerSuccessSchema('GET', '/api/plugins', z.array(pluginSchema))
+registerSuccessSchema('GET', '/api/plugins/available', z.array(availablePluginSchema))
+registerSuccessSchema('GET', '/api/plugins/:id', pluginSchema)
+registerSuccessSchema('POST', '/api/plugins/install', pluginInstallResultSchema)
+registerSuccessSchema('PATCH', '/api/plugins/:id', pluginSchema)
 registerSuccessSchema('POST', '/api/plugins/export', pluginExportResultSchema)
 
 // Attachment routes
