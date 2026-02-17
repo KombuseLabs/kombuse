@@ -29,7 +29,6 @@ if (existsSync(localBridgePath)) {
   process.env.KOMBUSE_MCP_BRIDGE_PATH = localBridgePath;
 }
 
-import { initializeDatabase, seedDatabase } from "@kombuse/persistence";
 import { createServer as createServerDirect, setAutoUpdater } from "server";
 import { registerAppProtocol } from "./protocol";
 import { getPackageInfo, loadPackage } from "./package-loader";
@@ -46,13 +45,10 @@ const PORT_FILE = join(homedir(), ".kombuse", "server-port");
  * Start embedded server in dev mode (direct import, no package).
  */
 async function startDevServer() {
-  const db = initializeDatabase();
-  seedDatabase(db);
-
   // Wire up auto-updater to server (available in dev for testing)
   setAutoUpdater(autoUpdater);
 
-  const server = await createServerDirect({ port: 0, db });
+  const server = await createServerDirect({ port: 0 });
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
@@ -65,9 +61,6 @@ async function startDevServer() {
  * Start embedded server from package (preview/prod mode).
  */
 async function startPackageServer() {
-  const db = initializeDatabase();
-  seedDatabase(db);
-
   const pkg = getPackageInfo();
   console.log(`Loading package v${pkg.manifest.version} from ${pkg.path}`);
 
@@ -76,7 +69,7 @@ async function startPackageServer() {
   // Wire up auto-updater to server
   setPackageAutoUpdater(autoUpdater);
 
-  const server = await createServer({ port: 0, db });
+  const server = await createServer({ port: 0 });
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 

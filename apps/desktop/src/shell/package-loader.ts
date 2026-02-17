@@ -117,7 +117,7 @@ export function getPackageInfo(): PackageInfo {
  * Dynamically load the server module from the package.
  */
 export async function loadPackage(serverBundlePath: string): Promise<{
-  createServer: (options: { port: number; db: unknown }) => Promise<{
+  createServer: (options: { port: number; dbPath?: string }) => Promise<{
     listen: () => Promise<string>;
     close: () => Promise<void>;
   }>;

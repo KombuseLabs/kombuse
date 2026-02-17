@@ -9,7 +9,6 @@ import {
   initializeDatabase,
   seedDatabase,
   onEventCreated,
-  type DatabaseType,
 } from "@kombuse/persistence";
 import {
   registerTicketTools,
@@ -52,14 +51,16 @@ export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
 
 export interface ServerOptions {
   port: number;
-  db: DatabaseType;
+  dbPath?: string;
 }
 
 /**
  * Create a configured Fastify server instance.
- * The db instance is injected via dependency injection.
+ * Initializes and seeds the database internally.
  */
-export async function createServer({ port, db }: ServerOptions) {
+export async function createServer({ port, dbPath }: ServerOptions) {
+  const db = initializeDatabase(dbPath);
+  seedDatabase(db);
   setDatabase(db);
 
   // Clean up orphaned sessions from previous runs.
@@ -200,9 +201,7 @@ if (isDirectExecution) {
 
   const portFile = join(homedir(), ".kombuse", "server-port");
   console.log(`===> [Server] Starting Kombuse server...`, { portFile });
-  const db = initializeDatabase();
-  seedDatabase(db);
-  const server = await createServer({ port: 3331, db });
+  const server = await createServer({ port: 3331 });
   try {
     const address = await server.listen();
     const port = new URL(address).port;
