@@ -24,7 +24,8 @@ src/
 │   ├── labels/           - Label management components
 │   ├── milestones/       - Milestone management components
 │   ├── prompt-editor/    - System prompt editor with template variables
-│   ├── sidebar/          - Sidebar navigation (panel + icon rail variants)
+│   ├── sidebar/          - Sidebar navigation (panel + icon rail variants) + backend status indicator
+│   ├── backend-status-banner.tsx - Warning banner for missing CLI backends
 │   ├── permissions/      - Permission decision log components
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components
@@ -32,6 +33,7 @@ src/
 │   ├── profile-button.tsx       - Header user menu dropdown (Profile + Settings)
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks
+│   ├── use-backend-status.ts  - Backend CLI availability query hooks
 │   ├── use-command.ts         - Execute specific commands
 │   ├── use-commands.ts        - Get all available commands
 │   ├── use-command-context.ts - Access command registry
@@ -191,6 +193,18 @@ const { data: catalog, isLoading } = useModels('codex')
 // catalog?.supports_model_selection => true
 // catalog?.models => ModelOption[] (id, name, description)
 // catalog?.default_model_id => 'o3'
+```
+
+```typescript
+import { useBackendStatus, useRefreshBackendStatus } from '@kombuse/ui/hooks'
+
+// Query backend CLI availability (claude-code, codex)
+const { data: statuses, isLoading } = useBackendStatus()
+// statuses => BackendStatus[] with { backendType, available, version, path }
+
+// Refresh mutation (clears server cache, re-checks)
+const refreshMutation = useRefreshBackendStatus()
+refreshMutation.mutate()
 ```
 
 ```typescript
@@ -472,7 +486,7 @@ import { Ticket, Bot } from 'lucide-react'
 ```
 
 Props:
-- `Sidebar`: `variant` (`"panel"` | `"rail"`), `isCollapsed`, `onCollapsedChange`, `header`, `children`, `className`
+- `Sidebar`: `variant` (`"panel"` | `"rail"`), `isCollapsed`, `onCollapsedChange`, `header`, `footer`, `children`, `className`
 - `SidebarItem`: `icon`, `label`, `to` (React Router path), `variant` (`"panel"` | `"rail"`), `isCollapsed` (panel mode)
 - `rail` `Sidebar` renders a rounded, content-height shell with increased vertical spacing between icon items.
 - `rail` `SidebarItem` renders as a circular bordered icon button (`size-12`) with tooltip labels and a stronger active border/ring state.

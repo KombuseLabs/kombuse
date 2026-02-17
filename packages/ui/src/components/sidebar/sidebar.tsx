@@ -13,6 +13,7 @@ interface SidebarProps {
   isCollapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   header?: React.ReactNode;
+  footer?: React.ReactNode;
 }
 
 function Sidebar({
@@ -22,6 +23,7 @@ function Sidebar({
   isCollapsed = false,
   onCollapsedChange,
   header,
+  footer,
 }: SidebarProps) {
   if (variant === "rail") {
     return (
@@ -39,6 +41,11 @@ function Sidebar({
             <nav className="flex flex-col items-center gap-3 pb-1">
               {children}
             </nav>
+            {footer && (
+              <div className="mt-auto flex flex-col items-center border-t border-border/50 pt-2">
+                {footer}
+              </div>
+            )}
           </div>
         </aside>
       </TooltipProvider>
@@ -86,6 +93,16 @@ function Sidebar({
         >
           {children}
         </nav>
+        {footer && (
+          <div
+            className={cn(
+              "mt-auto border-t py-2",
+              isCollapsed ? "flex justify-center px-2" : "px-2"
+            )}
+          >
+            {footer}
+          </div>
+        )}
       </aside>
     </TooltipProvider>
   );

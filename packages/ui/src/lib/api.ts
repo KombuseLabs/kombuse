@@ -54,6 +54,7 @@ import type {
   DatabaseQueryInput,
   DatabaseQueryResponse,
   ModelCatalogResponse,
+  BackendStatus,
 } from '@kombuse/types'
 
 declare global {
@@ -812,6 +813,20 @@ export const modelsApi = {
     const params = new URLSearchParams({ backend_type: backendType })
     const response = await fetch(`${API_BASE}/models?${params}`)
     return handleResponse<ModelCatalogResponse>(response)
+  },
+}
+
+export const backendStatusApi = {
+  async getStatus(): Promise<BackendStatus[]> {
+    const response = await fetch(`${API_BASE}/backend-status`)
+    return handleResponse<BackendStatus[]>(response)
+  },
+
+  async refreshStatus(): Promise<BackendStatus[]> {
+    const response = await fetch(`${API_BASE}/backend-status/refresh`, {
+      method: 'POST',
+    })
+    return handleResponse<BackendStatus[]>(response)
   },
 }
 
