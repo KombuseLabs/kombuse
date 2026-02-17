@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { sessionsRepository } from '@kombuse/persistence'
+import { analyticsService } from '@kombuse/services'
 import { sessionsPerDayQuerySchema } from '../schemas/analytics'
 
 export async function analyticsRoutes(fastify: FastifyInstance) {
@@ -9,7 +9,11 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const { project_id, days } = parseResult.data
-    return sessionsRepository.sessionsPerDay(project_id, days)
+    try {
+      const { project_id, days } = parseResult.data
+      return analyticsService.sessionsPerDay(project_id, days)
+    } catch (error) {
+      throw error
+    }
   })
 }

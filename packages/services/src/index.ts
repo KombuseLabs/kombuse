@@ -101,3 +101,6 @@ export { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS, CLAUDE_
 // Agent type presets
 export { getTypePreset, presetToAllowedTools, shouldAutoApprove } from './agent-type-preset-service'
 export type { AgentTypePreset } from './agent-type-preset-service'
+
+export { AnalyticsService, analyticsService } from './analytics-service'
+export type { IAnalyticsService } from './analytics-service'

@@ -47,5 +47,6 @@ export {
 } from './agents'
 export { pluginsRepository } from './plugins'
 export { sessionsRepository } from './sessions'
+export { analyticsRepository } from './analytics'
 export { sessionEventsRepository } from './session-events'
 export { attachmentsRepository } from './attachments'
