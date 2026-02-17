@@ -39,6 +39,23 @@ import type {
   AgentExecutionEvent,
   AgentInvokeMessage,
 } from './types'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+/**
+ * Read AGENTS.md from a project directory if it exists.
+ * Returns the trimmed file content, or undefined if the file is missing or empty.
+ */
+export function readAgentsMd(projectPath: string): string | undefined {
+  const agentsMdPath = join(projectPath, 'AGENTS.md')
+  if (!existsSync(agentsMdPath)) return undefined
+  try {
+    const content = readFileSync(agentsMdPath, 'utf-8').trim()
+    return content.length > 0 ? content : undefined
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * Options for running an agent chat session
@@ -887,6 +904,13 @@ export function startAgentChatSession(
     }
   }
 
+  const effectiveProjectPath = projectPathOverride ?? dependencies.resolveProjectPath()
+  const agentsMdContent = readAgentsMd(effectiveProjectPath)
+  if (agentsMdContent) {
+    resolvedSystemPrompt = (resolvedSystemPrompt ?? '') +
+      `\n\n## Project Agent Instructions (AGENTS.md)\n${agentsMdContent}`
+  }
+
   const allowedTools = presetToAllowedTools(preset)
 
   const restoredMetadata = dependencies.stateMachine.getMetadata(persistentSessionId)
@@ -897,7 +921,7 @@ export function startAgentChatSession(
 
   setSessionTurnActive(appSessionId, true)
   runAgentChat(backend, userMessage, appSessionId, {
-    projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
+    projectPath: effectiveProjectPath,
     resumeSessionId,
     model: resolvedAppliedModel,
     systemPrompt: resolvedSystemPrompt,
@@ -1082,7 +1106,7 @@ export function startAgentChatSession(
 
       setSessionTurnActive(appSessionId, true)
       runAgentChat(retryBackend, userMessage, appSessionId, {
-        projectPath: projectPathOverride ?? dependencies.resolveProjectPath(),
+        projectPath: effectiveProjectPath,
         systemPrompt: fallbackSystemPrompt,
         allowedTools,
         permissionMode: preset.permissionMode,

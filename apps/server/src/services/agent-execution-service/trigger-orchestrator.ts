@@ -6,7 +6,7 @@ import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, ty
 import { wsHub } from '../../websocket/hub'
 import { serializeAgentStreamEvent } from '../../websocket/serialize-agent-event'
 import { broadcastTicketAgentStatus } from './backend-registry'
-import { startAgentChatSession } from './chat-session-runner'
+import { readAgentsMd, startAgentChatSession } from './chat-session-runner'
 import type { AgentExecutionDependencies } from './types'
 
 /**
@@ -331,6 +331,11 @@ export async function processEventAndRunAgents(
     const projectPathOverride =
       resolveProjectPathForProject(event.project_id ?? null) ??
       dependencies.resolveProjectPath()
+
+    const agentsMdContent = readAgentsMd(projectPathOverride)
+    if (agentsMdContent) {
+      triggerPrompt.systemPrompt += `\n\n## Project Agent Instructions (AGENTS.md)\n${agentsMdContent}`
+    }
 
     let invocationFailed = false
     const markFailed = (message?: string) => {

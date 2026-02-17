@@ -33,6 +33,15 @@ vi.mock('../services/codex-mcp-config', () => ({
   resolveKombuseBridgeCommandConfig: vi.fn(() => null),
 }))
 
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return {
+    ...actual,
+    existsSync: vi.fn(actual.existsSync),
+    readFileSync: vi.fn(actual.readFileSync),
+  }
+})
+
 vi.mock('@kombuse/persistence', () => ({
   agentInvocationsRepository: {
     list: vi.fn(() => []),
@@ -107,6 +116,7 @@ import {
   type AgentExecutionEvent,
 } from '../services/agent-execution-service'
 import { broadcastPermissionPending } from '../services/agent-execution-service/permission-service'
+import { existsSync, readFileSync } from 'node:fs'
 import { backendIdleTimeouts, serverPendingPermissions } from '../services/agent-execution-service/runtime-state'
 
 // Clean up persistent backends between tests to prevent cross-test state pollution
@@ -4081,5 +4091,135 @@ describe('permission keying for cross-session requestId collisions', () => {
         permissionKey: 'chat-session-alpha:request-1',
       })
     )
+  })
+})
+
+describe('AGENTS.md system prompt injection', () => {
+  function createPassiveBackend(): AgentBackend {
+    return {
+      name: BACKEND_TYPES.CLAUDE_CODE,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+  }
+
+  function createDeps(backend: AgentBackend) {
+    return {
+      getAgent: vi.fn(() => null),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'agents-md-test' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => '/test/project'),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(existsSync).mockReturnValue(false)
+    vi.mocked(ticketsRepository.get).mockReturnValue(null)
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
+  })
+
+  it('appends AGENTS.md content to system prompt when file exists', async () => {
+    vi.mocked(existsSync).mockImplementation((p) =>
+      String(p).endsWith('AGENTS.md')
+    )
+    vi.mocked(readFileSync).mockImplementation(((p: string) => {
+      if (String(p).endsWith('AGENTS.md')) {
+        return '# Custom Agent Instructions\nDo not modify production data.'
+      }
+      throw new Error(`Unexpected readFileSync: ${p}`)
+    }) as typeof readFileSync)
+
+    const backend = createPassiveBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke',
+        message: 'hello',
+        kombuseSessionId: 'agents-md-test' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const startCall = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
+    expect(startCall.systemPrompt).toContain('## Project Agent Instructions (AGENTS.md)')
+    expect(startCall.systemPrompt).toContain('# Custom Agent Instructions')
+    expect(startCall.systemPrompt).toContain('Do not modify production data.')
+  })
+
+  it('does not inject anything when AGENTS.md does not exist', async () => {
+    vi.mocked(existsSync).mockReturnValue(false)
+
+    const backend = createPassiveBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke',
+        message: 'hello',
+        kombuseSessionId: 'agents-md-test' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const startCall = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
+    expect(startCall.systemPrompt ?? '').not.toContain('AGENTS.md')
+  })
+
+  it('does not inject anything when AGENTS.md is empty', async () => {
+    vi.mocked(existsSync).mockImplementation((p) =>
+      String(p).endsWith('AGENTS.md')
+    )
+    vi.mocked(readFileSync).mockImplementation(((p: string) => {
+      if (String(p).endsWith('AGENTS.md')) {
+        return '   \n  \n  '
+      }
+      throw new Error(`Unexpected readFileSync: ${p}`)
+    }) as typeof readFileSync)
+
+    const backend = createPassiveBackend()
+    const deps = createDeps(backend)
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke',
+        message: 'hello',
+        kombuseSessionId: 'agents-md-test' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const startCall = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
+    expect(startCall.systemPrompt ?? '').not.toContain('AGENTS.md')
   })
 })
