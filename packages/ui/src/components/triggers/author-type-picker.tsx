@@ -11,11 +11,14 @@ import {
 
 interface AuthorTypePickerProps {
   value: ActorType | null
-  onValueChange: (value: ActorType) => void
+  onValueChange: (value: ActorType | null) => void
   disabled?: boolean
 }
 
+const ANY_AUTHOR_SENTINEL = '__any__'
+
 const AUTHOR_TYPE_OPTIONS = [
+  { value: ANY_AUTHOR_SENTINEL, label: 'Any author (no filter)' },
   { value: 'user' as const, label: 'Human users only' },
   { value: 'agent' as const, label: 'Agents only' },
 ]
@@ -29,8 +32,14 @@ export function getAuthorTypeLabel(authorType: string): string {
 function AuthorTypePicker({ value, onValueChange, disabled }: AuthorTypePickerProps) {
   return (
     <Select
-      value={value ?? ''}
-      onValueChange={(v) => onValueChange(v as ActorType)}
+      value={value ?? ANY_AUTHOR_SENTINEL}
+      onValueChange={(v) => {
+        if (v === ANY_AUTHOR_SENTINEL) {
+          onValueChange(null)
+        } else {
+          onValueChange(v as ActorType)
+        }
+      }}
       disabled={disabled}
     >
       <SelectTrigger>

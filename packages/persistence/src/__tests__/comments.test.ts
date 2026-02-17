@@ -1219,6 +1219,55 @@ describe('commentsRepository', () => {
       expect(mentions).toHaveLength(1)
       expect(mentions[0]?.mentioned_profile_id).toBe('user-bob')
     })
+
+    it('should include author_type in comment.edited event payload for user-authored comment', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Original body',
+      })
+
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.update(comment.id, { body: 'Updated body' })
+
+      const events = eventsRepository.list({ event_type: 'comment.edited' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'User-authored edit should have actor_type "user"').toBe('user')
+      expect(events[0]?.actor_id).toBe(TEST_USER_ID)
+
+      const payload =
+        typeof events[0]!.payload === 'string'
+          ? JSON.parse(events[0]!.payload)
+          : events[0]!.payload
+      expect(payload.author_type, 'comment.edited payload should include author_type').toBe('user')
+      expect(payload.comment_id).toBe(comment.id)
+    })
+
+    it('should include author_type in comment.edited event payload for agent-authored comment', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_AGENT_ID,
+        body: 'Agent original body',
+      })
+
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.update(comment.id, { body: 'Agent updated body' })
+
+      const events = eventsRepository.list({ event_type: 'comment.edited' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_type, 'Agent-authored edit should have actor_type "agent"').toBe('agent')
+      expect(events[0]?.actor_id).toBe(TEST_AGENT_ID)
+
+      const payload =
+        typeof events[0]!.payload === 'string'
+          ? JSON.parse(events[0]!.payload)
+          : events[0]!.payload
+      expect(payload.author_type, 'comment.edited payload should include author_type').toBe('agent')
+    })
   })
 
   /*

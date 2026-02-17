@@ -346,6 +346,46 @@ describe('agentService', () => {
       const matches = agentService.findMatchingTriggers(event)
       expect(matches, 'Should not match because author_type is agent, not user').toHaveLength(0)
     })
+
+    it('should match author_type condition on comment.edited', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'comment.edited',
+        conditions: { author_type: 'user' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'comment.edited',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: TEST_USER_ID,
+        actor_type: 'user',
+        payload: { comment_id: 1, author_type: 'user' },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches).toHaveLength(1)
+    })
+
+    it('should reject author_type condition mismatch on comment.edited', () => {
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'comment.edited',
+        conditions: { author_type: 'user' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'comment.edited',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: agentId,
+        actor_type: 'agent',
+        payload: { comment_id: 1, author_type: 'agent' },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should not match because author_type is agent, not user').toHaveLength(0)
+    })
   })
 
   describe('checkPermission scope resolution', () => {
