@@ -1,6 +1,7 @@
 import type { EventWithActor } from '@kombuse/types'
 import { parseSessionId } from '@kombuse/types'
 import { Link } from 'react-router-dom'
+import { Button } from '../../base/button'
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
 import { cn } from '../../lib/utils'
 import { useSessionByKombuseId } from '../../hooks/use-sessions'
@@ -195,25 +196,27 @@ function TimelineEventItem({ event, projectId, onSessionClick, isResumable, onRe
         <span className="inline-flex items-center gap-1 ml-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5 text-muted-foreground hover:text-foreground"
                 onClick={onResume}
-                className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Play className="size-3" />
-              </button>
+              </Button>
             </TooltipTrigger>
             <TooltipContent>Resume agent</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5 text-muted-foreground hover:text-foreground"
                 onClick={onRerun}
-                className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
               >
                 <RotateCcw className="size-3" />
-              </button>
+              </Button>
             </TooltipTrigger>
             <TooltipContent>Rerun agent</TooltipContent>
           </Tooltip>

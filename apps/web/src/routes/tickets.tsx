@@ -452,7 +452,12 @@ export function Tickets() {
       );
       const originalPrompt = typeof firstUserEvent?.payload?.content === "string"
         ? firstUserEvent.payload.content
-        : "continue";
+        : null;
+
+      if (!originalPrompt) {
+        toast.error("Could not find the original prompt to replay.");
+        return;
+      }
 
       // Send without kombuseSessionId so server creates a new session
       wsSend({
@@ -461,12 +466,7 @@ export function Tickets() {
         message: originalPrompt,
       });
     } catch {
-      // Fallback: invoke without the original prompt
-      wsSend({
-        type: "agent.invoke",
-        agentId,
-        message: "continue",
-      });
+      toast.error("Failed to fetch session history for rerun.");
     }
   }, [wsSend]);
 

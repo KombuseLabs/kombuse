@@ -61,6 +61,24 @@ function ActivityTimeline({
     return map
   }, [items])
 
+  // Only show Resume/Rerun on the last item per resumable session
+  const lastItemKeyPerSession = useMemo(() => {
+    if (!resumableSessionIds?.size) return new Set<string>()
+    const lastKey = new Map<string, string>()
+    for (const item of items) {
+      const sessionId = item.type === 'comment'
+        ? (item.data as CommentWithAuthor).kombuse_session_id
+        : (item.data as EventWithActor).kombuse_session_id
+      if (sessionId && resumableSessionIds.has(sessionId)) {
+        const itemKey = item.type === 'comment'
+          ? `comment-${(item.data as CommentWithAuthor).id}`
+          : `event-${(item.data as EventWithActor).id}`
+        lastKey.set(sessionId, itemKey)
+      }
+    }
+    return new Set(lastKey.values())
+  }, [items, resumableSessionIds])
+
   if (items.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">No activity yet</p>
@@ -84,10 +102,7 @@ function ActivityTimeline({
 
         if (isComment) {
           const comment = item.data as CommentWithAuthor
-          const isResumable = !!(
-            comment.kombuse_session_id
-            && resumableSessionIds?.has(comment.kombuse_session_id)
-          )
+          const isResumable = lastItemKeyPerSession.has(`comment-${comment.id}`)
           return (
             <div key={`comment-${comment.id}`} className={marginClass}>
               <CommentItem
@@ -123,10 +138,7 @@ function ActivityTimeline({
           )
         } else {
           const event = item.data as EventWithActor
-          const isResumable = !!(
-            event.kombuse_session_id
-            && resumableSessionIds?.has(event.kombuse_session_id)
-          )
+          const isResumable = lastItemKeyPerSession.has(`event-${event.id}`)
           return (
             <div key={`event-${event.id}`} className={marginClass}>
               <TimelineEventItem

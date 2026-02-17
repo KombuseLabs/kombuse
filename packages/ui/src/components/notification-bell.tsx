@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Bell, Shield, Check, X, ExternalLink, FileCheck, HelpCircle, Loader2 } from 'lucide-react'
 import { Button } from '../base/button'
 import { Badge } from '../base/badge'
@@ -38,7 +38,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
   // Track permissions that have been responded to but not yet resolved by the server
   const [respondedKeys, setRespondedKeys] = useState<Set<string>>(new Set())
 
-  const permissions = [...pendingPermissions.values()]
+  const permissions = useMemo(() => [...pendingPermissions.values()], [pendingPermissions])
   const count = permissions.length
 
   // Clean up respondedKeys when permissions are removed via agent.permission_resolved

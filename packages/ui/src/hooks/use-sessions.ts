@@ -12,6 +12,7 @@ export function useSessions(filters?: SessionFilters) {
   return useQuery({
     queryKey: ['sessions', filters],
     queryFn: () => sessionsApi.list(filters),
+    enabled: !!filters,
   })
 }
 
