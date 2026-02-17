@@ -63,6 +63,13 @@ export const agentExportSchema = z.object({
   agent_ids: z.array(z.string().min(1)).optional(),
 })
 
+// Agent export result schema (response validation)
+export const agentExportResultSchema = z.object({
+  directory: z.string().min(1),
+  count: z.number().int().nonnegative(),
+  files: z.array(z.string()),
+})
+
 // Export types
 export type AgentExportBody = z.infer<typeof agentExportSchema>
 export type CreateAgentBody = z.infer<typeof createAgentSchema>

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { agentExportResultSchema } from './agents'
 import {
   agentInvocationSchema,
   agentProcessEventResponseSchema,
@@ -251,6 +252,7 @@ registerSuccessSchema('GET', '/api/invocations', z.array(agentInvocationSchema))
 registerSuccessSchema('GET', '/api/invocations/:id', agentInvocationSchema)
 registerSuccessSchema('GET', '/api/agents/:agentId/invocations', z.array(agentInvocationSchema))
 registerSuccessSchema('POST', '/api/agents/process-event', agentProcessEventResponseSchema)
+registerSuccessSchema('POST', '/api/agents/export', agentExportResultSchema)
 
 // Attachment routes
 registerSuccessSchema('POST', '/api/tickets/:ticketId/attachments', attachmentSchema)
