@@ -117,11 +117,6 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   fastify.get<{
     Params: { id: string }
   }>('/sessions/:id/events', async (request, reply) => {
-    const session = sessionsRepository.getByKombuseSessionId(request.params.id)
-    if (!session) {
-      return reply.status(404).send({ error: 'Session not found' })
-    }
-
     const parseResult = sessionEventFiltersSchema.safeParse(request.query)
     if (!parseResult.success) {
       return reply.status(400).send({ error: parseResult.error.issues })
@@ -129,10 +124,18 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
     const { since_seq, event_type, limit } = parseResult.data
 
-    let events = sessionEventsRepository.getBySession(
-      session.id,
+    let events = sessionEventsRepository.getByKombuseSession(
+      request.params.id,
       since_seq
     )
+
+    // If no events found, check whether the session exists at all for a proper 404
+    if (events.length === 0) {
+      const session = sessionsRepository.getByKombuseSessionId(request.params.id)
+      if (!session) {
+        return reply.status(404).send({ error: 'Session not found' })
+      }
+    }
 
     if (event_type) {
       events = events.filter((e) => e.event_type === event_type)

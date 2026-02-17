@@ -45,9 +45,10 @@ describe('GET /sessions/:id/events route', () => {
   })
 
   it('returns the latest 100 events by default while preserving ascending order', async () => {
+    const kombuseId = 'chat-default-tail' as KombuseSessionId
     const session = sessionsRepository.create({
       id: 'session-default-tail',
-      kombuse_session_id: 'chat-default-tail' as KombuseSessionId,
+      kombuse_session_id: kombuseId,
     })
 
     sessionEventsRepository.createMany(
@@ -55,6 +56,7 @@ describe('GET /sessions/:id/events route', () => {
         const seq = index + 1
         return {
           session_id: session.id,
+          kombuse_session_id: kombuseId,
           seq,
           event_type: 'message',
           payload: createEventPayload(seq),
@@ -80,9 +82,10 @@ describe('GET /sessions/:id/events route', () => {
   })
 
   it('preserves forward cursor pagination semantics when since_seq is provided', async () => {
+    const kombuseId = 'chat-forward-cursor' as KombuseSessionId
     const session = sessionsRepository.create({
       id: 'session-forward-cursor',
-      kombuse_session_id: 'chat-forward-cursor' as KombuseSessionId,
+      kombuse_session_id: kombuseId,
     })
 
     sessionEventsRepository.createMany(
@@ -90,6 +93,7 @@ describe('GET /sessions/:id/events route', () => {
         const seq = index + 1
         return {
           session_id: session.id,
+          kombuse_session_id: kombuseId,
           seq,
           event_type: 'message',
           payload: createEventPayload(seq),
@@ -113,9 +117,10 @@ describe('GET /sessions/:id/events route', () => {
   })
 
   it('applies event_type filtering before windowing and limit selection', async () => {
+    const kombuseId = 'chat-event-type-filter' as KombuseSessionId
     const session = sessionsRepository.create({
       id: 'session-event-type-filter',
-      kombuse_session_id: 'chat-event-type-filter' as KombuseSessionId,
+      kombuse_session_id: kombuseId,
     })
 
     sessionEventsRepository.createMany(
@@ -124,6 +129,7 @@ describe('GET /sessions/:id/events route', () => {
         const eventType = seq % 2 === 0 ? 'tool_result' : 'message'
         return {
           session_id: session.id,
+          kombuse_session_id: kombuseId,
           seq,
           event_type: eventType,
           payload: createEventPayload(seq),

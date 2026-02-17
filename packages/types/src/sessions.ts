@@ -125,6 +125,7 @@ export interface UpdateSessionInput {
 export interface SessionEvent {
   id: number
   session_id: string
+  kombuse_session_id: string | null
   seq: number
   event_type: string
   payload: Record<string, unknown>
@@ -136,6 +137,7 @@ export interface SessionEvent {
  */
 export interface CreateSessionEventInput {
   session_id: string
+  kombuse_session_id?: string
   seq: number
   event_type: string
   payload: Record<string, unknown>

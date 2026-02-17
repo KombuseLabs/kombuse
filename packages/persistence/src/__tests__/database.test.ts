@@ -125,6 +125,7 @@ const EXPECTED_MIGRATIONS = [
   '018_session_abort_diagnostics',
   '019_session_invocation_project_scope',
   '020_ticket_loop_protection',
+  '021_session_event_kombuse_session_id',
 ]
 
 describe('database', () => {
@@ -309,12 +310,24 @@ describe('database', () => {
           context TEXT,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE session_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+          seq INTEGER NOT NULL,
+          event_type TEXT NOT NULL,
+          payload TEXT NOT NULL CHECK (json_valid(payload)),
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE(session_id, seq)
+        );
       `)
 
       const insertMigration = db.prepare(
         'INSERT INTO migrations (name) VALUES (?)'
       )
-      for (const migrationName of EXPECTED_MIGRATIONS.slice(0, -1)) {
+      // Mark all migrations up to 018 as applied so 019+ will run
+      const migration019Index = EXPECTED_MIGRATIONS.indexOf('019_session_invocation_project_scope')
+      for (const migrationName of EXPECTED_MIGRATIONS.slice(0, migration019Index)) {
         insertMigration.run(migrationName)
       }
 

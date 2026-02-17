@@ -99,6 +99,7 @@ function makeSessionEvent(seq: number): SessionEvent {
   return {
     id: seq,
     session_id: 'session-1',
+    kombuse_session_id: null,
     seq,
     event_type: 'message',
     payload: payload as unknown as Record<string, unknown>,

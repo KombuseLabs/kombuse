@@ -38,6 +38,7 @@ export interface ISessionPersistenceService {
 export class SessionPersistenceService implements ISessionPersistenceService {
   private options: Required<SessionPersistenceOptions>
   private seqCounters: Map<string, number> = new Map()
+  private sessionKombuseIds: Map<string, string> = new Map()
   private sessionsWithBackendId: Set<string> = new Set()
   private sessionsWithCliVersion: Set<string> = new Set()
 
@@ -85,6 +86,9 @@ export class SessionPersistenceService implements ISessionPersistenceService {
       }
     }
 
+    // Cache kombuse session ID for use in persistEvent
+    this.sessionKombuseIds.set(session.id, kombuseSessionId)
+
     // Initialize sequence counter from database if not cached
     if (!this.seqCounters.has(session.id)) {
       const nextSeq = sessionEventsRepository.getNextSeq(session.id)
@@ -106,6 +110,7 @@ export class SessionPersistenceService implements ISessionPersistenceService {
 
     sessionEventsRepository.create({
       session_id: sessionId,
+      kombuse_session_id: this.sessionKombuseIds.get(sessionId),
       seq,
       event_type: event.type,
       payload,

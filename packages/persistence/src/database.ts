@@ -867,6 +867,17 @@ const migrations = [
       ALTER TABLE tickets ADD COLUMN loop_protection_enabled INTEGER NOT NULL DEFAULT 1;
     `,
   },
+  {
+    name: '021_session_event_kombuse_session_id',
+    sql: `
+      ALTER TABLE session_events ADD COLUMN kombuse_session_id TEXT;
+      CREATE INDEX IF NOT EXISTS idx_session_events_kombuse_session
+        ON session_events(kombuse_session_id) WHERE kombuse_session_id IS NOT NULL;
+      UPDATE session_events SET kombuse_session_id = (
+        SELECT s.kombuse_session_id FROM sessions s WHERE s.id = session_events.session_id
+      );
+    `,
+  },
 ]
 
 /**

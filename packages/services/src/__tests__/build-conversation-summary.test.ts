@@ -6,6 +6,7 @@ function makeMessageEvent(seq: number, role: string, content: string): SessionEv
   return {
     id: seq,
     session_id: 'session-1',
+    kombuse_session_id: null,
     seq,
     event_type: 'message',
     payload: { type: 'message', role, content },
@@ -17,6 +18,7 @@ function makeToolEvent(seq: number): SessionEvent {
   return {
     id: seq,
     session_id: 'session-1',
+    kombuse_session_id: null,
     seq,
     event_type: 'tool_use',
     payload: { type: 'tool_use', name: 'Read', input: {} },
@@ -86,6 +88,7 @@ describe('buildConversationSummary', () => {
       {
         id: 1,
         session_id: 'session-1',
+        kombuse_session_id: null,
         seq: 1,
         event_type: 'message',
         payload: { type: 'message' },

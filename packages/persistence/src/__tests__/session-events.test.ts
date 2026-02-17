@@ -11,6 +11,7 @@ describe('sessionEventsRepository', () => {
   let cleanup: () => void
   let db: DatabaseType
   let testSessionId: string
+  let testKombuseSessionId: string
 
   beforeEach(() => {
     const setup = setupTestDb()
@@ -18,11 +19,13 @@ describe('sessionEventsRepository', () => {
     db = setup.db
 
     // Create a test session
+    const kombuseId = createSessionId('chat')
     const session = sessionsRepository.create({
-      kombuse_session_id: createSessionId('chat'),
+      kombuse_session_id: kombuseId,
       backend_type: 'mock',
     })
     testSessionId = session.id
+    testKombuseSessionId = kombuseId
   })
 
   afterEach(() => {
@@ -63,6 +66,124 @@ describe('sessionEventsRepository', () => {
         name: 'read_file',
         input: { path: '/foo/bar.txt', encoding: 'utf-8' },
       })
+    })
+  })
+
+  describe('kombuse_session_id', () => {
+    it('should store and return kombuse_session_id on create', () => {
+      const event = sessionEventsRepository.create({
+        session_id: testSessionId,
+        kombuse_session_id: testKombuseSessionId,
+        seq: 1,
+        event_type: 'message',
+        payload: { content: 'Hello' },
+      })
+
+      expect(event.kombuse_session_id).toBe(testKombuseSessionId)
+    })
+
+    it('should default kombuse_session_id to null when not provided', () => {
+      const event = sessionEventsRepository.create({
+        session_id: testSessionId,
+        seq: 1,
+        event_type: 'message',
+        payload: { content: 'Hello' },
+      })
+
+      expect(event.kombuse_session_id).toBeNull()
+    })
+
+    it('should store kombuse_session_id via createMany', () => {
+      sessionEventsRepository.createMany([
+        {
+          session_id: testSessionId,
+          kombuse_session_id: testKombuseSessionId,
+          seq: 1,
+          event_type: 'message',
+          payload: { n: 1 },
+        },
+        {
+          session_id: testSessionId,
+          kombuse_session_id: testKombuseSessionId,
+          seq: 2,
+          event_type: 'message',
+          payload: { n: 2 },
+        },
+      ])
+
+      const events = sessionEventsRepository.getBySession(testSessionId)
+      expect(events).toHaveLength(2)
+      expect(events[0]?.kombuse_session_id).toBe(testKombuseSessionId)
+      expect(events[1]?.kombuse_session_id).toBe(testKombuseSessionId)
+    })
+  })
+
+  describe('getByKombuseSession', () => {
+    it('should return events by kombuse_session_id', () => {
+      sessionEventsRepository.create({
+        session_id: testSessionId,
+        kombuse_session_id: testKombuseSessionId,
+        seq: 1,
+        event_type: 'message',
+        payload: { content: 'First' },
+      })
+      sessionEventsRepository.create({
+        session_id: testSessionId,
+        kombuse_session_id: testKombuseSessionId,
+        seq: 2,
+        event_type: 'message',
+        payload: { content: 'Second' },
+      })
+
+      const events = sessionEventsRepository.getByKombuseSession(testKombuseSessionId)
+      expect(events).toHaveLength(2)
+      expect(events[0]?.seq).toBe(1)
+      expect(events[1]?.seq).toBe(2)
+    })
+
+    it('should filter by sinceSeq', () => {
+      sessionEventsRepository.createMany([
+        { session_id: testSessionId, kombuse_session_id: testKombuseSessionId, seq: 1, event_type: 'message', payload: {} },
+        { session_id: testSessionId, kombuse_session_id: testKombuseSessionId, seq: 2, event_type: 'message', payload: {} },
+        { session_id: testSessionId, kombuse_session_id: testKombuseSessionId, seq: 3, event_type: 'message', payload: {} },
+      ])
+
+      const events = sessionEventsRepository.getByKombuseSession(testKombuseSessionId, 1)
+      expect(events).toHaveLength(2)
+      expect(events[0]?.seq).toBe(2)
+      expect(events[1]?.seq).toBe(3)
+    })
+
+    it('should isolate between different kombuse session IDs', () => {
+      const otherKombuseId = createSessionId('chat')
+      const otherSession = sessionsRepository.create({
+        kombuse_session_id: otherKombuseId,
+        backend_type: 'mock',
+      })
+
+      sessionEventsRepository.create({
+        session_id: testSessionId,
+        kombuse_session_id: testKombuseSessionId,
+        seq: 1,
+        event_type: 'message',
+        payload: { content: 'Session 1' },
+      })
+      sessionEventsRepository.create({
+        session_id: otherSession.id,
+        kombuse_session_id: otherKombuseId,
+        seq: 1,
+        event_type: 'message',
+        payload: { content: 'Session 2' },
+      })
+
+      const events = sessionEventsRepository.getByKombuseSession(testKombuseSessionId)
+      expect(events).toHaveLength(1)
+      expect(events[0]?.payload).toEqual({ content: 'Session 1' })
+    })
+
+    it('should return empty array for non-existent kombuse session ID', () => {
+      const events = sessionEventsRepository.getByKombuseSession('non-existent')
+      expect(events).toHaveLength(0)
     })
   })
 

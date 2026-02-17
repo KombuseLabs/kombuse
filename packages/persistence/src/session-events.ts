@@ -13,6 +13,7 @@ import { getDatabase } from './database'
 interface RawSessionEvent {
   id: number
   session_id: string
+  kombuse_session_id: string | null
   seq: number
   event_type: string
   payload: string
@@ -79,6 +80,7 @@ function mapSessionEvent(row: RawSessionEvent): SessionEvent {
   return {
     id: row.id,
     session_id: row.session_id,
+    kombuse_session_id: row.kombuse_session_id,
     seq: row.seq,
     event_type: row.event_type,
     payload: JSON.parse(row.payload),
@@ -174,6 +176,37 @@ export const sessionEventsRepository = {
   },
 
   /**
+   * Get events by kombuse_session_id, optionally filtering to events after a sequence number
+   */
+  getByKombuseSession(kombuseSessionId: string, sinceSeq?: number): SessionEvent[] {
+    const db = getDatabase()
+
+    if (sinceSeq !== undefined) {
+      const rows = db
+        .prepare(
+          `
+          SELECT * FROM session_events
+          WHERE kombuse_session_id = ? AND seq > ?
+          ORDER BY seq ASC
+        `
+        )
+        .all(kombuseSessionId, sinceSeq) as RawSessionEvent[]
+      return rows.map(mapSessionEvent)
+    }
+
+    const rows = db
+      .prepare(
+        `
+        SELECT * FROM session_events
+        WHERE kombuse_session_id = ?
+        ORDER BY seq ASC
+      `
+      )
+      .all(kombuseSessionId) as RawSessionEvent[]
+    return rows.map(mapSessionEvent)
+  },
+
+  /**
    * Create a new session event
    */
   create(input: CreateSessionEventInput): SessionEvent {
@@ -182,12 +215,13 @@ export const sessionEventsRepository = {
     const result = db
       .prepare(
         `
-        INSERT INTO session_events (session_id, seq, event_type, payload)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO session_events (session_id, kombuse_session_id, seq, event_type, payload)
+        VALUES (?, ?, ?, ?, ?)
       `
       )
       .run(
         input.session_id,
+        input.kombuse_session_id ?? null,
         input.seq,
         input.event_type,
         JSON.stringify(input.payload)
@@ -203,14 +237,15 @@ export const sessionEventsRepository = {
     const db = getDatabase()
 
     const insert = db.prepare(`
-      INSERT INTO session_events (session_id, seq, event_type, payload)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO session_events (session_id, kombuse_session_id, seq, event_type, payload)
+      VALUES (?, ?, ?, ?, ?)
     `)
 
     const insertMany = db.transaction((evts: CreateSessionEventInput[]) => {
       for (const evt of evts) {
         insert.run(
           evt.session_id,
+          evt.kombuse_session_id ?? null,
           evt.seq,
           evt.event_type,
           JSON.stringify(evt.payload)
@@ -286,7 +321,7 @@ export const sessionEventsRepository = {
         SELECT
           req.id,
           req.session_id,
-          s.kombuse_session_id,
+          req.kombuse_session_id,
           s.ticket_id,
           t.title as ticket_title,
           req.created_at as requested_at,
