@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
-import type { JsonObject, JsonValue, SerializedAgentCompleteEvent, SerializedAgentErrorEvent, SerializedAgentEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
+import type { JsonObject, JsonValue, SerializedAgentCompleteEvent, SerializedAgentErrorEvent, SerializedAgentEvent, SerializedAgentPermissionRequestEvent, SerializedAgentPermissionResponseEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { SessionViewer } from '../session-viewer'
 import { KNOWN_KOMBUSE_TOOL_NAMES, getKombuseToolConfig } from '../renderers'
 
@@ -98,6 +98,55 @@ function makeCompleteEvent({
     exitCode,
     errorMessage,
     resumeFailed,
+  }
+}
+
+function makePermissionRequestEvent({
+  id,
+  requestId,
+  toolName,
+  timestamp,
+  input = {},
+}: {
+  id: string
+  requestId: string
+  toolName: string
+  timestamp: number
+  input?: JsonObject
+}): SerializedAgentPermissionRequestEvent {
+  return {
+    type: 'permission_request',
+    eventId: `evt-${id}`,
+    backend: 'mock',
+    timestamp,
+    requestId,
+    toolName,
+    toolUseId: `tool-${id}`,
+    input,
+  }
+}
+
+function makePermissionResponseEvent({
+  id,
+  requestId,
+  behavior,
+  timestamp,
+  message,
+}: {
+  id: string
+  requestId: string
+  behavior: 'allow' | 'deny'
+  timestamp: number
+  message?: string
+}): SerializedAgentPermissionResponseEvent {
+  return {
+    type: 'permission_response',
+    eventId: `evt-${id}`,
+    backend: 'mock',
+    timestamp,
+    requestId,
+    behavior,
+    ...(message != null && { message }),
   }
 }
 
@@ -360,5 +409,88 @@ describe('SessionViewer kombuse renderers', () => {
 
     expect(getByText('Glob')).toBeDefined()
     expect(getByText('2 files found')).toBeDefined()
+  })
+
+  it('renders permission_response allow with matching request tool name', () => {
+    const request = makePermissionRequestEvent({
+      id: 'perm-req',
+      requestId: 'req-1',
+      toolName: 'Bash',
+      timestamp: 7000,
+    })
+    const response = makePermissionResponseEvent({
+      id: 'perm-res',
+      requestId: 'req-1',
+      behavior: 'allow',
+      timestamp: 7001,
+    })
+
+    const { container } = render(<SessionViewer events={[request, response]} />)
+
+    const inlineRow = container.querySelector('.py-1\\.5')
+    expect(inlineRow).not.toBeNull()
+    expect(inlineRow?.textContent).toContain('Allowed')
+    expect(inlineRow?.textContent).toContain('Bash')
+    expect(container.querySelector('pre')).toBeNull()
+  })
+
+  it('renders permission_response deny with message and tool name', () => {
+    const request = makePermissionRequestEvent({
+      id: 'perm-req-deny',
+      requestId: 'req-2',
+      toolName: 'Write',
+      timestamp: 7100,
+    })
+    const response = makePermissionResponseEvent({
+      id: 'perm-res-deny',
+      requestId: 'req-2',
+      behavior: 'deny',
+      timestamp: 7101,
+      message: 'use a different path',
+    })
+
+    const { container } = render(<SessionViewer events={[request, response]} />)
+
+    const responseDiv = container.querySelectorAll('.text-muted-foreground')
+    const texts = Array.from(responseDiv).map(el => el.textContent).join(' ')
+    expect(texts).toContain('Denied')
+    expect(texts).toContain('Write')
+    expect(texts).toContain('use a different path')
+    expect(container.querySelector('pre')).toBeNull()
+  })
+
+  it('renders orphaned permission_response without tool name', () => {
+    const response = makePermissionResponseEvent({
+      id: 'perm-orphan',
+      requestId: 'no-match',
+      behavior: 'allow',
+      timestamp: 7200,
+    })
+
+    const { container } = render(<SessionViewer events={[response]} />)
+
+    const texts = Array.from(container.querySelectorAll('.text-muted-foreground')).map(el => el.textContent).join(' ')
+    expect(texts).toContain('Allowed')
+    expect(container.querySelector('pre')).toBeNull()
+  })
+
+  it('hides permission_response events in clean mode', () => {
+    const request = makePermissionRequestEvent({
+      id: 'perm-req-clean',
+      requestId: 'req-clean',
+      toolName: 'Bash',
+      timestamp: 7300,
+    })
+    const response = makePermissionResponseEvent({
+      id: 'perm-res-clean',
+      requestId: 'req-clean',
+      behavior: 'allow',
+      timestamp: 7301,
+    })
+
+    const { container } = render(<SessionViewer events={[request, response]} viewMode="clean" />)
+
+    expect(container.textContent).not.toContain('Allowed')
+    expect(container.textContent).not.toContain('Permission Request')
   })
 })

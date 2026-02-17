@@ -11,6 +11,7 @@ export { KombuseToolRenderer, type KombuseToolRendererProps } from './kombuse-to
 export { getKombuseToolConfig, isKombuseToolName, KNOWN_KOMBUSE_TOOL_NAMES, type KombuseSummaryContext, type KombuseToolConfig } from './kombuse-tool-config'
 export { MessageRenderer, type MessageRendererProps } from './message-renderer'
 export { PermissionRequestRenderer, type PermissionRequestRendererProps } from './permission-request-renderer'
+export { PermissionResponseRenderer, type PermissionResponseRendererProps } from './permission-response-renderer'
 export { PlanPermissionRenderer, type PlanPermissionRendererProps } from './plan-permission-renderer'
 export { PlanRenderer, type PlanRendererProps } from './plan-renderer'
 export { RawRenderer, type RawRendererProps } from './raw-renderer'

@@ -1,13 +1,13 @@
 'use client'
 
 import { useMemo, type ReactElement } from 'react'
-import type { SerializedAgentEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
+import type { SerializedAgentEvent, SerializedAgentPermissionRequestEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { useScrollToBottom } from '../../hooks/use-scroll-to-bottom'
 import { isValidAskUserInput } from './ask-user-types'
-import { AskUserRenderer, BashRenderer, CompleteRenderer, EditRenderer, EnterPlanModeRenderer, ErrorRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PlanPermissionRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
+import { AskUserRenderer, BashRenderer, CompleteRenderer, EditRenderer, EnterPlanModeRenderer, ErrorRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PermissionResponseRenderer, PlanPermissionRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 interface SessionViewerProps {
@@ -76,20 +76,23 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
     deps: [events.length, isLoading],
   })
 
-  // Build maps for tool_use events and track which ones have results
-  const { toolUseMap, toolUseIdsWithResults } = useMemo(() => {
+  // Build maps for tool_use events, track which ones have results, and index permission requests
+  const { toolUseMap, toolUseIdsWithResults, permissionRequestMap } = useMemo(() => {
     const useMap = new Map<string, SerializedAgentToolUseEvent>()
     const idsWithResults = new Set<string>()
+    const permReqMap = new Map<string, SerializedAgentPermissionRequestEvent>()
 
     for (const event of events) {
       if (event.type === 'tool_use') {
         useMap.set(event.id, event)
       } else if (event.type === 'tool_result') {
         idsWithResults.add(event.toolUseId)
+      } else if (event.type === 'permission_request') {
+        permReqMap.set(event.requestId, event)
       }
     }
 
-    return { toolUseMap: useMap, toolUseIdsWithResults: idsWithResults }
+    return { toolUseMap: useMap, toolUseIdsWithResults: idsWithResults, permissionRequestMap: permReqMap }
   }, [events])
 
   const visibleEvents = useMemo(() => {
@@ -159,6 +162,17 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
             return <PlanPermissionRenderer key={event.eventId} event={event} />
           }
           return <PermissionRequestRenderer key={event.eventId} event={event} />
+        }
+
+        if (event.type === 'permission_response') {
+          const matchedRequest = permissionRequestMap.get(event.requestId)
+          return (
+            <PermissionResponseRenderer
+              key={event.eventId}
+              event={event}
+              toolName={matchedRequest?.toolName}
+            />
+          )
         }
 
         // Render tool_use events - skip if they have results (rendered with result)

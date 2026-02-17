@@ -47,6 +47,7 @@ src/
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
+│   ├── use-plugins.ts         - Plugin export hooks
 │   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-models.ts          - Model catalog query hook
 │   ├── use-profile-settings.ts - Profile settings read/write hooks (single + all)
@@ -57,7 +58,7 @@ src/
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
-    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database, agents)
+    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database, agents, plugins)
     ├── backend-utils.ts       - Backend display utilities (backendLabel)
     ├── remark-comment-links.ts  - Remark plugin: #N/c/M comment link syntax
     ├── remark-label-mentions.ts - Remark plugin: ~[Name](id) label mention syntax
@@ -1099,6 +1100,12 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Shows optional `description`, `run_in_background`, and `timeout` metadata as badges
 - Error states display red ring and red output text
 
+`PermissionResponseRenderer` (in `renderers/`):
+- Subtle inline renderer for `permission_response` events (allow/deny)
+- Renders a single muted line with check/X icon, behavior text, resolved tool name, and timestamp
+- Matches the `process_spawn` inline style (no card wrapper)
+- Accepts optional `toolName` prop resolved from the matching `permission_request` event
+
 `ErrorRenderer` (in `renderers/`):
 - Dedicated renderer for `error` session events
 - Shows error name and user-facing message with destructive styling
@@ -1430,6 +1437,31 @@ exportAgents.mutate(
 )
 // agent_ids is optional — omit to export all agents
 // result: { count: number, files: string[], directory: string }
+```
+
+### Plugin Hooks
+
+```typescript
+import { useExportPlugin } from '@kombuse/ui/hooks'
+
+// Export agents and labels as a plugin package
+const exportPlugin = useExportPlugin()
+exportPlugin.mutate(
+  {
+    package_name: 'my-plugin',
+    project_id: 'project-id',
+    agent_ids: ['agent-a', 'agent-b'],
+    description: 'My plugin description',
+    overwrite: true,
+  },
+  {
+    onSuccess: (result) => console.log(`Exported ${result.agent_count} agents and ${result.label_count} labels`),
+    onError: (error) => console.error(error.message),
+  }
+)
+// agent_ids is optional — omit to export all agents
+// All project labels are automatically included
+// result: { package_name, directory, agent_count, label_count, files }
 ```
 
 ### Label Hooks
