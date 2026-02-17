@@ -3,6 +3,7 @@ import type { Database as DatabaseType } from 'better-sqlite3'
 import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import { toSlug } from '@kombuse/types'
+import { loadKombuseConfig, getKombuseDir } from './config'
 
 export type { Database as DatabaseType } from 'better-sqlite3'
 
@@ -21,13 +22,9 @@ export function setDatabase(database: DatabaseType): void {
  * Optionally provide a custom path; defaults to ~/.kombuse/data.db
  */
 export function initializeDatabase(dbPath?: string): DatabaseType {
-  const resolvedPath =
-    dbPath ??
-    join(
-      process.env.HOME || process.env.USERPROFILE || '.',
-      '.kombuse',
-      'data.db'
-    )
+  const defaultPath = join(getKombuseDir(), 'data.db')
+  const config = loadKombuseConfig()
+  const resolvedPath = dbPath ?? config.database?.path ?? defaultPath
 
   // Ensure directory exists
   const dataDir = join(resolvedPath, '..')

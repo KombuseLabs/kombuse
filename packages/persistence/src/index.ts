@@ -8,6 +8,7 @@ export {
   seedDatabase,
 } from './database'
 export type { DatabaseType } from './database'
+export { loadKombuseConfig, getKombuseDir } from './config'
 export {
   DEFAULT_QUERY_LIMIT,
   MAX_QUERY_LIMIT,
