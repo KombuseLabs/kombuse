@@ -126,6 +126,8 @@ const EXPECTED_MIGRATIONS = [
   '019_session_invocation_project_scope',
   '020_ticket_loop_protection',
   '021_session_event_kombuse_session_id',
+  '022_agent_slug_and_descriptions',
+  '023_plugins_table',
 ]
 
 describe('database', () => {
@@ -319,6 +321,45 @@ describe('database', () => {
           payload TEXT NOT NULL CHECK (json_valid(payload)),
           created_at TEXT NOT NULL DEFAULT (datetime('now')),
           UNIQUE(session_id, seq)
+        );
+
+        CREATE TABLE profiles (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE agents (
+          id TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+          system_prompt TEXT NOT NULL,
+          permissions TEXT NOT NULL DEFAULT '[]',
+          config TEXT NOT NULL DEFAULT '{}',
+          is_enabled INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE agent_triggers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+          event_type TEXT NOT NULL,
+          is_enabled INTEGER NOT NULL DEFAULT 1,
+          priority INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE labels (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          color TEXT NOT NULL DEFAULT '#808080',
+          description TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
       `)
 

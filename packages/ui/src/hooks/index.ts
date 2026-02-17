@@ -121,4 +121,11 @@ export { useModels } from './use-models'
 export { useShiki } from './use-shiki'
 export { useAutoResizeTextarea, type UseAutoResizeTextareaOptions } from './use-auto-resize-textarea'
 export { useBackendStatus, useRefreshBackendStatus } from './use-backend-status'
-export { useExportPlugin } from './use-plugins'
+export {
+  useExportPlugin,
+  useInstalledPlugins,
+  useAvailablePlugins,
+  useInstallPlugin,
+  useUpdatePlugin,
+  useUninstallPlugin,
+} from './use-plugins'

@@ -17,3 +17,26 @@ export const pluginExportResultSchema = z.object({
 })
 
 export type PluginExportBody = z.infer<typeof pluginExportSchema>
+
+export const pluginInstallSchema = z.object({
+  package_path: z.string().min(1),
+  project_id: z.string().min(1),
+  overwrite: z.boolean().optional(),
+})
+
+export const pluginUpdateSchema = z.object({
+  is_enabled: z.boolean().optional(),
+})
+
+export const pluginFiltersSchema = z.object({
+  project_id: z.string().min(1).optional(),
+})
+
+export const availablePluginsSchema = z.object({
+  project_id: z.string().min(1),
+})
+
+export type PluginInstallBody = z.infer<typeof pluginInstallSchema>
+export type PluginUpdateBody = z.infer<typeof pluginUpdateSchema>
+export type PluginFiltersQuery = z.infer<typeof pluginFiltersSchema>
+export type AvailablePluginsQuery = z.infer<typeof availablePluginsSchema>

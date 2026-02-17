@@ -47,7 +47,7 @@ src/
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
-│   ├── use-plugins.ts         - Plugin export hooks
+│   ├── use-plugins.ts         - Plugin export, install, lifecycle hooks
 │   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-models.ts          - Model catalog query hook
 │   ├── use-profile-settings.ts - Profile settings read/write hooks (single + all)
@@ -1442,7 +1442,14 @@ exportAgents.mutate(
 ### Plugin Hooks
 
 ```typescript
-import { useExportPlugin } from '@kombuse/ui/hooks'
+import {
+  useExportPlugin,
+  useInstalledPlugins,
+  useAvailablePlugins,
+  useInstallPlugin,
+  useUpdatePlugin,
+  useUninstallPlugin,
+} from '@kombuse/ui/hooks'
 
 // Export agents and labels as a plugin package
 const exportPlugin = useExportPlugin()
@@ -1462,6 +1469,39 @@ exportPlugin.mutate(
 // agent_ids is optional — omit to export all agents
 // All project labels are automatically included
 // result: { package_name, directory, agent_count, label_count, files }
+
+// List installed plugins for a project
+const { data: plugins, isLoading } = useInstalledPlugins('project-id')
+// Returns Plugin[] (id, name, version, description, is_enabled, installed_at, ...)
+
+// List available plugin packages on disk (project + global directories)
+const { data: available } = useAvailablePlugins('project-id')
+// Returns AvailablePlugin[] (name, version, description, directory, source, installed)
+
+// Install a plugin package from disk
+const installPlugin = useInstallPlugin()
+installPlugin.mutate(
+  { package_path: '/path/to/plugin', project_id: 'project-id', overwrite: false },
+  {
+    onSuccess: (result) => console.log(`Installed "${result.plugin_name}": ${result.agents_created} agents`),
+    onError: (error) => {
+      if (error.message === 'plugin_already_installed') {
+        // Prompt user to overwrite
+      }
+    },
+  }
+)
+// Invalidates both installed and available plugin queries on success
+
+// Enable or disable an installed plugin (cascades to agents and triggers)
+const updatePlugin = useUpdatePlugin()
+updatePlugin.mutate({ id: 'plugin-id', input: { is_enabled: false } })
+
+// Uninstall a plugin
+const uninstallPlugin = useUninstallPlugin()
+uninstallPlugin.mutate({ id: 'plugin-id', mode: 'orphan' })
+// mode: 'orphan' — keep entities but unlink from plugin
+// mode: 'delete' — remove all plugin agents, triggers, labels, and profiles
 ```
 
 ### Label Hooks

@@ -92,15 +92,16 @@ export const labelsRepository = {
     const result = db
       .prepare(
         `
-      INSERT INTO labels (project_id, name, color, description)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO labels (project_id, name, color, description, plugin_id)
+      VALUES (?, ?, ?, ?, ?)
     `
       )
       .run(
         input.project_id,
         input.name,
         input.color ?? '#808080',
-        input.description ?? null
+        input.description ?? null,
+        input.plugin_id ?? null
       )
 
     return this.get(result.lastInsertRowid as number) as Label
@@ -126,6 +127,10 @@ export const labelsRepository = {
     if (input.description !== undefined) {
       fields.push('description = ?')
       params.push(input.description)
+    }
+    if (input.plugin_id !== undefined) {
+      fields.push('plugin_id = ?')
+      params.push(input.plugin_id)
     }
 
     if (fields.length === 0) return this.get(id)

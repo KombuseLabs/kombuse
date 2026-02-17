@@ -7,6 +7,7 @@ export interface Label {
   name: string
   color: string
   description: string | null
+  plugin_id: string | null
   usage_count?: number
   created_at: string
 }
@@ -22,6 +23,7 @@ export interface CreateLabelInput {
   name: string
   color?: string
   description?: string
+  plugin_id?: string | null
 }
 
 /**
@@ -31,6 +33,7 @@ export interface UpdateLabelInput {
   name?: string
   color?: string
   description?: string
+  plugin_id?: string | null
 }
 
 /**

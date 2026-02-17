@@ -85,9 +85,9 @@ export const agentsRepository = {
     db.prepare(
       `
       INSERT INTO agents (
-        id, slug, system_prompt, permissions, config, is_enabled
+        id, slug, system_prompt, permissions, config, is_enabled, plugin_id
       )
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `
     ).run(
       input.id,
@@ -95,7 +95,8 @@ export const agentsRepository = {
       input.system_prompt,
       JSON.stringify(input.permissions ?? []),
       JSON.stringify(input.config ?? {}),
-      input.is_enabled !== false ? 1 : 0
+      input.is_enabled !== false ? 1 : 0,
+      input.plugin_id ?? null
     )
 
     return this.get(input.id!) as Agent
@@ -125,6 +126,10 @@ export const agentsRepository = {
     if (input.is_enabled !== undefined) {
       fields.push('is_enabled = ?')
       params.push(input.is_enabled ? 1 : 0)
+    }
+    if (input.plugin_id !== undefined) {
+      fields.push('plugin_id = ?')
+      params.push(input.plugin_id)
     }
 
     if (fields.length === 0) return this.get(id)
@@ -209,9 +214,9 @@ export const agentTriggersRepository = {
       .prepare(
         `
       INSERT INTO agent_triggers (
-        agent_id, event_type, project_id, conditions, is_enabled, priority
+        agent_id, event_type, project_id, conditions, is_enabled, priority, plugin_id
       )
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
@@ -220,7 +225,8 @@ export const agentTriggersRepository = {
         input.project_id ?? null,
         input.conditions ? JSON.stringify(input.conditions) : null,
         input.is_enabled !== false ? 1 : 0,
-        input.priority ?? 0
+        input.priority ?? 0,
+        input.plugin_id ?? null
       )
 
     return this.get(result.lastInsertRowid as number) as AgentTrigger
@@ -487,6 +493,7 @@ interface RawAgent {
   permissions: string
   config: string
   is_enabled: number
+  plugin_id: string | null
   created_at: string
   updated_at: string
 }
@@ -499,6 +506,7 @@ interface RawAgentTrigger {
   conditions: string | null
   is_enabled: number
   priority: number
+  plugin_id: string | null
   created_at: string
   updated_at: string
 }
@@ -532,6 +540,7 @@ function mapAgent(row: RawAgent): Agent {
     permissions: JSON.parse(row.permissions) as Permission[],
     config: JSON.parse(row.config) as AgentConfig,
     is_enabled: row.is_enabled === 1,
+    plugin_id: row.plugin_id,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
@@ -546,6 +555,7 @@ function mapAgentTrigger(row: RawAgentTrigger): AgentTrigger {
     conditions: row.conditions ? JSON.parse(row.conditions) : null,
     is_enabled: row.is_enabled === 1,
     priority: row.priority,
+    plugin_id: row.plugin_id,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }

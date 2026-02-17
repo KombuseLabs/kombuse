@@ -101,6 +101,8 @@ export interface Agent {
   config: AgentConfig
   /** Whether the agent is enabled */
   is_enabled: boolean
+  /** Plugin that installed this agent, if any */
+  plugin_id: string | null
   created_at: string
   updated_at: string
 }
@@ -121,6 +123,7 @@ export interface CreateAgentInput {
   permissions?: Permission[]
   config?: AgentConfig
   is_enabled?: boolean
+  plugin_id?: string | null
 }
 
 /**
@@ -131,6 +134,7 @@ export interface UpdateAgentInput {
   permissions?: Permission[]
   config?: AgentConfig
   is_enabled?: boolean
+  plugin_id?: string | null
 }
 
 /**
@@ -158,6 +162,8 @@ export interface AgentTrigger {
   is_enabled: boolean
   /** Priority for ordering multiple triggers (higher = first) */
   priority: number
+  /** Plugin that installed this trigger, if any */
+  plugin_id: string | null
   created_at: string
   updated_at: string
 }
@@ -172,6 +178,7 @@ export interface CreateAgentTriggerInput {
   conditions?: Record<string, unknown>
   is_enabled?: boolean
   priority?: number
+  plugin_id?: string | null
 }
 
 /**

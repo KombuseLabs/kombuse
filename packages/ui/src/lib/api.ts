@@ -58,6 +58,10 @@ import type {
   AgentExportResult,
   PluginExportInput,
   PluginExportResult,
+  Plugin,
+  PluginInstallInput,
+  PluginInstallResult,
+  AvailablePlugin,
 } from '@kombuse/types'
 
 declare global {
@@ -851,6 +855,49 @@ export const pluginsApi = {
       body: JSON.stringify(input),
     })
     return handleResponse<PluginExportResult>(response)
+  },
+
+  async list(projectId: string): Promise<Plugin[]> {
+    const params = new URLSearchParams({ project_id: projectId })
+    const response = await fetch(`${API_BASE}/plugins?${params}`)
+    return handleResponse<Plugin[]>(response)
+  },
+
+  async get(id: string): Promise<Plugin> {
+    const response = await fetch(`${API_BASE}/plugins/${id}`)
+    return handleResponse<Plugin>(response)
+  },
+
+  async available(projectId: string): Promise<AvailablePlugin[]> {
+    const params = new URLSearchParams({ project_id: projectId })
+    const response = await fetch(`${API_BASE}/plugins/available?${params}`)
+    return handleResponse<AvailablePlugin[]>(response)
+  },
+
+  async install(input: PluginInstallInput): Promise<PluginInstallResult> {
+    const response = await fetch(`${API_BASE}/plugins/install`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<PluginInstallResult>(response)
+  },
+
+  async update(id: string, input: { is_enabled?: boolean }): Promise<Plugin> {
+    const response = await fetch(`${API_BASE}/plugins/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<Plugin>(response)
+  },
+
+  async uninstall(id: string, mode: 'orphan' | 'delete' = 'orphan'): Promise<void> {
+    const params = new URLSearchParams({ mode })
+    const response = await fetch(`${API_BASE}/plugins/${id}?${params}`, {
+      method: 'DELETE',
+    })
+    return handleEmptyResponse(response)
   },
 }
 

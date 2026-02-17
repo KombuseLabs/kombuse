@@ -930,6 +930,28 @@ const migrations: Array<{ name: string; sql: string; postMigrate?: (db: Database
       }
     },
   },
+  {
+    name: '023_plugins_table',
+    sql: `
+      CREATE TABLE plugins (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        version TEXT NOT NULL DEFAULT '1.0.0',
+        description TEXT,
+        directory TEXT NOT NULL,
+        manifest TEXT NOT NULL CHECK (json_valid(manifest)),
+        is_enabled INTEGER NOT NULL DEFAULT 1,
+        installed_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(project_id, name)
+      );
+
+      ALTER TABLE agents ADD COLUMN plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL;
+      ALTER TABLE agent_triggers ADD COLUMN plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL;
+      ALTER TABLE labels ADD COLUMN plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL;
+    `,
+  },
 ]
 
 /**

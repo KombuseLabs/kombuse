@@ -137,6 +137,7 @@ function buildTrigger(overrides: Partial<AgentTrigger> = {}): AgentTrigger {
     conditions: null,
     priority: 0,
     is_enabled: true,
+    plugin_id: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
