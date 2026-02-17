@@ -17,19 +17,8 @@ import { TriggerEditor, type TriggerFormData } from '../triggers'
 import { PermissionEditor } from '../permission-editor'
 import { ModelSelector } from '../model-selector'
 import { useDefaultBackendType } from '../../hooks/use-app-context'
-
-type BackendChoice = 'global' | BackendType
-
-function normalizeBackendChoice(value: unknown): BackendChoice {
-  if (
-    value === BACKEND_TYPES.CLAUDE_CODE
-    || value === BACKEND_TYPES.CODEX
-    || value === BACKEND_TYPES.MOCK
-  ) {
-    return value
-  }
-  return 'global'
-}
+import { useAvailableBackends } from '../../hooks/use-available-backends'
+import { backendLabel, normalizeBackendChoice, type BackendChoice } from '../../lib/backend-utils'
 
 interface AgentDetailProps {
   agent: Agent
@@ -85,6 +74,7 @@ function AgentDetail({
   )
   const [activeTab, setActiveTab] = useState('basic-info')
   const { defaultBackendType } = useDefaultBackendType()
+  const { availableBackends, isAvailable, noneAvailable } = useAvailableBackends()
   const effectiveBackendForModels: BackendType | undefined =
     backendChoice === 'global' ? defaultBackendType : backendChoice
 
@@ -307,8 +297,18 @@ function AgentDetail({
                       className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                     >
                       <option value="global">Use global default</option>
-                      <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
-                      <option value={BACKEND_TYPES.CODEX}>Codex</option>
+                      {noneAvailable ? (
+                        <option value="" disabled>No backends available</option>
+                      ) : (
+                        availableBackends.map((bt) => (
+                          <option key={bt} value={bt}>{backendLabel(bt)}</option>
+                        ))
+                      )}
+                      {backendChoice !== 'global' && backendChoice !== BACKEND_TYPES.MOCK && !isAvailable(backendChoice) && !noneAvailable && (
+                        <option value={backendChoice} disabled>
+                          {backendLabel(backendChoice)} (not installed)
+                        </option>
+                      )}
                       {backendChoice === BACKEND_TYPES.MOCK ? (
                         <option value={BACKEND_TYPES.MOCK}>Mock</option>
                       ) : null}

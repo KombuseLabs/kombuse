@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import {
+  useAvailableBackends,
   useCodexMcpStatus,
   useProfileSetting,
   useSetCodexMcpEnabled,
   useUpsertProfileSetting,
 } from '@kombuse/ui/hooks'
+import { backendLabel, normalizeBackendType } from '@kombuse/ui/lib/backend-utils'
 import { ModelSelector } from '@kombuse/ui/components'
 import {
   Card,
@@ -25,7 +27,6 @@ import {
   toast,
 } from '@kombuse/ui/base'
 import { Sun, Moon, Monitor } from 'lucide-react'
-import { BACKEND_TYPES, type BackendType } from '@kombuse/types'
 
 const USER_PROFILE_ID = 'user-1'
 const SIDEBAR_EVENTS_SETTING_KEY = 'sidebar.hidden.events'
@@ -37,17 +38,6 @@ const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
 const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
-
-function normalizeBackendType(value?: string | null): BackendType {
-  if (
-    value === BACKEND_TYPES.CLAUDE_CODE
-    || value === BACKEND_TYPES.CODEX
-    || value === BACKEND_TYPES.MOCK
-  ) {
-    return value
-  }
-  return BACKEND_TYPES.CLAUDE_CODE
-}
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
@@ -72,6 +62,7 @@ export function Settings() {
   const showPlugins = pluginsSetting?.setting_value === 'false'
   const showAnalytics = analyticsSetting?.setting_value === 'false'
   const defaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value)
+  const { availableBackends, isAvailable, noneAvailable } = useAvailableBackends()
   const codexMcpEnabled = codexMcpStatus?.enabled === true
 
   useEffect(() => {
@@ -256,10 +247,20 @@ export function Settings() {
                     setting_value: event.target.value,
                   })
                 }}
+                disabled={noneAvailable}
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
-                <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
-                <option value={BACKEND_TYPES.CODEX}>Codex</option>
+                {noneAvailable && (
+                  <option value="" disabled>No backends available</option>
+                )}
+                {availableBackends.map((bt) => (
+                  <option key={bt} value={bt}>{backendLabel(bt)}</option>
+                ))}
+                {!isAvailable(defaultBackendType) && !noneAvailable && (
+                  <option value={defaultBackendType} disabled>
+                    {backendLabel(defaultBackendType)} (not installed)
+                  </option>
+                )}
               </select>
             </div>
             <div className="space-y-2">

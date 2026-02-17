@@ -13,6 +13,7 @@ import {
 } from "@kombuse/ui/base";
 import { AgentPicker, Chat, ModelSelector, SessionList } from "@kombuse/ui/components";
 import {
+  useAvailableBackends,
   useCreateSession,
   useSessions,
   useSessionByKombuseId,
@@ -20,6 +21,7 @@ import {
   useDeleteSession,
   useProfileSetting,
 } from "@kombuse/ui/hooks";
+import { backendLabel, normalizeBackendType } from "@kombuse/ui/lib/backend-utils";
 import { ChatProvider } from "@kombuse/ui/providers";
 import { Plus } from "lucide-react";
 import { BACKEND_TYPES, type BackendType, parseSessionId } from "@kombuse/types";
@@ -56,16 +58,7 @@ export function Chats() {
     });
   }, [sessions, activeTab]);
 
-  const normalizeBackendType = (value?: string | null): BackendType => {
-    if (
-      value === BACKEND_TYPES.CLAUDE_CODE
-      || value === BACKEND_TYPES.CODEX
-      || value === BACKEND_TYPES.MOCK
-    ) {
-      return value;
-    }
-    return BACKEND_TYPES.CLAUDE_CODE;
-  };
+  const { availableBackends, isAvailable, noneAvailable } = useAvailableBackends();
 
   // Agent picker state (only used for draft/new chats)
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -75,7 +68,10 @@ export function Chats() {
 
   const globalDefaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value);
   const globalDefaultModelPreference = (defaultModelSetting?.setting_value ?? "").trim();
-  const draftBackendType = selectedBackendTypeOverride ?? globalDefaultBackendType;
+  const rawDraftBackendType = selectedBackendTypeOverride ?? globalDefaultBackendType;
+  const draftBackendType = isAvailable(rawDraftBackendType)
+    ? rawDraftBackendType
+    : (availableBackends[0] ?? rawDraftBackendType);
   const draftModelPreference = selectedModelPreferenceOverride ?? globalDefaultModelPreference;
 
   // Resolve agent_id for existing sessions
@@ -203,13 +199,22 @@ export function Chats() {
               <select
                 value={effectiveBackendType}
                 onChange={(e) => setSelectedBackendTypeOverride(e.target.value as BackendType)}
-                disabled={!isDraft}
+                disabled={!isDraft || noneAvailable}
                 className="h-8 rounded-md border border-input bg-background px-2 text-sm"
               >
-                <option value={BACKEND_TYPES.CLAUDE_CODE}>Claude Code</option>
-                <option value={BACKEND_TYPES.CODEX}>Codex</option>
+                {noneAvailable && (
+                  <option value="" disabled>No backends available</option>
+                )}
+                {availableBackends.map((bt) => (
+                  <option key={bt} value={bt}>{backendLabel(bt)}</option>
+                ))}
                 {effectiveBackendType === BACKEND_TYPES.MOCK && (
                   <option value={BACKEND_TYPES.MOCK}>Mock</option>
+                )}
+                {!isDraft && !isAvailable(effectiveBackendType) && effectiveBackendType !== BACKEND_TYPES.MOCK && (
+                  <option value={effectiveBackendType} disabled>
+                    {backendLabel(effectiveBackendType)} (not installed)
+                  </option>
                 )}
               </select>
               <ModelSelector

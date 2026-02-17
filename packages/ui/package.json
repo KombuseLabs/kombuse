@@ -11,6 +11,7 @@
     "./lib/language-map": "./src/lib/language-map.ts",
     "./lib/utils": "./src/lib/utils.ts",
     "./lib/api": "./src/lib/api.ts",
+    "./lib/backend-utils": "./src/lib/backend-utils.ts",
     "./globals.css": "./src/globals.css",
     "./tailwind.config": "./tailwind.config.ts"
   },

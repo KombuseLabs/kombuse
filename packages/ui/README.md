@@ -34,6 +34,7 @@ src/
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks
 │   ├── use-agents.ts          - Agent CRUD, profile, toggle, and export hooks
+│   ├── use-available-backends.ts - Available backend filtering hook
 │   ├── use-backend-status.ts  - Backend CLI availability query hooks
 │   ├── use-command.ts         - Execute specific commands
 │   ├── use-commands.ts        - Get all available commands
@@ -60,7 +61,7 @@ src/
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
     ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database, agents, plugins)
-    ├── backend-utils.ts       - Backend display utilities (backendLabel)
+    ├── backend-utils.ts       - Backend display utilities (backendLabel, normalizeBackendType, normalizeBackendChoice)
     ├── remark-comment-links.ts  - Remark plugin: #N/c/M comment link syntax
     ├── remark-label-mentions.ts - Remark plugin: ~[Name](id) label mention syntax
     ├── remark-profile-mentions.ts - Remark plugin: @mention syntax
@@ -209,6 +210,17 @@ const { data: statuses, isLoading } = useBackendStatus()
 // Refresh mutation (clears server cache, re-checks)
 const refreshMutation = useRefreshBackendStatus()
 refreshMutation.mutate()
+```
+
+```typescript
+import { useAvailableBackends } from '@kombuse/ui/hooks'
+
+// Filter backends by system availability for dropdown rendering
+const { availableBackends, isAvailable, isLoading, noneAvailable } = useAvailableBackends()
+// availableBackends: BackendType[] — only installed user-facing backends (excludes mock)
+// isAvailable(bt): boolean — check if a specific backend is available
+// isLoading: boolean — true while fetching (returns all backends as fallback)
+// noneAvailable: boolean — true when no backends are available after loading
 ```
 
 ```typescript
