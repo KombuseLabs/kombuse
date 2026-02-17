@@ -1,33 +1,53 @@
-import { mkdirSync, existsSync, writeFileSync } from 'node:fs'
+import { mkdirSync, existsSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import * as yaml from 'js-yaml'
 import type {
   Agent,
   AgentTrigger,
+  Label,
   Profile,
   AgentExportFrontmatter,
   ExportedTrigger,
   AgentExportFile,
   AgentExportResult,
+  KombusePluginManifest,
+  PluginExportInput,
+  PluginExportResult,
+  ExportedLabel,
 } from '@kombuse/types'
 import { SELF_PLACEHOLDER, ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import {
   agentsRepository,
   agentTriggersRepository,
+  labelsRepository,
   profilesRepository,
+  projectsRepository,
 } from '@kombuse/persistence'
 
-export interface IAgentExportService {
+const PACKAGE_NAME_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/
+
+export class PackageExistsError extends Error {
+  public readonly directory: string
+
+  constructor(directory: string) {
+    super(`Package directory already exists: ${directory}`)
+    this.name = 'PackageExistsError'
+    this.directory = directory
+  }
+}
+
+export interface IPluginExportService {
   serializeAll(): AgentExportFile[]
   serializeOne(agentId: string): AgentExportFile | null
   serializeMany(agentIds: string[]): AgentExportFile[]
-  writeToDirectory(directory: string, agentIds?: string[]): AgentExportResult
+  writeAgentsToDirectory(directory: string, agentIds?: string[]): AgentExportResult
+  exportPackage(input: PluginExportInput): PluginExportResult
 }
 
 /** Well-known config keys that are promoted to top-level frontmatter fields. */
 const PROMOTED_CONFIG_KEYS = ['type', 'model', 'backend_type', 'enabled_for_chat']
 
-export class AgentExportService implements IAgentExportService {
+export class PluginExportService implements IPluginExportService {
   serializeAll(): AgentExportFile[] {
     const agents = agentsRepository.list({ limit: Number.MAX_SAFE_INTEGER })
     const files: AgentExportFile[] = []
@@ -58,7 +78,7 @@ export class AgentExportService implements IAgentExportService {
     return files
   }
 
-  writeToDirectory(directory: string, agentIds?: string[]): AgentExportResult {
+  writeAgentsToDirectory(directory: string, agentIds?: string[]): AgentExportResult {
     const files = agentIds && agentIds.length > 0
       ? this.serializeMany(agentIds)
       : this.serializeAll()
@@ -76,6 +96,100 @@ export class AgentExportService implements IAgentExportService {
       count: files.length,
       files: files.map((f) => f.filename),
     }
+  }
+
+  exportPackage(input: PluginExportInput): PluginExportResult {
+    const { package_name, project_id, agent_ids, description, overwrite } = input
+
+    if (!PACKAGE_NAME_REGEX.test(package_name)) {
+      throw new Error(`Invalid package name "${package_name}". Must be lowercase kebab-case (e.g. "my-plugin").`)
+    }
+
+    // Resolve base path from project's local_path, fall back to process.cwd()
+    const project = projectsRepository.get(project_id)
+    const basePath = project?.local_path ?? process.cwd()
+    const directory = join(basePath, '.kombuse', 'plugins', package_name)
+
+    if (existsSync(directory) && !overwrite) {
+      throw new PackageExistsError(directory)
+    }
+
+    // Serialize agents
+    const agentFiles = agent_ids && agent_ids.length > 0
+      ? this.serializeMany(agent_ids)
+      : this.serializeAll()
+
+    // Fetch all project labels
+    const projectLabels = labelsRepository.getByProject(project_id)
+    const labelsMap = new Map<number, Label>()
+    for (const label of projectLabels) {
+      labelsMap.set(label.id, label)
+    }
+
+    // Replace label_id with label_name in agent files
+    const processedFiles = agentFiles.map((file) =>
+      this.replaceLabelIdsInFile(file, labelsMap)
+    )
+
+    // Build exported labels
+    const exportedLabels: ExportedLabel[] = projectLabels.map((label) => ({
+      name: label.name,
+      color: label.color,
+      description: label.description,
+    }))
+
+    // Build manifest
+    const manifest: KombusePluginManifest = {
+      name: package_name,
+      version: '1.0.0',
+      ...(description ? { description } : {}),
+      kombuse: {
+        plugin_system_version: 'kombuse-plugin-v1',
+        project_id,
+        exported_at: new Date().toISOString(),
+        labels: exportedLabels,
+      },
+    }
+
+    // Write directory structure
+    if (existsSync(directory) && overwrite) {
+      rmSync(directory, { recursive: true })
+    }
+
+    const agentsDir = join(directory, 'agents')
+    const pluginMetaDir = join(directory, '.claude-plugin')
+    mkdirSync(agentsDir, { recursive: true })
+    mkdirSync(pluginMetaDir, { recursive: true })
+
+    // Write manifest
+    const manifestPath = join(pluginMetaDir, 'plugin.json')
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8')
+
+    // Write agent files
+    const writtenFiles: string[] = ['.claude-plugin/plugin.json']
+    for (const file of processedFiles) {
+      writeFileSync(join(agentsDir, file.filename), file.content, 'utf-8')
+      writtenFiles.push(`agents/${file.filename}`)
+    }
+
+    return {
+      package_name,
+      directory,
+      agent_count: processedFiles.length,
+      label_count: exportedLabels.length,
+      files: writtenFiles,
+    }
+  }
+
+  private replaceLabelIdsInFile(file: AgentExportFile, labelsMap: Map<number, Label>): AgentExportFile {
+    if (labelsMap.size === 0) return file
+
+    let content = file.content
+    for (const [labelId, label] of labelsMap) {
+      content = content.replaceAll(`label_id: ${labelId}`, `label_name: "${label.name}"`)
+    }
+
+    return { filename: file.filename, content }
   }
 
   private buildExportFile(agent: Agent): AgentExportFile | null {
@@ -167,4 +281,4 @@ export class AgentExportService implements IAgentExportService {
   }
 }
 
-export const agentExportService = new AgentExportService()
+export const pluginExportService = new PluginExportService()

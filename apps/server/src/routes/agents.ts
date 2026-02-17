@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { agentService, agentExportService } from '@kombuse/services'
+import { agentService, pluginExportService } from '@kombuse/services'
 import { eventsRepository } from '@kombuse/persistence'
 import {
   createAgentSchema,
@@ -284,7 +284,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const result = agentExportService.writeToDirectory(
+      const result = pluginExportService.writeAgentsToDirectory(
         parseResult.data.directory,
         parseResult.data.agent_ids
       )

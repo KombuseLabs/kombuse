@@ -1,16 +1,21 @@
 import { useState } from 'react'
-import { Puzzle, FolderOpen } from 'lucide-react'
-import { useAgents, useAgentProfiles, useExportAgents, useDesktop } from '@kombuse/ui/hooks'
+import { useParams } from 'react-router-dom'
+import { Puzzle, Package } from 'lucide-react'
+import { useAgents, useAgentProfiles, useExportPlugin, useProjectLabels } from '@kombuse/ui/hooks'
 import { Button, Input, Label, Checkbox, toast } from '@kombuse/ui/base'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 
+const PACKAGE_NAME_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/
+
 export function PluginsPage() {
+  const { projectId } = useParams<{ projectId: string }>()
   const { data: agents = [], isLoading: isLoadingAgents } = useAgents()
   const { data: profiles = [] } = useAgentProfiles()
-  const exportAgents = useExportAgents()
-  const { isDesktop, selectDirectory } = useDesktop()
+  const { data: labels = [] } = useProjectLabels(projectId ?? '')
+  const exportPlugin = useExportPlugin()
 
-  const [directory, setDirectory] = useState('')
+  const [packageName, setPackageName] = useState('')
+  const [description, setDescription] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const profileNameById = new Map(profiles.map((p) => [p.id, p.name]))
@@ -41,30 +46,50 @@ export function PluginsPage() {
     })
   }
 
-  const handleBrowse = async () => {
-    const dir = await selectDirectory()
-    if (dir) setDirectory(dir)
-  }
+  const handleExport = (overwrite?: boolean) => {
+    const trimmedName = packageName.trim()
+    if (!trimmedName) {
+      toast.error('Please enter a package name')
+      return
+    }
 
-  const handleExport = () => {
-    const trimmedDirectory = directory.trim()
-    if (!trimmedDirectory) {
-      toast.error('Please enter a directory path')
+    if (!PACKAGE_NAME_REGEX.test(trimmedName)) {
+      toast.error('Package name must be lowercase kebab-case (e.g. "my-plugin")')
+      return
+    }
+
+    if (!projectId) {
+      toast.error('No project selected')
       return
     }
 
     const agentIds = selectedIds.size > 0 ? [...selectedIds] : undefined
 
-    exportAgents.mutate(
-      { directory: trimmedDirectory, agent_ids: agentIds },
+    exportPlugin.mutate(
+      {
+        package_name: trimmedName,
+        project_id: projectId,
+        agent_ids: agentIds,
+        description: description.trim() || undefined,
+        overwrite,
+      },
       {
         onSuccess: (result) => {
           toast.success(
-            `Exported ${result.count} agent${result.count === 1 ? '' : 's'} to ${result.directory}`
+            `Exported ${result.agent_count} agent${result.agent_count === 1 ? '' : 's'} and ${result.label_count} label${result.label_count === 1 ? '' : 's'} to ${result.directory}`
           )
         },
         onError: (error) => {
-          toast.error(error.message ?? 'Export failed')
+          if (error.message === 'package_exists') {
+            const confirmed = window.confirm(
+              `Package "${trimmedName}" already exists. Overwrite it?`
+            )
+            if (confirmed) {
+              handleExport(true)
+            }
+          } else {
+            toast.error(error.message ?? 'Export failed')
+          }
         },
       }
     )
@@ -75,39 +100,46 @@ export function PluginsPage() {
       ? `Export All (${exportableAgents.length})`
       : `Export Selected (${selectedIds.size})`
 
+  const isValid = packageName.trim() && PACKAGE_NAME_REGEX.test(packageName.trim())
+
   return (
     <main className="flex flex-col h-full">
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center gap-4">
           <Puzzle className="size-6" />
           <h1 className="text-2xl font-bold">Plugins</h1>
-          <span className="text-sm text-muted-foreground">Export agents as markdown files</span>
+          <span className="text-sm text-muted-foreground">Export agents and labels as a plugin package</span>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="plugins-directory">Export Directory</Label>
-            <div className="flex gap-2">
+            <Label htmlFor="plugins-package-name">Package Name</Label>
+            <div className="flex items-center gap-2">
+              <Package className="size-4 text-muted-foreground" />
               <Input
-                id="plugins-directory"
-                value={directory}
-                onChange={(e) => setDirectory(e.target.value)}
-                placeholder="/path/to/export/directory"
+                id="plugins-package-name"
+                value={packageName}
+                onChange={(e) => setPackageName(e.target.value)}
+                placeholder="my-plugin"
                 className="flex-1"
               />
-              {isDesktop && (
-                <Button variant="outline" onClick={handleBrowse}>
-                  <FolderOpen className="size-4 mr-2" />
-                  Browse
-                </Button>
-              )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Agent definitions will be written as <code>.md</code> files.
-              The directory will be created if it does not exist.
+              Lowercase kebab-case name. Exported to{' '}
+              <code>.kombuse/plugins/{packageName.trim() || '<name>'}/</code>
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="plugins-description">Description (optional)</Label>
+            <Input
+              id="plugins-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="A brief description of the plugin"
+            />
           </div>
 
           <div className="space-y-2">
@@ -171,11 +203,34 @@ export function PluginsPage() {
             )}
           </div>
 
+          {labels.length > 0 && (
+            <div className="space-y-2">
+              <Label>Labels ({labels.length})</Label>
+              <p className="text-sm text-muted-foreground">
+                All project labels will be included in the plugin manifest.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {labels.map((label) => (
+                  <span
+                    key={label.id}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                  >
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: label.color }}
+                    />
+                    {label.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Button
-            onClick={handleExport}
-            disabled={exportAgents.isPending || !directory.trim()}
+            onClick={() => handleExport()}
+            disabled={exportPlugin.isPending || !isValid}
           >
-            {exportAgents.isPending ? 'Exporting...' : exportLabel}
+            {exportPlugin.isPending ? 'Exporting...' : exportLabel}
           </Button>
         </div>
       </div>

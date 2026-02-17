@@ -24,8 +24,8 @@ export type { IProjectService } from './project-service'
 export { AgentService, agentService } from './agent-service'
 export type { IAgentService, TriggerMatchResult } from './agent-service'
 
-export { AgentExportService, agentExportService } from './agent-export-service'
-export type { IAgentExportService } from './agent-export-service'
+export { PluginExportService, pluginExportService, PackageExistsError } from './plugin-export-service'
+export type { IPluginExportService } from './plugin-export-service'
 export type {
   PermissionContext,
   PermissionCheckRequest,

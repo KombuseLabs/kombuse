@@ -56,6 +56,8 @@ import type {
   ModelCatalogResponse,
   BackendStatus,
   AgentExportResult,
+  PluginExportInput,
+  PluginExportResult,
 } from '@kombuse/types'
 
 declare global {
@@ -838,6 +840,17 @@ export const backendStatusApi = {
       method: 'POST',
     })
     return handleResponse<BackendStatus[]>(response)
+  },
+}
+
+export const pluginsApi = {
+  async exportPlugin(input: PluginExportInput): Promise<PluginExportResult> {
+    const response = await fetch(`${API_BASE}/plugins/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<PluginExportResult>(response)
   },
 }
 

@@ -5,14 +5,17 @@ import { tmpdir } from 'node:os'
 import * as yaml from 'js-yaml'
 import {
   setupTestDb,
+  TEST_USER_ID,
 } from '@kombuse/persistence/test-utils'
 import {
   agentsRepository,
   agentTriggersRepository,
+  labelsRepository,
   profilesRepository,
+  projectsRepository,
 } from '@kombuse/persistence'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
-import { agentExportService } from '../agent-export-service'
+import { pluginExportService, PackageExistsError } from '../plugin-export-service'
 
 let agentCounter = 0
 
@@ -45,7 +48,7 @@ function createTestAgent(overrides?: {
   })
 }
 
-describe('agentExportService', () => {
+describe('pluginExportService', () => {
   let cleanup: () => void
 
   beforeEach(() => {
@@ -59,7 +62,7 @@ describe('agentExportService', () => {
 
   describe('serializeAll', () => {
     it('should return empty array when no agents exist', () => {
-      const files = agentExportService.serializeAll()
+      const files = pluginExportService.serializeAll()
       expect(files).toEqual([])
     })
 
@@ -77,7 +80,7 @@ describe('agentExportService', () => {
       })
       createTestAgent({ id: 'real-agent' })
 
-      const files = agentExportService.serializeAll()
+      const files = pluginExportService.serializeAll()
       expect(files).toHaveLength(1)
       expect(files[0]!.filename).toBe('real-agent.md')
     })
@@ -86,7 +89,7 @@ describe('agentExportService', () => {
       createTestAgent({ id: 'spy-agent' })
 
       const listSpy = vi.spyOn(agentsRepository, 'list')
-      agentExportService.serializeAll()
+      pluginExportService.serializeAll()
 
       expect(listSpy).toHaveBeenCalledOnce()
       const filters = listSpy.mock.calls[0]![0]
@@ -98,7 +101,7 @@ describe('agentExportService', () => {
       createTestAgent({ id: 'beta-agent' })
       createTestAgent({ id: 'alpha-agent' })
 
-      const files = agentExportService.serializeAll()
+      const files = pluginExportService.serializeAll()
       expect(files).toHaveLength(2)
       expect(files[0]!.filename).toBe('alpha-agent.md')
       expect(files[1]!.filename).toBe('beta-agent.md')
@@ -107,7 +110,7 @@ describe('agentExportService', () => {
 
   describe('serializeOne', () => {
     it('should return null for nonexistent agent', () => {
-      const file = agentExportService.serializeOne('nonexistent')
+      const file = pluginExportService.serializeOne('nonexistent')
       expect(file).toBeNull()
     })
 
@@ -124,13 +127,13 @@ describe('agentExportService', () => {
         system_prompt: 'anon prompt',
       })
 
-      const file = agentExportService.serializeOne(ANONYMOUS_AGENT_ID)
+      const file = pluginExportService.serializeOne(ANONYMOUS_AGENT_ID)
       expect(file).toBeNull()
     })
 
     it('should produce correct filename', () => {
       createTestAgent({ id: 'triage-agent' })
-      const file = agentExportService.serializeOne('triage-agent')
+      const file = pluginExportService.serializeOne('triage-agent')
       expect(file!.filename).toBe('triage-agent.md')
     })
   })
@@ -142,7 +145,7 @@ describe('agentExportService', () => {
         system_prompt: 'You are a test agent.',
       })
 
-      const file = agentExportService.serializeOne('test-md')!
+      const file = pluginExportService.serializeOne('test-md')!
       expect(file.content.startsWith('---\n')).toBe(true)
 
       const parts = file.content.split('---\n')
@@ -166,7 +169,7 @@ describe('agentExportService', () => {
         profileAvatar: 'brain',
       })
 
-      const file = agentExportService.serializeOne('profile-test')!
+      const file = pluginExportService.serializeOne('profile-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.name).toBe('My Test Agent')
       expect(fm.description).toBe('Does testing')
@@ -183,7 +186,7 @@ describe('agentExportService', () => {
         ],
       })
 
-      const file = agentExportService.serializeOne('agent-fields-test')!
+      const file = pluginExportService.serializeOne('agent-fields-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.is_enabled).toBe(false)
       expect(fm.permissions).toHaveLength(2)
@@ -202,7 +205,7 @@ describe('agentExportService', () => {
         },
       })
 
-      const file = agentExportService.serializeOne('config-promote-test')!
+      const file = pluginExportService.serializeOne('config-promote-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.type).toBe('coder')
       expect(fm.model).toBe('gpt-4o')
@@ -221,7 +224,7 @@ describe('agentExportService', () => {
         },
       })
 
-      const file = agentExportService.serializeOne('config-remaining-test')!
+      const file = pluginExportService.serializeOne('config-remaining-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.type).toBe('coder')
       expect(fm.model).toBe('gpt-4o')
@@ -239,7 +242,7 @@ describe('agentExportService', () => {
         },
       })
 
-      const file = agentExportService.serializeOne('config-omit-test')!
+      const file = pluginExportService.serializeOne('config-omit-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.config).toBeUndefined()
     })
@@ -247,7 +250,7 @@ describe('agentExportService', () => {
     it('should default type to kombuse when not set', () => {
       createTestAgent({ id: 'default-type-test', config: {} })
 
-      const file = agentExportService.serializeOne('default-type-test')!
+      const file = pluginExportService.serializeOne('default-type-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.type).toBe('kombuse')
     })
@@ -263,7 +266,7 @@ describe('agentExportService', () => {
         priority: 10,
       })
 
-      const file = agentExportService.serializeOne('trigger-test')!
+      const file = pluginExportService.serializeOne('trigger-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.triggers).toHaveLength(1)
       expect(fm.triggers[0].event_type).toBe('ticket.created')
@@ -279,7 +282,7 @@ describe('agentExportService', () => {
         priority: 0,
       })
 
-      const file = agentExportService.serializeOne('trigger-strip-test')!
+      const file = pluginExportService.serializeOne('trigger-strip-test')!
       const fm = parseFrontmatter(file.content)
       const trigger = fm.triggers[0]
       expect(trigger.id).toBeUndefined()
@@ -300,7 +303,7 @@ describe('agentExportService', () => {
         priority: 0,
       })
 
-      const file = agentExportService.serializeOne('self-test')!
+      const file = pluginExportService.serializeOne('self-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.triggers[0].conditions.mentioned_profile_id).toBe('$SELF')
       expect(fm.triggers[0].conditions.mention_type).toBe('profile')
@@ -318,7 +321,7 @@ describe('agentExportService', () => {
         priority: 0,
       })
 
-      const file = agentExportService.serializeOne('no-self-test')!
+      const file = pluginExportService.serializeOne('no-self-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.triggers[0].conditions.mentioned_profile_id).toBe('other-agent')
     })
@@ -331,7 +334,7 @@ describe('agentExportService', () => {
         priority: 5,
       })
 
-      const file = agentExportService.serializeOne('null-cond-test')!
+      const file = pluginExportService.serializeOne('null-cond-test')!
       const fm = parseFrontmatter(file.content)
       expect(fm.triggers[0].conditions).toBeNull()
     })
@@ -340,7 +343,7 @@ describe('agentExportService', () => {
   describe('serializeMany', () => {
     it('should return empty array for empty agent IDs list', () => {
       createTestAgent({ id: 'many-spare' })
-      const files = agentExportService.serializeMany([])
+      const files = pluginExportService.serializeMany([])
       expect(files).toEqual([])
     })
 
@@ -349,14 +352,14 @@ describe('agentExportService', () => {
       createTestAgent({ id: 'many-b' })
       createTestAgent({ id: 'many-c' })
 
-      const files = agentExportService.serializeMany(['many-a', 'many-c'])
+      const files = pluginExportService.serializeMany(['many-a', 'many-c'])
       expect(files).toHaveLength(2)
       expect(files.map((f) => f.filename)).toEqual(['many-a.md', 'many-c.md'])
     })
 
     it('should skip nonexistent agent IDs', () => {
       createTestAgent({ id: 'many-exists' })
-      const files = agentExportService.serializeMany(['many-exists', 'ghost-agent'])
+      const files = pluginExportService.serializeMany(['many-exists', 'ghost-agent'])
       expect(files).toHaveLength(1)
       expect(files[0]!.filename).toBe('many-exists.md')
     })
@@ -364,20 +367,20 @@ describe('agentExportService', () => {
     it('should skip anonymous-agent even when explicitly requested', () => {
       profilesRepository.create({ id: ANONYMOUS_AGENT_ID, type: 'agent', name: 'Anon' })
       agentsRepository.create({ id: ANONYMOUS_AGENT_ID, name: 'Anon', description: 'Anon', system_prompt: 'anon' })
-      const files = agentExportService.serializeMany([ANONYMOUS_AGENT_ID])
+      const files = pluginExportService.serializeMany([ANONYMOUS_AGENT_ID])
       expect(files).toEqual([])
     })
 
     it('should sort results by filename', () => {
       createTestAgent({ id: 'z-agent' })
       createTestAgent({ id: 'a-agent' })
-      const files = agentExportService.serializeMany(['z-agent', 'a-agent'])
+      const files = pluginExportService.serializeMany(['z-agent', 'a-agent'])
       expect(files[0]!.filename).toBe('a-agent.md')
       expect(files[1]!.filename).toBe('z-agent.md')
     })
   })
 
-  describe('writeToDirectory', () => {
+  describe('writeAgentsToDirectory', () => {
     let tempDir: string
 
     beforeEach(() => {
@@ -393,7 +396,7 @@ describe('agentExportService', () => {
     it('should write files to disk', () => {
       createTestAgent({ id: 'disk-agent', system_prompt: 'Hello world' })
 
-      const result = agentExportService.writeToDirectory(tempDir)
+      const result = pluginExportService.writeAgentsToDirectory(tempDir)
       expect(result.count).toBe(1)
       expect(result.files).toEqual(['disk-agent.md'])
       expect(result.directory).toBe(tempDir)
@@ -409,13 +412,13 @@ describe('agentExportService', () => {
       createTestAgent({ id: 'mkdir-agent' })
 
       const nestedDir = join(tempDir, 'nested', 'agents')
-      const result = agentExportService.writeToDirectory(nestedDir)
+      const result = pluginExportService.writeAgentsToDirectory(nestedDir)
       expect(result.count).toBe(1)
       expect(existsSync(join(nestedDir, 'mkdir-agent.md'))).toBe(true)
     })
 
     it('should return empty result when no agents exist', () => {
-      const result = agentExportService.writeToDirectory(tempDir)
+      const result = pluginExportService.writeAgentsToDirectory(tempDir)
       expect(result.count).toBe(0)
       expect(result.files).toEqual([])
     })
@@ -425,7 +428,7 @@ describe('agentExportService', () => {
       createTestAgent({ id: 'filter-b' })
       createTestAgent({ id: 'filter-c' })
 
-      const result = agentExportService.writeToDirectory(tempDir, ['filter-a', 'filter-c'])
+      const result = pluginExportService.writeAgentsToDirectory(tempDir, ['filter-a', 'filter-c'])
       expect(result.count).toBe(2)
       expect(result.files).toEqual(['filter-a.md', 'filter-c.md'])
       expect(existsSync(join(tempDir, 'filter-a.md'))).toBe(true)
@@ -437,7 +440,7 @@ describe('agentExportService', () => {
       createTestAgent({ id: 'all-a' })
       createTestAgent({ id: 'all-b' })
 
-      const result = agentExportService.writeToDirectory(tempDir)
+      const result = pluginExportService.writeAgentsToDirectory(tempDir)
       expect(result.count).toBe(2)
     })
 
@@ -445,8 +448,306 @@ describe('agentExportService', () => {
       createTestAgent({ id: 'empty-a' })
       createTestAgent({ id: 'empty-b' })
 
-      const result = agentExportService.writeToDirectory(tempDir, [])
+      const result = pluginExportService.writeAgentsToDirectory(tempDir, [])
       expect(result.count).toBe(2)
+    })
+  })
+
+  describe('exportPackage', () => {
+    let tempDir: string
+    let originalCwd: string
+
+    beforeEach(() => {
+      tempDir = mkdtempSync(join(tmpdir(), 'plugin-export-test-'))
+      originalCwd = process.cwd()
+      process.chdir(tempDir)
+      projectsRepository.create({ id: 'test-project', name: 'Test Project', owner_id: TEST_USER_ID, local_path: tempDir })
+    })
+
+    afterEach(() => {
+      process.chdir(originalCwd)
+      if (existsSync(tempDir)) {
+        rmSync(tempDir, { recursive: true })
+      }
+    })
+
+    it('should generate correct directory structure', () => {
+      createTestAgent({ id: 'pkg-agent', system_prompt: 'Hello' })
+
+      const result = pluginExportService.exportPackage({
+        package_name: 'my-plugin',
+        project_id: 'test-project',
+      })
+
+      expect(result.package_name).toBe('my-plugin')
+      expect(result.agent_count).toBe(1)
+      expect(result.files).toContain('.claude-plugin/plugin.json')
+      expect(result.files).toContain('agents/pkg-agent.md')
+
+      // Verify files on disk
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'my-plugin')
+      expect(existsSync(join(pluginDir, '.claude-plugin', 'plugin.json'))).toBe(true)
+      expect(existsSync(join(pluginDir, 'agents', 'pkg-agent.md'))).toBe(true)
+    })
+
+    it('should generate manifest with correct name', () => {
+      createTestAgent({ id: 'manifest-agent' })
+
+      pluginExportService.exportPackage({
+        package_name: 'test-pack',
+        project_id: 'test-project',
+      })
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'test-pack')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      expect(manifest.name).toBe('test-pack')
+    })
+
+    it('should set kombuse.plugin_system_version to kombuse-plugin-v1', () => {
+      createTestAgent({ id: 'version-agent' })
+
+      pluginExportService.exportPackage({
+        package_name: 'version-test',
+        project_id: 'test-project',
+      })
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'version-test')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      expect(manifest.kombuse.plugin_system_version).toBe('kombuse-plugin-v1')
+    })
+
+    it('should set exported_at as valid ISO 8601', () => {
+      createTestAgent({ id: 'time-agent' })
+
+      pluginExportService.exportPackage({
+        package_name: 'time-test',
+        project_id: 'test-project',
+      })
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'time-test')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const date = new Date(manifest.kombuse.exported_at)
+      expect(date.toISOString()).toBe(manifest.kombuse.exported_at)
+    })
+
+    it('should default version to 1.0.0 when not specified', () => {
+      createTestAgent({ id: 'default-ver-agent' })
+
+      pluginExportService.exportPackage({
+        package_name: 'default-ver',
+        project_id: 'test-project',
+      })
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'default-ver')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      expect(manifest.version).toBe('1.0.0')
+    })
+
+    it('should include description in manifest when provided', () => {
+      createTestAgent({ id: 'desc-agent' })
+
+      pluginExportService.exportPackage({
+        package_name: 'desc-test',
+        project_id: 'test-project',
+        description: 'A great plugin',
+      })
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'desc-test')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      expect(manifest.description).toBe('A great plugin')
+    })
+
+    it('should auto-include labels from trigger conditions', () => {
+      const label = labelsRepository.create({
+        project_id: 'test-project',
+        name: 'Bug',
+        color: '#d73a4a',
+      })
+      const agent = createTestAgent({ id: 'trigger-label-agent' })
+      agentTriggersRepository.create({
+        agent_id: agent.id,
+        event_type: 'label.added',
+        conditions: { label_id: label.id },
+        priority: 0,
+      })
+
+      const result = pluginExportService.exportPackage({
+        package_name: 'label-auto',
+        project_id: 'test-project',
+      })
+
+      expect(result.label_count).toBe(1)
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'label-auto')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      expect(manifest.kombuse.labels).toHaveLength(1)
+      expect(manifest.kombuse.labels[0].name).toBe('Bug')
+      expect(manifest.kombuse.labels[0].color).toBe('#d73a4a')
+    })
+
+    it('should include all project labels in manifest', () => {
+      labelsRepository.create({
+        project_id: 'test-project',
+        name: 'Enhancement',
+        color: '#7057ff',
+      })
+      labelsRepository.create({
+        project_id: 'test-project',
+        name: 'Bug',
+        color: '#d73a4a',
+      })
+      createTestAgent({ id: 'all-labels-agent' })
+
+      const result = pluginExportService.exportPackage({
+        package_name: 'all-labels',
+        project_id: 'test-project',
+      })
+
+      expect(result.label_count).toBe(2)
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'all-labels')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      expect(manifest.kombuse.labels).toHaveLength(2)
+      const labelNames = manifest.kombuse.labels.map((l: { name: string }) => l.name).sort()
+      expect(labelNames).toEqual(['Bug', 'Enhancement'])
+    })
+
+    it('should not include labels from other projects', () => {
+      projectsRepository.create({ id: 'other-project', name: 'Other', owner_id: TEST_USER_ID })
+      labelsRepository.create({
+        project_id: 'test-project',
+        name: 'Ours',
+        color: '#00ff00',
+      })
+      labelsRepository.create({
+        project_id: 'other-project',
+        name: 'Theirs',
+        color: '#ff0000',
+      })
+      createTestAgent({ id: 'cross-proj-agent' })
+
+      const result = pluginExportService.exportPackage({
+        package_name: 'cross-proj',
+        project_id: 'test-project',
+      })
+
+      expect(result.label_count).toBe(1)
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'cross-proj')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      expect(manifest.kombuse.labels).toHaveLength(1)
+      expect(manifest.kombuse.labels[0].name).toBe('Ours')
+    })
+
+    it('should replace label_id with label_name in agent files', () => {
+      const label = labelsRepository.create({
+        project_id: 'test-project',
+        name: 'Cook it',
+        color: '#ec4899',
+      })
+      const agent = createTestAgent({ id: 'label-replace-agent' })
+      agentTriggersRepository.create({
+        agent_id: agent.id,
+        event_type: 'label.added',
+        conditions: { label_id: label.id },
+        priority: 0,
+      })
+
+      pluginExportService.exportPackage({
+        package_name: 'label-replace',
+        project_id: 'test-project',
+      })
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'label-replace')
+      const agentContent = readFileSync(join(pluginDir, 'agents', 'label-replace-agent.md'), 'utf-8')
+      expect(agentContent).toContain('label_name: "Cook it"')
+      expect(agentContent).not.toContain(`label_id: ${label.id}`)
+    })
+
+    it('should throw for invalid package name with spaces', () => {
+      expect(() =>
+        pluginExportService.exportPackage({
+          package_name: 'my plugin',
+          project_id: 'test-project',
+        })
+      ).toThrow(/Invalid package name/)
+    })
+
+    it('should throw for invalid package name with uppercase', () => {
+      expect(() =>
+        pluginExportService.exportPackage({
+          package_name: 'MyPlugin',
+          project_id: 'test-project',
+        })
+      ).toThrow(/Invalid package name/)
+    })
+
+    it('should throw for invalid package name with special chars', () => {
+      expect(() =>
+        pluginExportService.exportPackage({
+          package_name: 'my_plugin!',
+          project_id: 'test-project',
+        })
+      ).toThrow(/Invalid package name/)
+    })
+
+    it('should generate manifest even with no agents', () => {
+      const result = pluginExportService.exportPackage({
+        package_name: 'empty-pkg',
+        project_id: 'test-project',
+      })
+
+      expect(result.agent_count).toBe(0)
+      expect(result.files).toContain('.claude-plugin/plugin.json')
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'empty-pkg')
+      expect(existsSync(join(pluginDir, '.claude-plugin', 'plugin.json'))).toBe(true)
+    })
+
+    it('should throw PackageExistsError when directory exists without overwrite', () => {
+      createTestAgent({ id: 'exists-agent' })
+
+      pluginExportService.exportPackage({
+        package_name: 'exists-test',
+        project_id: 'test-project',
+      })
+
+      expect(() =>
+        pluginExportService.exportPackage({
+          package_name: 'exists-test',
+          project_id: 'test-project',
+        })
+      ).toThrow(PackageExistsError)
+    })
+
+    it('should succeed when directory exists with overwrite: true', () => {
+      createTestAgent({ id: 'overwrite-agent' })
+
+      pluginExportService.exportPackage({
+        package_name: 'overwrite-test',
+        project_id: 'test-project',
+      })
+
+      const result = pluginExportService.exportPackage({
+        package_name: 'overwrite-test',
+        project_id: 'test-project',
+        overwrite: true,
+      })
+
+      expect(result.agent_count).toBe(1)
+    })
+
+    it('should set project_id in manifest kombuse metadata', () => {
+      createTestAgent({ id: 'proj-agent' })
+
+      pluginExportService.exportPackage({
+        package_name: 'proj-test',
+        project_id: 'test-project',
+      })
+
+      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'proj-test')
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      expect(manifest.kombuse.project_id).toBe('test-project')
     })
   })
 })
