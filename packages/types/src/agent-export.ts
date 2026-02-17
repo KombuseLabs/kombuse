@@ -53,3 +53,8 @@ export interface AgentExportResult {
   count: number
   files: string[]
 }
+
+export interface AgentExportInput {
+  directory: string
+  agent_ids?: string[]
+}

@@ -16,6 +16,7 @@ import { Events } from "./routes/events";
 import { Labels } from "./routes/labels";
 import { Permissions } from "./routes/permissions";
 import { DatabasePage } from "./routes/database";
+import { PluginsPage } from "./routes/plugins";
 import { ClaudeCodeSessionViewer } from "./routes/claude-code-session";
 import { Profile } from "./routes/profile";
 import { Settings } from "./routes/settings";
@@ -82,6 +83,7 @@ function AppContent() {
             <Route path="events" element={<Events />} />
             <Route path="permissions" element={<Permissions />} />
             <Route path="database" element={<DatabasePage />} />
+            <Route path="plugins" element={<PluginsPage />} />
           </Route>
 
           {/* Global agents (outside project context) */}

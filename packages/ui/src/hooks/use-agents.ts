@@ -114,3 +114,10 @@ export function useDeleteAgent() {
     },
   })
 }
+
+export function useExportAgents() {
+  return useMutation({
+    mutationFn: (input: { directory: string; agent_ids?: string[] }) =>
+      agentsApi.export(input),
+  })
+}

@@ -18,6 +18,7 @@ const USER_PROFILE_ID = "user-1";
 const SIDEBAR_EVENTS_SETTING_KEY = "sidebar.hidden.events";
 const SIDEBAR_PERMISSIONS_SETTING_KEY = "sidebar.hidden.permissions";
 const SIDEBAR_DATABASE_SETTING_KEY = "sidebar.hidden.database";
+const SIDEBAR_PLUGINS_SETTING_KEY = "sidebar.hidden.plugins";
 
 interface PaletteState {
   open: boolean;
@@ -51,6 +52,8 @@ export function CommandSetup({ children }: CommandSetupProps) {
   const eventsVisible = eventsSetting?.setting_value === "false";
   const permissionsVisible = permissionsSetting?.setting_value === "false";
   const databaseVisible = databaseSetting?.setting_value === "false";
+  const { data: pluginsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PLUGINS_SETTING_KEY);
+  const pluginsVisible = pluginsSetting?.setting_value === "false";
   const codexMcpEnabled = codexMcpStatus?.enabled === true;
   const setCodexMcpEnabled = useSetCodexMcpEnabled();
   const upsertSetting = useUpsertProfileSetting();
@@ -171,6 +174,18 @@ export function CommandSetup({ children }: CommandSetupProps) {
         },
       }),
       registry.register({
+        id: "sidebar.togglePlugins",
+        title: pluginsVisible ? "Hide Plugins in Sidebar" : "Show Plugins in Sidebar",
+        category: "Sidebar",
+        handler: () => {
+          upsertSetting.mutate({
+            profile_id: USER_PROFILE_ID,
+            setting_key: SIDEBAR_PLUGINS_SETTING_KEY,
+            setting_value: pluginsVisible ? "true" : "false",
+          });
+        },
+      }),
+      registry.register({
         id: "codex.toggleMcp",
         title: codexMcpEnabled ? "Disable MCP for Codex" : "Enable MCP for Codex",
         category: "Codex",
@@ -216,6 +231,16 @@ export function CommandSetup({ children }: CommandSetupProps) {
         },
       }),
       registry.register({
+        id: "nav.plugins",
+        title: "Go to Plugins",
+        category: "Navigation",
+        icon: "Puzzle",
+        when: (ctx) => ctx.currentProjectId != null,
+        handler: () => {
+          navigate(`/projects/${currentProjectId}/plugins`);
+        },
+      }),
+      registry.register({
         id: "nav.back",
         title: "Go Back",
         category: "Navigation",
@@ -234,7 +259,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
     ];
 
     return () => unregisterFns.forEach((fn) => fn());
-  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, databaseVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting, historyNav.goBack, historyNav.goForward]);
+  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, databaseVisible, pluginsVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting, historyNav.goBack, historyNav.goForward]);
 
   const context: CommandContext = useMemo(
     () => ({

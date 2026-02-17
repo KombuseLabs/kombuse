@@ -331,6 +331,46 @@ describe('agentExportService', () => {
     })
   })
 
+  describe('serializeMany', () => {
+    it('should return empty array for empty agent IDs list', () => {
+      createTestAgent({ id: 'many-spare' })
+      const files = agentExportService.serializeMany([])
+      expect(files).toEqual([])
+    })
+
+    it('should return only the requested agents', () => {
+      createTestAgent({ id: 'many-a' })
+      createTestAgent({ id: 'many-b' })
+      createTestAgent({ id: 'many-c' })
+
+      const files = agentExportService.serializeMany(['many-a', 'many-c'])
+      expect(files).toHaveLength(2)
+      expect(files.map((f) => f.filename)).toEqual(['many-a.md', 'many-c.md'])
+    })
+
+    it('should skip nonexistent agent IDs', () => {
+      createTestAgent({ id: 'many-exists' })
+      const files = agentExportService.serializeMany(['many-exists', 'ghost-agent'])
+      expect(files).toHaveLength(1)
+      expect(files[0]!.filename).toBe('many-exists.md')
+    })
+
+    it('should skip anonymous-agent even when explicitly requested', () => {
+      profilesRepository.create({ id: ANONYMOUS_AGENT_ID, type: 'agent', name: 'Anon' })
+      agentsRepository.create({ id: ANONYMOUS_AGENT_ID, system_prompt: 'anon' })
+      const files = agentExportService.serializeMany([ANONYMOUS_AGENT_ID])
+      expect(files).toEqual([])
+    })
+
+    it('should sort results by filename', () => {
+      createTestAgent({ id: 'z-agent' })
+      createTestAgent({ id: 'a-agent' })
+      const files = agentExportService.serializeMany(['z-agent', 'a-agent'])
+      expect(files[0]!.filename).toBe('a-agent.md')
+      expect(files[1]!.filename).toBe('z-agent.md')
+    })
+  })
+
   describe('writeToDirectory', () => {
     let tempDir: string
 
@@ -372,6 +412,35 @@ describe('agentExportService', () => {
       const result = agentExportService.writeToDirectory(tempDir)
       expect(result.count).toBe(0)
       expect(result.files).toEqual([])
+    })
+
+    it('should export only specified agents when agentIds is provided', () => {
+      createTestAgent({ id: 'filter-a' })
+      createTestAgent({ id: 'filter-b' })
+      createTestAgent({ id: 'filter-c' })
+
+      const result = agentExportService.writeToDirectory(tempDir, ['filter-a', 'filter-c'])
+      expect(result.count).toBe(2)
+      expect(result.files).toEqual(['filter-a.md', 'filter-c.md'])
+      expect(existsSync(join(tempDir, 'filter-a.md'))).toBe(true)
+      expect(existsSync(join(tempDir, 'filter-c.md'))).toBe(true)
+      expect(existsSync(join(tempDir, 'filter-b.md'))).toBe(false)
+    })
+
+    it('should export all agents when agentIds is undefined', () => {
+      createTestAgent({ id: 'all-a' })
+      createTestAgent({ id: 'all-b' })
+
+      const result = agentExportService.writeToDirectory(tempDir)
+      expect(result.count).toBe(2)
+    })
+
+    it('should export all agents when agentIds is an empty array', () => {
+      createTestAgent({ id: 'empty-a' })
+      createTestAgent({ id: 'empty-b' })
+
+      const result = agentExportService.writeToDirectory(tempDir, [])
+      expect(result.count).toBe(2)
     })
   })
 })

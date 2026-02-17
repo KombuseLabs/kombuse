@@ -20,7 +20,8 @@ import {
 export interface IAgentExportService {
   serializeAll(): AgentExportFile[]
   serializeOne(agentId: string): AgentExportFile | null
-  writeToDirectory(directory: string): AgentExportResult
+  serializeMany(agentIds: string[]): AgentExportFile[]
+  writeToDirectory(directory: string, agentIds?: string[]): AgentExportResult
 }
 
 /** Well-known config keys that are promoted to top-level frontmatter fields. */
@@ -47,8 +48,20 @@ export class AgentExportService implements IAgentExportService {
     return this.buildExportFile(agent)
   }
 
-  writeToDirectory(directory: string): AgentExportResult {
-    const files = this.serializeAll()
+  serializeMany(agentIds: string[]): AgentExportFile[] {
+    const files: AgentExportFile[] = []
+    for (const agentId of agentIds) {
+      const file = this.serializeOne(agentId)
+      if (file) files.push(file)
+    }
+    files.sort((a, b) => a.filename.localeCompare(b.filename))
+    return files
+  }
+
+  writeToDirectory(directory: string, agentIds?: string[]): AgentExportResult {
+    const files = agentIds && agentIds.length > 0
+      ? this.serializeMany(agentIds)
+      : this.serializeAll()
 
     if (!existsSync(directory)) {
       mkdirSync(directory, { recursive: true })

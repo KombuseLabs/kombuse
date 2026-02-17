@@ -55,6 +55,7 @@ import type {
   DatabaseQueryResponse,
   ModelCatalogResponse,
   BackendStatus,
+  AgentExportResult,
 } from '@kombuse/types'
 
 declare global {
@@ -373,6 +374,15 @@ export const agentsApi = {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
+  },
+
+  async export(input: { directory: string; agent_ids?: string[] }): Promise<AgentExportResult> {
+    const response = await fetch(`${API_BASE}/agents/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<AgentExportResult>(response)
   },
 }
 

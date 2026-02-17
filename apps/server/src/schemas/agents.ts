@@ -60,6 +60,7 @@ export const processEventSchema = z.object({
 // Agent export schema
 export const agentExportSchema = z.object({
   directory: z.string().min(1),
+  agent_ids: z.array(z.string().min(1)).optional(),
 })
 
 // Export types

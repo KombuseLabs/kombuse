@@ -33,6 +33,7 @@ src/
 │   ├── profile-button.tsx       - Header user menu dropdown (Profile + Settings)
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks
+│   ├── use-agents.ts          - Agent CRUD, profile, toggle, and export hooks
 │   ├── use-backend-status.ts  - Backend CLI availability query hooks
 │   ├── use-command.ts         - Execute specific commands
 │   ├── use-commands.ts        - Get all available commands
@@ -56,7 +57,8 @@ src/
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
-    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database)
+    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database, agents)
+    ├── backend-utils.ts       - Backend display utilities (backendLabel)
     ├── remark-comment-links.ts  - Remark plugin: #N/c/M comment link syntax
     ├── remark-label-mentions.ts - Remark plugin: ~[Name](id) label mention syntax
     ├── remark-profile-mentions.ts - Remark plugin: @mention syntax
@@ -1374,6 +1376,61 @@ const { data: queryResult } = useDatabaseQuery({
 - `useDatabaseTables`: Fetches the list of tables and views
 - `useDatabaseQuery`: Executes a read-only SQL query; disabled when `input?.sql` is falsy
   - Backend enforces max 500 rows and read-only validation
+
+### Agent Hooks
+
+```typescript
+import {
+  useAgents,
+  useAgent,
+  useAgentWithProfile,
+  useAgentProfiles,
+  useCreateAgent,
+  useUpdateAgent,
+  useUpdateProfile,
+  useToggleAgent,
+  useDeleteAgent,
+  useExportAgents,
+} from '@kombuse/ui/hooks'
+
+// Fetch all agents (with optional filters)
+const { data: agents } = useAgents({ is_enabled: true })
+
+// Fetch a single agent
+const { data: agent } = useAgent('agent-id')
+
+// Fetch agent + profile together
+const { data } = useAgentWithProfile('agent-id')
+// data?.agent, data?.profile
+
+// Fetch all agent profiles
+const { data: profiles } = useAgentProfiles()
+
+// CRUD mutations
+const createAgent = useCreateAgent()
+createAgent.mutate({ profile: { name: 'My Agent' }, agent: { system_prompt: '...' } })
+
+const updateAgent = useUpdateAgent()
+updateAgent.mutate({ id: 'agent-id', input: { system_prompt: '...' } })
+
+const toggleAgent = useToggleAgent()
+toggleAgent.mutate({ id: 'agent-id', is_enabled: false })
+
+const deleteAgent = useDeleteAgent()
+deleteAgent.mutate('agent-id')
+
+// Export agents as markdown files to a directory
+const exportAgents = useExportAgents()
+exportAgents.mutate(
+  { directory: '/path/to/export', agent_ids: ['agent-a', 'agent-b'] },
+  {
+    onSuccess: (result) => console.log(`Exported ${result.count} agents`),
+    onError: (error) => console.error(error.message),
+  }
+)
+// agent_ids is optional — omit to export all agents
+// result: { count: number, files: string[], directory: string }
+```
 
 ### Label Hooks
 

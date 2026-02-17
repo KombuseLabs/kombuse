@@ -270,7 +270,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const result = agentExportService.writeToDirectory(parseResult.data.directory)
+      const result = agentExportService.writeToDirectory(
+        parseResult.data.directory,
+        parseResult.data.agent_ids
+      )
       return result
     } catch (error) {
       const message = (error as Error).message
