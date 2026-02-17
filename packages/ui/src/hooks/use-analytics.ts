@@ -6,6 +6,8 @@ export function useSessionsPerDay(projectId: string, days?: number) {
     queryKey: ['analytics', 'sessions-per-day', projectId, days],
     queryFn: () => analyticsApi.sessionsPerDay(projectId, days),
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -14,6 +16,8 @@ export function useDurationPercentiles(projectId: string, days?: number) {
     queryKey: ['analytics', 'duration-percentiles', projectId, days],
     queryFn: () => analyticsApi.durationPercentiles(projectId, days),
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -22,6 +26,8 @@ export function usePipelineStageDuration(projectId: string, days?: number) {
     queryKey: ['analytics', 'pipeline-stage-duration', projectId, days],
     queryFn: () => analyticsApi.pipelineStageDuration(projectId, days),
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -30,6 +36,8 @@ export function useMostFrequentReads(projectId: string, days?: number, limit?: n
     queryKey: ['analytics', 'most-frequent-reads', projectId, days, limit],
     queryFn: () => analyticsApi.mostFrequentReads(projectId, days, limit),
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -38,6 +46,8 @@ export function useToolCallsPerSession(projectId: string, days?: number, agentId
     queryKey: ['analytics', 'tool-calls-per-session', projectId, days, agentId],
     queryFn: () => analyticsApi.toolCallsPerSession(projectId, days, agentId),
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -46,6 +56,8 @@ export function useSlowestTools(projectId: string, days?: number) {
     queryKey: ['analytics', 'slowest-tools', projectId, days],
     queryFn: () => analyticsApi.slowestTools(projectId, days),
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -54,5 +66,7 @@ export function useToolCallVolume(projectId: string, days?: number) {
     queryKey: ['analytics', 'tool-call-volume', projectId, days],
     queryFn: () => analyticsApi.toolCallVolume(projectId, days),
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }

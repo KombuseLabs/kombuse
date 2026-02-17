@@ -965,6 +965,13 @@ const migrations: Array<{ name: string; sql: string; postMigrate?: (db: Database
         ON session_events(event_type, session_id);
     `,
   },
+  {
+    name: '026_session_events_type_created_index',
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_session_events_type_created
+        ON session_events(event_type, created_at);
+    `,
+  },
 ]
 
 /**

@@ -157,6 +157,7 @@ export const analyticsRepository = {
             AND s.agent_id = ?
           GROUP BY se.session_id, s.agent_id
           ORDER BY call_count DESC
+          LIMIT 50
         `
         )
         .all(projectId, -days, agentId) as ToolCallsPerSession[]
@@ -177,6 +178,7 @@ export const analyticsRepository = {
           AND se.created_at >= date('now', ? || ' days')
         GROUP BY se.session_id, s.agent_id
         ORDER BY call_count DESC
+        LIMIT 50
       `
       )
       .all(projectId, -days) as ToolCallsPerSession[]
@@ -242,6 +244,7 @@ export const analyticsRepository = {
           AND se.created_at >= date('now', ? || ' days')
         GROUP BY tool_name
         ORDER BY call_count DESC
+        LIMIT 50
       `
       )
       .all(projectId, -days) as ToolCallVolume[]

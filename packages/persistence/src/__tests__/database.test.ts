@@ -130,6 +130,7 @@ const EXPECTED_MIGRATIONS = [
   '023_plugins_table',
   '024_trigger_allowed_invokers',
   '025_session_events_event_type_index',
+  '026_session_events_type_created_index',
 ]
 
 describe('database', () => {
