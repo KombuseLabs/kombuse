@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { agentService } from '@kombuse/services'
+import { agentService, agentExportService } from '@kombuse/services'
 import { eventsRepository } from '@kombuse/persistence'
 import {
   createAgentSchema,
@@ -9,6 +9,7 @@ import {
   updateTriggerSchema,
   invocationFiltersSchema,
   processEventSchema,
+  agentExportSchema,
 } from '../schemas/agents'
 
 export async function agentRoutes(fastify: FastifyInstance) {
@@ -254,6 +255,35 @@ export async function agentRoutes(fastify: FastifyInstance) {
       event_id: event.id,
       invocations_created: invocations.length,
       invocations,
+    }
+  })
+
+  // ============================================
+  // Agent Export
+  // ============================================
+
+  // Export all agents to a directory as markdown files
+  fastify.post('/agents/export', async (request, reply) => {
+    const parseResult = agentExportSchema.safeParse(request.body)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    try {
+      const result = agentExportService.writeToDirectory(parseResult.data.directory)
+      return result
+    } catch (error) {
+      const message = (error as Error).message
+      if (
+        message.includes('EACCES') ||
+        message.includes('EPERM') ||
+        message.includes('EROFS')
+      ) {
+        return reply.status(403).send({
+          error: `Cannot write to directory: ${message}`,
+        })
+      }
+      throw error
     }
   })
 }

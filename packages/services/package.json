@@ -18,11 +18,13 @@
   "dependencies": {
     "@kombuse/persistence": "*",
     "@kombuse/types": "*",
+    "js-yaml": "^4.1.0",
     "nunjucks": "^3.2.4"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.15.3",
     "@types/nunjucks": "^3.2.6",
     "eslint": "^9.39.1",

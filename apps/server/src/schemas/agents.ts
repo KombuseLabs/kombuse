@@ -57,7 +57,13 @@ export const processEventSchema = z.object({
   event_id: z.coerce.number().int().positive(),
 })
 
+// Agent export schema
+export const agentExportSchema = z.object({
+  directory: z.string().min(1),
+})
+
 // Export types
+export type AgentExportBody = z.infer<typeof agentExportSchema>
 export type CreateAgentBody = z.infer<typeof createAgentSchema>
 export type UpdateAgentBody = z.infer<typeof updateAgentSchema>
 export type AgentFiltersQuery = z.infer<typeof agentFiltersSchema>
