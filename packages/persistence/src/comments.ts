@@ -343,6 +343,7 @@ export const commentsRepository = {
               mention_type: 'profile',
               mentioned_profile_id: profile.id,
               mention_text: `@${profile.name}`,
+              comment_body: payload.body,
             },
           })
         }
@@ -378,6 +379,7 @@ export const commentsRepository = {
               mention_type: 'profile',
               mentioned_profile_id: profile.id,
               mention_text: `@${name}`,
+              comment_body: payload.body,
             },
           })
         }
@@ -412,6 +414,7 @@ export const commentsRepository = {
             mention_type: 'ticket',
             mentioned_ticket_id: mentionedTicketId,
             mention_text: `#${mentionedTicketId}`,
+            comment_body: payload.body,
           },
         })
 

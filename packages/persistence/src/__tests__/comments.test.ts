@@ -360,6 +360,18 @@ describe('commentsRepository', () => {
         events.every((event) => event.actor_type === 'user'),
         'User-authored mention events should have actor_type "user"'
       ).toBe(true)
+
+      const commentBody = `@helper can you assist with #${testTicketId}?`
+      for (const event of events) {
+        const eventPayload =
+          typeof event.payload === 'string'
+            ? JSON.parse(event.payload)
+            : event.payload
+        expect(
+          eventPayload.comment_body,
+          'mention.created event should include full comment body'
+        ).toBe(commentBody)
+      }
     })
 
     it('should parse new-format @[name](id) mentions and create mention records', () => {
@@ -516,6 +528,43 @@ describe('commentsRepository', () => {
 
       expect(events).toHaveLength(1)
       expect(events[0]?.actor_type, 'Agent-authored mention should have actor_type "agent"').toBe('agent')
+
+      const eventPayload =
+        typeof events[0]!.payload === 'string'
+          ? JSON.parse(events[0]!.payload)
+          : events[0]!.payload
+      expect(
+        eventPayload.comment_body,
+        'mention.created event should include full comment body'
+      ).toBe('@target here is my analysis')
+    })
+
+    it('should include full comment body in mention.created event payload', () => {
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('agent-planner', 'agent', 'Planner')
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'please analyze this @[Planner](agent-planner)',
+      })
+
+      const events = eventsRepository.list({ event_type: 'mention.created' })
+
+      expect(events).toHaveLength(1)
+
+      const eventPayload =
+        typeof events[0]!.payload === 'string'
+          ? JSON.parse(events[0]!.payload)
+          : events[0]!.payload
+      expect(eventPayload.mention_type).toBe('profile')
+      expect(eventPayload.mentioned_profile_id).toBe('agent-planner')
+      expect(eventPayload.mention_text).toBe('@Planner')
+      expect(eventPayload.comment_body).toBe(
+        'please analyze this @[Planner](agent-planner)'
+      )
     })
 
     describe('cross-reference events', () => {
