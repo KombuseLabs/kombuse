@@ -390,6 +390,53 @@ registerSuccessSchema(
     })
   )
 )
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/most-frequent-reads',
+  z.array(
+    z.object({
+      file_path: z.string(),
+      read_count: z.number().int().nonnegative(),
+    })
+  )
+)
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/tool-calls-per-session',
+  z.array(
+    z.object({
+      session_id: z.string(),
+      agent_id: z.string().nullable(),
+      agent_name: z.string(),
+      call_count: z.number().int().nonnegative(),
+    })
+  )
+)
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/slowest-tools',
+  z.array(
+    z.object({
+      tool_name: z.string(),
+      count: z.number().int().nonnegative(),
+      avg: z.number(),
+      p50: z.number(),
+      p90: z.number(),
+      p99: z.number(),
+    })
+  )
+)
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/tool-call-volume',
+  z.array(
+    z.object({
+      tool_name: z.string(),
+      call_count: z.number().int().nonnegative(),
+      session_count: z.number().int().nonnegative(),
+    })
+  )
+)
 
 // Session routes
 registerSuccessSchema('GET', '/api/sessions', z.array(publicSessionSchema))

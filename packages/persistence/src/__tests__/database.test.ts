@@ -129,6 +129,7 @@ const EXPECTED_MIGRATIONS = [
   '022_agent_slug_and_descriptions',
   '023_plugins_table',
   '024_trigger_allowed_invokers',
+  '025_session_events_event_type_index',
 ]
 
 describe('database', () => {

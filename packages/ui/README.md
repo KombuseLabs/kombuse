@@ -48,7 +48,7 @@ src/
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
-│   ├── use-analytics.ts       - Analytics query hooks (sessions per day)
+│   ├── use-analytics.ts       - Analytics query hooks (sessions, duration, tool usage)
 │   ├── use-plugins.ts         - Plugin export, install, lifecycle hooks
 │   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-models.ts          - Model catalog query hook
@@ -1416,7 +1416,10 @@ const { data: permissions, isLoading } = usePermissions('project-id', {
 ### Analytics Hooks
 
 ```typescript
-import { useSessionsPerDay, useDurationPercentiles, usePipelineStageDuration } from '@kombuse/ui/hooks'
+import {
+  useSessionsPerDay, useDurationPercentiles, usePipelineStageDuration,
+  useMostFrequentReads, useToolCallsPerSession, useSlowestTools, useToolCallVolume,
+} from '@kombuse/ui/hooks'
 
 // Fetch daily session counts for a project (default: last 30 days)
 const { data: sessionsPerDay, isLoading } = useSessionsPerDay('project-id', 30)
@@ -1431,6 +1434,23 @@ const { data: durations } = useDurationPercentiles('project-id', 30)
 const { data: stages } = usePipelineStageDuration('project-id', 30)
 // Returns Array<{ agent_id: string; agent_name: string; avg_duration: number; p50: number; p90: number; count: number }>
 // Duration values are in milliseconds
+
+// Fetch most frequently read files (default: top 25, last 30 days)
+const { data: reads } = useMostFrequentReads('project-id', 30, 25)
+// Returns Array<{ file_path: string; read_count: number }> sorted by read_count descending
+
+// Fetch tool call counts per session (optional agent_id filter)
+const { data: callsPerSession } = useToolCallsPerSession('project-id', 30, 'agent-id')
+// Returns Array<{ session_id: string; agent_id: string | null; agent_name: string; call_count: number }>
+
+// Fetch slowest tools by p50/p90/p99 duration (excludes aborted calls)
+const { data: slowest } = useSlowestTools('project-id', 30)
+// Returns Array<{ tool_name: string; count: number; avg: number; p50: number; p90: number; p99: number }>
+// Duration values are in milliseconds
+
+// Fetch tool call volume (cost proxy) — total calls and session spread
+const { data: volume } = useToolCallVolume('project-id', 30)
+// Returns Array<{ tool_name: string; call_count: number; session_count: number }>
 ```
 
 ### Database Hooks

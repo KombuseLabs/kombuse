@@ -130,4 +130,12 @@ export {
   useUpdatePlugin,
   useUninstallPlugin,
 } from './use-plugins'
-export { useSessionsPerDay, useDurationPercentiles, usePipelineStageDuration } from './use-analytics'
+export {
+  useSessionsPerDay,
+  useDurationPercentiles,
+  usePipelineStageDuration,
+  useMostFrequentReads,
+  useToolCallsPerSession,
+  useSlowestTools,
+  useToolCallVolume,
+} from './use-analytics'

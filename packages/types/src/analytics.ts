@@ -16,3 +16,30 @@ export interface PipelineStageDuration {
   p90: number
   count: number
 }
+
+export interface ToolReadFrequency {
+  file_path: string
+  read_count: number
+}
+
+export interface ToolCallsPerSession {
+  session_id: string
+  agent_id: string | null
+  agent_name: string
+  call_count: number
+}
+
+export interface ToolDurationPercentile {
+  tool_name: string
+  count: number
+  avg: number
+  p50: number
+  p90: number
+  p99: number
+}
+
+export interface ToolCallVolume {
+  tool_name: string
+  call_count: number
+  session_count: number
+}

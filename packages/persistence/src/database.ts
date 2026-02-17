@@ -958,6 +958,13 @@ const migrations: Array<{ name: string; sql: string; postMigrate?: (db: Database
       ALTER TABLE agent_triggers ADD COLUMN allowed_invokers TEXT DEFAULT NULL CHECK (allowed_invokers IS NULL OR json_valid(allowed_invokers));
     `,
   },
+  {
+    name: '025_session_events_event_type_index',
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_session_events_event_type
+        ON session_events(event_type, session_id);
+    `,
+  },
 ]
 
 /**

@@ -4,6 +4,10 @@ import {
   sessionsPerDayQuerySchema,
   durationPercentilesQuerySchema,
   pipelineStageDurationQuerySchema,
+  mostFrequentReadsQuerySchema,
+  toolCallsPerSessionQuerySchema,
+  slowestToolsQuerySchema,
+  toolCallVolumeQuerySchema,
 } from '../schemas/analytics'
 
 export async function analyticsRoutes(fastify: FastifyInstance) {
@@ -44,6 +48,62 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
     try {
       const { project_id, days } = parseResult.data
       return analyticsService.pipelineStageDuration(project_id, days)
+    } catch (error) {
+      throw error
+    }
+  })
+
+  fastify.get('/analytics/most-frequent-reads', async (request, reply) => {
+    const parseResult = mostFrequentReadsQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    try {
+      const { project_id, days, limit } = parseResult.data
+      return analyticsService.mostFrequentReads(project_id, days, limit)
+    } catch (error) {
+      throw error
+    }
+  })
+
+  fastify.get('/analytics/tool-calls-per-session', async (request, reply) => {
+    const parseResult = toolCallsPerSessionQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    try {
+      const { project_id, days, agent_id } = parseResult.data
+      return analyticsService.toolCallsPerSession(project_id, days, agent_id)
+    } catch (error) {
+      throw error
+    }
+  })
+
+  fastify.get('/analytics/slowest-tools', async (request, reply) => {
+    const parseResult = slowestToolsQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    try {
+      const { project_id, days } = parseResult.data
+      return analyticsService.slowestTools(project_id, days)
+    } catch (error) {
+      throw error
+    }
+  })
+
+  fastify.get('/analytics/tool-call-volume', async (request, reply) => {
+    const parseResult = toolCallVolumeQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    try {
+      const { project_id, days } = parseResult.data
+      return analyticsService.toolCallVolume(project_id, days)
     } catch (error) {
       throw error
     }

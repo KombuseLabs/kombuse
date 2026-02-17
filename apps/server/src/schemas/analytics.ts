@@ -20,3 +20,33 @@ export const pipelineStageDurationQuerySchema = z.object({
 })
 
 export type PipelineStageDurationQuery = z.infer<typeof pipelineStageDurationQuerySchema>
+
+export const mostFrequentReadsQuerySchema = z.object({
+  project_id: z.string().min(1),
+  days: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+})
+
+export type MostFrequentReadsQuery = z.infer<typeof mostFrequentReadsQuerySchema>
+
+export const toolCallsPerSessionQuerySchema = z.object({
+  project_id: z.string().min(1),
+  days: z.coerce.number().int().positive().optional(),
+  agent_id: z.string().min(1).optional(),
+})
+
+export type ToolCallsPerSessionQuery = z.infer<typeof toolCallsPerSessionQuerySchema>
+
+export const slowestToolsQuerySchema = z.object({
+  project_id: z.string().min(1),
+  days: z.coerce.number().int().positive().optional(),
+})
+
+export type SlowestToolsQuery = z.infer<typeof slowestToolsQuerySchema>
+
+export const toolCallVolumeQuerySchema = z.object({
+  project_id: z.string().min(1),
+  days: z.coerce.number().int().positive().optional(),
+})
+
+export type ToolCallVolumeQuery = z.infer<typeof toolCallVolumeQuerySchema>

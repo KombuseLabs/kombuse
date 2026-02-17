@@ -24,3 +24,35 @@ export function usePipelineStageDuration(projectId: string, days?: number) {
     enabled: !!projectId,
   })
 }
+
+export function useMostFrequentReads(projectId: string, days?: number, limit?: number) {
+  return useQuery({
+    queryKey: ['analytics', 'most-frequent-reads', projectId, days, limit],
+    queryFn: () => analyticsApi.mostFrequentReads(projectId, days, limit),
+    enabled: !!projectId,
+  })
+}
+
+export function useToolCallsPerSession(projectId: string, days?: number, agentId?: string) {
+  return useQuery({
+    queryKey: ['analytics', 'tool-calls-per-session', projectId, days, agentId],
+    queryFn: () => analyticsApi.toolCallsPerSession(projectId, days, agentId),
+    enabled: !!projectId,
+  })
+}
+
+export function useSlowestTools(projectId: string, days?: number) {
+  return useQuery({
+    queryKey: ['analytics', 'slowest-tools', projectId, days],
+    queryFn: () => analyticsApi.slowestTools(projectId, days),
+    enabled: !!projectId,
+  })
+}
+
+export function useToolCallVolume(projectId: string, days?: number) {
+  return useQuery({
+    queryKey: ['analytics', 'tool-call-volume', projectId, days],
+    queryFn: () => analyticsApi.toolCallVolume(projectId, days),
+    enabled: !!projectId,
+  })
+}

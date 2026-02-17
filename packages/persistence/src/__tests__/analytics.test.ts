@@ -253,4 +253,363 @@ describe('analyticsRepository', () => {
       expect(analyticsRepository.pipelineStageDuration(TEST_PROJECT_ID, 90)).toHaveLength(1)
     })
   })
+
+  describe('mostFrequentReads', () => {
+    it('should return empty array when no read events exist', () => {
+      const result = analyticsRepository.mostFrequentReads(TEST_PROJECT_ID)
+      expect(result).toHaveLength(0)
+    })
+
+    it('should count reads grouped by file path', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+
+      // Insert tool_use events for Read tool
+      for (let i = 0; i < 3; i++) {
+        db.prepare(
+          `INSERT INTO session_events (session_id, seq, event_type, payload)
+           VALUES (?, ?, 'tool_use', ?)`
+        ).run(session.id, i + 1, JSON.stringify({
+          name: 'Read',
+          id: `read-${i}`,
+          input: { file_path: '/src/index.ts' },
+        }))
+      }
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, ?, 'tool_use', ?)`
+      ).run(session.id, 4, JSON.stringify({
+        name: 'Read',
+        id: 'read-other',
+        input: { file_path: '/src/utils.ts' },
+      }))
+
+      const result = analyticsRepository.mostFrequentReads(TEST_PROJECT_ID, 365)
+
+      expect(result).toHaveLength(2)
+      expect(result[0]).toMatchObject({ file_path: '/src/index.ts', read_count: 3 })
+      expect(result[1]).toMatchObject({ file_path: '/src/utils.ts', read_count: 1 })
+    })
+
+    it('should only include reads for the given project', () => {
+      const otherProjectId = 'other-project'
+      db.prepare(
+        `INSERT INTO projects (id, name, owner_id) VALUES (?, 'Other', ?)`
+      ).run(otherProjectId, TEST_USER_ID)
+
+      const s1 = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+      const s2 = sessionsRepository.create({ project_id: otherProjectId })
+
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s1.id, JSON.stringify({ name: 'Read', id: 'r1', input: { file_path: '/a.ts' } }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s2.id, JSON.stringify({ name: 'Read', id: 'r2', input: { file_path: '/b.ts' } }))
+
+      const result = analyticsRepository.mostFrequentReads(TEST_PROJECT_ID, 365)
+      expect(result).toHaveLength(1)
+      expect(result[0]!.file_path).toBe('/a.ts')
+    })
+
+    it('should respect the days parameter', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload, created_at)
+         VALUES (?, 1, 'tool_use', ?, date('now', '-60 days'))`
+      ).run(session.id, JSON.stringify({ name: 'Read', id: 'r1', input: { file_path: '/old.ts' } }))
+
+      expect(analyticsRepository.mostFrequentReads(TEST_PROJECT_ID, 30)).toHaveLength(0)
+      expect(analyticsRepository.mostFrequentReads(TEST_PROJECT_ID, 90)).toHaveLength(1)
+    })
+
+    it('should respect the limit parameter', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+      for (let i = 0; i < 5; i++) {
+        db.prepare(
+          `INSERT INTO session_events (session_id, seq, event_type, payload)
+           VALUES (?, ?, 'tool_use', ?)`
+        ).run(session.id, i + 1, JSON.stringify({
+          name: 'Read',
+          id: `r-${i}`,
+          input: { file_path: `/file-${i}.ts` },
+        }))
+      }
+
+      const result = analyticsRepository.mostFrequentReads(TEST_PROJECT_ID, 365, 3)
+      expect(result).toHaveLength(3)
+    })
+  })
+
+  describe('toolCallsPerSession', () => {
+    beforeEach(() => {
+      db.prepare(
+        `INSERT INTO agents (id, system_prompt, is_enabled) VALUES (?, 'test prompt', 1)`
+      ).run(TEST_AGENT_ID)
+    })
+
+    it('should return empty array when no tool calls exist', () => {
+      const result = analyticsRepository.toolCallsPerSession(TEST_PROJECT_ID)
+      expect(result).toHaveLength(0)
+    })
+
+    it('should count tool calls grouped by session', () => {
+      const s1 = sessionsRepository.create({ project_id: TEST_PROJECT_ID, agent_id: TEST_AGENT_ID })
+      const s2 = sessionsRepository.create({ project_id: TEST_PROJECT_ID, agent_id: TEST_AGENT_ID })
+
+      for (let i = 0; i < 3; i++) {
+        db.prepare(
+          `INSERT INTO session_events (session_id, seq, event_type, payload)
+           VALUES (?, ?, 'tool_use', ?)`
+        ).run(s1.id, i + 1, JSON.stringify({ name: 'Bash', id: `t-${i}` }))
+      }
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s2.id, JSON.stringify({ name: 'Read', id: 't-x' }))
+
+      const result = analyticsRepository.toolCallsPerSession(TEST_PROJECT_ID, 365)
+
+      expect(result).toHaveLength(2)
+      expect(result[0]!.call_count).toBe(3)
+      expect(result[0]!.agent_name).toBe('Test Agent')
+      expect(result[1]!.call_count).toBe(1)
+    })
+
+    it('should only include calls for the given project', () => {
+      const otherProjectId = 'other-project'
+      db.prepare(
+        `INSERT INTO projects (id, name, owner_id) VALUES (?, 'Other', ?)`
+      ).run(otherProjectId, TEST_USER_ID)
+
+      const s1 = sessionsRepository.create({ project_id: TEST_PROJECT_ID, agent_id: TEST_AGENT_ID })
+      const s2 = sessionsRepository.create({ project_id: otherProjectId, agent_id: TEST_AGENT_ID })
+
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s1.id, JSON.stringify({ name: 'Read', id: 't1' }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s2.id, JSON.stringify({ name: 'Read', id: 't2' }))
+
+      const result = analyticsRepository.toolCallsPerSession(TEST_PROJECT_ID, 365)
+      expect(result).toHaveLength(1)
+    })
+
+    it('should filter by agent_id when provided', () => {
+      const otherAgentId = 'other-agent'
+      db.prepare(
+        `INSERT INTO profiles (id, type, name) VALUES (?, 'agent', 'Other Agent')`
+      ).run(otherAgentId)
+      db.prepare(
+        `INSERT INTO agents (id, system_prompt, is_enabled) VALUES (?, 'test', 1)`
+      ).run(otherAgentId)
+
+      const s1 = sessionsRepository.create({ project_id: TEST_PROJECT_ID, agent_id: TEST_AGENT_ID })
+      const s2 = sessionsRepository.create({ project_id: TEST_PROJECT_ID, agent_id: otherAgentId })
+
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s1.id, JSON.stringify({ name: 'Read', id: 't1' }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s2.id, JSON.stringify({ name: 'Read', id: 't2' }))
+
+      const all = analyticsRepository.toolCallsPerSession(TEST_PROJECT_ID, 365)
+      expect(all).toHaveLength(2)
+
+      const filtered = analyticsRepository.toolCallsPerSession(TEST_PROJECT_ID, 365, TEST_AGENT_ID)
+      expect(filtered).toHaveLength(1)
+      expect(filtered[0]!.agent_id).toBe(TEST_AGENT_ID)
+    })
+
+    it('should respect the days parameter', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID, agent_id: TEST_AGENT_ID })
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload, created_at)
+         VALUES (?, 1, 'tool_use', ?, date('now', '-60 days'))`
+      ).run(session.id, JSON.stringify({ name: 'Read', id: 'old' }))
+
+      expect(analyticsRepository.toolCallsPerSession(TEST_PROJECT_ID, 30)).toHaveLength(0)
+      expect(analyticsRepository.toolCallsPerSession(TEST_PROJECT_ID, 90)).toHaveLength(1)
+    })
+  })
+
+  describe('slowestTools', () => {
+    it('should return empty array when no tool calls exist', () => {
+      const result = analyticsRepository.slowestTools(TEST_PROJECT_ID)
+      expect(result).toHaveLength(0)
+    })
+
+    it('should compute percentiles for tools with matching results', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+
+      for (let i = 0; i < 5; i++) {
+        const toolUseId = `tu-${i}`
+        const baseTs = 1000000 + i * 10000
+        db.prepare(
+          `INSERT INTO session_events (session_id, seq, event_type, payload)
+           VALUES (?, ?, 'tool_use', ?)`
+        ).run(session.id, i * 2 + 1, JSON.stringify({
+          name: 'Bash',
+          id: toolUseId,
+          timestamp: baseTs,
+        }))
+        db.prepare(
+          `INSERT INTO session_events (session_id, seq, event_type, payload)
+           VALUES (?, ?, 'tool_result', ?)`
+        ).run(session.id, i * 2 + 2, JSON.stringify({
+          toolUseId,
+          timestamp: baseTs + 500 + i * 100,
+        }))
+      }
+
+      const result = analyticsRepository.slowestTools(TEST_PROJECT_ID, 365)
+
+      expect(result).toHaveLength(1)
+      const row = result[0]!
+      expect(row.tool_name).toBe('Bash')
+      expect(row.count).toBe(5)
+      expect(row.avg).toBeGreaterThan(0)
+      expect(row.p50).toBeGreaterThan(0)
+      expect(row.p90).toBeGreaterThanOrEqual(row.p50)
+      expect(row.p99).toBeGreaterThanOrEqual(row.p90)
+    })
+
+    it('should exclude tool_use events without matching tool_result', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+
+      // tool_use with matching result
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(session.id, JSON.stringify({ name: 'Read', id: 'matched', timestamp: 1000 }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 2, 'tool_result', ?)`
+      ).run(session.id, JSON.stringify({ toolUseId: 'matched', timestamp: 2000 }))
+
+      // tool_use without result (aborted)
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 3, 'tool_use', ?)`
+      ).run(session.id, JSON.stringify({ name: 'Read', id: 'orphan', timestamp: 3000 }))
+
+      const result = analyticsRepository.slowestTools(TEST_PROJECT_ID, 365)
+      expect(result).toHaveLength(1)
+      expect(result[0]!.count).toBe(1)
+    })
+
+    it('should only include calls for the given project', () => {
+      const otherProjectId = 'other-project'
+      db.prepare(
+        `INSERT INTO projects (id, name, owner_id) VALUES (?, 'Other', ?)`
+      ).run(otherProjectId, TEST_USER_ID)
+
+      const session = sessionsRepository.create({ project_id: otherProjectId })
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(session.id, JSON.stringify({ name: 'Bash', id: 'tu1', timestamp: 1000 }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 2, 'tool_result', ?)`
+      ).run(session.id, JSON.stringify({ toolUseId: 'tu1', timestamp: 2000 }))
+
+      const result = analyticsRepository.slowestTools(TEST_PROJECT_ID, 365)
+      expect(result).toHaveLength(0)
+    })
+
+    it('should respect the days parameter', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload, created_at)
+         VALUES (?, 1, 'tool_use', ?, date('now', '-60 days'))`
+      ).run(session.id, JSON.stringify({ name: 'Bash', id: 'old', timestamp: 1000 }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload, created_at)
+         VALUES (?, 2, 'tool_result', ?, date('now', '-60 days'))`
+      ).run(session.id, JSON.stringify({ toolUseId: 'old', timestamp: 2000 }))
+
+      expect(analyticsRepository.slowestTools(TEST_PROJECT_ID, 30)).toHaveLength(0)
+      expect(analyticsRepository.slowestTools(TEST_PROJECT_ID, 90)).toHaveLength(1)
+    })
+  })
+
+  describe('toolCallVolume', () => {
+    it('should return empty array when no tool calls exist', () => {
+      const result = analyticsRepository.toolCallVolume(TEST_PROJECT_ID)
+      expect(result).toHaveLength(0)
+    })
+
+    it('should count calls grouped by tool name', () => {
+      const s1 = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+      const s2 = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+
+      // 3 Bash calls across 2 sessions
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s1.id, JSON.stringify({ name: 'Bash', id: 'b1' }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 2, 'tool_use', ?)`
+      ).run(s1.id, JSON.stringify({ name: 'Bash', id: 'b2' }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s2.id, JSON.stringify({ name: 'Bash', id: 'b3' }))
+
+      // 1 Read call in 1 session
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 3, 'tool_use', ?)`
+      ).run(s1.id, JSON.stringify({ name: 'Read', id: 'r1' }))
+
+      const result = analyticsRepository.toolCallVolume(TEST_PROJECT_ID, 365)
+
+      expect(result).toHaveLength(2)
+      expect(result[0]).toMatchObject({ tool_name: 'Bash', call_count: 3, session_count: 2 })
+      expect(result[1]).toMatchObject({ tool_name: 'Read', call_count: 1, session_count: 1 })
+    })
+
+    it('should only include calls for the given project', () => {
+      const otherProjectId = 'other-project'
+      db.prepare(
+        `INSERT INTO projects (id, name, owner_id) VALUES (?, 'Other', ?)`
+      ).run(otherProjectId, TEST_USER_ID)
+
+      const s1 = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+      const s2 = sessionsRepository.create({ project_id: otherProjectId })
+
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s1.id, JSON.stringify({ name: 'Read', id: 't1' }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(s2.id, JSON.stringify({ name: 'Read', id: 't2' }))
+
+      const result = analyticsRepository.toolCallVolume(TEST_PROJECT_ID, 365)
+      expect(result).toHaveLength(1)
+      expect(result[0]!.call_count).toBe(1)
+    })
+
+    it('should respect the days parameter', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload, created_at)
+         VALUES (?, 1, 'tool_use', ?, date('now', '-60 days'))`
+      ).run(session.id, JSON.stringify({ name: 'Read', id: 'old' }))
+
+      expect(analyticsRepository.toolCallVolume(TEST_PROJECT_ID, 30)).toHaveLength(0)
+      expect(analyticsRepository.toolCallVolume(TEST_PROJECT_ID, 90)).toHaveLength(1)
+    })
+  })
 })

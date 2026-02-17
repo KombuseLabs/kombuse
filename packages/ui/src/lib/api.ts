@@ -922,6 +922,33 @@ export type PipelineStageDurationEntry = {
   count: number
 }
 
+export type ToolReadFrequencyEntry = {
+  file_path: string
+  read_count: number
+}
+
+export type ToolCallsPerSessionEntry = {
+  session_id: string
+  agent_id: string | null
+  agent_name: string
+  call_count: number
+}
+
+export type ToolDurationPercentileEntry = {
+  tool_name: string
+  count: number
+  avg: number
+  p50: number
+  p90: number
+  p99: number
+}
+
+export type ToolCallVolumeEntry = {
+  tool_name: string
+  call_count: number
+  session_count: number
+}
+
 export const analyticsApi = {
   async sessionsPerDay(projectId: string, days?: number): Promise<SessionsPerDayEntry[]> {
     const params = new URLSearchParams()
@@ -954,6 +981,52 @@ export const analyticsApi = {
 
     const response = await fetch(`${API_BASE}/analytics/pipeline-stage-duration?${params}`)
     return handleResponse<PipelineStageDurationEntry[]>(response)
+  },
+
+  async mostFrequentReads(
+    projectId: string,
+    days?: number,
+    limit?: number
+  ): Promise<ToolReadFrequencyEntry[]> {
+    const params = new URLSearchParams()
+    params.set('project_id', projectId)
+    if (days !== undefined) params.set('days', String(days))
+    if (limit !== undefined) params.set('limit', String(limit))
+
+    const response = await fetch(`${API_BASE}/analytics/most-frequent-reads?${params}`)
+    return handleResponse<ToolReadFrequencyEntry[]>(response)
+  },
+
+  async toolCallsPerSession(
+    projectId: string,
+    days?: number,
+    agentId?: string
+  ): Promise<ToolCallsPerSessionEntry[]> {
+    const params = new URLSearchParams()
+    params.set('project_id', projectId)
+    if (days !== undefined) params.set('days', String(days))
+    if (agentId !== undefined) params.set('agent_id', agentId)
+
+    const response = await fetch(`${API_BASE}/analytics/tool-calls-per-session?${params}`)
+    return handleResponse<ToolCallsPerSessionEntry[]>(response)
+  },
+
+  async slowestTools(projectId: string, days?: number): Promise<ToolDurationPercentileEntry[]> {
+    const params = new URLSearchParams()
+    params.set('project_id', projectId)
+    if (days !== undefined) params.set('days', String(days))
+
+    const response = await fetch(`${API_BASE}/analytics/slowest-tools?${params}`)
+    return handleResponse<ToolDurationPercentileEntry[]>(response)
+  },
+
+  async toolCallVolume(projectId: string, days?: number): Promise<ToolCallVolumeEntry[]> {
+    const params = new URLSearchParams()
+    params.set('project_id', projectId)
+    if (days !== undefined) params.set('days', String(days))
+
+    const response = await fetch(`${API_BASE}/analytics/tool-call-volume?${params}`)
+    return handleResponse<ToolCallVolumeEntry[]>(response)
   },
 }
 
