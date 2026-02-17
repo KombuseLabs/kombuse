@@ -901,6 +901,19 @@ export const pluginsApi = {
   },
 }
 
+export type SessionsPerDayEntry = { date: string; count: number }
+
+export const analyticsApi = {
+  async sessionsPerDay(projectId: string, days?: number): Promise<SessionsPerDayEntry[]> {
+    const params = new URLSearchParams()
+    params.set('project_id', projectId)
+    if (days !== undefined) params.set('days', String(days))
+
+    const response = await fetch(`${API_BASE}/analytics/sessions-per-day?${params}`)
+    return handleResponse<SessionsPerDayEntry[]>(response)
+  },
+}
+
 export const syncApi = {
   async getState(): Promise<SyncState> {
     const response = await fetch(`${API_BASE}/sync/state`)

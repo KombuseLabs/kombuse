@@ -17,6 +17,7 @@ import { Labels } from "./routes/labels";
 import { Permissions } from "./routes/permissions";
 import { DatabasePage } from "./routes/database";
 import { PluginsPage } from "./routes/plugins";
+import { Analytics } from "./routes/analytics";
 import { ClaudeCodeSessionViewer } from "./routes/claude-code-session";
 import { Profile } from "./routes/profile";
 import { Settings } from "./routes/settings";
@@ -84,6 +85,7 @@ function AppContent() {
             <Route path="permissions" element={<Permissions />} />
             <Route path="database" element={<DatabasePage />} />
             <Route path="plugins" element={<PluginsPage />} />
+            <Route path="analytics" element={<Analytics />} />
           </Route>
 
           {/* Global agents (outside project context) */}

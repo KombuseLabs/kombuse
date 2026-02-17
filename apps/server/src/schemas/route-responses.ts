@@ -350,6 +350,18 @@ registerSuccessSchema('GET', '/api/projects/:id', projectSchema)
 registerSuccessSchema('POST', '/api/projects', projectSchema)
 registerSuccessSchema('PATCH', '/api/projects/:id', projectSchema)
 
+// Analytics routes
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/sessions-per-day',
+  z.array(
+    z.object({
+      date: z.string().min(1),
+      count: z.number().int().nonnegative(),
+    })
+  )
+)
+
 // Session routes
 registerSuccessSchema('GET', '/api/sessions', z.array(publicSessionSchema))
 registerSuccessSchema('GET', '/api/sessions/diagnostics', sessionDiagnosticsSchema)

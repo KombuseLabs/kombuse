@@ -32,6 +32,7 @@ const SIDEBAR_EVENTS_SETTING_KEY = 'sidebar.hidden.events'
 const SIDEBAR_PERMISSIONS_SETTING_KEY = 'sidebar.hidden.permissions'
 const SIDEBAR_DATABASE_SETTING_KEY = 'sidebar.hidden.database'
 const SIDEBAR_PLUGINS_SETTING_KEY = 'sidebar.hidden.plugins'
+const SIDEBAR_ANALYTICS_SETTING_KEY = 'sidebar.hidden.analytics'
 const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
@@ -54,6 +55,7 @@ export function Settings() {
   const { data: permissionsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PERMISSIONS_SETTING_KEY)
   const { data: databaseSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_DATABASE_SETTING_KEY)
   const { data: pluginsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PLUGINS_SETTING_KEY)
+  const { data: analyticsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_ANALYTICS_SETTING_KEY)
   const { data: defaultBackendSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_BACKEND_SETTING_KEY)
   const { data: defaultModelSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_MODEL_SETTING_KEY)
   const { data: maxChainDepthSetting } = useProfileSetting(USER_PROFILE_ID, AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY)
@@ -68,6 +70,7 @@ export function Settings() {
   const showPermissions = permissionsSetting?.setting_value !== 'true'
   const showDatabase = databaseSetting?.setting_value === 'false'
   const showPlugins = pluginsSetting?.setting_value === 'false'
+  const showAnalytics = analyticsSetting?.setting_value === 'false'
   const defaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value)
   const codexMcpEnabled = codexMcpStatus?.enabled === true
 
@@ -210,6 +213,20 @@ export function Settings() {
                   upsertSetting.mutate({
                     profile_id: USER_PROFILE_ID,
                     setting_key: SIDEBAR_PLUGINS_SETTING_KEY,
+                    setting_value: checked ? 'false' : 'true',
+                  })
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="sidebar-analytics" className="font-normal">Show Analytics</Label>
+              <Switch
+                id="sidebar-analytics"
+                checked={showAnalytics}
+                onCheckedChange={(checked) => {
+                  upsertSetting.mutate({
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: SIDEBAR_ANALYTICS_SETTING_KEY,
                     setting_value: checked ? 'false' : 'true',
                   })
                 }}

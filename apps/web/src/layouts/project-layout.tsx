@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useParams } from "react-router-dom";
 import { Sidebar, SidebarItem, BackendStatusIndicator } from "@kombuse/ui/components";
 import { useProject, useProfileSetting, useAppContext } from "@kombuse/ui/hooks";
-import { Ticket, Bot, MessageSquare, History, Tags, Shield, Database, Puzzle } from "lucide-react";
+import { Ticket, Bot, MessageSquare, History, Tags, Shield, Database, Puzzle, BarChart3 } from "lucide-react";
 
 export function ProjectLayout() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -18,10 +18,12 @@ export function ProjectLayout() {
   const { data: permissionsSetting } = useProfileSetting("user-1", "sidebar.hidden.permissions");
   const { data: databaseSetting } = useProfileSetting("user-1", "sidebar.hidden.database");
   const { data: pluginsSetting } = useProfileSetting("user-1", "sidebar.hidden.plugins");
+  const { data: analyticsSetting } = useProfileSetting("user-1", "sidebar.hidden.analytics");
   const showEvents = eventsSetting?.setting_value === "false";
   const showPermissions = permissionsSetting?.setting_value === "false";
   const showDatabase = databaseSetting?.setting_value === "false";
   const showPlugins = pluginsSetting?.setting_value === "false";
+  const showAnalytics = analyticsSetting?.setting_value === "false";
 
   if (!projectId) {
     return (
@@ -87,6 +89,14 @@ export function ProjectLayout() {
             icon={<Puzzle className="size-4" />}
             label="Plugins"
             to={`/projects/${projectId}/plugins`}
+            variant="rail"
+          />
+        )}
+        {showAnalytics && (
+          <SidebarItem
+            icon={<BarChart3 className="size-4" />}
+            label="Analytics"
+            to={`/projects/${projectId}/analytics`}
             variant="rail"
           />
         )}

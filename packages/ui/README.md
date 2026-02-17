@@ -47,6 +47,7 @@ src/
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
+│   ├── use-analytics.ts       - Analytics query hooks (sessions per day)
 │   ├── use-plugins.ts         - Plugin export, install, lifecycle hooks
 │   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-models.ts          - Model catalog query hook
@@ -1376,6 +1377,16 @@ const { data: permissions, isLoading } = usePermissions('project-id', {
   limit: 50,
   offset: 0,
 })
+```
+
+### Analytics Hooks
+
+```typescript
+import { useSessionsPerDay } from '@kombuse/ui/hooks'
+
+// Fetch daily session counts for a project (default: last 30 days)
+const { data: sessionsPerDay, isLoading } = useSessionsPerDay('project-id', 30)
+// Returns Array<{ date: string; count: number }> sorted ascending by date
 ```
 
 ### Database Hooks
