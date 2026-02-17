@@ -1,9 +1,9 @@
 import Database from 'better-sqlite3'
 import type { Database as DatabaseType } from 'better-sqlite3'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import { toSlug } from '@kombuse/types'
-import { loadKombuseConfig, getKombuseDir } from './config'
+import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config'
 
 export type { Database as DatabaseType } from 'better-sqlite3'
 
@@ -24,8 +24,11 @@ export function setDatabase(database: DatabaseType): void {
 export function initializeDatabase(dbPath?: string): DatabaseType {
   const defaultPath = join(getKombuseDir(), 'data.db')
   const config = loadKombuseConfig()
-  const resolvedPath = dbPath ?? config.database?.path ?? defaultPath
-
+  const configPath = config.database?.path !== undefined
+    ? resolveDbPath(config.database.path)
+    : undefined
+  const resolvedPath = dbPath ?? configPath ?? defaultPath
+  console.log(`Initializing database at ${resolve(resolvedPath)}`)
   // Ensure directory exists
   const dataDir = join(resolvedPath, '..')
   if (!existsSync(dataDir)) {

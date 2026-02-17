@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
+import { join, resolve, isAbsolute } from 'path'
 import type { KombuseConfig } from '@kombuse/types'
 
 export function getKombuseDir(): string {
@@ -7,6 +7,13 @@ export function getKombuseDir(): string {
     process.env.HOME || process.env.USERPROFILE || '.',
     '.kombuse'
   )
+}
+
+export function resolveDbPath(rawPath: string): string {
+  if (isAbsolute(rawPath)) {
+    return rawPath
+  }
+  return resolve(getKombuseDir(), rawPath)
 }
 
 export function loadKombuseConfig(configPath?: string): KombuseConfig {

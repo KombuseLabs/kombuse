@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { writeFileSync, mkdirSync, rmSync } from 'fs'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { tmpdir } from 'os'
-import { loadKombuseConfig, getKombuseDir } from '../config'
+import { loadKombuseConfig, getKombuseDir, resolveDbPath } from '../config'
 
 describe('loadKombuseConfig', () => {
   let tempDir: string
@@ -91,5 +91,27 @@ describe('getKombuseDir', () => {
   it('should return a path ending with .kombuse', () => {
     const dir = getKombuseDir()
     expect(dir.endsWith('.kombuse')).toBe(true)
+  })
+})
+
+describe('resolveDbPath', () => {
+  it('should return an absolute path unchanged', () => {
+    expect(resolveDbPath('/var/data/custom.db')).toBe('/var/data/custom.db')
+  })
+
+  it('should resolve a relative path against ~/.kombuse/', () => {
+    const result = resolveDbPath('data/custom.db')
+    expect(result).toBe(join(getKombuseDir(), 'data/custom.db'))
+  })
+
+  it('should resolve a dotdot path against ~/.kombuse/', () => {
+    const result = resolveDbPath('../sibling/custom.db')
+    const expected = resolve(getKombuseDir(), '../sibling/custom.db')
+    expect(result).toBe(expected)
+  })
+
+  it('should resolve a bare filename against ~/.kombuse/', () => {
+    const result = resolveDbPath('mydb.db')
+    expect(result).toBe(join(getKombuseDir(), 'mydb.db'))
   })
 })
