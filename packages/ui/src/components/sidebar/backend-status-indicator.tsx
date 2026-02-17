@@ -26,7 +26,7 @@ function BackendStatusIndicator() {
   if (isLoading || !statuses) return null;
 
   const hasUnavailable = statuses.some((s) => !s.available);
-  const firstVersion = statuses.find((s) => s.available && s.version);
+  const firstAvailable = statuses.find((s) => s.available);
 
   return (
     <Popover>
@@ -43,9 +43,11 @@ function BackendStatusIndicator() {
               />
             ))}
           </div>
-          {firstVersion && (
-            <span className="text-[10px] leading-tight text-muted-foreground">
-              v{firstVersion.version}
+          {firstAvailable && (
+            <span className="text-xs leading-tight text-muted-foreground">
+              {firstAvailable.version
+                ? `v${firstAvailable.version}`
+                : "installed"}
             </span>
           )}
         </button>

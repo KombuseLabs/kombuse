@@ -494,6 +494,23 @@ Props:
 - `rail` `Sidebar` renders a rounded, content-height shell with increased vertical spacing between icon items.
 - `rail` `SidebarItem` renders as a circular bordered icon button (`size-12`) with tooltip labels and a stronger active border/ring state.
 
+### BackendStatusIndicator
+
+```typescript
+import { BackendStatusIndicator } from '@kombuse/ui/components'
+
+// Renders in the sidebar footer — shows colored dots per backend
+// and the version of the first available backend (or "installed" if
+// version detection fails). Clicking opens a popover with details.
+<Sidebar variant="rail" footer={<BackendStatusIndicator />}>
+  {/* ... */}
+</Sidebar>
+```
+
+- Always shows a version label when at least one backend is available (`text-xs`)
+- Falls back to "installed" when the version string is null
+- Popover lists each backend with availability dot, name, and version/status
+
 ### Label Components
 
 ```typescript

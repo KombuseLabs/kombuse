@@ -1,6 +1,13 @@
 import { z } from 'zod'
 import { backendTypeSchema } from './agents'
 
+export const backendStatusSchema = z.object({
+  backendType: backendTypeSchema,
+  available: z.boolean(),
+  version: z.string().nullable(),
+  path: z.string().nullable(),
+})
+
 export const timestampSchema = z.string().min(1)
 export const nullableTimestampSchema = timestampSchema.nullable()
 

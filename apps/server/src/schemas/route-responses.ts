@@ -5,6 +5,7 @@ import {
   agentInvocationSchema,
   agentProcessEventResponseSchema,
   agentSchema,
+  backendStatusSchema,
   backendTypeSchema,
   agentTriggerSchema,
   attachmentSchema,
@@ -265,6 +266,10 @@ registerSuccessSchema('GET', '/api/plugins/:id', pluginSchema)
 registerSuccessSchema('POST', '/api/plugins/install', pluginInstallResultSchema)
 registerSuccessSchema('PATCH', '/api/plugins/:id', pluginSchema)
 registerSuccessSchema('POST', '/api/plugins/export', pluginExportResultSchema)
+
+// Backend status routes
+registerSuccessSchema('GET', '/api/backend-status', z.array(backendStatusSchema))
+registerSuccessSchema('POST', '/api/backend-status/refresh', z.array(backendStatusSchema))
 
 // Attachment routes
 registerSuccessSchema('POST', '/api/tickets/:ticketId/attachments', attachmentSchema)
