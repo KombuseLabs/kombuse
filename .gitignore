@@ -44,6 +44,7 @@ logs
 
 # Claude
 CLAUDE.md
+AGENTS.md
 
 specs
 docs/*
@@ -51,8 +52,9 @@ docs/*
 docs/architecture/*
 !docs/architecture/agent-lifecycle.md
 !docs/architecture/websocket.md
-!docs/db.md
+!docs/database.md
 !docs/real-time.md
 .mcp.json
 .claude
 kombuse.db
+.kombuse
