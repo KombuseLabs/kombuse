@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, readFileSync, existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -76,6 +76,18 @@ describe('agentExportService', () => {
       const files = agentExportService.serializeAll()
       expect(files).toHaveLength(1)
       expect(files[0]!.filename).toBe('real-agent.md')
+    })
+
+    it('should fetch agents with a limit greater than the default 100', () => {
+      createTestAgent({ id: 'spy-agent' })
+
+      const listSpy = vi.spyOn(agentsRepository, 'list')
+      agentExportService.serializeAll()
+
+      expect(listSpy).toHaveBeenCalledOnce()
+      const filters = listSpy.mock.calls[0]![0]
+      expect(filters?.limit).toBeGreaterThan(100)
+      listSpy.mockRestore()
     })
 
     it('should sort files by filename', () => {

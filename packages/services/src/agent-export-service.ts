@@ -28,7 +28,7 @@ const PROMOTED_CONFIG_KEYS = ['type', 'model', 'backend_type', 'enabled_for_chat
 
 export class AgentExportService implements IAgentExportService {
   serializeAll(): AgentExportFile[] {
-    const agents = agentsRepository.list()
+    const agents = agentsRepository.list({ limit: Number.MAX_SAFE_INTEGER })
     const files: AgentExportFile[] = []
 
     for (const agent of agents) {
