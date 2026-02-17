@@ -952,6 +952,12 @@ const migrations: Array<{ name: string; sql: string; postMigrate?: (db: Database
       ALTER TABLE labels ADD COLUMN plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL;
     `,
   },
+  {
+    name: '024_trigger_allowed_invokers',
+    sql: `
+      ALTER TABLE agent_triggers ADD COLUMN allowed_invokers TEXT DEFAULT NULL CHECK (allowed_invokers IS NULL OR json_valid(allowed_invokers));
+    `,
+  },
 ]
 
 /**

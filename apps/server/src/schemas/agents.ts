@@ -1,5 +1,9 @@
 import { z } from 'zod'
-import { permissionSchema, agentConfigSchema } from '@kombuse/types/schemas'
+import {
+  permissionSchema,
+  agentConfigSchema,
+  allowedInvokerSchema,
+} from '@kombuse/types/schemas'
 import { UUID_REGEX, SLUG_REGEX } from '@kombuse/types'
 
 // Agent schemas
@@ -35,6 +39,7 @@ export const createTriggerSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).optional(),
   is_enabled: z.boolean().optional(),
   priority: z.coerce.number().int().nonnegative().optional(),
+  allowed_invokers: z.array(allowedInvokerSchema).optional(),
 })
 
 export const updateTriggerSchema = z.object({
@@ -43,6 +48,7 @@ export const updateTriggerSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).nullable().optional(),
   is_enabled: z.boolean().optional(),
   priority: z.coerce.number().int().nonnegative().optional(),
+  allowed_invokers: z.array(allowedInvokerSchema).nullable().optional(),
 })
 
 // Invocation filters schema

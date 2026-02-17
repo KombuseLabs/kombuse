@@ -89,6 +89,15 @@ export const agentFiltersSchema = z.object({
   offset: z.coerce.number().int().nonnegative().optional(),
 })
 
+export const allowedInvokerSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('any') }),
+  z.object({ type: z.literal('user') }),
+  z.object({
+    type: z.literal('agent'),
+    agent_id: z.string().min(1).optional(),
+  }),
+])
+
 export const agentTriggerSchema = z.object({
   id: z.number().int().positive(),
   agent_id: z.string().min(1),
@@ -97,6 +106,7 @@ export const agentTriggerSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).nullable(),
   is_enabled: z.boolean(),
   priority: z.number().int().nonnegative(),
+  allowed_invokers: z.array(allowedInvokerSchema).nullable(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
 })
@@ -108,6 +118,7 @@ export const createTriggerInputSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).optional(),
   is_enabled: z.boolean().optional(),
   priority: z.number().int().nonnegative().optional(),
+  allowed_invokers: z.array(allowedInvokerSchema).optional(),
 })
 
 export const updateTriggerInputSchema = z.object({
@@ -116,6 +127,7 @@ export const updateTriggerInputSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).nullable().optional(),
   is_enabled: z.boolean().optional(),
   priority: z.number().int().nonnegative().optional(),
+  allowed_invokers: z.array(allowedInvokerSchema).nullable().optional(),
 })
 
 export const invocationStatusSchema = z.enum(['pending', 'running', 'completed', 'failed'])

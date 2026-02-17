@@ -214,9 +214,9 @@ export const agentTriggersRepository = {
       .prepare(
         `
       INSERT INTO agent_triggers (
-        agent_id, event_type, project_id, conditions, is_enabled, priority, plugin_id
+        agent_id, event_type, project_id, conditions, is_enabled, priority, plugin_id, allowed_invokers
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
@@ -226,7 +226,8 @@ export const agentTriggersRepository = {
         input.conditions ? JSON.stringify(input.conditions) : null,
         input.is_enabled !== false ? 1 : 0,
         input.priority ?? 0,
-        input.plugin_id ?? null
+        input.plugin_id ?? null,
+        input.allowed_invokers ? JSON.stringify(input.allowed_invokers) : null
       )
 
     return this.get(result.lastInsertRowid as number) as AgentTrigger
@@ -260,6 +261,12 @@ export const agentTriggersRepository = {
     if (input.priority !== undefined) {
       fields.push('priority = ?')
       params.push(input.priority)
+    }
+    if (input.allowed_invokers !== undefined) {
+      fields.push('allowed_invokers = ?')
+      params.push(
+        input.allowed_invokers ? JSON.stringify(input.allowed_invokers) : null
+      )
     }
 
     if (fields.length === 0) return this.get(id)
@@ -507,6 +514,7 @@ interface RawAgentTrigger {
   is_enabled: number
   priority: number
   plugin_id: string | null
+  allowed_invokers: string | null
   created_at: string
   updated_at: string
 }
@@ -556,6 +564,9 @@ function mapAgentTrigger(row: RawAgentTrigger): AgentTrigger {
     is_enabled: row.is_enabled === 1,
     priority: row.priority,
     plugin_id: row.plugin_id,
+    allowed_invokers: row.allowed_invokers
+      ? JSON.parse(row.allowed_invokers)
+      : null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }

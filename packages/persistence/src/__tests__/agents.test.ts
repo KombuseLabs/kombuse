@@ -352,6 +352,31 @@ describe('agentTriggersRepository', () => {
 
       expect(trigger.is_enabled).toBe(false)
     })
+
+    it('should create a trigger with allowed_invokers', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        allowed_invokers: [
+          { type: 'user' },
+          { type: 'agent', agent_id: 'pipeline-orchestrator' },
+        ],
+      })
+
+      expect(trigger.allowed_invokers).toEqual([
+        { type: 'user' },
+        { type: 'agent', agent_id: 'pipeline-orchestrator' },
+      ])
+    })
+
+    it('should create a trigger with null allowed_invokers by default', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+      })
+
+      expect(trigger.allowed_invokers).toBeNull()
+    })
   })
 
   describe('get', () => {
@@ -472,6 +497,33 @@ describe('agentTriggersRepository', () => {
       })
 
       expect(updated?.conditions).toBeNull()
+    })
+
+    it('should update allowed_invokers', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+      })
+
+      const updated = agentTriggersRepository.update(trigger.id, {
+        allowed_invokers: [{ type: 'user' }],
+      })
+
+      expect(updated?.allowed_invokers).toEqual([{ type: 'user' }])
+    })
+
+    it('should clear allowed_invokers when set to null', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        allowed_invokers: [{ type: 'user' }],
+      })
+
+      const updated = agentTriggersRepository.update(trigger.id, {
+        allowed_invokers: null,
+      })
+
+      expect(updated?.allowed_invokers).toBeNull()
     })
   })
 

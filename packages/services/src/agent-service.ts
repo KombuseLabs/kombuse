@@ -4,6 +4,7 @@ import type {
   AgentTrigger,
   AgentInvocation,
   AgentInvocationFilters,
+  AllowedInvoker,
   CreateAgentInput,
   UpdateAgentInput,
   CreateAgentTriggerInput,
@@ -123,6 +124,36 @@ function matchConditions(
   }
 
   return true
+}
+
+/**
+ * Check if an event's actor is allowed to fire a trigger.
+ * Returns true if the invoker is allowed, false otherwise.
+ *
+ * - null or empty array = allow all (backwards-compatible)
+ * - Non-empty array = OR semantics (any matching rule = allowed)
+ */
+function checkAllowedInvokers(
+  allowedInvokers: AllowedInvoker[] | null,
+  event: Event
+): boolean {
+  if (!allowedInvokers || allowedInvokers.length === 0) {
+    return true
+  }
+
+  return allowedInvokers.some((rule) => {
+    switch (rule.type) {
+      case 'any':
+        return true
+      case 'user':
+        return event.actor_type === 'user'
+      case 'agent':
+        if (event.actor_type !== 'agent') return false
+        return !rule.agent_id || rule.agent_id === event.actor_id
+      default:
+        return false
+    }
+  })
 }
 
 /**
@@ -301,6 +332,10 @@ export class AgentService implements IAgentService {
           : event.payload
 
       if (!matchConditions(trigger.conditions, eventPayload)) {
+        continue
+      }
+
+      if (!checkAllowedInvokers(trigger.allowed_invokers, event)) {
         continue
       }
 

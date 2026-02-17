@@ -128,6 +128,7 @@ const EXPECTED_MIGRATIONS = [
   '021_session_event_kombuse_session_id',
   '022_agent_slug_and_descriptions',
   '023_plugins_table',
+  '024_trigger_allowed_invokers',
 ]
 
 describe('database', () => {

@@ -148,6 +148,15 @@ export interface AgentFilters {
 }
 
 /**
+ * Invoker selector for trigger ACL.
+ * Controls which profiles can fire a trigger via @-mention.
+ */
+export type AllowedInvoker =
+  | { type: 'any' }
+  | { type: 'user' }
+  | { type: 'agent'; agent_id?: string }
+
+/**
  * Agent trigger - defines when an agent should be invoked
  */
 export interface AgentTrigger {
@@ -164,6 +173,8 @@ export interface AgentTrigger {
   priority: number
   /** Plugin that installed this trigger, if any */
   plugin_id: string | null
+  /** Optional: restrict which invokers can fire this trigger (null = allow all) */
+  allowed_invokers: AllowedInvoker[] | null
   created_at: string
   updated_at: string
 }
@@ -179,6 +190,7 @@ export interface CreateAgentTriggerInput {
   is_enabled?: boolean
   priority?: number
   plugin_id?: string | null
+  allowed_invokers?: AllowedInvoker[]
 }
 
 /**
@@ -190,6 +202,7 @@ export interface UpdateAgentTriggerInput {
   conditions?: Record<string, unknown> | null
   is_enabled?: boolean
   priority?: number
+  allowed_invokers?: AllowedInvoker[] | null
 }
 
 /**
