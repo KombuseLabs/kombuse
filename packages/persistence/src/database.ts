@@ -956,7 +956,7 @@ const migrations: Array<{ name: string; sql: string; postMigrate?: (db: Database
 
 /**
  * Seed the database with default data for development.
- * Creates a default user profile and sample projects.
+ * Creates default profiles (user and anonymous agent).
  * Safe to call multiple times - only inserts if data doesn't exist.
  */
 export function seedDatabase(database: DatabaseType): void {
@@ -989,47 +989,4 @@ export function seedDatabase(database: DatabaseType): void {
     )
   }
 
-  // Seed default projects
-  const projects = [
-    {
-      id: '1',
-      name: 'Kombuse Core',
-      description: 'Core platform services and infrastructure',
-      repo_source: 'github',
-      repo_owner: 'kombuse',
-      repo_name: 'kombuse-core',
-    },
-    {
-      id: '2',
-      name: 'Kombuse Web',
-      description: 'Web application and frontend components',
-      repo_source: 'github',
-      repo_owner: 'kombuse',
-      repo_name: 'kombuse-web',
-    },
-    {
-      id: '3',
-      name: 'Kombuse API',
-      description: 'REST API and backend services',
-      repo_source: 'github',
-      repo_owner: 'kombuse',
-      repo_name: 'kombuse-api',
-    },
-  ]
-
-  const insertProject = database.prepare(`
-    INSERT OR IGNORE INTO projects (id, name, description, owner_id, repo_source, repo_owner, repo_name)
-    VALUES (?, ?, ?, 'user-1', ?, ?, ?)
-  `)
-
-  for (const project of projects) {
-    insertProject.run(
-      project.id,
-      project.name,
-      project.description,
-      project.repo_source,
-      project.repo_owner,
-      project.repo_name
-    )
-  }
 }
