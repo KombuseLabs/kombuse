@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Bell, Shield, Check, X, ExternalLink, FileCheck, HelpCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Bell, Shield, Check, X, ExternalLink, FileCheck, HelpCircle, Loader2 } from 'lucide-react'
 import { Button } from '../base/button'
 import { Badge } from '../base/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '../base/popover'
@@ -32,12 +32,27 @@ function isAllowedPromptsArray(value: unknown): value is { tool: string; prompt:
  * Clicking opens a popover with Allow/Deny actions for each permission.
  */
 export function NotificationBell({ onNavigate }: NotificationBellProps) {
-  const { pendingPermissions, removePendingPermission, currentProjectId } = useAppContext()
+  const { pendingPermissions, currentProjectId } = useAppContext()
   const { send } = useWebSocket({ topics: [] })
   const [planDialogPermission, setPlanDialogPermission] = useState<PendingPermission | null>(null)
+  // Track permissions that have been responded to but not yet resolved by the server
+  const [respondedKeys, setRespondedKeys] = useState<Set<string>>(new Set())
 
   const permissions = [...pendingPermissions.values()]
   const count = permissions.length
+
+  // Clean up respondedKeys when permissions are removed via agent.permission_resolved
+  useEffect(() => {
+    if (respondedKeys.size === 0) return
+    setRespondedKeys((prev) => {
+      const activeKeys = new Set(permissions.map((p) => p.permissionKey))
+      const next = new Set<string>()
+      for (const key of prev) {
+        if (activeKeys.has(key)) next.add(key)
+      }
+      return next.size === prev.size ? prev : next
+    })
+  }, [permissions, respondedKeys.size])
 
   const handleAllow = (permission: PendingPermission) => {
     send({
@@ -47,8 +62,8 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       behavior: 'allow',
       updatedInput: permission.input,
     })
-    // Optimistically remove from UI
-    removePendingPermission(permission.permissionKey)
+    // Wait for agent.permission_resolved to remove from UI
+    setRespondedKeys((prev) => new Set(prev).add(permission.permissionKey))
   }
 
   const handleDeny = (permission: PendingPermission) => {
@@ -58,8 +73,8 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       requestId: permission.requestId,
       behavior: 'deny',
     })
-    // Optimistically remove from UI
-    removePendingPermission(permission.permissionKey)
+    // Wait for agent.permission_resolved to remove from UI
+    setRespondedKeys((prev) => new Set(prev).add(permission.permissionKey))
   }
 
   const handleDenyWithMessage = (permission: PendingPermission, message?: string) => {
@@ -70,7 +85,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       behavior: 'deny',
       ...(message ? { message } : {}),
     })
-    removePendingPermission(permission.permissionKey)
+    setRespondedKeys((prev) => new Set(prev).add(permission.permissionKey))
   }
 
   const getNavigationPath = (permission: PendingPermission) => {
@@ -84,6 +99,8 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
   }
 
   const renderPermissionCard = (permission: PendingPermission) => {
+    const isResponding = respondedKeys.has(permission.permissionKey)
+
     if (permission.toolName === 'ExitPlanMode') {
       const allowedPrompts = isAllowedPromptsArray(permission.input?.allowedPrompts)
         ? permission.input.allowedPrompts as { tool: string; prompt: string }[]
@@ -131,14 +148,16 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
               size="sm"
               variant="default"
               onClick={() => handleAllow(permission)}
+              disabled={isResponding}
             >
-              <Check className="mr-1 size-3" />
-              Approve
+              {isResponding ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Check className="mr-1 size-3" />}
+              {isResponding ? 'Sending...' : 'Approve'}
             </Button>
             <Button
               size="sm"
               variant="destructive"
               onClick={() => handleDeny(permission)}
+              disabled={isResponding}
             >
               <X className="mr-1 size-3" />
               Reject
@@ -261,14 +280,16 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
             size="sm"
             variant="default"
             onClick={() => handleAllow(permission)}
+            disabled={isResponding}
           >
-            <Check className="mr-1 size-3" />
-            Allow
+            {isResponding ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Check className="mr-1 size-3" />}
+            {isResponding ? 'Sending...' : 'Allow'}
           </Button>
           <Button
             size="sm"
             variant="destructive"
             onClick={() => handleDeny(permission)}
+            disabled={isResponding}
           >
             <X className="mr-1 size-3" />
             Deny

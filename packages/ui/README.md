@@ -1190,6 +1190,9 @@ Props for `ActivityTimeline`:
 - `onCancelEditComment`: Callback to cancel editing
 - `onDeleteComment`: Callback to delete a comment
 - `onReplyComment`: Callback when reply button clicked on a comment
+- `resumableSessionIds`: Optional `Set<string>` of kombuse_session_ids eligible for Resume/Rerun (most recent session per agent)
+- `onResume`: `(kombuseSessionId: string, agentId: string) => void` — callback to resume an agent session
+- `onRerun`: `(kombuseSessionId: string, agentId: string) => void` — callback to rerun an agent session with the original prompt
 - `isUpdatingComment`, `isDeletingComment`: Loading states
 
 Props for `CommentItem`:
@@ -1198,6 +1201,8 @@ Props for `CommentItem`:
 - `projectId`: Optional project ID — enables `#<number>` ticket link rendering in comment body and builds correct route for session links on agent comments
 - `attachments`: Optional `Attachment[]` to display as inline image thumbnails below the comment body — clicking a thumbnail opens the image lightbox
 - Edit mode supports image attachments via paperclip button, drag-and-drop, and clipboard paste. Staged files are passed to `onSaveEdit(stagedFiles?)` on save
+- `isResumable`: Optional boolean — when true and the comment is from an agent, shows Resume/Rerun action buttons
+- `onResume`, `onRerun`: Optional callbacks for Resume/Rerun actions
 
 ### Image Lightbox
 

@@ -13,7 +13,7 @@ import { useSessionByKombuseId } from '../../hooks/use-sessions'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
 import { useFileStaging } from '../../hooks/use-file-staging'
 import { StagedFilePreviews } from '../staged-file-previews'
-import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare, Paperclip } from 'lucide-react'
+import { Pencil, Trash2, Check, X, Reply, Zap, MessageSquare, Paperclip, Play, RotateCcw } from 'lucide-react'
 import { getAvatarIcon } from '../agents/avatar-picker'
 import { AgentHoverCard } from '../agents'
 
@@ -31,6 +31,9 @@ interface CommentItemProps {
   onDelete?: () => void
   onReply?: () => void
   onSessionClick?: (sessionId: string) => void
+  isResumable?: boolean
+  onResume?: () => void
+  onRerun?: () => void
   isUpdating?: boolean
   isDeleting?: boolean
   className?: string
@@ -50,6 +53,9 @@ function CommentItem({
   onDelete,
   onReply,
   onSessionClick,
+  isResumable = false,
+  onResume,
+  onRerun,
   isUpdating = false,
   isDeleting = false,
   className,
@@ -181,6 +187,37 @@ function CommentItem({
           </div>
         ) : (
           <div className="flex items-center gap-1">
+            {isResumable && comment.author.type === 'agent' && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 text-muted-foreground hover:text-foreground"
+                      onClick={onResume}
+                    >
+                      <Play className="size-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Resume agent</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 text-muted-foreground hover:text-foreground"
+                      onClick={onRerun}
+                    >
+                      <RotateCcw className="size-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Rerun agent</TooltipContent>
+                </Tooltip>
+                <span className="mx-0.5 h-3 w-px bg-border" />
+              </>
+            )}
             <Button
               variant="ghost"
               size="icon"

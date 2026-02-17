@@ -621,6 +621,127 @@ describe('sessionsRepository', () => {
     })
   })
 
+  /*
+   * FIND MOST RECENT FOR TICKET AGENT TESTS
+   * Verify finding the best eligible session for continuation
+   */
+  describe('findMostRecentForTicketAgent', () => {
+    beforeEach(() => {
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'test prompt')
+      `).run(TEST_AGENT_ID)
+    })
+
+    it('should return null when no sessions exist for ticket+agent', () => {
+      const result = sessionsRepository.findMostRecentForTicketAgent(testTicketId, TEST_AGENT_ID)
+      expect(result).toBeNull()
+    })
+
+    it('should return running session over terminal session', () => {
+      const terminal = sessionsRepository.create({
+        ticket_id: testTicketId,
+        agent_id: TEST_AGENT_ID,
+        backend_session_id: 'backend-1',
+      })
+      sessionsRepository.update(terminal.id, { status: 'completed' })
+
+      const running = sessionsRepository.create({
+        ticket_id: testTicketId,
+        agent_id: TEST_AGENT_ID,
+      })
+      sessionsRepository.update(running.id, { status: 'running' })
+
+      const result = sessionsRepository.findMostRecentForTicketAgent(testTicketId, TEST_AGENT_ID)
+      expect(result).not.toBeNull()
+      expect(result!.id).toBe(running.id)
+    })
+
+    it('should return terminal session with backend_session_id when no running session', () => {
+      const terminal = sessionsRepository.create({
+        ticket_id: testTicketId,
+        agent_id: TEST_AGENT_ID,
+        backend_session_id: 'backend-1',
+      })
+      sessionsRepository.update(terminal.id, { status: 'completed' })
+
+      const result = sessionsRepository.findMostRecentForTicketAgent(testTicketId, TEST_AGENT_ID)
+      expect(result).not.toBeNull()
+      expect(result!.id).toBe(terminal.id)
+      expect(result!.status).toBe('completed')
+    })
+
+    it('should not return terminal session without backend_session_id', () => {
+      const terminal = sessionsRepository.create({
+        ticket_id: testTicketId,
+        agent_id: TEST_AGENT_ID,
+      })
+      sessionsRepository.update(terminal.id, { status: 'completed' })
+
+      const result = sessionsRepository.findMostRecentForTicketAgent(testTicketId, TEST_AGENT_ID)
+      expect(result).toBeNull()
+    })
+
+    it('should include aborted sessions with backend_session_id', () => {
+      const aborted = sessionsRepository.create({
+        ticket_id: testTicketId,
+        agent_id: TEST_AGENT_ID,
+        backend_session_id: 'backend-1',
+      })
+      sessionsRepository.update(aborted.id, { status: 'aborted' })
+
+      const result = sessionsRepository.findMostRecentForTicketAgent(testTicketId, TEST_AGENT_ID)
+      expect(result).not.toBeNull()
+      expect(result!.id).toBe(aborted.id)
+      expect(result!.status).toBe('aborted')
+    })
+
+    it('should not return sessions for a different agent', () => {
+      const otherAgentId = 'other-agent'
+      db.prepare(`
+        INSERT OR IGNORE INTO profiles (id, type, name)
+        VALUES (?, 'agent', 'Other Agent')
+      `).run(otherAgentId)
+      db.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt)
+        VALUES (?, 'other prompt')
+      `).run(otherAgentId)
+
+      sessionsRepository.create({
+        ticket_id: testTicketId,
+        agent_id: otherAgentId,
+        backend_session_id: 'backend-1',
+      })
+
+      const result = sessionsRepository.findMostRecentForTicketAgent(testTicketId, TEST_AGENT_ID)
+      expect(result).toBeNull()
+    })
+
+    it('should return the most recently updated terminal session', () => {
+      const older = sessionsRepository.create({
+        ticket_id: testTicketId,
+        agent_id: TEST_AGENT_ID,
+        backend_session_id: 'backend-old',
+      })
+      sessionsRepository.update(older.id, { status: 'failed' })
+      // Force older updated_at
+      db.prepare("UPDATE sessions SET updated_at = '2025-01-01 00:00:00' WHERE id = ?").run(older.id)
+
+      const newer = sessionsRepository.create({
+        ticket_id: testTicketId,
+        agent_id: TEST_AGENT_ID,
+        backend_session_id: 'backend-new',
+      })
+      sessionsRepository.update(newer.id, { status: 'completed' })
+      // Force newer updated_at
+      db.prepare("UPDATE sessions SET updated_at = '2025-01-02 00:00:00' WHERE id = ?").run(newer.id)
+
+      const result = sessionsRepository.findMostRecentForTicketAgent(testTicketId, TEST_AGENT_ID)
+      expect(result).not.toBeNull()
+      expect(result!.id).toBe(newer.id)
+    })
+  })
+
   describe('diagnostics', () => {
     it('summarizes aborted sessions missing backend session IDs', () => {
       const session = sessionsRepository.create({ ticket_id: testTicketId })

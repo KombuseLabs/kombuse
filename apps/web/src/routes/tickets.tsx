@@ -47,12 +47,14 @@ import {
   useMarkTicketViewed,
   useTicketStatusCounts,
   useFileStaging,
+  useSessions,
   useScrollToBottom,
   useScrollToComment,
 } from "@kombuse/ui/hooks";
 import { LabelBadge, MilestoneBadge, StagedFilePreviews } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip, Check, ChevronsUpDown } from "lucide-react";
 import type { Ticket, TicketStatus, TicketFilters, CommentWithAuthor } from "@kombuse/types";
+import { sessionsApi } from "@kombuse/ui/lib/api";
 
 const TICKETS_PANEL_LAYOUT_KEY = "tickets-panel-layout";
 
@@ -196,6 +198,22 @@ export function Tickets() {
   );
   const attachmentsByCommentId = useCommentsAttachments(commentIds);
   const uploadAttachment = useUploadAttachment();
+  const numericTicketId = ticketId ? Number(ticketId) : 0;
+  // Fetch sessions for this ticket to compute Resume/Rerun eligibility
+  const { data: ticketSessions } = useSessions(
+    numericTicketId > 0 ? { ticket_id: numericTicketId } : undefined
+  );
+  const resumableSessionIds = useMemo(() => {
+    if (!ticketSessions) return new Set<string>();
+    // Most recent session per agent (sessions come sorted by updated_at DESC)
+    const latestPerAgent = new Map<string, string>();
+    for (const session of ticketSessions) {
+      if (session.agent_id && session.kombuse_session_id && !latestPerAgent.has(session.agent_id)) {
+        latestPerAgent.set(session.agent_id, session.kombuse_session_id);
+      }
+    }
+    return new Set(latestPerAgent.values());
+  }, [ticketSessions]);
 
   // Scroll-to-comment for hash fragment navigation (e.g. #comment-144)
   const { highlightedCommentId, isScrollToCommentPending } = useScrollToComment({
@@ -247,7 +265,7 @@ export function Tickets() {
   const [agentReplySessionId, setAgentReplySessionId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
-  const numericTicketId = ticketId ? Number(ticketId) : 0;
+
 
   // Subscribe to the agent session topic while a reply is in-flight
   const wsTopics = useMemo(
@@ -414,6 +432,43 @@ export function Tickets() {
   const handleCancelReply = useCallback(() => {
     setReplyTarget(null);
   }, []);
+
+  const handleResumeAgent = useCallback((kombuseSessionId: string, agentId: string) => {
+    setAgentReplySessionId(kombuseSessionId);
+    wsSend({
+      type: "agent.invoke",
+      agentId,
+      message: "continue",
+      kombuseSessionId,
+    });
+  }, [wsSend]);
+
+  const handleRerunAgent = useCallback(async (kombuseSessionId: string, agentId: string) => {
+    try {
+      const result = await sessionsApi.getEvents(kombuseSessionId, { event_type: "message", limit: 10 });
+      const firstUserEvent = result.events.find(
+        (e: { event_type: string; payload?: Record<string, unknown> }) =>
+          e.event_type === "message" && e.payload?.role === "user"
+      );
+      const originalPrompt = typeof firstUserEvent?.payload?.content === "string"
+        ? firstUserEvent.payload.content
+        : "continue";
+
+      // Send without kombuseSessionId so server creates a new session
+      wsSend({
+        type: "agent.invoke",
+        agentId,
+        message: originalPrompt,
+      });
+    } catch {
+      // Fallback: invoke without the original prompt
+      wsSend({
+        type: "agent.invoke",
+        agentId,
+        message: "continue",
+      });
+    }
+  }, [wsSend]);
 
   const handleAddComment = async (body: string, files?: File[]) => {
     let newComment: CommentWithAuthor | undefined;
@@ -994,6 +1049,9 @@ export function Tickets() {
                                   onDeleteComment={deleteComment}
                                   onReplyComment={handleReplyToComment}
                                   onSessionClick={(sessionId) => updateSearchParams({ session: sessionId })}
+                                  resumableSessionIds={resumableSessionIds}
+                                  onResume={handleResumeAgent}
+                                  onRerun={handleRerunAgent}
                                   isUpdatingComment={isUpdatingComment}
                                   isDeletingComment={isDeletingComment}
                                 />

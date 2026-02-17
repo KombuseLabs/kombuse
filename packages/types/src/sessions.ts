@@ -94,6 +94,7 @@ export interface CreateSessionInput {
 export interface SessionFilters {
   ticket_id?: number
   project_id?: string
+  agent_id?: string
   status?: SessionStatus
   terminal_reason?: string
   has_backend_session_id?: boolean

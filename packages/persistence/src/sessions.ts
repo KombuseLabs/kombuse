@@ -58,6 +58,10 @@ export const sessionsRepository = {
     if (filters?.has_backend_session_id === false) {
       conditions.push("(s.backend_session_id IS NULL OR trim(s.backend_session_id) = '')")
     }
+    if (filters?.agent_id !== undefined) {
+      conditions.push('s.agent_id = ?')
+      params.push(filters.agent_id)
+    }
 
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
@@ -248,6 +252,10 @@ export const sessionsRepository = {
     }
     if (filters?.has_backend_session_id === false) {
       conditions.push("(s.backend_session_id IS NULL OR trim(s.backend_session_id) = '')")
+    }
+    if (filters?.agent_id !== undefined) {
+      conditions.push('s.agent_id = ?')
+      params.push(filters.agent_id)
     }
 
     const limit = filters?.limit || 100
@@ -441,5 +449,37 @@ export const sessionsRepository = {
       )
       .run()
     return result.changes
+  },
+
+  /**
+   * Find the most recent session for a given ticket + agent combination,
+   * prioritizing running/pending sessions, then terminal sessions with a
+   * backend_session_id that can be resumed.
+   */
+  findMostRecentForTicketAgent(ticketId: number, agentId: string): Session | null {
+    const db = getDatabase()
+    const row = db
+      .prepare(
+        `
+        SELECT *
+        FROM sessions
+        WHERE ticket_id = ?
+          AND agent_id = ?
+          AND (
+            status IN ('running', 'pending')
+            OR (
+              status IN ('completed', 'failed', 'aborted', 'stopped')
+              AND backend_session_id IS NOT NULL
+              AND trim(backend_session_id) <> ''
+            )
+          )
+        ORDER BY
+          CASE WHEN status IN ('running', 'pending') THEN 0 ELSE 1 END,
+          updated_at DESC
+        LIMIT 1
+      `
+      )
+      .get(ticketId, agentId) as Record<string, unknown> | undefined
+    return row ? parseSessionRow(row) : null
   },
 }

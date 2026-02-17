@@ -11,6 +11,7 @@ const booleanQuerySchema = z.union([z.boolean(), z.enum(['true', 'false'])]).tra
 export const sessionFiltersSchema = z.object({
   ticket_id: z.coerce.number().int().positive().optional(),
   project_id: z.string().optional(),
+  agent_id: z.string().min(1).optional(),
   status: z.enum(['pending', 'running', 'completed', 'failed', 'aborted', 'stopped']).optional(),
   terminal_reason: z.string().trim().min(1).optional(),
   has_backend_session_id: booleanQuerySchema.optional(),

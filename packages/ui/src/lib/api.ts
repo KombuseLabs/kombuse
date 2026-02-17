@@ -598,6 +598,7 @@ export const sessionsApi = {
       params.set('has_backend_session_id', String(filters.has_backend_session_id))
     }
     if (filters?.project_id) params.set('project_id', filters.project_id)
+    if (filters?.agent_id) params.set('agent_id', filters.agent_id)
     if (filters?.sort_by) params.set('sort_by', filters.sort_by)
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))

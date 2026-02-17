@@ -1,6 +1,6 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
-import { agentInvocationsRepository, commentsRepository, eventsRepository, ticketsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, commentsRepository, eventsRepository, sessionsRepository, ticketsRepository } from '@kombuse/persistence'
 import { buildTemplateContext, getTypePreset, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplate } from '@kombuse/services'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, type KombuseSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
@@ -289,9 +289,27 @@ export async function processEventAndRunAgents(
       && typeof event.actor_id === 'string'
       && event.actor_id === invocation.agent_id
       && lifecycleSessionId !== undefined
+
+    // For profile mentions, try to find an existing session to continue
+    const mentionPayload = typeof event.payload === 'object' ? event.payload as Record<string, unknown> : null
+    const isMentionProfileEvent =
+      event.event_type === EVENT_TYPES.MENTION_CREATED
+      && mentionPayload?.mention_type === 'profile'
+    let mentionResolvedSessionId: KombuseSessionId | undefined
+    if (isMentionProfileEvent && ticketId) {
+      const eligible = sessionsRepository.findMostRecentForTicketAgent(ticketId, invocation.agent_id)
+      if (eligible?.kombuse_session_id && isValidSessionId(eligible.kombuse_session_id)) {
+        mentionResolvedSessionId = eligible.kombuse_session_id
+        console.log(
+          `[Server] Mention session resolution: reusing session ${mentionResolvedSessionId} ` +
+          `(status=${eligible.status}) for agent ${invocation.agent_id} on ticket #${ticketId}`
+        )
+      }
+    }
+
     const kombuseSessionId: KombuseSessionId = shouldReuseLifecycleSession
       ? lifecycleSessionId
-      : createSessionId('trigger')
+      : mentionResolvedSessionId ?? createSessionId('trigger')
 
     agentInvocationsRepository.update(invocation.id, {
       kombuse_session_id: kombuseSessionId,

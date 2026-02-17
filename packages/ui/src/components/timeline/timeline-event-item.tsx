@@ -28,6 +28,9 @@ interface TimelineEventItemProps {
   event: EventWithActor
   projectId?: string | null
   onSessionClick?: (sessionId: string) => void
+  isResumable?: boolean
+  onResume?: () => void
+  onRerun?: () => void
   className?: string
 }
 
@@ -48,7 +51,7 @@ const eventConfig: Record<string, { icon: LucideIcon; label: string }> = {
   'agent.failed': { icon: XCircle, label: 'failed to process' },
 }
 
-function TimelineEventItem({ event, projectId, onSessionClick, className }: TimelineEventItemProps) {
+function TimelineEventItem({ event, projectId, onSessionClick, isResumable, onResume, onRerun, className }: TimelineEventItemProps) {
   const config = eventConfig[event.event_type] || {
     icon: Plus,
     label: event.event_type,
@@ -188,6 +191,34 @@ function TimelineEventItem({ event, projectId, onSessionClick, className }: Time
       <span className="text-xs">
         {new Date(event.created_at).toLocaleString()}
       </span>
+      {isResumable && (event.event_type === 'agent.completed' || event.event_type === 'agent.failed') && (
+        <span className="inline-flex items-center gap-1 ml-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onResume}
+                className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Play className="size-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Resume agent</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onRerun}
+                className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <RotateCcw className="size-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Rerun agent</TooltipContent>
+          </Tooltip>
+        </span>
+      )}
     </div>
   )
 }

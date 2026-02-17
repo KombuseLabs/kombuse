@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useMemo, useState, type ReactNode } from 'react'
 import type { AppContextValue, PendingPermission } from '@kombuse/types'
 import { NotificationBell } from '../notification-bell'
+import { useAppContext } from '../../hooks/use-app-context'
 import { AppCtx } from '../../providers/app-context'
 
 const mockSend = vi.fn()
@@ -111,7 +112,7 @@ describe('NotificationBell permission key handling', () => {
     mockSend.mockReset()
   })
 
-  it('renders same-requestId permissions separately and removes only the selected permission', async () => {
+  it('renders same-requestId permissions separately and keeps card after Allow until server resolves', async () => {
     render(
       <TestProvider>
         <NotificationBell />
@@ -133,6 +134,41 @@ describe('NotificationBell permission key handling', () => {
       behavior: 'allow',
       updatedInput: { command: 'ls' },
     })
+
+    // Non-optimistic: both permissions stay visible; Allow button shows "Sending..." state
+    await waitFor(() => {
+      expect(screen.getByText('Permission A')).toBeDefined()
+      expect(screen.getByText('Permission B')).toBeDefined()
+      expect(screen.getByText('Sending...')).toBeDefined()
+    })
+  })
+
+  it('removes permission card only when server resolves via removePendingPermission', async () => {
+    const RemoveButton = () => {
+      const { removePendingPermission } = useAppContext()
+      return (
+        <button onClick={() => removePendingPermission('chat-alpha:req-1')}>
+          Simulate resolve
+        </button>
+      )
+    }
+
+    render(
+      <TestProvider>
+        <NotificationBell />
+        <RemoveButton />
+      </TestProvider>
+    )
+
+    // Click the bell button (first button) to open popover
+    const allButtons = screen.getAllByRole('button')
+    fireEvent.click(allButtons[0] as HTMLButtonElement)
+
+    expect(screen.getByText('Permission A')).toBeDefined()
+    expect(screen.getByText('Permission B')).toBeDefined()
+
+    // Simulate server resolving permission A
+    fireEvent.click(screen.getByText('Simulate resolve'))
 
     await waitFor(() => {
       expect(screen.queryByText('Permission A')).toBeNull()
