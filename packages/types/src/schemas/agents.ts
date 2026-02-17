@@ -95,7 +95,9 @@ export const allowedInvokerSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('agent'),
     agent_id: z.string().min(1).optional(),
+    agent_type: z.string().min(1).optional(),
   }),
+  z.object({ type: z.literal('system') }),
 ])
 
 export const agentTriggerSchema = z.object({

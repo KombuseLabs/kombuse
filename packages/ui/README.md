@@ -619,6 +619,7 @@ import {
 import { TriggerEditor, TriggerForm, TriggerList, TriggerItem } from '@kombuse/ui/components'
 import { MentionTypePicker, getMentionTypeLabel } from '@kombuse/ui/components'
 import { AuthorTypePicker, getAuthorTypeLabel } from '@kombuse/ui/components'
+import { AllowedInvokersEditor, summarizeInvokers } from '@kombuse/ui/components'
 
 // Mention type picker for trigger conditions (select between @profile and #ticket)
 <MentionTypePicker
@@ -651,6 +652,27 @@ Props for `MentionTypePicker`:
 Props for `AuthorTypePicker`:
 - `value`: `ActorType | null` — current selection
 - `onValueChange`: `(value: ActorType) => void` — selection callback
+- `disabled`: Optional boolean
+
+#### AllowedInvokersEditor
+
+Editor for trigger invoker restrictions (ACL). Provides a toggle between "Allow all" (null) and "Restrict to specific invokers" (array of rules). When restricted, users can add/remove rules with type selectors (Anyone, Human users, Agent, System) and optional agent-specific fields (agent ID, agent type).
+
+```typescript
+<AllowedInvokersEditor
+  value={allowedInvokers}
+  onChange={(value) => setAllowedInvokers(value)}
+  disabled={false}
+/>
+
+// Get human-readable summary of invoker rules
+summarizeInvokers([{ type: 'user' }])                    // => "Users"
+summarizeInvokers([{ type: 'agent', agent_type: 'coder' }]) // => "type:coder"
+```
+
+Props for `AllowedInvokersEditor`:
+- `value`: `AllowedInvoker[] | null` — current invoker rules (null = allow all)
+- `onChange`: `(value: AllowedInvoker[] | null) => void` — called when rules change
 - `disabled`: Optional boolean
 
 #### ConditionEditor

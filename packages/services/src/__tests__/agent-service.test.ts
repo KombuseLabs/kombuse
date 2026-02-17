@@ -655,6 +655,203 @@ describe('agentService', () => {
       })
       expect(agentService.findMatchingTriggers(wrongAgentEvent), 'Wrong agent should not match any rule').toHaveLength(0)
     })
+
+    it('should allow system events when allowed_invokers includes { type: "system" }', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        allowed_invokers: [{ type: 'system' }],
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_type: 'system',
+        payload: {},
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'System events should match system rule').toHaveLength(1)
+    })
+
+    it('should reject user when allowed_invokers only includes { type: "system" }', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        allowed_invokers: [{ type: 'system' }],
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: TEST_USER_ID,
+        actor_type: 'user',
+        payload: {},
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'User should be rejected when only system is allowed').toHaveLength(0)
+    })
+
+    it('should allow agent when agent_type matches config.type', () => {
+      const coderAgentId = createAgentProfile()
+      agentsRepository.create({
+        id: coderAgentId,
+        name: 'Coder Agent',
+        description: 'Test',
+        system_prompt: 'Test',
+        is_enabled: true,
+        config: { type: 'coder' },
+      })
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        allowed_invokers: [{ type: 'agent', agent_type: 'coder' }],
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: coderAgentId,
+        actor_type: 'agent',
+        payload: {},
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Agent with matching config.type should be allowed').toHaveLength(1)
+    })
+
+    it('should reject agent when agent_type does not match config.type', () => {
+      const triageAgentId = createAgentProfile()
+      agentsRepository.create({
+        id: triageAgentId,
+        name: 'Triage Agent',
+        description: 'Test',
+        system_prompt: 'Test',
+        is_enabled: true,
+        config: { type: 'triage' },
+      })
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        allowed_invokers: [{ type: 'agent', agent_type: 'coder' }],
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: triageAgentId,
+        actor_type: 'agent',
+        payload: {},
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Triage agent should not match coder agent_type rule').toHaveLength(0)
+    })
+
+    it('should use AND semantics when both agent_id and agent_type are specified', () => {
+      const coderAgentId = createAgentProfile()
+      agentsRepository.create({
+        id: coderAgentId,
+        name: 'Coder Agent',
+        description: 'Test',
+        system_prompt: 'Test',
+        is_enabled: true,
+        config: { type: 'coder' },
+      })
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        allowed_invokers: [{ type: 'agent', agent_id: coderAgentId, agent_type: 'coder' }],
+      })
+
+      // Matching: right agent_id + right config.type
+      const matchingEvent = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: coderAgentId,
+        actor_type: 'agent',
+        payload: {},
+      })
+      expect(agentService.findMatchingTriggers(matchingEvent), 'Both agent_id and agent_type match').toHaveLength(1)
+
+      // Wrong agent_id
+      const wrongIdAgentId = createAgentProfile()
+      agentsRepository.create({
+        id: wrongIdAgentId,
+        name: 'Wrong ID Agent',
+        description: 'Test',
+        system_prompt: 'Test',
+        is_enabled: true,
+        config: { type: 'coder' },
+      })
+
+      const wrongIdEvent = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: wrongIdAgentId,
+        actor_type: 'agent',
+        payload: {},
+      })
+      expect(agentService.findMatchingTriggers(wrongIdEvent), 'Wrong agent_id should fail AND check').toHaveLength(0)
+    })
+
+    it('should match any agent of the specified type when agent_type is set without agent_id', () => {
+      const coder1 = createAgentProfile()
+      agentsRepository.create({
+        id: coder1,
+        name: 'Coder 1',
+        description: 'Test',
+        system_prompt: 'Test',
+        is_enabled: true,
+        config: { type: 'coder' },
+      })
+
+      const coder2 = createAgentProfile()
+      agentsRepository.create({
+        id: coder2,
+        name: 'Coder 2',
+        description: 'Test',
+        system_prompt: 'Test',
+        is_enabled: true,
+        config: { type: 'coder' },
+      })
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        allowed_invokers: [{ type: 'agent', agent_type: 'coder' }],
+      })
+
+      const event1 = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: coder1,
+        actor_type: 'agent',
+        payload: {},
+      })
+      expect(agentService.findMatchingTriggers(event1), 'First coder agent should match').toHaveLength(1)
+
+      const event2 = eventsRepository.create({
+        event_type: 'ticket.created',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: coder2,
+        actor_type: 'agent',
+        payload: {},
+      })
+      expect(agentService.findMatchingTriggers(event2), 'Second coder agent should match').toHaveLength(1)
+    })
   })
 
   describe('checkPermission scope resolution', () => {

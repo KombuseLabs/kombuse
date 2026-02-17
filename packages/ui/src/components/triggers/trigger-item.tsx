@@ -1,13 +1,14 @@
 'use client'
 
 import type { AgentTrigger, Label } from '@kombuse/types'
-import { Pencil, Trash2, Zap } from 'lucide-react'
+import { Pencil, Shield, Trash2, Zap } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { Switch } from '../../base/switch'
 import { getEventTypeOption } from './event-type-constants'
 import { getMentionTypeLabel } from './mention-type-picker'
 import { getAuthorTypeLabel } from './author-type-picker'
+import { summarizeInvokers } from './allowed-invokers-editor'
 
 interface TriggerItemProps {
   trigger: AgentTrigger
@@ -93,6 +94,12 @@ function TriggerItem({
             </span>
           )}
           {trigger.priority > 0 && <span>Priority: {trigger.priority}</span>}
+          {trigger.allowed_invokers && trigger.allowed_invokers.length > 0 && (
+            <span className="flex items-center gap-1">
+              <Shield className="size-3" />
+              <span>{summarizeInvokers(trigger.allowed_invokers)}</span>
+            </span>
+          )}
         </div>
       </div>
 

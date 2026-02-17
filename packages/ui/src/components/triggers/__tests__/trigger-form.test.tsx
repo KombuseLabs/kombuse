@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { ActorType, AgentTrigger } from '@kombuse/types'
+import type { ActorType, AgentTrigger, AllowedInvoker } from '@kombuse/types'
 import { TriggerForm } from '../trigger-form'
 
 // Track AuthorTypePicker renders and capture props
@@ -42,6 +42,29 @@ vi.mock('../condition-editor', () => ({
 
 vi.mock('../../labels/label-picker', () => ({
   LabelPicker: () => <div data-testid="label-picker" />,
+}))
+
+vi.mock('../allowed-invokers-editor', () => ({
+  AllowedInvokersEditor: (props: {
+    value: AllowedInvoker[] | null
+    onChange: (value: AllowedInvoker[] | null) => void
+    disabled?: boolean
+  }) => (
+    <div data-testid="allowed-invokers-editor" data-value={JSON.stringify(props.value)}>
+      <button
+        data-testid="set-user-only"
+        onClick={() => props.onChange([{ type: 'user' }])}
+      >
+        Set User Only
+      </button>
+      <button
+        data-testid="set-allow-all"
+        onClick={() => props.onChange(null)}
+      >
+        Allow All
+      </button>
+    </div>
+  ),
 }))
 
 vi.mock('../../../hooks/use-labels', () => ({
@@ -238,5 +261,80 @@ describe('TriggerForm comment-event behavior', () => {
     if (submitCall.conditions) {
       expect(submitCall.conditions).not.toHaveProperty('author_type')
     }
+  })
+})
+
+describe('TriggerForm allowed_invokers', () => {
+  const defaultProps = {
+    agentId: 'agent-1',
+    onSubmit: vi.fn(),
+    onCancel: vi.fn(),
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows AllowedInvokersEditor in the form', () => {
+    render(<TriggerForm {...defaultProps} />)
+
+    fireEvent.change(screen.getByTestId('event-type-select'), {
+      target: { value: 'ticket.created' },
+    })
+
+    expect(screen.getByTestId('allowed-invokers-editor')).toBeDefined()
+  })
+
+  it('submits with allowed_invokers when set', () => {
+    render(<TriggerForm {...defaultProps} />)
+
+    fireEvent.change(screen.getByTestId('event-type-select'), {
+      target: { value: 'ticket.created' },
+    })
+
+    fireEvent.click(screen.getByTestId('set-user-only'))
+
+    const form = screen.getByTestId('event-type-select').closest('form')!
+    fireEvent.submit(form)
+
+    expect(defaultProps.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowed_invokers: [{ type: 'user' }],
+      })
+    )
+  })
+
+  it('submits with null allowed_invokers when allow-all is selected', () => {
+    const trigger = buildTrigger({
+      event_type: 'ticket.created',
+      allowed_invokers: [{ type: 'user' }],
+    })
+
+    render(<TriggerForm {...defaultProps} trigger={trigger} />)
+
+    fireEvent.click(screen.getByTestId('set-allow-all'))
+
+    const form = screen.getByTestId('event-type-select').closest('form')!
+    fireEvent.submit(form)
+
+    expect(defaultProps.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowed_invokers: null,
+      })
+    )
+  })
+
+  it('prefills from existing trigger allowed_invokers', () => {
+    const trigger = buildTrigger({
+      event_type: 'ticket.created',
+      allowed_invokers: [{ type: 'agent', agent_type: 'coder' }],
+    })
+
+    render(<TriggerForm {...defaultProps} trigger={trigger} />)
+
+    const editor = screen.getByTestId('allowed-invokers-editor')
+    expect(editor.getAttribute('data-value')).toBe(
+      JSON.stringify([{ type: 'agent', agent_type: 'coder' }])
+    )
   })
 })

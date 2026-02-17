@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { ActorType, AgentTrigger, MentionType } from '@kombuse/types'
+import type { ActorType, AgentTrigger, AllowedInvoker, MentionType } from '@kombuse/types'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Label } from '../../base/label'
@@ -20,6 +20,7 @@ import { EVENT_TYPE_OPTIONS, EVENT_TYPE_CATEGORIES } from './event-type-constant
 import { LabelPicker } from '../labels/label-picker'
 import { MentionTypePicker } from './mention-type-picker'
 import { AuthorTypePicker } from './author-type-picker'
+import { AllowedInvokersEditor } from './allowed-invokers-editor'
 import { useProjectLabels, useCreateLabel } from '../../hooks/use-labels'
 import { useAppContext } from '../../hooks/use-app-context'
 
@@ -28,6 +29,7 @@ export interface TriggerFormData {
   conditions?: Record<string, unknown>
   priority: number
   is_enabled: boolean
+  allowed_invokers?: AllowedInvoker[] | null
 }
 
 interface TriggerFormProps {
@@ -61,6 +63,9 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
   )
   const [selectedAuthorType, setSelectedAuthorType] = useState<ActorType | null>(
     (trigger?.conditions?.author_type as ActorType) ?? null
+  )
+  const [allowedInvokers, setAllowedInvokers] = useState<AllowedInvoker[] | null>(
+    trigger?.allowed_invokers ?? null
   )
 
   // Get project context for label operations
@@ -110,6 +115,7 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
         conditions: finalConditions ?? undefined,
         priority,
         is_enabled: isEnabled,
+        allowed_invokers: allowedInvokers,
       })
     }
   }
@@ -206,6 +212,12 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
           Higher priority triggers run first (0 = lowest)
         </p>
       </div>
+
+      <AllowedInvokersEditor
+        value={allowedInvokers}
+        onChange={setAllowedInvokers}
+        disabled={isLoading}
+      />
 
       <div className="flex items-center justify-between">
         <Label htmlFor="is-enabled">Enabled</Label>

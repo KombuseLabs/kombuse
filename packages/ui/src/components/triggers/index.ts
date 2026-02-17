@@ -19,5 +19,8 @@ export type { MentionTypePickerProps } from './mention-type-picker'
 export { AuthorTypePicker, getAuthorTypeLabel } from './author-type-picker'
 export type { AuthorTypePickerProps } from './author-type-picker'
 
+export { AllowedInvokersEditor, summarizeInvokers } from './allowed-invokers-editor'
+export type { AllowedInvokersEditorProps } from './allowed-invokers-editor'
+
 export { EVENT_TYPE_OPTIONS, EVENT_TYPE_CATEGORIES, getEventTypeOption } from './event-type-constants'
 export type { EventTypeOption } from './event-type-constants'

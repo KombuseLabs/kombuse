@@ -154,7 +154,8 @@ export interface AgentFilters {
 export type AllowedInvoker =
   | { type: 'any' }
   | { type: 'user' }
-  | { type: 'agent'; agent_id?: string }
+  | { type: 'agent'; agent_id?: string; agent_type?: string }
+  | { type: 'system' }
 
 /**
  * Agent trigger - defines when an agent should be invoked

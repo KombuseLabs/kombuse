@@ -135,7 +135,8 @@ function matchConditions(
  */
 function checkAllowedInvokers(
   allowedInvokers: AllowedInvoker[] | null,
-  event: Event
+  event: Event,
+  invokerAgentType?: string | null,
 ): boolean {
   if (!allowedInvokers || allowedInvokers.length === 0) {
     return true
@@ -147,9 +148,14 @@ function checkAllowedInvokers(
         return true
       case 'user':
         return event.actor_type === 'user'
-      case 'agent':
+      case 'system':
+        return event.actor_type === 'system'
+      case 'agent': {
         if (event.actor_type !== 'agent') return false
-        return !rule.agent_id || rule.agent_id === event.actor_id
+        if (rule.agent_id && rule.agent_id !== event.actor_id) return false
+        if (rule.agent_type && rule.agent_type !== invokerAgentType) return false
+        return true
+      }
       default:
         return false
     }
@@ -319,6 +325,21 @@ export class AgentService implements IAgentService {
       event.project_id ?? undefined
     )
 
+    // Lazy lookup: resolve invoking agent's config.type once, only if needed
+    let invokerAgentType: string | null | undefined // undefined = not yet resolved
+    const getInvokerAgentType = (): string | null => {
+      if (invokerAgentType !== undefined) return invokerAgentType
+      if (event.actor_type !== 'agent' || !event.actor_id) {
+        invokerAgentType = null
+        return null
+      }
+      const invokerAgent = agentsRepository.get(event.actor_id)
+      invokerAgentType = typeof invokerAgent?.config?.type === 'string'
+        ? invokerAgent.config.type
+        : null
+      return invokerAgentType
+    }
+
     for (const trigger of triggers) {
       // mention.created triggers without conditions are skipped —
       // they must specify mention_type to avoid matching all mention kinds
@@ -335,7 +356,12 @@ export class AgentService implements IAgentService {
         continue
       }
 
-      if (!checkAllowedInvokers(trigger.allowed_invokers, event)) {
+      const needsAgentType = trigger.allowed_invokers?.some(
+        (r) => r.type === 'agent' && r.agent_type
+      )
+      const resolvedType = needsAgentType ? getInvokerAgentType() : undefined
+
+      if (!checkAllowedInvokers(trigger.allowed_invokers, event, resolvedType)) {
         continue
       }
 
