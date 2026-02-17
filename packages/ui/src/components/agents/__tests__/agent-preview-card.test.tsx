@@ -17,6 +17,7 @@ vi.mock('../../../hooks/use-triggers', () => ({
 function buildAgent(overrides: Partial<Agent> = {}): Agent {
   return {
     id: 'agent-1',
+    slug: null,
     system_prompt: 'System prompt',
     permissions: [],
     config: {},

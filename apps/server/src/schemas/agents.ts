@@ -1,9 +1,13 @@
 import { z } from 'zod'
 import { permissionSchema, agentConfigSchema } from '@kombuse/types/schemas'
+import { UUID_REGEX, SLUG_REGEX } from '@kombuse/types'
 
 // Agent schemas
 export const createAgentSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().regex(UUID_REGEX, 'Must be a valid UUID').optional(),
+  name: z.string().min(1),
+  description: z.string().min(1),
+  slug: z.string().regex(SLUG_REGEX, 'Must be a valid kebab-case slug').optional(),
   system_prompt: z.string().min(1),
   permissions: z.array(permissionSchema).optional(),
   config: agentConfigSchema.optional(),

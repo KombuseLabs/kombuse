@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { BACKEND_TYPES } from '../agent'
+import { UUID_REGEX, SLUG_REGEX } from '../slug'
 
 export const permissionActionSchema = z.enum(['read', 'create', 'update', 'delete', '*'])
 export const permissionScopeSchema = z.enum(['invocation', 'project', 'global'])
@@ -54,6 +55,7 @@ export const agentConfigSchema = z.object({
 
 export const agentSchema = z.object({
   id: z.string().min(1),
+  slug: z.string().nullable(),
   system_prompt: z.string().min(1),
   permissions: z.array(permissionSchema),
   config: agentConfigSchema,
@@ -63,8 +65,10 @@ export const agentSchema = z.object({
 })
 
 export const createAgentInputSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1).optional(),
+  id: z.string().regex(UUID_REGEX, 'Must be a valid UUID').optional(),
+  name: z.string().min(1),
+  description: z.string().min(1),
+  slug: z.string().regex(SLUG_REGEX, 'Must be a valid kebab-case slug').optional(),
   system_prompt: z.string().min(1),
   permissions: z.array(permissionSchema).optional(),
   config: agentConfigSchema.optional(),

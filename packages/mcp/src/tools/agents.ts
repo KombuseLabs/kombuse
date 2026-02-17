@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { agentsRepository, agentInvocationsRepository, eventsRepository } from '@kombuse/persistence'
+import { agentsRepository, agentInvocationsRepository, eventsRepository, profilesRepository } from '@kombuse/persistence'
 import type {
   Agent,
   AgentInvocation,
@@ -198,11 +198,20 @@ export function registerAgentTools(server: McpServer): void {
         offset: offset ?? 0,
       })
 
+      // Enrich with profile metadata
+      const profileIds = agents.map((a) => a.id)
+      const profiles = profilesRepository.getByIds(profileIds)
+      const enriched = agents.map((agent) => ({
+        ...agent,
+        name: profiles.get(agent.id)?.name ?? agent.id,
+        description: profiles.get(agent.id)?.description ?? null,
+      }))
+
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({ agents, count: agents.length }, null, 2),
+            text: JSON.stringify({ agents: enriched, count: enriched.length }, null, 2),
           },
         ],
       }
@@ -218,8 +227,20 @@ export function registerAgentTools(server: McpServer): void {
       inputSchema: {
         id: z
           .string()
+          .optional()
+          .describe('Optional UUID for the agent (auto-generated if not provided)'),
+        name: z
+          .string()
           .min(1)
-          .describe('The agent profile ID (must reference an existing profile with type "agent")'),
+          .describe('Display name for the agent'),
+        description: z
+          .string()
+          .min(1)
+          .describe('Description of what the agent does'),
+        slug: z
+          .string()
+          .optional()
+          .describe('Optional kebab-case slug (derived from name if not provided)'),
         system_prompt: z
           .string()
           .min(1)
@@ -242,9 +263,12 @@ export function registerAgentTools(server: McpServer): void {
           .describe('Optional session ID for permission enforcement'),
       },
     },
-    async ({ id, system_prompt, permissions, config, is_enabled, kombuse_session_id }) => {
+    async ({ id, name, description, slug, system_prompt, permissions, config, is_enabled, kombuse_session_id }) => {
       const sharedParse = safeParseShared(createAgentInputSchema, {
         id,
+        name,
+        description,
+        slug,
         system_prompt,
         permissions,
         config,

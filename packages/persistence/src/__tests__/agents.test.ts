@@ -36,6 +36,11 @@ function createAgentProfile() {
   return id
 }
 
+/** Shorthand: adds required name/description fields to a create input */
+function agentInput(overrides: Partial<import('@kombuse/types').CreateAgentInput> & { id: string; system_prompt: string }): import('@kombuse/types').CreateAgentInput {
+  return { name: 'Test Agent', description: 'Test description', ...overrides }
+}
+
 describe('agentsRepository', () => {
   let cleanup: () => void
   let db: DatabaseType
@@ -53,10 +58,10 @@ describe('agentsRepository', () => {
   describe('create', () => {
     it('should create an agent with required fields', () => {
       const profileId = createAgentProfile()
-      const agent = agentsRepository.create({
+      const agent = agentsRepository.create(agentInput({
         id: profileId,
         system_prompt: 'You are a helpful assistant.',
-      })
+      }))
 
       expect(agent.id).toBe(profileId)
       expect(agent.system_prompt).toBe('You are a helpful assistant.')
@@ -67,7 +72,7 @@ describe('agentsRepository', () => {
 
     it('should create an agent with permissions and config', () => {
       const profileId = createAgentProfile()
-      const agent = agentsRepository.create({
+      const agent = agentsRepository.create(agentInput({
         id: profileId,
         system_prompt: 'Review tickets for completeness.',
         permissions: [
@@ -79,7 +84,7 @@ describe('agentsRepository', () => {
           max_tokens: 4096,
           temperature: 0.3,
         },
-      })
+      }))
 
       expect(agent.permissions).toHaveLength(2)
       expect(agent.permissions[0]).toEqual({
@@ -94,11 +99,11 @@ describe('agentsRepository', () => {
 
     it('should create a disabled agent', () => {
       const profileId = createAgentProfile()
-      const agent = agentsRepository.create({
+      const agent = agentsRepository.create(agentInput({
         id: profileId,
         system_prompt: 'Disabled agent.',
         is_enabled: false,
-      })
+      }))
 
       expect(agent.is_enabled).toBe(false)
     })
@@ -112,10 +117,10 @@ describe('agentsRepository', () => {
 
     it('should return agent by ID', () => {
       const profileId = createAgentProfile()
-      agentsRepository.create({
+      agentsRepository.create(agentInput({
         id: profileId,
         system_prompt: 'Test prompt.',
-      })
+      }))
 
       const agent = agentsRepository.get(profileId)
 
@@ -129,8 +134,8 @@ describe('agentsRepository', () => {
     it('should return all agents when no filters provided', () => {
       const profileId1 = createAgentProfile()
       const profileId2 = createAgentProfile()
-      agentsRepository.create({ id: profileId1, system_prompt: 'Agent 1' })
-      agentsRepository.create({ id: profileId2, system_prompt: 'Agent 2' })
+      agentsRepository.create(agentInput({ id: profileId1, system_prompt: 'Agent 1' }))
+      agentsRepository.create(agentInput({ id: profileId2, system_prompt: 'Agent 2' }))
 
       const agents = agentsRepository.list()
 
@@ -140,8 +145,8 @@ describe('agentsRepository', () => {
     it('should filter agents by is_enabled', () => {
       const enabledId = createAgentProfile()
       const disabledId = createAgentProfile()
-      agentsRepository.create({ id: enabledId, system_prompt: 'Enabled', is_enabled: true })
-      agentsRepository.create({ id: disabledId, system_prompt: 'Disabled', is_enabled: false })
+      agentsRepository.create(agentInput({ id: enabledId, system_prompt: 'Enabled', is_enabled: true }))
+      agentsRepository.create(agentInput({ id: disabledId, system_prompt: 'Disabled', is_enabled: false }))
 
       const enabledAgents = agentsRepository.list({ is_enabled: true })
       const disabledAgents = agentsRepository.list({ is_enabled: false })
@@ -152,7 +157,7 @@ describe('agentsRepository', () => {
 
     it('should support pagination', () => {
       const ids = [createAgentProfile(), createAgentProfile(), createAgentProfile()]
-      ids.forEach((id) => agentsRepository.create({ id, system_prompt: 'Test' }))
+      ids.forEach((id) => agentsRepository.create(agentInput({ id, system_prompt: 'Test' })))
 
       const page1 = agentsRepository.list({ limit: 2 })
       expect(page1).toHaveLength(2)
@@ -163,20 +168,20 @@ describe('agentsRepository', () => {
       const chatDisabledId = createAgentProfile()
       const noConfigId = createAgentProfile()
 
-      agentsRepository.create({
+      agentsRepository.create(agentInput({
         id: chatEnabledId,
         system_prompt: 'Chat enabled',
         config: { enabled_for_chat: true },
-      })
-      agentsRepository.create({
+      }))
+      agentsRepository.create(agentInput({
         id: chatDisabledId,
         system_prompt: 'Chat disabled',
         config: { enabled_for_chat: false },
-      })
-      agentsRepository.create({
+      }))
+      agentsRepository.create(agentInput({
         id: noConfigId,
         system_prompt: 'No config flag',
-      })
+      }))
 
       const chatAgents = agentsRepository.list({ enabled_for_chat: true })
 
@@ -190,7 +195,7 @@ describe('agentsRepository', () => {
   describe('update', () => {
     it('should update agent system_prompt', () => {
       const profileId = createAgentProfile()
-      agentsRepository.create({ id: profileId, system_prompt: 'Original prompt' })
+      agentsRepository.create(agentInput({ id: profileId, system_prompt: 'Original prompt' }))
 
       const updated = agentsRepository.update(profileId, {
         system_prompt: 'Updated prompt',
@@ -201,7 +206,7 @@ describe('agentsRepository', () => {
 
     it('should update agent permissions', () => {
       const profileId = createAgentProfile()
-      agentsRepository.create({ id: profileId, system_prompt: 'Test' })
+      agentsRepository.create(agentInput({ id: profileId, system_prompt: 'Test' }))
 
       const updated = agentsRepository.update(profileId, {
         permissions: [{ type: 'resource', resource: '*', actions: ['*'], scope: 'global' }],
@@ -213,7 +218,7 @@ describe('agentsRepository', () => {
 
     it('should update agent config', () => {
       const profileId = createAgentProfile()
-      agentsRepository.create({ id: profileId, system_prompt: 'Test' })
+      agentsRepository.create(agentInput({ id: profileId, system_prompt: 'Test' }))
 
       const updated = agentsRepository.update(profileId, {
         config: { model: 'gpt-4o', temperature: 0.7 },
@@ -225,7 +230,7 @@ describe('agentsRepository', () => {
 
     it('should toggle is_enabled', () => {
       const profileId = createAgentProfile()
-      agentsRepository.create({ id: profileId, system_prompt: 'Test', is_enabled: true })
+      agentsRepository.create(agentInput({ id: profileId, system_prompt: 'Test', is_enabled: true }))
 
       const updated = agentsRepository.update(profileId, { is_enabled: false })
 
@@ -241,7 +246,7 @@ describe('agentsRepository', () => {
   describe('delete', () => {
     it('should delete agent and return true', () => {
       const profileId = createAgentProfile()
-      agentsRepository.create({ id: profileId, system_prompt: 'Delete me' })
+      agentsRepository.create(agentInput({ id: profileId, system_prompt: 'Delete me' }))
 
       const deleted = agentsRepository.delete(profileId)
 
@@ -267,7 +272,7 @@ describe('agentTriggersRepository', () => {
     db = setup.db
     // Create an agent for trigger tests
     agentId = createAgentProfile()
-    agentsRepository.create({ id: agentId, system_prompt: 'Trigger test agent' })
+    agentsRepository.create(agentInput({ id: agentId, system_prompt: 'Trigger test agent' }))
   })
 
   afterEach(() => {
@@ -463,7 +468,7 @@ describe('agentInvocationsRepository', () => {
     db = setup.db
     // Create an agent and trigger for invocation tests
     agentId = createAgentProfile()
-    agentsRepository.create({ id: agentId, system_prompt: 'Invocation test agent' })
+    agentsRepository.create(agentInput({ id: agentId, system_prompt: 'Invocation test agent' }))
     const trigger = agentTriggersRepository.create({
       agent_id: agentId,
       event_type: 'ticket.created',

@@ -87,7 +87,7 @@ export class AgentExportService implements IAgentExportService {
     const content = this.renderMarkdown(frontmatter, agent.system_prompt)
 
     return {
-      filename: `${agent.id}.md`,
+      filename: `${agent.slug ?? agent.id}.md`,
       content,
     }
   }
@@ -112,6 +112,7 @@ export class AgentExportService implements IAgentExportService {
 
     return {
       name: profile.name,
+      slug: agent.slug,
       description: profile.description,
       avatar: profile.avatar_url,
       type: (config.type as string) ?? 'kombuse',

@@ -45,6 +45,8 @@ describe('agentService', () => {
     const profileId = createAgentProfile()
     const agent = agentsRepository.create({
       id: profileId,
+      name: `Test Agent ${agentCounter}`,
+      description: 'Test agent description',
       system_prompt: 'Test agent',
       is_enabled: true,
     })

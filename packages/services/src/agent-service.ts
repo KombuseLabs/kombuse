@@ -15,6 +15,7 @@ import type {
   PermissionCheckRequest,
   PermissionCheckResult,
 } from '@kombuse/types'
+import { toSlug, UUID_REGEX } from '@kombuse/types'
 import {
   agentsRepository,
   agentTriggersRepository,
@@ -37,6 +38,7 @@ export interface IAgentService {
   // Agent CRUD
   listAgents(filters?: AgentFilters): Agent[]
   getAgent(id: string): Agent | null
+  getAgentBySlug(slug: string): Agent | null
   createAgent(input: CreateAgentInput): Agent
   updateAgent(id: string, input: UpdateAgentInput): Agent
   deleteAgent(id: string): void
@@ -139,21 +141,39 @@ export class AgentService implements IAgentService {
     return agentsRepository.get(id)
   }
 
+  getAgentBySlug(slug: string): Agent | null {
+    return agentsRepository.getBySlug(slug)
+  }
+
   createAgent(input: CreateAgentInput): Agent {
-    let profile = profilesRepository.get(input.id)
+    // Generate UUID if id not provided; reject non-UUID id
+    const id = input.id ?? crypto.randomUUID()
+    if (input.id && !UUID_REGEX.test(input.id)) {
+      throw new Error('Agent ID must be a valid UUID')
+    }
+
+    // Derive slug from name if not provided
+    const slug = input.slug ?? toSlug(input.name)
+    const existingBySlug = agentsRepository.getBySlug(slug)
+    if (existingBySlug) {
+      throw new Error(`Agent with slug '${slug}' already exists`)
+    }
+
+    // Auto-create agent profile if missing
+    let profile = profilesRepository.get(id)
     if (!profile) {
-      // Auto-create agent profile
       profile = profilesRepository.create({
-        id: input.id,
+        id,
         type: 'agent',
-        name: input.name || input.id,
+        name: input.name,
+        description: input.description,
       })
     }
     if (profile.type !== 'agent') {
-      throw new Error(`Profile ${input.id} is not of type 'agent'`)
+      throw new Error(`Profile ${id} is not of type 'agent'`)
     }
 
-    return agentsRepository.create(input)
+    return agentsRepository.create({ ...input, id, slug })
   }
 
   updateAgent(id: string, input: UpdateAgentInput): Agent {

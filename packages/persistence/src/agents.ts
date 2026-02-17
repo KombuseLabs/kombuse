@@ -66,6 +66,17 @@ export const agentsRepository = {
   },
 
   /**
+   * Get a single agent by slug
+   */
+  getBySlug(slug: string): Agent | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM agents WHERE slug = ?')
+      .get(slug) as RawAgent | undefined
+    return row ? mapAgent(row) : null
+  },
+
+  /**
    * Create a new agent
    */
   create(input: CreateAgentInput): Agent {
@@ -74,19 +85,20 @@ export const agentsRepository = {
     db.prepare(
       `
       INSERT INTO agents (
-        id, system_prompt, permissions, config, is_enabled
+        id, slug, system_prompt, permissions, config, is_enabled
       )
-      VALUES (?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?)
     `
     ).run(
       input.id,
+      input.slug ?? null,
       input.system_prompt,
       JSON.stringify(input.permissions ?? []),
       JSON.stringify(input.config ?? {}),
       input.is_enabled !== false ? 1 : 0
     )
 
-    return this.get(input.id) as Agent
+    return this.get(input.id!) as Agent
   },
 
   /**
@@ -470,6 +482,7 @@ export const agentInvocationsRepository = {
 // Raw types from database (JSON stored as TEXT, booleans as INTEGER)
 interface RawAgent {
   id: string
+  slug: string | null
   system_prompt: string
   permissions: string
   config: string
@@ -514,6 +527,7 @@ interface RawAgentInvocation {
 function mapAgent(row: RawAgent): Agent {
   return {
     id: row.id,
+    slug: row.slug,
     system_prompt: row.system_prompt,
     permissions: JSON.parse(row.permissions) as Permission[],
     config: JSON.parse(row.config) as AgentConfig,

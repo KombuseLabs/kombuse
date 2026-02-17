@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
+import { toSlug } from '@kombuse/types'
 
 export type { Database as DatabaseType } from 'better-sqlite3'
 
@@ -91,12 +92,15 @@ export function runMigrations(db: DatabaseType): void {
   for (const migration of migrations) {
     if (!appliedSet.has(migration.name)) {
       db.exec(migration.sql)
+      if (migration.postMigrate) {
+        migration.postMigrate(db)
+      }
       db.prepare('INSERT INTO migrations (name) VALUES (?)').run(migration.name)
     }
   }
 }
 
-const migrations = [
+const migrations: Array<{ name: string; sql: string; postMigrate?: (db: DatabaseType) => void }> = [
   {
     name: '001_initial_schema',
     sql: `
@@ -877,6 +881,54 @@ const migrations = [
         SELECT s.kombuse_session_id FROM sessions s WHERE s.id = session_events.session_id
       );
     `,
+  },
+  {
+    name: '022_agent_slug_and_descriptions',
+    sql: `
+      ALTER TABLE agents ADD COLUMN slug TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_agents_slug ON agents(slug) WHERE slug IS NOT NULL;
+    `,
+    postMigrate: (db: DatabaseType) => {
+      // Backfill slugs from profile names
+      const rows = db
+        .prepare(
+          'SELECT a.id, p.name FROM agents a JOIN profiles p ON p.id = a.id'
+        )
+        .all() as { id: string; name: string }[]
+      const update = db.prepare('UPDATE agents SET slug = ? WHERE id = ?')
+      const usedSlugs = new Set<string>()
+      for (const row of rows) {
+        let slug = toSlug(row.name)
+        // Handle collisions by appending a suffix
+        if (usedSlugs.has(slug)) {
+          let i = 2
+          while (usedSlugs.has(`${slug}-${i}`)) i++
+          slug = `${slug}-${i}`
+        }
+        usedSlugs.add(slug)
+        update.run(slug, row.id)
+      }
+
+      // Backfill missing descriptions for agent profiles
+      const descriptions: Record<string, string> = {
+        Orchestrator:
+          'Routes tickets through pipeline stages (Triage, Analyze, Plan, Implement, Review, Summarize)',
+        'Triage Agent':
+          'Classifies new tickets, searches for duplicates, and suggests priority',
+        'Test Writer':
+          'Writes and maintains test suites for code changes',
+        'Ticket Analyzer':
+          'Investigates codebase to find root cause and impact of issues',
+        'Code Reviewer':
+          'Reviews code changes for correctness, test coverage, and consistency',
+      }
+      const updateDesc = db.prepare(
+        "UPDATE profiles SET description = ? WHERE id IN (SELECT id FROM agents) AND name = ? AND (description IS NULL OR trim(description) = '')"
+      )
+      for (const [name, desc] of Object.entries(descriptions)) {
+        updateDesc.run(desc, name)
+      }
+    },
   },
 ]
 

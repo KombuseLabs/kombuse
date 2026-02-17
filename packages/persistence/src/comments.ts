@@ -10,6 +10,7 @@ import { getDatabase } from './database'
 import { mentionsRepository } from './mentions'
 import { profilesRepository } from './profiles'
 import { eventsRepository } from './events'
+import { agentsRepository } from './agents'
 
 // Raw comment from database (is_edited is stored as INTEGER)
 interface RawComment {
@@ -312,9 +313,16 @@ export const commentsRepository = {
       // 2. Parse profile/ticket mentions from body
       const mentions = parseMentions(payload.body)
 
-      // 3a. Resolve new-format profile mentions (by ID)
+      // 3a. Resolve new-format profile mentions (by ID, with slug fallback)
       for (const profileId of mentions.profileIds) {
-        const profile = profilesRepository.get(profileId)
+        let profile = profilesRepository.get(profileId)
+        // Slug fallback: if no direct profile match, try agent slug
+        if (!profile) {
+          const agentBySlug = agentsRepository.getBySlug(profileId)
+          if (agentBySlug) {
+            profile = profilesRepository.get(agentBySlug.id) ?? null
+          }
+        }
         if (profile) {
           mentionsRepository.create({
             comment_id: commentId,
@@ -340,9 +348,16 @@ export const commentsRepository = {
         }
       }
 
-      // 3b. Resolve legacy-format profile mentions (by name, backward compat)
+      // 3b. Resolve legacy-format profile mentions (by name, with slug fallback)
       for (const name of mentions.legacyProfileNames) {
-        const profile = profilesRepository.getByName(name)
+        let profile = profilesRepository.getByName(name)
+        // Slug fallback: if no name match, try agent slug
+        if (!profile) {
+          const agentBySlug = agentsRepository.getBySlug(name)
+          if (agentBySlug) {
+            profile = profilesRepository.get(agentBySlug.id) ?? null
+          }
+        }
         if (profile) {
           mentionsRepository.create({
             comment_id: commentId,
@@ -522,9 +537,15 @@ export const commentsRepository = {
               .get(comment.ticket_id) as { project_id: string } | undefined)
           : undefined
 
-        // Create new mention records (new format, by ID)
+        // Create new mention records (new format, by ID, with slug fallback)
         for (const profileId of mentions.profileIds) {
-          const profile = profilesRepository.get(profileId)
+          let profile = profilesRepository.get(profileId)
+          if (!profile) {
+            const agentBySlug = agentsRepository.getBySlug(profileId)
+            if (agentBySlug) {
+              profile = profilesRepository.get(agentBySlug.id) ?? null
+            }
+          }
           if (profile) {
             mentionsRepository.create({
               comment_id: id,
@@ -535,9 +556,15 @@ export const commentsRepository = {
           }
         }
 
-        // Create new mention records (legacy format, by name)
+        // Create new mention records (legacy format, by name, with slug fallback)
         for (const name of mentions.legacyProfileNames) {
-          const profile = profilesRepository.getByName(name)
+          let profile = profilesRepository.getByName(name)
+          if (!profile) {
+            const agentBySlug = agentsRepository.getBySlug(name)
+            if (agentBySlug) {
+              profile = profilesRepository.get(agentBySlug.id) ?? null
+            }
+          }
           if (profile) {
             mentionsRepository.create({
               comment_id: id,

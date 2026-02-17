@@ -35,7 +35,7 @@ describe('ticketService', () => {
     cleanup = setup.cleanup
 
     const profileId = createAgentProfile()
-    agentsRepository.create({ id: profileId, system_prompt: 'Test agent' })
+    agentsRepository.create({ id: profileId, name: 'Test Agent', description: 'Test', system_prompt: 'Test agent' })
     agentId = profileId
 
     const trigger = agentTriggersRepository.create({

@@ -55,8 +55,8 @@ describe('list_agents', () => {
   it('should return all agents', async () => {
     createAgentProfile('agent-1', 'Agent One')
     createAgentProfile('agent-2', 'Agent Two')
-    agentsRepository.create({ id: 'agent-1', system_prompt: 'Prompt 1' })
-    agentsRepository.create({ id: 'agent-2', system_prompt: 'Prompt 2' })
+    agentsRepository.create({ id: 'agent-1', name: 'Test Agent', description: 'Test', system_prompt: 'Prompt 1' })
+    agentsRepository.create({ id: 'agent-2', name: 'Test Agent', description: 'Test', system_prompt: 'Prompt 2' })
 
     const result = await client.callTool({ name: 'list_agents', arguments: {} })
     const data = parseContent(result) as { agents: Agent[]; count: number }
@@ -67,8 +67,8 @@ describe('list_agents', () => {
   it('should filter by is_enabled', async () => {
     createAgentProfile('agent-enabled', 'Enabled')
     createAgentProfile('agent-disabled', 'Disabled')
-    agentsRepository.create({ id: 'agent-enabled', system_prompt: 'Prompt', is_enabled: true })
-    agentsRepository.create({ id: 'agent-disabled', system_prompt: 'Prompt', is_enabled: false })
+    agentsRepository.create({ id: 'agent-enabled', name: 'Test Agent', description: 'Test', system_prompt: 'Prompt', is_enabled: true })
+    agentsRepository.create({ id: 'agent-disabled', name: 'Test Agent', description: 'Test', system_prompt: 'Prompt', is_enabled: false })
 
     const result = await client.callTool({
       name: 'list_agents',
@@ -83,7 +83,7 @@ describe('list_agents', () => {
   it('should respect limit and offset', async () => {
     for (let i = 1; i <= 5; i++) {
       createAgentProfile(`agent-${i}`, `Agent ${i}`)
-      agentsRepository.create({ id: `agent-${i}`, system_prompt: `Prompt ${i}` })
+      agentsRepository.create({ id: `agent-${i}`, name: 'Test Agent', description: 'Test', system_prompt: `Prompt ${i}` })
     }
 
     const result = await client.callTool({
@@ -207,7 +207,7 @@ describe('create_agent', () => {
 describe('update_agent', () => {
   it('should update system_prompt', async () => {
     createAgentProfile('upd-agent', 'Update Agent')
-    agentsRepository.create({ id: 'upd-agent', system_prompt: 'Old prompt' })
+    agentsRepository.create({ id: 'upd-agent', name: 'Test Agent', description: 'Test', system_prompt: 'Old prompt' })
 
     const result = await client.callTool({
       name: 'update_agent',
@@ -224,7 +224,7 @@ describe('update_agent', () => {
 
   it('should update is_enabled', async () => {
     createAgentProfile('toggle-agent', 'Toggle Agent')
-    agentsRepository.create({ id: 'toggle-agent', system_prompt: 'Prompt', is_enabled: true })
+    agentsRepository.create({ id: 'toggle-agent', name: 'Test Agent', description: 'Test', system_prompt: 'Prompt', is_enabled: true })
 
     const result = await client.callTool({
       name: 'update_agent',
@@ -241,7 +241,7 @@ describe('update_agent', () => {
 
   it('should update permissions', async () => {
     createAgentProfile('perm-agent', 'Perm Agent')
-    agentsRepository.create({ id: 'perm-agent', system_prompt: 'Prompt' })
+    agentsRepository.create({ id: 'perm-agent', name: 'Test Agent', description: 'Test', system_prompt: 'Prompt' })
 
     const newPermissions: Permission[] = [
       {
@@ -266,7 +266,7 @@ describe('update_agent', () => {
 
   it('should accept config.backend_type on update_agent', async () => {
     createAgentProfile('backend-update-agent', 'Backend Update Agent')
-    agentsRepository.create({ id: 'backend-update-agent', system_prompt: 'Prompt' })
+    agentsRepository.create({ id: 'backend-update-agent', name: 'Test Agent', description: 'Test', system_prompt: 'Prompt' })
 
     const result = await client.callTool({
       name: 'update_agent',
@@ -306,7 +306,7 @@ describe('permission enforcement', () => {
     const sessionId = `session-${id}`
 
     profilesRepository.create({ id, type: 'agent', name: `Agent ${agentCounter}` })
-    agentsRepository.create({ id, system_prompt: 'Test agent', permissions })
+    agentsRepository.create({ id, name: 'Test Agent', description: 'Test', system_prompt: 'Test agent', permissions })
 
     const trigger = agentTriggersRepository.create({
       agent_id: id,
@@ -374,7 +374,7 @@ describe('permission enforcement', () => {
 
   it('should deny agents with empty permissions from updating agents', async () => {
     createAgentProfile('upd-target', 'Target')
-    agentsRepository.create({ id: 'upd-target', system_prompt: 'Old' })
+    agentsRepository.create({ id: 'upd-target', name: 'Test Agent', description: 'Test', system_prompt: 'Old' })
 
     const sessionId = createTestAgentSession([])
 
@@ -394,7 +394,7 @@ describe('permission enforcement', () => {
 
   it('should allow agents with agent update permissions', async () => {
     createAgentProfile('upd-allowed', 'Allowed')
-    agentsRepository.create({ id: 'upd-allowed', system_prompt: 'Old' })
+    agentsRepository.create({ id: 'upd-allowed', name: 'Test Agent', description: 'Test', system_prompt: 'Old' })
 
     const sessionId = createTestAgentSession([
       { type: 'resource', resource: 'agent', actions: ['update'], scope: 'global' },

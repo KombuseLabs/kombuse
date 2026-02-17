@@ -65,6 +65,8 @@ describe('Mock Agent Invocations', () => {
       const agentId = createAgentProfile()
       agentsRepository.create({
         id: agentId,
+        name: 'Test Agent',
+        description: 'Test',
         system_prompt: 'You are a ticket reviewer agent.',
         is_enabled: true,
       })
@@ -105,6 +107,8 @@ describe('Mock Agent Invocations', () => {
       const agentId = createAgentProfile()
       agentsRepository.create({
         id: agentId,
+        name: 'Test Agent',
+        description: 'Test',
         system_prompt: 'Disabled agent.',
         is_enabled: true,
       })
@@ -137,6 +141,8 @@ describe('Mock Agent Invocations', () => {
       const agentId = createAgentProfile()
       agentsRepository.create({
         id: agentId,
+        name: 'Test Agent',
+        description: 'Test',
         system_prompt: 'Disabled agent.',
         is_enabled: false, // Disabled!
       })
@@ -171,6 +177,8 @@ describe('Mock Agent Invocations', () => {
       const agentId = createAgentProfile()
       agentsRepository.create({
         id: agentId,
+        name: 'Test Agent',
+        description: 'Test',
         system_prompt: 'High priority ticket handler.',
         is_enabled: true,
       })
@@ -218,6 +226,8 @@ describe('Mock Agent Invocations', () => {
       const agent1Id = createAgentProfile()
       agentsRepository.create({
         id: agent1Id,
+        name: 'Test Agent',
+        description: 'Test',
         system_prompt: 'First agent.',
         is_enabled: true,
       })
@@ -231,6 +241,8 @@ describe('Mock Agent Invocations', () => {
       const agent2Id = createAgentProfile()
       agentsRepository.create({
         id: agent2Id,
+        name: 'Test Agent',
+        description: 'Test',
         system_prompt: 'Second agent.',
         is_enabled: true,
       })

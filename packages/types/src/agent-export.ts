@@ -13,6 +13,7 @@ export const SELF_PLACEHOLDER = '$SELF'
  */
 export interface AgentExportFrontmatter {
   name: string
+  slug: string | null
   description: string | null
   avatar: string | null
   type: string

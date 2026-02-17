@@ -55,6 +55,8 @@ describe('POST /sessions agent_id validation', () => {
     })
     agentsRepository.create({
       id: 'disabled-agent',
+      name: 'Test Agent',
+      description: 'Test',
       system_prompt: 'test',
       is_enabled: false,
       config: { enabled_for_chat: true },
@@ -78,6 +80,8 @@ describe('POST /sessions agent_id validation', () => {
     })
     agentsRepository.create({
       id: 'no-chat-agent',
+      name: 'Test Agent',
+      description: 'Test',
       system_prompt: 'test',
       is_enabled: true,
       config: { enabled_for_chat: false },
@@ -101,6 +105,8 @@ describe('POST /sessions agent_id validation', () => {
     })
     agentsRepository.create({
       id: 'unconfigured-agent',
+      name: 'Test Agent',
+      description: 'Test',
       system_prompt: 'test',
       is_enabled: true,
     })
@@ -123,6 +129,8 @@ describe('POST /sessions agent_id validation', () => {
     })
     agentsRepository.create({
       id: 'valid-chat-agent',
+      name: 'Test Agent',
+      description: 'Test',
       system_prompt: 'test',
       is_enabled: true,
       config: { enabled_for_chat: true },

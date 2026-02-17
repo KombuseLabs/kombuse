@@ -1,9 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
   AgentFilters,
-  CreateAgentInput,
   UpdateAgentInput,
-  CreateProfileInput,
   UpdateProfileInput,
 } from '@kombuse/types'
 import { agentsApi, profilesApi } from '../lib/api'
@@ -48,20 +46,24 @@ export function useCreateAgent() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (input: {
-      profile: Omit<CreateProfileInput, 'type'>
-      agent: Omit<CreateAgentInput, 'id'>
+      name: string
+      description: string
+      avatar_url?: string
+      system_prompt: string
+      is_enabled?: boolean
     }) => {
-      // 1. Create profile first (type: 'agent')
-      const profile = await profilesApi.create({
-        ...input.profile,
-        type: 'agent',
-      })
-      // 2. Create agent referencing the profile
+      // Service auto-creates profile with name + description
       const agent = await agentsApi.create({
-        ...input.agent,
-        id: profile.id,
+        name: input.name,
+        description: input.description,
+        system_prompt: input.system_prompt,
+        is_enabled: input.is_enabled,
       })
-      return { agent, profile }
+      // Avatar is a profile-only field; update separately if provided
+      if (input.avatar_url) {
+        await profilesApi.update(agent.id, { avatar_url: input.avatar_url })
+      }
+      return agent
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })

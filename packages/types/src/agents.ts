@@ -91,6 +91,8 @@ export interface AgentConfig {
 export interface Agent {
   /** References profiles.id */
   id: string
+  /** Kebab-case slug derived from agent name */
+  slug: string | null
   /** System prompt for the agent */
   system_prompt: string
   /** JSON array of permission rules */
@@ -107,10 +109,14 @@ export interface Agent {
  * Input for creating an agent
  */
 export interface CreateAgentInput {
-  /** Profile ID for the agent. A profile will be auto-created if one doesn't exist. */
-  id: string
-  /** Display name for the agent profile (defaults to id if not provided) */
-  name?: string
+  /** Profile ID for the agent (UUID). Auto-generated if not provided. */
+  id?: string
+  /** Display name for the agent profile (required) */
+  name: string
+  /** Description of the agent's purpose (required) */
+  description: string
+  /** Kebab-case slug (derived from name if not provided) */
+  slug?: string
   system_prompt: string
   permissions?: Permission[]
   config?: AgentConfig

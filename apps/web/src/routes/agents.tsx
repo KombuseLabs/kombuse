@@ -116,18 +116,14 @@ export function Agents() {
     if (!newAgentName.trim() || !newAgentPrompt.trim()) return;
     createAgent.mutate(
       {
-        profile: {
-          name: newAgentName.trim(),
-          description: newAgentDescription.trim() || undefined,
-          avatar_url: newAgentAvatar,
-        },
-        agent: {
-          system_prompt: newAgentPrompt,
-          is_enabled: true,
-        },
+        name: newAgentName.trim(),
+        description: newAgentDescription.trim() || newAgentName.trim(),
+        avatar_url: newAgentAvatar,
+        system_prompt: newAgentPrompt,
+        is_enabled: true,
       },
       {
-        onSuccess: ({ agent }) => {
+        onSuccess: (agent) => {
           resetCreateForm();
           navigate(`${basePath}/${agent.id}`);
         },

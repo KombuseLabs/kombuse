@@ -190,6 +190,8 @@ describe('get_ticket', () => {
     profilesRepository.create({ id: analyzerId, type: 'agent', name: 'Analyzer', description: 'Investigates issues' })
     agentsRepository.create({
       id: analyzerId,
+      name: 'Test Agent',
+      description: 'Test',
       system_prompt: 'Analyze',
       permissions: [],
       config: { type: 'analyzer' },
@@ -231,8 +233,8 @@ describe('get_ticket', () => {
     const analyzerId = `analyzer-${Date.now()}`
     profilesRepository.create({ id: coderId, type: 'agent', name: 'Coder' })
     profilesRepository.create({ id: analyzerId, type: 'agent', name: 'Analyzer' })
-    agentsRepository.create({ id: coderId, system_prompt: 'Code', permissions: [], config: { type: 'coder' } })
-    agentsRepository.create({ id: analyzerId, system_prompt: 'Analyze', permissions: [], config: { type: 'analyzer' } })
+    agentsRepository.create({ id: coderId, name: 'Test Agent', description: 'Test', system_prompt: 'Code', permissions: [], config: { type: 'coder' } })
+    agentsRepository.create({ id: analyzerId, name: 'Test Agent', description: 'Test', system_prompt: 'Analyze', permissions: [], config: { type: 'analyzer' } })
 
     commentsRepository.create({ ticket_id: ticket.id, author_id: TEST_USER_ID, body: 'user comment' })
     commentsRepository.create({ ticket_id: ticket.id, author_id: coderId, body: 'coder comment' })
@@ -278,6 +280,8 @@ describe('get_ticket', () => {
     profilesRepository.create({ id: triageId, type: 'agent', name: 'Triage Bot' })
     agentsRepository.create({
       id: triageId,
+      name: 'Test Agent',
+      description: 'Test',
       system_prompt: 'Triage',
       permissions: [],
       config: { type: 'triage' },
@@ -1116,7 +1120,7 @@ describe('permission enforcement', () => {
     const sessionId = `session-${id}`
 
     profilesRepository.create({ id, type: 'agent', name: `Agent ${agentCounter}` })
-    agentsRepository.create({ id, system_prompt: 'Test agent', permissions })
+    agentsRepository.create({ id, name: 'Test Agent', description: 'Test', system_prompt: 'Test agent', permissions })
 
     const trigger = agentTriggersRepository.create({
       agent_id: id,

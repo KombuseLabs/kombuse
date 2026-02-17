@@ -36,6 +36,8 @@ function createTestAgent(overrides?: {
   })
   return agentsRepository.create({
     id,
+    name: overrides?.profileName ?? `Agent ${agentCounter}`,
+    description: overrides?.profileDescription ?? 'Test agent',
     system_prompt: overrides?.system_prompt ?? 'Test prompt',
     permissions: (overrides?.permissions ?? []) as never,
     config: (overrides?.config ?? {}) as never,
@@ -69,6 +71,8 @@ describe('agentExportService', () => {
       })
       agentsRepository.create({
         id: ANONYMOUS_AGENT_ID,
+        name: 'Anonymous Agent',
+        description: 'Anon',
         system_prompt: 'anon prompt',
       })
       createTestAgent({ id: 'real-agent' })
@@ -115,6 +119,8 @@ describe('agentExportService', () => {
       })
       agentsRepository.create({
         id: ANONYMOUS_AGENT_ID,
+        name: 'Anonymous Agent',
+        description: 'Anon',
         system_prompt: 'anon prompt',
       })
 
@@ -357,7 +363,7 @@ describe('agentExportService', () => {
 
     it('should skip anonymous-agent even when explicitly requested', () => {
       profilesRepository.create({ id: ANONYMOUS_AGENT_ID, type: 'agent', name: 'Anon' })
-      agentsRepository.create({ id: ANONYMOUS_AGENT_ID, system_prompt: 'anon' })
+      agentsRepository.create({ id: ANONYMOUS_AGENT_ID, name: 'Anon', description: 'Anon', system_prompt: 'anon' })
       const files = agentExportService.serializeMany([ANONYMOUS_AGENT_ID])
       expect(files).toEqual([])
     })

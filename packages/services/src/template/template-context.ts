@@ -5,6 +5,7 @@ import {
   commentsRepository,
   profilesRepository,
   labelsRepository,
+  agentsRepository,
 } from '@kombuse/persistence'
 
 /**
@@ -71,7 +72,10 @@ export function buildTemplateContext(event: Event): TemplateContext {
   // Inject active agent profiles for the mention directory
   context.agents = profilesRepository
     .list({ type: 'agent', is_active: true })
-    .map((p) => ({ id: p.id, name: p.name }))
+    .map((p) => {
+      const agent = agentsRepository.get(p.id)
+      return { id: p.id, name: p.name, description: p.description, slug: agent?.slug ?? null }
+    })
 
   return context
 }

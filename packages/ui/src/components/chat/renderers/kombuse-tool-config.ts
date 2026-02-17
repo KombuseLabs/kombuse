@@ -255,7 +255,7 @@ const KOMBUSE_TOOL_CONFIGS: Record<string, KombuseToolConfig> = {
     icon: UserPlus,
     summarize: ({ input, output, hasResult }) =>
       joinSummary([
-        typeof input.id === 'string' ? input.id : null,
+        typeof input.name === 'string' ? truncate(input.name, 32) : null,
         hasResult && typeof readString(output, ['id']) === 'string' ? readString(output, ['id']) : null,
       ]),
   },

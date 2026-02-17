@@ -23,6 +23,7 @@ if (!('ResizeObserver' in globalThis)) {
 function buildAgent(overrides: Partial<Agent> = {}): Agent {
   const base: Agent = {
     id: 'agent-1',
+    slug: null,
     system_prompt: 'System prompt',
     permissions: [],
     config: {

@@ -159,7 +159,7 @@ export function PluginsPage() {
                         >
                           {name}
                         </Label>
-                        <p className="text-xs text-muted-foreground truncate">{agent.id}</p>
+                        <p className="text-xs text-muted-foreground truncate">{agent.slug ?? agent.id}</p>
                       </div>
                       {!agent.is_enabled && (
                         <span className="text-xs text-muted-foreground">disabled</span>

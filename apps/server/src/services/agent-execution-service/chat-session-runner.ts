@@ -1,5 +1,6 @@
 import {
   agentInvocationsRepository,
+  agentsRepository,
   commentsRepository,
   profilesRepository,
   projectsRepository,
@@ -873,7 +874,10 @@ export function startAgentChatSession(
       actor_type: 'user' as const,
       payload: {} as Record<string, unknown>,
       kombuse_session_id: appSessionId,
-      agents: profilesRepository.list({ type: 'agent', is_active: true }).map((profile) => ({ id: profile.id, name: profile.name })),
+      agents: profilesRepository.list({ type: 'agent', is_active: true }).map((profile) => {
+        const agentRecord = agentsRepository.get(profile.id)
+        return { id: profile.id, name: profile.name, description: profile.description, slug: agentRecord?.slug ?? null }
+      }),
     }
     resolvedSystemPrompt = renderTemplate(preset.preambleTemplate, preambleContext)
 

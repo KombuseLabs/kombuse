@@ -27,6 +27,17 @@ export async function agentRoutes(fastify: FastifyInstance) {
     return agentService.listAgents(parseResult.data)
   })
 
+  // Get agent by slug
+  fastify.get<{
+    Params: { slug: string }
+  }>('/agents/by-slug/:slug', async (request, reply) => {
+    const agent = agentService.getAgentBySlug(request.params.slug)
+    if (!agent) {
+      return reply.status(404).send({ error: 'Agent not found' })
+    }
+    return agent
+  })
+
   // Get single agent
   fastify.get<{
     Params: { id: string }
@@ -53,8 +64,11 @@ export async function agentRoutes(fastify: FastifyInstance) {
       if (message.includes('not found')) {
         return reply.status(404).send({ error: message })
       }
-      if (message.includes('not of type')) {
+      if (message.includes('not of type') || message.includes('already exists')) {
         return reply.status(409).send({ error: message })
+      }
+      if (message.includes('must be a valid UUID')) {
+        return reply.status(400).send({ error: message })
       }
       throw error
     }
