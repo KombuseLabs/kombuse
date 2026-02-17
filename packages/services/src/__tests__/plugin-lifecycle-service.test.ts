@@ -1,0 +1,419 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import {
+  setupTestDb,
+  TEST_PROJECT_ID,
+} from '@kombuse/persistence/test-utils'
+import {
+  agentsRepository,
+  agentTriggersRepository,
+  labelsRepository,
+  pluginsRepository,
+  profilesRepository,
+  getDatabase,
+} from '@kombuse/persistence'
+import type { KombusePluginManifest } from '@kombuse/types'
+import {
+  pluginLifecycleService,
+  PluginNotFoundError,
+} from '../plugin-lifecycle-service'
+
+// --- Helpers ---
+
+let entityCounter = 0
+
+function createTestPlugin(overrides?: {
+  name?: string
+  is_enabled?: boolean
+}): string {
+  const pluginId = crypto.randomUUID()
+  pluginsRepository.create({
+    id: pluginId,
+    project_id: TEST_PROJECT_ID,
+    name: overrides?.name ?? `test-plugin-${++entityCounter}`,
+    version: '1.0.0',
+    directory: '/tmp/test',
+    manifest: JSON.stringify({
+      name: overrides?.name ?? `test-plugin-${entityCounter}`,
+      version: '1.0.0',
+      kombuse: {
+        plugin_system_version: 'kombuse-plugin-v1',
+        project_id: TEST_PROJECT_ID,
+        exported_at: new Date().toISOString(),
+        labels: [],
+      },
+    }),
+    is_enabled: overrides?.is_enabled,
+  })
+  return pluginId
+}
+
+function createLinkedAgent(pluginId: string, slug?: string): string {
+  const agentId = crypto.randomUUID()
+  profilesRepository.create({
+    id: agentId,
+    type: 'agent',
+    name: `Agent ${++entityCounter}`,
+  })
+  agentsRepository.create({
+    id: agentId,
+    name: `Agent ${entityCounter}`,
+    description: `Test agent ${entityCounter}`,
+    slug: slug ?? `agent-${entityCounter}-${Date.now()}`,
+    system_prompt: 'Test prompt',
+    plugin_id: pluginId,
+  })
+  return agentId
+}
+
+function createLinkedTrigger(
+  agentId: string,
+  pluginId: string
+): number {
+  const trigger = agentTriggersRepository.create({
+    agent_id: agentId,
+    event_type: 'ticket.created',
+    project_id: TEST_PROJECT_ID,
+    is_enabled: true,
+    priority: 0,
+    plugin_id: pluginId,
+  })
+  return trigger.id
+}
+
+function createLinkedLabel(pluginId: string): number {
+  const label = labelsRepository.create({
+    project_id: TEST_PROJECT_ID,
+    name: `Label ${++entityCounter}`,
+    color: '#00ff00',
+    plugin_id: pluginId,
+  })
+  return label.id
+}
+
+function writePluginManifest(
+  dir: string,
+  pluginName: string,
+  manifest?: Partial<KombusePluginManifest>
+): void {
+  const pluginDir = join(dir, pluginName, '.claude-plugin')
+  mkdirSync(pluginDir, { recursive: true })
+  writeFileSync(
+    join(pluginDir, 'plugin.json'),
+    JSON.stringify({
+      name: pluginName,
+      version: '1.0.0',
+      kombuse: {
+        plugin_system_version: 'kombuse-plugin-v1',
+        project_id: TEST_PROJECT_ID,
+        exported_at: new Date().toISOString(),
+        labels: [],
+      },
+      ...manifest,
+    })
+  )
+}
+
+// --- Tests ---
+
+describe('pluginLifecycleService', () => {
+  let cleanup: () => void
+
+  beforeEach(() => {
+    const setup = setupTestDb()
+    cleanup = setup.cleanup
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  describe('enablePlugin', () => {
+    it('should enable plugin and cascade to agents and triggers', () => {
+      const pluginId = createTestPlugin({ is_enabled: false })
+      const agentId = createLinkedAgent(pluginId)
+      const triggerId = createLinkedTrigger(agentId, pluginId)
+
+      // Manually disable agent and trigger to simulate disabled state
+      const db = getDatabase()
+      db.prepare('UPDATE agents SET is_enabled = 0 WHERE id = ?').run(agentId)
+      db.prepare('UPDATE agent_triggers SET is_enabled = 0 WHERE id = ?').run(triggerId)
+
+      const result = pluginLifecycleService.enablePlugin(pluginId)
+
+      expect(result.is_enabled).toBe(true)
+
+      const agent = agentsRepository.get(agentId)
+      expect(agent!.is_enabled).toBe(true)
+
+      const triggers = agentTriggersRepository.listByAgent(agentId)
+      expect(triggers[0]!.is_enabled).toBe(true)
+    })
+
+    it('should throw PluginNotFoundError for non-existent plugin', () => {
+      expect(() =>
+        pluginLifecycleService.enablePlugin('non-existent-id')
+      ).toThrow(PluginNotFoundError)
+    })
+  })
+
+  describe('disablePlugin', () => {
+    it('should disable plugin and cascade to agents and triggers', () => {
+      const pluginId = createTestPlugin()
+      const agentId = createLinkedAgent(pluginId)
+      createLinkedTrigger(agentId, pluginId)
+
+      const result = pluginLifecycleService.disablePlugin(pluginId)
+
+      expect(result.is_enabled).toBe(false)
+
+      const agent = agentsRepository.get(agentId)
+      expect(agent!.is_enabled).toBe(false)
+
+      const triggers = agentTriggersRepository.listByAgent(agentId)
+      expect(triggers[0]!.is_enabled).toBe(false)
+    })
+
+    it('should not affect agents from other plugins', () => {
+      const pluginA = createTestPlugin({ name: 'plugin-a' })
+      const pluginB = createTestPlugin({ name: 'plugin-b' })
+
+      const agentA = createLinkedAgent(pluginA, 'agent-a')
+      const agentB = createLinkedAgent(pluginB, 'agent-b')
+
+      pluginLifecycleService.disablePlugin(pluginA)
+
+      // Plugin A's agent should be disabled
+      expect(agentsRepository.get(agentA)!.is_enabled).toBe(false)
+
+      // Plugin B's agent should still be enabled
+      expect(agentsRepository.get(agentB)!.is_enabled).toBe(true)
+    })
+
+    it('should not affect labels', () => {
+      const pluginId = createTestPlugin()
+      const labelId = createLinkedLabel(pluginId)
+
+      pluginLifecycleService.disablePlugin(pluginId)
+
+      // Label should still exist (labels don't have is_enabled)
+      const label = labelsRepository.get(labelId)
+      expect(label).not.toBeNull()
+    })
+
+    it('should throw PluginNotFoundError for non-existent plugin', () => {
+      expect(() =>
+        pluginLifecycleService.disablePlugin('non-existent-id')
+      ).toThrow(PluginNotFoundError)
+    })
+  })
+
+  describe('uninstallPlugin — orphan mode', () => {
+    it('should null out plugin_id on all entities and delete plugin row', () => {
+      const pluginId = createTestPlugin()
+      const agentId = createLinkedAgent(pluginId)
+      createLinkedTrigger(agentId, pluginId)
+      const labelId = createLinkedLabel(pluginId)
+
+      pluginLifecycleService.uninstallPlugin(pluginId, 'orphan')
+
+      // Plugin row should be deleted
+      expect(pluginsRepository.get(pluginId)).toBeNull()
+
+      // Entities should still exist but with plugin_id = null
+      const agent = agentsRepository.get(agentId)
+      expect(agent).not.toBeNull()
+      expect(agent!.plugin_id).toBeNull()
+
+      const triggers = agentTriggersRepository.listByAgent(agentId)
+      expect(triggers).toHaveLength(1)
+      expect(triggers[0]!.plugin_id).toBeNull()
+
+      const label = labelsRepository.get(labelId)
+      expect(label).not.toBeNull()
+      expect(label!.plugin_id).toBeNull()
+    })
+  })
+
+  describe('uninstallPlugin — delete mode', () => {
+    it('should delete all plugin entities and the plugin row', () => {
+      const pluginId = createTestPlugin()
+      const agentId = createLinkedAgent(pluginId)
+      createLinkedTrigger(agentId, pluginId)
+      const labelId = createLinkedLabel(pluginId)
+
+      pluginLifecycleService.uninstallPlugin(pluginId, 'delete')
+
+      // Plugin row deleted
+      expect(pluginsRepository.get(pluginId)).toBeNull()
+
+      // Agent deleted
+      expect(agentsRepository.get(agentId)).toBeNull()
+
+      // Profile soft-deleted (is_active = false)
+      const profile = profilesRepository.get(agentId)
+      expect(profile).not.toBeNull()
+      expect(profile!.is_active).toBe(false)
+
+      // Label deleted
+      expect(labelsRepository.get(labelId)).toBeNull()
+
+      // Triggers cascade-deleted with agent
+      const triggers = agentTriggersRepository.listByAgent(agentId)
+      expect(triggers).toHaveLength(0)
+    })
+  })
+
+  describe('uninstallPlugin — errors', () => {
+    it('should throw PluginNotFoundError for non-existent plugin', () => {
+      expect(() =>
+        pluginLifecycleService.uninstallPlugin('non-existent-id', 'orphan')
+      ).toThrow(PluginNotFoundError)
+    })
+  })
+
+  describe('getAvailablePlugins', () => {
+    let tempDir: string
+    let originalHome: string | undefined
+
+    beforeEach(() => {
+      tempDir = mkdtempSync(join(tmpdir(), 'lifecycle-test-'))
+      originalHome = process.env.HOME
+    })
+
+    afterEach(() => {
+      process.env.HOME = originalHome
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true })
+    })
+
+    it('should find plugins in project directory', () => {
+      const db = getDatabase()
+      db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
+        tempDir,
+        TEST_PROJECT_ID
+      )
+
+      const pluginsDir = join(tempDir, '.kombuse', 'plugins')
+      writePluginManifest(pluginsDir, 'project-plugin')
+
+      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+
+      expect(available).toHaveLength(1)
+      expect(available[0]!.name).toBe('project-plugin')
+      expect(available[0]!.source).toBe('project')
+      expect(available[0]!.installed).toBe(false)
+    })
+
+    it('should find plugins in global directory', () => {
+      // Point HOME to tempDir so getKombuseDir() returns tempDir/.kombuse
+      process.env.HOME = tempDir
+      const globalPluginsDir = join(tempDir, '.kombuse', 'plugins')
+      writePluginManifest(globalPluginsDir, 'global-plugin')
+
+      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const globalPlugin = available.find((p) => p.name === 'global-plugin')
+      expect(globalPlugin).toBeDefined()
+      expect(globalPlugin!.source).toBe('global')
+    })
+
+    it('should mark installed plugins', () => {
+      const db = getDatabase()
+      db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
+        tempDir,
+        TEST_PROJECT_ID
+      )
+
+      const pluginsDir = join(tempDir, '.kombuse', 'plugins')
+      writePluginManifest(pluginsDir, 'installed-plugin')
+
+      // Install the plugin in DB
+      pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'installed-plugin',
+        version: '1.0.0',
+        directory: join(pluginsDir, 'installed-plugin'),
+        manifest: JSON.stringify({
+          name: 'installed-plugin',
+          version: '1.0.0',
+          kombuse: {
+            plugin_system_version: 'kombuse-plugin-v1',
+            project_id: TEST_PROJECT_ID,
+            exported_at: new Date().toISOString(),
+            labels: [],
+          },
+        }),
+      })
+
+      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const plugin = available.find((p) => p.name === 'installed-plugin')
+      expect(plugin).toBeDefined()
+      expect(plugin!.installed).toBe(true)
+    })
+
+    it('should skip directories with invalid manifests', () => {
+      const db = getDatabase()
+      db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
+        tempDir,
+        TEST_PROJECT_ID
+      )
+
+      const pluginsDir = join(tempDir, '.kombuse', 'plugins')
+
+      // Valid plugin
+      writePluginManifest(pluginsDir, 'valid-plugin')
+
+      // Invalid plugin — no .claude-plugin dir
+      mkdirSync(join(pluginsDir, 'no-manifest'), { recursive: true })
+
+      // Invalid plugin — bad JSON
+      const badDir = join(pluginsDir, 'bad-json', '.claude-plugin')
+      mkdirSync(badDir, { recursive: true })
+      writeFileSync(join(badDir, 'plugin.json'), 'not json')
+
+      // Invalid plugin — missing required fields
+      const incompleteDir = join(pluginsDir, 'incomplete', '.claude-plugin')
+      mkdirSync(incompleteDir, { recursive: true })
+      writeFileSync(join(incompleteDir, 'plugin.json'), JSON.stringify({ version: '1.0.0' }))
+
+      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      expect(available).toHaveLength(1)
+      expect(available[0]!.name).toBe('valid-plugin')
+    })
+
+    it('should give project plugins precedence over global duplicates', () => {
+      // Use separate dirs for project local_path and HOME
+      const projectBase = mkdtempSync(join(tmpdir(), 'lifecycle-proj-'))
+      const globalBase = mkdtempSync(join(tmpdir(), 'lifecycle-global-'))
+
+      const db = getDatabase()
+      db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
+        projectBase,
+        TEST_PROJECT_ID
+      )
+
+      // Create same plugin in project's .kombuse/plugins/
+      const projectPluginsDir = join(projectBase, '.kombuse', 'plugins')
+      writePluginManifest(projectPluginsDir, 'shared-plugin', {
+        description: 'project version',
+      })
+
+      // Create same plugin in global ~/.kombuse/plugins/
+      process.env.HOME = globalBase
+      const globalPluginsDir = join(globalBase, '.kombuse', 'plugins')
+      writePluginManifest(globalPluginsDir, 'shared-plugin', {
+        description: 'global version',
+      })
+
+      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const sharedPlugins = available.filter((p) => p.name === 'shared-plugin')
+      expect(sharedPlugins).toHaveLength(1)
+      expect(sharedPlugins[0]!.source).toBe('project')
+
+      // Cleanup extra dirs
+      rmSync(projectBase, { recursive: true })
+      rmSync(globalBase, { recursive: true })
+    })
+  })
+})

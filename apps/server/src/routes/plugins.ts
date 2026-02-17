@@ -15,6 +15,7 @@ import {
   pluginUpdateSchema,
   pluginFiltersSchema,
   availablePluginsSchema,
+  pluginUninstallQuerySchema,
 } from '../schemas/plugins'
 
 export async function pluginRoutes(fastify: FastifyInstance) {
@@ -135,8 +136,11 @@ export async function pluginRoutes(fastify: FastifyInstance) {
   // Uninstall a plugin
   fastify.delete('/plugins/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
-    const { mode } = (request.query as { mode?: string })
-    const uninstallMode = mode === 'delete' ? 'delete' : 'orphan'
+    const parseResult = pluginUninstallQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+    const uninstallMode = parseResult.data.mode
 
     try {
       pluginLifecycleService.uninstallPlugin(id, uninstallMode)

@@ -36,6 +36,10 @@ export const availablePluginsSchema = z.object({
   project_id: z.string().min(1),
 })
 
+export const pluginUninstallQuerySchema = z.object({
+  mode: z.enum(['orphan', 'delete']).optional().default('orphan'),
+})
+
 export type PluginInstallBody = z.infer<typeof pluginInstallSchema>
 export type PluginUpdateBody = z.infer<typeof pluginUpdateSchema>
 export type PluginFiltersQuery = z.infer<typeof pluginFiltersSchema>
