@@ -130,6 +130,40 @@ describe('agentsRepository', () => {
     })
   })
 
+  describe('getBySlug', () => {
+    it('should return agent when slug matches', () => {
+      const profileId = createAgentProfile()
+      agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Test prompt.',
+        slug: 'test-agent-slug',
+      }))
+
+      const agent = agentsRepository.getBySlug('test-agent-slug')
+
+      expect(agent, 'Should find agent by slug').not.toBeNull()
+      expect(agent?.id).toBe(profileId)
+      expect(agent?.slug).toBe('test-agent-slug')
+    })
+
+    it('should return null for non-existent slug', () => {
+      const agent = agentsRepository.getBySlug('no-such-slug')
+      expect(agent, 'Should return null for unknown slug').toBeNull()
+    })
+
+    it('should not match by ID when searching by slug', () => {
+      const profileId = createAgentProfile()
+      agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Test prompt.',
+        slug: 'my-slug',
+      }))
+
+      const agent = agentsRepository.getBySlug(profileId)
+      expect(agent, 'Should not match agent ID as slug').toBeNull()
+    })
+  })
+
   describe('list', () => {
     it('should return all agents when no filters provided', () => {
       const profileId1 = createAgentProfile()

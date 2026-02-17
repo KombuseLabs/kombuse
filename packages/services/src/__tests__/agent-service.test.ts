@@ -19,6 +19,7 @@ import {
   profilesRepository,
 } from '@kombuse/persistence'
 import { agentService } from '../agent-service'
+import { UUID_REGEX } from '@kombuse/types'
 
 // Helper to create unique agent profiles
 let agentCounter = 0
@@ -438,6 +439,80 @@ describe('agentService', () => {
 
       expect(allowed.allowed).toBe(true)
       expect(denied.allowed).toBe(false)
+    })
+  })
+
+  describe('createAgent', () => {
+    it('should auto-generate UUID when id is not provided', () => {
+      const agent = agentService.createAgent({
+        name: 'New Agent',
+        description: 'A new agent',
+        system_prompt: 'You are helpful.',
+      })
+
+      expect(agent.id, 'Should have a UUID id').toMatch(UUID_REGEX)
+    })
+
+    it('should derive slug from name', () => {
+      const agent = agentService.createAgent({
+        name: 'My Cool Agent',
+        description: 'Does cool things',
+        system_prompt: 'You are cool.',
+      })
+
+      expect(agent.slug, 'Slug should be derived from name').toBe('my-cool-agent')
+    })
+
+    it('should use explicit valid UUID id when provided', () => {
+      const explicitId = '11111111-1111-1111-1111-111111111111'
+      const agent = agentService.createAgent({
+        id: explicitId,
+        name: 'Explicit ID Agent',
+        description: 'Has explicit ID',
+        system_prompt: 'Test.',
+      })
+
+      expect(agent.id).toBe(explicitId)
+    })
+
+    it('should reject non-UUID id', () => {
+      expect(() =>
+        agentService.createAgent({
+          id: 'not-a-uuid',
+          name: 'Bad ID Agent',
+          description: 'Should fail',
+          system_prompt: 'Test.',
+        })
+      ).toThrow('Agent ID must be a valid UUID')
+    })
+
+    it('should throw on duplicate slug', () => {
+      agentService.createAgent({
+        name: 'Duplicate Name',
+        description: 'First agent',
+        system_prompt: 'First.',
+      })
+
+      expect(() =>
+        agentService.createAgent({
+          name: 'Duplicate Name',
+          description: 'Second agent',
+          system_prompt: 'Second.',
+        })
+      ).toThrow("Agent with slug 'duplicate-name' already exists")
+    })
+
+    it('should auto-create profile if missing', () => {
+      const agent = agentService.createAgent({
+        name: 'Profile Auto Agent',
+        description: 'Auto-created profile',
+        system_prompt: 'Test.',
+      })
+
+      const profile = profilesRepository.get(agent.id)
+      expect(profile, 'Profile should be auto-created').not.toBeNull()
+      expect(profile?.name).toBe('Profile Auto Agent')
+      expect(profile?.type).toBe('agent')
     })
   })
 })

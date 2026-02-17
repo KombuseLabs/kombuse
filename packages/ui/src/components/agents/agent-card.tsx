@@ -63,7 +63,7 @@ function AgentCard({
               >
                 {profile.name}
               </h3>
-              <p className="font-mono text-[11px] text-muted-foreground/60 truncate">{agent.id}</p>
+              <p className="font-mono text-[11px] text-muted-foreground/60 truncate">{agent.slug ?? agent.id}</p>
             </div>
             <Switch
               checked={agent.is_enabled}

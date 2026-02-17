@@ -22,6 +22,8 @@ import { commentsRepository } from '../comments'
 import { ticketsRepository } from '../tickets'
 import { mentionsRepository } from '../mentions'
 import { eventsRepository } from '../events'
+import { agentsRepository } from '../agents'
+import { profilesRepository } from '../profiles'
 
 const NON_EXISTENT_ID = 999999
 
@@ -719,6 +721,65 @@ describe('commentsRepository', () => {
         })
 
         expect(crossRefEvents, 'One cross-reference per unique source ticket').toHaveLength(2)
+      })
+    })
+
+    describe('slug-based mention resolution', () => {
+      it('should resolve @[Name](slug) via agent slug fallback', () => {
+        // Create an agent profile + agent with a slug
+        const agentProfileId = `slug-agent-${Date.now()}`
+        profilesRepository.create({
+          id: agentProfileId,
+          type: 'agent',
+          name: 'Slug Test Agent',
+          description: 'Agent for slug testing',
+        })
+        agentsRepository.create({
+          id: agentProfileId,
+          name: 'Slug Test Agent',
+          description: 'Agent for slug testing',
+          system_prompt: 'Test.',
+          slug: 'slug-test-agent',
+        })
+
+        // Use the slug in a new-format mention (not the profile ID)
+        const comment = commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: 'Hey @[Slug Test Agent](slug-test-agent) please check this.',
+        })
+
+        const mentions = mentionsRepository.getByComment(comment.id)
+        expect(mentions, 'Should resolve slug to agent profile').toHaveLength(1)
+        expect(mentions[0]?.mentioned_profile_id).toBe(agentProfileId)
+      })
+
+      it('should resolve @slug via legacy format slug fallback', () => {
+        const agentProfileId = `legacy-slug-agent-${Date.now()}`
+        profilesRepository.create({
+          id: agentProfileId,
+          type: 'agent',
+          name: 'Legacy Slug Agent',
+          description: 'Agent for legacy slug testing',
+        })
+        agentsRepository.create({
+          id: agentProfileId,
+          name: 'Legacy Slug Agent',
+          description: 'Agent for legacy slug testing',
+          system_prompt: 'Test.',
+          slug: 'legacy-slug-agent',
+        })
+
+        // Use the slug in a legacy-format mention
+        const comment = commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: 'Hey @legacy-slug-agent please check this.',
+        })
+
+        const mentions = mentionsRepository.getByComment(comment.id)
+        expect(mentions, 'Should resolve legacy slug to agent profile').toHaveLength(1)
+        expect(mentions[0]?.mentioned_profile_id).toBe(agentProfileId)
       })
     })
   })

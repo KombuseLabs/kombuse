@@ -98,7 +98,7 @@ function AgentDetail({
   }, [])
 
   const handleCopyId = () => {
-    void navigator.clipboard.writeText(agent.id).then(() => {
+    void navigator.clipboard.writeText(agent.slug ?? agent.id).then(() => {
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
       setIdCopied(true)
       copyTimeoutRef.current = setTimeout(() => setIdCopied(false), 1500)
@@ -190,7 +190,7 @@ function AgentDetail({
                   ) : (
                     <>
                       <Copy className="size-3" />
-                      {agent.id}
+                      {agent.slug ?? agent.id}
                     </>
                   )}
                 </button>
