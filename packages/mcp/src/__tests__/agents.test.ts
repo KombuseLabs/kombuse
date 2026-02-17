@@ -96,14 +96,15 @@ describe('list_agents', () => {
   })
 })
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 describe('create_agent', () => {
   it('should create an agent with required fields', async () => {
-    createAgentProfile('new-agent', 'New Agent')
-
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'new-agent',
+        name: 'New Agent',
+        description: 'A helpful agent',
         system_prompt: 'You are a helpful agent.',
       },
     })
@@ -111,14 +112,12 @@ describe('create_agent', () => {
     expect(result.isError).toBeFalsy()
     const data = parseContent(result) as Agent
 
-    expect(data.id).toBe('new-agent')
+    expect(data.id).toMatch(UUID_RE)
     expect(data.system_prompt).toBe('You are a helpful agent.')
     expect(data.is_enabled).toBe(true)
   })
 
   it('should create an agent with all optional fields', async () => {
-    createAgentProfile('full-agent', 'Full Agent')
-
     const permissions: Permission[] = [
       {
         type: 'resource',
@@ -132,7 +131,8 @@ describe('create_agent', () => {
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'full-agent',
+        name: 'Full Agent',
+        description: 'Full agent',
         system_prompt: 'Full agent prompt',
         permissions,
         config,
@@ -143,18 +143,18 @@ describe('create_agent', () => {
     expect(result.isError).toBeFalsy()
     const data = parseContent(result) as Agent
 
+    expect(data.id).toMatch(UUID_RE)
     expect(data.permissions).toEqual(permissions)
     expect(data.config.model).toBe('claude-sonnet-4-5-20250929')
     expect(data.is_enabled).toBe(false)
   })
 
   it('should accept config.backend_type on create_agent', async () => {
-    createAgentProfile('backend-agent', 'Backend Agent')
-
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'backend-agent',
+        name: 'Backend Agent',
+        description: 'Backend-aware agent',
         system_prompt: 'Backend-aware agent',
         config: {
           backend_type: 'codex',
@@ -172,31 +172,68 @@ describe('create_agent', () => {
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'auto-profile-agent',
+        name: 'Auto Profile Agent',
+        description: 'Auto-created agent',
         system_prompt: 'Auto-created agent',
       },
     })
 
     expect(result.isError).toBeFalsy()
     const data = parseContent(result) as Agent
-    expect(data.id).toBe('auto-profile-agent')
+    expect(data.id).toMatch(UUID_RE)
     expect(data.system_prompt).toBe('Auto-created agent')
 
     // Verify profile was auto-created
-    const profile = profilesRepository.get('auto-profile-agent')
+    const profile = profilesRepository.get(data.id)
     expect(profile).toBeDefined()
     expect(profile!.type).toBe('agent')
-    expect(profile!.name).toBe('auto-profile-agent')
+    expect(profile!.name).toBe('Auto Profile Agent')
   })
 
   it('should return error when profile is not type agent', async () => {
-    profilesRepository.create({ id: 'user-profile', type: 'user', name: 'User' })
+    const userId = crypto.randomUUID()
+    profilesRepository.create({ id: userId, type: 'user', name: 'User' })
 
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'user-profile',
+        id: userId,
+        name: 'Bad Agent',
+        description: 'Test',
         system_prompt: 'Prompt',
+      },
+    })
+
+    expect(result.isError).toBe(true)
+  })
+
+  it('should auto-generate UUID when id is not provided', async () => {
+    const result = await client.callTool({
+      name: 'create_agent',
+      arguments: {
+        name: 'UUID Agent',
+        description: 'Tests UUID generation',
+        system_prompt: 'Test prompt',
+      },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as Agent
+    expect(data.id).toMatch(UUID_RE)
+
+    const agent = agentsRepository.get(data.id)
+    expect(agent).toBeDefined()
+    expect(agent!.id).toBe(data.id)
+  })
+
+  it('should reject non-UUID id', async () => {
+    const result = await client.callTool({
+      name: 'create_agent',
+      arguments: {
+        id: 'not-a-uuid',
+        name: 'Bad ID Agent',
+        description: 'Test',
+        system_prompt: 'Test prompt',
       },
     })
 
@@ -323,12 +360,11 @@ describe('permission enforcement', () => {
   }
 
   it('should allow non-agent callers (no kombuse_session_id) freely', async () => {
-    createAgentProfile('free-agent', 'Free Agent')
-
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'free-agent',
+        name: 'Free Agent',
+        description: 'Test',
         system_prompt: 'Prompt',
       },
     })
@@ -338,12 +374,12 @@ describe('permission enforcement', () => {
 
   it('should deny agents with empty permissions from creating agents', async () => {
     const sessionId = createTestAgentSession([])
-    createAgentProfile('target-agent', 'Target')
 
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'target-agent',
+        name: 'Target Agent',
+        description: 'Test',
         system_prompt: 'Prompt',
         kombuse_session_id: sessionId,
       },
@@ -358,12 +394,12 @@ describe('permission enforcement', () => {
     const sessionId = createTestAgentSession([
       { type: 'resource', resource: 'agent', actions: ['create'], scope: 'global' },
     ])
-    createAgentProfile('allowed-agent', 'Allowed')
 
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
-        id: 'allowed-agent',
+        name: 'Allowed Agent',
+        description: 'Test',
         system_prompt: 'Prompt',
         kombuse_session_id: sessionId,
       },
