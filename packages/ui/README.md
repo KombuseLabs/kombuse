@@ -1382,11 +1382,21 @@ const { data: permissions, isLoading } = usePermissions('project-id', {
 ### Analytics Hooks
 
 ```typescript
-import { useSessionsPerDay } from '@kombuse/ui/hooks'
+import { useSessionsPerDay, useDurationPercentiles, usePipelineStageDuration } from '@kombuse/ui/hooks'
 
 // Fetch daily session counts for a project (default: last 30 days)
 const { data: sessionsPerDay, isLoading } = useSessionsPerDay('project-id', 30)
 // Returns Array<{ date: string; count: number }> sorted ascending by date
+
+// Fetch session duration percentiles per agent (completed sessions only)
+const { data: durations } = useDurationPercentiles('project-id', 30)
+// Returns Array<{ agent_id: string | null; agent_name: string | null; p50: number; p90: number; p99: number; avg: number; count: number }>
+// Duration values are in milliseconds
+
+// Fetch pipeline stage (invocation) duration per agent
+const { data: stages } = usePipelineStageDuration('project-id', 30)
+// Returns Array<{ agent_id: string; agent_name: string; avg_duration: number; p50: number; p90: number; count: number }>
+// Duration values are in milliseconds
 ```
 
 ### Database Hooks

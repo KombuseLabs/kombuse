@@ -361,6 +361,35 @@ registerSuccessSchema(
     })
   )
 )
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/duration-percentiles',
+  z.array(
+    z.object({
+      agent_id: z.string().nullable(),
+      agent_name: z.string().nullable(),
+      p50: z.number(),
+      p90: z.number(),
+      p99: z.number(),
+      avg: z.number(),
+      count: z.number().int().nonnegative(),
+    })
+  )
+)
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/pipeline-stage-duration',
+  z.array(
+    z.object({
+      agent_id: z.string(),
+      agent_name: z.string(),
+      avg_duration: z.number(),
+      p50: z.number(),
+      p90: z.number(),
+      count: z.number().int().nonnegative(),
+    })
+  )
+)
 
 // Session routes
 registerSuccessSchema('GET', '/api/sessions', z.array(publicSessionSchema))
