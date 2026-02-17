@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
 import { resolveClaudePath, resolveCodexPath } from '@kombuse/agent'
 import { BACKEND_TYPES, type BackendType, type BackendStatus } from '@kombuse/types'
@@ -18,7 +18,7 @@ function isExecutableAtPath(resolvedPath: string): boolean {
 
 function getVersion(binaryPath: string): string | null {
   try {
-    const output = execSync(`"${binaryPath}" --version`, {
+    const output = execFileSync(binaryPath, ['--version'], {
       timeout: 5_000,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -54,7 +54,7 @@ function checkSingleBackend(backendType: BackendType): BackendStatus {
   const version = getVersion(resolvedPath)
   return {
     backendType,
-    available: version !== null,
+    available: true,
     version,
     path: resolvedPath,
   }

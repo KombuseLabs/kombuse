@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BACKEND_TYPES } from "@kombuse/types";
+import { backendLabel } from "../lib/backend-utils";
 import {
   useBackendStatus,
   useRefreshBackendStatus,
@@ -18,12 +19,6 @@ function getInstallCommand(backendType: string): string {
     return "npm install -g @openai/codex";
   }
   return "";
-}
-
-function backendLabel(backendType: string): string {
-  if (backendType === BACKEND_TYPES.CLAUDE_CODE) return "Claude Code";
-  if (backendType === BACKEND_TYPES.CODEX) return "Codex";
-  return backendType;
 }
 
 function BackendStatusBanner() {

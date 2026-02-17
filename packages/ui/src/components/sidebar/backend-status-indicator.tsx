@@ -1,6 +1,7 @@
 "use client";
 
-import { BACKEND_TYPES, type BackendStatus } from "@kombuse/types";
+import type { BackendStatus } from "@kombuse/types";
+import { backendLabel } from "../../lib/backend-utils";
 import {
   useBackendStatus,
   useRefreshBackendStatus,
@@ -18,12 +19,6 @@ function statusDotColor(status: BackendStatus): string {
   return status.available ? "bg-green-500" : "bg-amber-500";
 }
 
-function backendLabel(backendType: string): string {
-  if (backendType === BACKEND_TYPES.CLAUDE_CODE) return "Claude Code";
-  if (backendType === BACKEND_TYPES.CODEX) return "Codex";
-  return backendType;
-}
-
 function BackendStatusIndicator() {
   const { data: statuses, isLoading } = useBackendStatus();
   const refreshMutation = useRefreshBackendStatus();
@@ -31,6 +26,7 @@ function BackendStatusIndicator() {
   if (isLoading || !statuses) return null;
 
   const hasUnavailable = statuses.some((s) => !s.available);
+  const firstVersion = statuses.find((s) => s.available && s.version);
 
   return (
     <Popover>
@@ -39,12 +35,19 @@ function BackendStatusIndicator() {
           className="flex flex-col items-center gap-1 rounded-lg p-1.5 transition-colors hover:bg-muted/50"
           aria-label="Backend status"
         >
-          {statuses.map((status) => (
-            <span
-              key={status.backendType}
-              className={cn("size-2 rounded-full", statusDotColor(status))}
-            />
-          ))}
+          <div className="flex items-center gap-1">
+            {statuses.map((status) => (
+              <span
+                key={status.backendType}
+                className={cn("size-2 rounded-full", statusDotColor(status))}
+              />
+            ))}
+          </div>
+          {firstVersion && (
+            <span className="text-[10px] leading-tight text-muted-foreground">
+              v{firstVersion.version}
+            </span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent side="right" align="end" className="w-64 p-0">
