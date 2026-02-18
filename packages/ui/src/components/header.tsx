@@ -38,7 +38,7 @@ function Header({
       className={cn(
         "flex items-center px-6",
         isDesktop ? "h-10 electron-drag" : "h-16",
-        isMac && "pl-20",
+        isMac && "pl-24",
         className
       )}
       {...props}
