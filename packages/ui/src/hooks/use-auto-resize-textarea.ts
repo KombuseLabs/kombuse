@@ -1,5 +1,3 @@
-'use client'
-
 import { useRef, useLayoutEffect, useCallback, type RefObject } from 'react'
 
 interface UseAutoResizeTextareaOptions {
