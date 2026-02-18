@@ -437,6 +437,19 @@ registerSuccessSchema(
     })
   )
 )
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/ticket-burndown',
+  z.array(
+    z.object({
+      date: z.string().min(1),
+      total: z.number().int().nonnegative(),
+      open: z.number().int().nonnegative(),
+      closed: z.number().int().nonnegative(),
+      ideal: z.number().nullable(),
+    })
+  )
+)
 
 // Session routes
 registerSuccessSchema('GET', '/api/sessions', z.array(publicSessionSchema))
