@@ -310,6 +310,15 @@ export const commentsRepository = {
       const authorProfile = profilesRepository.get(payload.author_id)
       const actorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
 
+      // Check if the source agent is allowed to invoke other agents
+      let canInvokeAgents = true
+      if (actorType === 'agent') {
+        const sourceAgent = agentsRepository.get(payload.author_id)
+        if (sourceAgent?.config?.can_invoke_agents === false) {
+          canInvokeAgents = false
+        }
+      }
+
       // 2. Parse profile/ticket mentions from body
       const mentions = parseMentions(payload.body)
 
@@ -331,21 +340,23 @@ export const commentsRepository = {
             mention_text: `@${profile.name}`,
           })
 
-          eventsRepository.create({
-            event_type: 'mention.created',
-            project_id: ticket?.project_id,
-            ticket_id: payload.ticket_id,
-            comment_id: commentId,
-            actor_id: payload.author_id,
-            actor_type: actorType,
-            kombuse_session_id: payload.kombuse_session_id,
-            payload: {
-              mention_type: 'profile',
-              mentioned_profile_id: profile.id,
-              mention_text: `@${profile.name}`,
-              comment_body: payload.body,
-            },
-          })
+          if (canInvokeAgents) {
+            eventsRepository.create({
+              event_type: 'mention.created',
+              project_id: ticket?.project_id,
+              ticket_id: payload.ticket_id,
+              comment_id: commentId,
+              actor_id: payload.author_id,
+              actor_type: actorType,
+              kombuse_session_id: payload.kombuse_session_id,
+              payload: {
+                mention_type: 'profile',
+                mentioned_profile_id: profile.id,
+                mention_text: `@${profile.name}`,
+                comment_body: payload.body,
+              },
+            })
+          }
         }
       }
 
@@ -367,21 +378,23 @@ export const commentsRepository = {
             mention_text: `@${name}`,
           })
 
-          eventsRepository.create({
-            event_type: 'mention.created',
-            project_id: ticket?.project_id,
-            ticket_id: payload.ticket_id,
-            comment_id: commentId,
-            actor_id: payload.author_id,
-            actor_type: actorType,
-            kombuse_session_id: payload.kombuse_session_id,
-            payload: {
-              mention_type: 'profile',
-              mentioned_profile_id: profile.id,
-              mention_text: `@${name}`,
-              comment_body: payload.body,
-            },
-          })
+          if (canInvokeAgents) {
+            eventsRepository.create({
+              event_type: 'mention.created',
+              project_id: ticket?.project_id,
+              ticket_id: payload.ticket_id,
+              comment_id: commentId,
+              actor_id: payload.author_id,
+              actor_type: actorType,
+              kombuse_session_id: payload.kombuse_session_id,
+              payload: {
+                mention_type: 'profile',
+                mentioned_profile_id: profile.id,
+                mention_text: `@${name}`,
+                comment_body: payload.body,
+              },
+            })
+          }
         }
       }
 

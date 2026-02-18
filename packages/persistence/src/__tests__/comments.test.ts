@@ -586,6 +586,68 @@ describe('commentsRepository', () => {
       )
     })
 
+    it('should not create mention.created events when agent has can_invoke_agents: false', () => {
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('invoke-target', 'agent', 'InvokeTarget')
+
+      // Create agent record with can_invoke_agents: false
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt, permissions, config, is_enabled) VALUES (?, 'prompt', '[]', ?, 1)"
+      ).run(TEST_AGENT_ID, JSON.stringify({ can_invoke_agents: false }))
+
+      db.prepare('DELETE FROM events').run()
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_AGENT_ID,
+        body: '@InvokeTarget please help',
+      })
+
+      // Mention record should still be created
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions.filter((m) => m.mention_type === 'profile')).toHaveLength(1)
+
+      // But no mention.created event should be created
+      const events = eventsRepository.list({ event_type: 'mention.created' })
+      expect(events, 'Agent with can_invoke_agents: false should not create mention.created events').toHaveLength(0)
+    })
+
+    it('should create mention.created events when agent has can_invoke_agents: true or undefined', () => {
+      const agentId = `invoker-${Date.now()}`
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run(agentId, 'agent', 'InvokerAgent')
+      db.prepare(
+        'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
+      ).run('invoke-target-2', 'agent', 'InvokeTarget2')
+
+      // Create agent record without can_invoke_agents (undefined = allowed)
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt, permissions, config, is_enabled) VALUES (?, 'prompt', '[]', '{}', 1)"
+      ).run(agentId)
+
+      db.prepare('DELETE FROM events').run()
+
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: agentId,
+        body: '@InvokeTarget2 please help',
+      })
+
+      // Mention record should be created
+      const mentions = mentionsRepository.getByComment(comment.id)
+      expect(mentions.filter((m) => m.mention_type === 'profile')).toHaveLength(1)
+
+      // mention.created event should also be created
+      const events = eventsRepository.list({ event_type: 'mention.created' })
+      const profileEvents = events.filter((e) => {
+        const payload = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+        return payload.mention_type === 'profile'
+      })
+      expect(profileEvents, 'Agent with can_invoke_agents undefined should create mention.created events').toHaveLength(1)
+    })
+
     describe('cross-reference events', () => {
       it('should create a cross-reference event on the mentioned ticket timeline', () => {
         const targetTicket = ticketsRepository.create({

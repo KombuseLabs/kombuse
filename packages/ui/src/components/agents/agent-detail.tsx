@@ -66,6 +66,7 @@ function AgentDetail({
   const [systemPrompt, setSystemPrompt] = useState(agent.system_prompt)
   const [permissions, setPermissions] = useState<Permission[]>(agent.permissions)
   const [enabledForChat, setEnabledForChat] = useState(agent.config?.enabled_for_chat ?? false)
+  const [canInvokeAgents, setCanInvokeAgents] = useState(agent.config?.can_invoke_agents ?? true)
   const [backendChoice, setBackendChoice] = useState<BackendChoice>(
     normalizeBackendChoice(agent.config?.backend_type)
   )
@@ -102,6 +103,7 @@ function AgentDetail({
     systemPrompt !== agent.system_prompt ||
     JSON.stringify(permissions) !== JSON.stringify(agent.permissions) ||
     enabledForChat !== (agent.config?.enabled_for_chat ?? false) ||
+    canInvokeAgents !== (agent.config?.can_invoke_agents ?? true) ||
     backendChoice !== normalizeBackendChoice(agent.config?.backend_type) ||
     modelPreference.trim() !== (typeof agent.config?.model === 'string' ? agent.config.model.trim() : '')
 
@@ -113,6 +115,7 @@ function AgentDetail({
     setSystemPrompt(agent.system_prompt)
     setPermissions(agent.permissions)
     setEnabledForChat(agent.config?.enabled_for_chat ?? false)
+    setCanInvokeAgents(agent.config?.can_invoke_agents ?? true)
     setBackendChoice(normalizeBackendChoice(agent.config?.backend_type))
     setModelPreference(typeof agent.config?.model === 'string' ? agent.config.model : '')
     setActiveTab('basic-info')
@@ -123,6 +126,7 @@ function AgentDetail({
     const nextConfig: AgentConfig = {
       ...agent.config,
       enabled_for_chat: enabledForChat,
+      can_invoke_agents: canInvokeAgents,
     }
     if (backendChoice === 'global') {
       delete (nextConfig as Record<string, unknown>).backend_type
@@ -283,6 +287,21 @@ function AgentDetail({
                     id="enabled-for-chat"
                     checked={enabledForChat}
                     onCheckedChange={setEnabledForChat}
+                  />
+                </div>
+
+                {/* Can invoke other agents */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="can-invoke-agents">Can invoke other agents</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Allow this agent to trigger other agents via @-mentions
+                    </p>
+                  </div>
+                  <Switch
+                    id="can-invoke-agents"
+                    checked={canInvokeAgents}
+                    onCheckedChange={setCanInvokeAgents}
                   />
                 </div>
 
