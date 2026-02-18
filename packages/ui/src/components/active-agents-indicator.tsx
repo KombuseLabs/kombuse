@@ -1,10 +1,12 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Bot, ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '../base/button'
 import { Badge } from '../base/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '../base/popover'
 import { useAppContext } from '../hooks/use-app-context'
+import { useProfileSetting } from '../hooks/use-profile-settings'
 import { useBackendStatus, useRefreshBackendStatus } from '../hooks/use-backend-status'
 import { backendLabel } from '../lib/backend-utils'
 import { cn } from '../lib/utils'
@@ -48,10 +50,16 @@ function formatDuration(startedAt: string): string {
 
 export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps) {
   const { activeSessions, currentProjectId } = useAppContext()
+  const { data: scopeSetting } = useProfileSetting('user-1', 'notifications.scope_to_project')
+  const scopeToProject = scopeSetting?.setting_value !== 'all'
   const { data: backendStatuses } = useBackendStatus()
   const refreshMutation = useRefreshBackendStatus()
 
-  const sessions = [...activeSessions.values()]
+  const sessions = useMemo(() => {
+    const all = [...activeSessions.values()]
+    if (!scopeToProject || !currentProjectId) return all
+    return all.filter((s) => !s.projectId || s.projectId === currentProjectId)
+  }, [activeSessions, scopeToProject, currentProjectId])
   const count = sessions.length
 
   const getNavigationPath = (session: ActiveSessionInfo) => {

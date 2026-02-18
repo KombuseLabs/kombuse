@@ -60,6 +60,7 @@ export interface ServerPendingPermission {
   input: Record<string, unknown>
   description: string
   ticketId?: number
+  projectId?: string
 }
 
 export const serverPendingPermissions = new Map<string, ServerPendingPermission>()

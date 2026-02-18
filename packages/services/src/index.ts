@@ -79,6 +79,7 @@ export {
   AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
   CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
   MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+  NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY,
   MAX_CHAIN_DEPTH,
   getBackendCapability,
   resolveConfiguredBackendType,
@@ -90,11 +91,13 @@ export {
   readUserDefaultMaxChainDepth,
   readUserBackendIdleTimeoutMinutes,
   readMcpAnonymousWriteAccess,
+  readNotificationScope,
 } from './session-preferences-service'
 export type {
   ResolveBackendTypeInput,
   ResolveModelPreferenceInput,
   ResolvedModelPreference,
+  NotificationScope,
 } from './session-preferences-service'
 
 // Model catalog

@@ -258,7 +258,7 @@ describe('NotificationBell permission key handling', () => {
 describe('NotificationBell project scoping', () => {
   beforeEach(() => {
     mockSend.mockReset()
-    mockedUseProfileSetting.mockReturnValue({ data: null } as ReturnType<typeof profileSettingsHooks.useProfileSetting>)
+    mockedUseProfileSetting.mockReturnValue({ data: null } as any)
   })
 
   it('filters permissions by project when scope is project (default)', () => {
@@ -298,7 +298,7 @@ describe('NotificationBell project scoping', () => {
   it('shows all permissions when scope is all', () => {
     mockedUseProfileSetting.mockReturnValue({
       data: { setting_value: 'all' },
-    } as ReturnType<typeof profileSettingsHooks.useProfileSetting>)
+    } as any)
 
     render(
       <TestProvider

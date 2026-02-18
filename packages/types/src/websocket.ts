@@ -74,6 +74,7 @@ export type ServerMessage =
       kombuseSessionId: string
       ticketId?: number
       ticketTitle?: string
+      projectId?: string
       agentName?: string
       effectiveBackend?: BackendType
       appliedModel?: string
@@ -85,6 +86,7 @@ export type ServerMessage =
       kombuseSessionId: string
       backendSessionId?: string
       ticketId?: number
+      projectId?: string
       status?: 'completed' | 'failed' | 'aborted' | 'stopped'
       reason?: string
       errorMessage?: string
@@ -100,6 +102,8 @@ export type ServerMessage =
       description?: string
       /** Ticket ID if this permission is for a ticket-triggered session */
       ticketId?: number
+      /** Project ID for project-scoped filtering */
+      projectId?: string
     }
   | {
       type: 'agent.permission_resolved'

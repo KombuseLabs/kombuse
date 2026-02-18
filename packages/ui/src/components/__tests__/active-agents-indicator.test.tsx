@@ -260,3 +260,72 @@ describe('ActiveAgentsIndicator backend status section', () => {
     expect(screen.queryByText('Backend Status')).toBeNull()
   })
 })
+
+describe('ActiveAgentsIndicator project scoping', () => {
+  beforeEach(() => {
+    mockedUseBackendStatus.mockReturnValue({ data: undefined, isLoading: false } as ReturnType<typeof backendStatusHooks.useBackendStatus>)
+    mockMutate.mockClear()
+    mockedUseProfileSetting.mockReturnValue({ data: null } as any)
+  })
+
+  it('filters sessions by project when scope is project (default)', () => {
+    renderIndicator([
+      {
+        kombuseSessionId: 'session-proj1',
+        agentName: 'Agent A',
+        projectId: '1',
+        effectiveBackend: 'claude-code',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+      {
+        kombuseSessionId: 'session-proj2',
+        agentName: 'Agent B',
+        projectId: '2',
+        effectiveBackend: 'claude-code',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+    ])
+
+    expect(screen.getByText('Agent A')).toBeDefined()
+    expect(screen.queryByText('Agent B')).toBeNull()
+  })
+
+  it('shows all sessions when scope is all', () => {
+    mockedUseProfileSetting.mockReturnValue({
+      data: { setting_value: 'all' },
+    } as any)
+
+    renderIndicator([
+      {
+        kombuseSessionId: 'session-proj1',
+        agentName: 'Agent A',
+        projectId: '1',
+        effectiveBackend: 'claude-code',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+      {
+        kombuseSessionId: 'session-proj2',
+        agentName: 'Agent B',
+        projectId: '2',
+        effectiveBackend: 'claude-code',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+    ])
+
+    expect(screen.getByText('Agent A')).toBeDefined()
+    expect(screen.getByText('Agent B')).toBeDefined()
+  })
+
+  it('shows sessions without projectId regardless of scope', () => {
+    renderIndicator([
+      {
+        kombuseSessionId: 'session-no-project',
+        agentName: 'Agent C',
+        effectiveBackend: 'claude-code',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+    ])
+
+    expect(screen.getByText('Agent C')).toBeDefined()
+  })
+})

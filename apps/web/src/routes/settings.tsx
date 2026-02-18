@@ -38,6 +38,7 @@ const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
 const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
+const NOTIFICATIONS_SCOPE_SETTING_KEY = 'notifications.scope_to_project'
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
@@ -50,6 +51,7 @@ export function Settings() {
   const { data: defaultModelSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_MODEL_SETTING_KEY)
   const { data: maxChainDepthSetting } = useProfileSetting(USER_PROFILE_ID, AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY)
   const { data: backendTimeoutSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY)
+  const { data: notificationScopeSetting } = useProfileSetting(USER_PROFILE_ID, NOTIFICATIONS_SCOPE_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const upsertSetting = useUpsertProfileSetting()
@@ -61,6 +63,7 @@ export function Settings() {
   const showDatabase = databaseSetting?.setting_value === 'false'
   const showPlugins = pluginsSetting?.setting_value === 'false'
   const showAnalytics = analyticsSetting?.setting_value === 'false'
+  const scopeToProject = notificationScopeSetting?.setting_value !== 'all'
   const defaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value)
   const { availableBackends, isAvailable, noneAvailable } = useAvailableBackends()
   const codexMcpEnabled = codexMcpStatus?.enabled === true
@@ -219,6 +222,35 @@ export function Settings() {
                     profile_id: USER_PROFILE_ID,
                     setting_key: SIDEBAR_ANALYTICS_SETTING_KEY,
                     setting_value: checked ? 'false' : 'true',
+                  })
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Control which notifications and active agents are shown.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="notifications-scope" className="font-normal">Scope to current project</Label>
+                <p className="text-sm text-muted-foreground">
+                  Only show notifications and active agents for the project open in this window.
+                </p>
+              </div>
+              <Switch
+                id="notifications-scope"
+                checked={scopeToProject}
+                onCheckedChange={(checked) => {
+                  upsertSetting.mutate({
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: NOTIFICATIONS_SCOPE_SETTING_KEY,
+                    setting_value: checked ? 'project' : 'all',
                   })
                 }}
               />

@@ -10,6 +10,7 @@ export type AgentExecutionEvent =
       kombuseSessionId: string
       ticketId?: number
       ticketTitle?: string
+      projectId?: string
       agentName?: string
       effectiveBackend?: BackendType
       appliedModel?: string
@@ -21,6 +22,7 @@ export type AgentExecutionEvent =
       kombuseSessionId: string
       backendSessionId?: string
       ticketId?: number
+      projectId?: string
       status?: 'completed' | 'failed' | 'aborted' | 'stopped'
       reason?: string
       errorMessage?: string

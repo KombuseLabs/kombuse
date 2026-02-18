@@ -302,11 +302,13 @@ export function getActiveSessions(): ActiveSessionInfo[] {
       typeof ticketId === 'number'
         ? ticketsRepository.get(ticketId)?.title ?? undefined
         : undefined
+    const projectId = session.project_id ?? undefined
     results.push({
       kombuseSessionId: session.kombuse_session_id,
       agentName: session.agent_name ?? 'Agent',
       ticketId,
       ticketTitle,
+      projectId,
       effectiveBackend,
       appliedModel,
       startedAt: session.started_at,

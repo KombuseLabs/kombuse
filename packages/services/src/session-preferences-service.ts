@@ -7,6 +7,7 @@ export const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 export const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
 export const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
 export const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
+export const NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY = 'notifications.scope_to_project'
 export const MAX_CHAIN_DEPTH = 15
 
 interface BackendCapability {
@@ -126,4 +127,14 @@ export function readMcpAnonymousWriteAccess(
   const setting = profileSettingsRepository.get(profileId, MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY)
   if (setting?.setting_value === 'denied') return 'denied'
   return 'allowed'
+}
+
+export type NotificationScope = 'project' | 'all'
+
+export function readNotificationScope(
+  profileId: string = DEFAULT_PREFERENCE_PROFILE_ID
+): NotificationScope {
+  const setting = profileSettingsRepository.get(profileId, NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY)
+  if (setting?.setting_value === 'all') return 'all'
+  return 'project'
 }

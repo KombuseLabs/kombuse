@@ -7,6 +7,7 @@ import { Badge } from '../base/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '../base/popover'
 import { useAppContext } from '../hooks/use-app-context'
 import { useWebSocket } from '../hooks/use-websocket'
+import { useProfileSetting } from '../hooks/use-profile-settings'
 import type { PendingPermission } from '@kombuse/types'
 import { extractPermissionDetail } from '../lib/permission-utils'
 import { PlanPreviewDialog } from './plan-preview-dialog'
@@ -34,11 +35,17 @@ function isAllowedPromptsArray(value: unknown): value is { tool: string; prompt:
 export function NotificationBell({ onNavigate }: NotificationBellProps) {
   const { pendingPermissions, currentProjectId } = useAppContext()
   const { send } = useWebSocket({ topics: [] })
+  const { data: scopeSetting } = useProfileSetting('user-1', 'notifications.scope_to_project')
+  const scopeToProject = scopeSetting?.setting_value !== 'all'
   const [planDialogPermission, setPlanDialogPermission] = useState<PendingPermission | null>(null)
   // Track permissions that have been responded to but not yet resolved by the server
   const [respondedKeys, setRespondedKeys] = useState<Set<string>>(new Set())
 
-  const permissions = useMemo(() => [...pendingPermissions.values()], [pendingPermissions])
+  const permissions = useMemo(() => {
+    const all = [...pendingPermissions.values()]
+    if (!scopeToProject || !currentProjectId) return all
+    return all.filter((p) => !p.projectId || p.projectId === currentProjectId)
+  }, [pendingPermissions, scopeToProject, currentProjectId])
   const count = permissions.length
 
   // Clean up respondedKeys when permissions are removed via agent.permission_resolved

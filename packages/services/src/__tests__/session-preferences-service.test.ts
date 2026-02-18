@@ -12,11 +12,13 @@ import {
   normalizeModelPreference,
   readUserDefaultMaxChainDepth,
   readUserBackendIdleTimeoutMinutes,
+  readNotificationScope,
   resolveBackendType,
   resolveConfiguredBackendType,
   resolveModelPreference,
   AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
   CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
+  NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY,
   DEFAULT_PREFERENCE_PROFILE_ID,
 } from '../session-preferences-service'
 
@@ -235,6 +237,50 @@ describe('readUserBackendIdleTimeoutMinutes', () => {
     expect(mockGet).toHaveBeenCalledWith(
       'custom-profile',
       CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
+    )
+  })
+})
+
+describe('readNotificationScope', () => {
+  const mockGet = profileSettingsRepository.get as ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockGet.mockReturnValue(null)
+  })
+
+  it('returns "project" when no setting exists', () => {
+    expect(readNotificationScope()).toBe('project')
+  })
+
+  it('returns "all" when setting value is "all"', () => {
+    mockGet.mockReturnValue({ setting_value: 'all' })
+    expect(readNotificationScope()).toBe('all')
+  })
+
+  it('returns "project" for unexpected values', () => {
+    mockGet.mockReturnValue({ setting_value: 'something-else' })
+    expect(readNotificationScope()).toBe('project')
+  })
+
+  it('returns "project" when setting value is "project"', () => {
+    mockGet.mockReturnValue({ setting_value: 'project' })
+    expect(readNotificationScope()).toBe('project')
+  })
+
+  it('uses the correct setting key', () => {
+    readNotificationScope()
+    expect(mockGet).toHaveBeenCalledWith(
+      DEFAULT_PREFERENCE_PROFILE_ID,
+      NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY,
+    )
+  })
+
+  it('uses custom profileId when provided', () => {
+    readNotificationScope('custom-profile')
+    expect(mockGet).toHaveBeenCalledWith(
+      'custom-profile',
+      NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY,
     )
   })
 })
