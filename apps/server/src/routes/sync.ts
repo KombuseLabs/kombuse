@@ -11,12 +11,13 @@ export async function syncRoutes(fastify: FastifyInstance) {
   fastify.get('/sync/state', async () => {
     const pendingPermissions = getPendingPermissions()
 
-    // Find all tickets that have running or failed sessions
+    // Find all tickets that have running, pending, or failed sessions
     const runningSessions = sessionsRepository.list({ status: 'running' })
+    const pendingSessions = sessionsRepository.list({ status: 'pending' })
     const failedSessions = sessionsRepository.list({ status: 'failed' })
 
     const ticketIds = new Set<number>()
-    for (const session of runningSessions) {
+    for (const session of [...runningSessions, ...pendingSessions]) {
       if (session.ticket_id != null) ticketIds.add(session.ticket_id)
     }
     for (const session of failedSessions) {

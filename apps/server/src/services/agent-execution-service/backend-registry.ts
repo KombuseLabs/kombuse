@@ -231,7 +231,7 @@ export function stopActiveCodexBackends(): number {
 
 /**
  * Compute aggregated agent status for a ticket.
- * Queries all sessions for the ticket and aggregates their status.
+ * Uses DB status (running/pending) as the single source of truth.
  * Only considers failures more recent than the last completed session
  * to avoid permanent error indicators from old historical failures.
  */
@@ -251,19 +251,15 @@ export function computeTicketAgentStatus(ticketId: number): {
     ? failedSessions.filter((session) => (session.failed_at ?? session.updated_at) > lastCompletedAt)
     : failedSessions
 
-  const trulyActiveSessions = activeSessions.filter(
-    (session) => session.kombuse_session_id != null && activeBackends.has(session.kombuse_session_id)
-  )
-
   let status: AgentActivityStatus = 'idle'
   if (recentFailures.length > 0) {
     status = 'error'
   }
-  if (trulyActiveSessions.length > 0) {
+  if (activeSessions.length > 0) {
     status = 'running'
   }
 
-  return { status, sessionCount: trulyActiveSessions.length }
+  return { status, sessionCount: activeSessions.length }
 }
 
 /**
@@ -281,7 +277,7 @@ export function broadcastTicketAgentStatus(ticketId: number): void {
 
 /**
  * Return enriched info about currently active sessions for the Active Agents Indicator.
- * Cross-references the in-memory activeBackends map so only truly running sessions are returned.
+ * Uses DB status (running/pending) as the single source of truth.
  */
 export function getActiveSessions(): ActiveSessionInfo[] {
   const runningSessions = sessionsRepository.list({ status: 'running' })
@@ -289,7 +285,7 @@ export function getActiveSessions(): ActiveSessionInfo[] {
   const results: ActiveSessionInfo[] = []
 
   for (const session of [...runningSessions, ...pendingSessions]) {
-    if (!session.kombuse_session_id || !activeBackends.has(session.kombuse_session_id)) {
+    if (!session.kombuse_session_id) {
       continue
     }
     const effectiveBackend =

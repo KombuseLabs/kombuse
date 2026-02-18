@@ -113,6 +113,7 @@ import {
   resetBackendIdleTimeout,
   respondToPermission,
   processEventAndRunAgents,
+  computeTicketAgentStatus,
   type AgentExecutionEvent,
 } from '../services/agent-execution-service'
 import { broadcastPermissionPending } from '../services/agent-execution-service/permission-service'
@@ -256,11 +257,6 @@ describe('ticket title propagation for active sessions', () => {
   })
 
   it('enriches getActiveSessions with ticket titles, backend metadata, and fallback behavior', () => {
-    const activeBackend = createPassiveBackend()
-    registerBackend('running-session-1', activeBackend)
-    registerBackend('running-session-2', activeBackend)
-    registerBackend('running-session-3', activeBackend)
-
     vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>)
       .mockReturnValueOnce([
         {
@@ -331,6 +327,92 @@ describe('ticket title propagation for active sessions', () => {
         appliedModel: undefined,
       }),
     ])
+  })
+
+  it('returns active sessions from DB even without registered backends (regression #370)', () => {
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([
+        {
+          kombuse_session_id: 'orphan-session-1',
+          agent_name: 'Orphan Agent',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          metadata: {},
+          ticket_id: 99,
+          started_at: '2026-02-14T00:00:00.000Z',
+        },
+      ])
+      .mockReturnValueOnce([])
+
+    vi.mocked(ticketsRepository.get).mockReturnValue(null)
+
+    const sessions = getActiveSessions()
+
+    expect(sessions).toHaveLength(1)
+    expect(sessions[0]!.kombuseSessionId).toBe('orphan-session-1')
+    expect(sessions[0]!.agentName).toBe('Orphan Agent')
+  })
+})
+
+describe('computeTicketAgentStatus', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('reports running status from DB sessions without backend registration (regression #370)', () => {
+    vi.mocked(sessionsRepository.listByTicket as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([{ kombuse_session_id: 'ksess-1', status: 'running' }])
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([])
+
+    const result = computeTicketAgentStatus(42)
+
+    expect(result.status).toBe('running')
+    expect(result.sessionCount).toBe(1)
+  })
+
+  it('counts pending sessions as active', () => {
+    vi.mocked(sessionsRepository.listByTicket as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([{ kombuse_session_id: 'ksess-2', status: 'pending' }])
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([])
+
+    const result = computeTicketAgentStatus(42)
+
+    expect(result.status).toBe('running')
+    expect(result.sessionCount).toBe(1)
+  })
+
+  it('reports error when recent failures exist and no active sessions', () => {
+    vi.mocked(sessionsRepository.listByTicket as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([{
+        kombuse_session_id: 'ksess-3',
+        status: 'failed',
+        failed_at: '2026-02-14T01:00:00.000Z',
+        updated_at: '2026-02-14T01:00:00.000Z',
+      }])
+      .mockReturnValueOnce([])
+
+    const result = computeTicketAgentStatus(42)
+
+    expect(result.status).toBe('error')
+    expect(result.sessionCount).toBe(0)
+  })
+
+  it('reports idle when no active or failed sessions exist', () => {
+    vi.mocked(sessionsRepository.listByTicket as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([])
+
+    const result = computeTicketAgentStatus(42)
+
+    expect(result.status).toBe('idle')
+    expect(result.sessionCount).toBe(0)
   })
 })
 
