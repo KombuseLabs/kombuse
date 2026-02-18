@@ -6,8 +6,8 @@ import { PermissionRuleItem } from './permission-rule-item'
 
 interface PermissionRuleListProps {
   permissions: Permission[]
-  onEdit: (index: number) => void
-  onDelete: (index: number) => void
+  onEdit?: (index: number) => void
+  onDelete?: (index: number) => void
 }
 
 function PermissionRuleList({ permissions, onEdit, onDelete }: PermissionRuleListProps) {
@@ -27,8 +27,8 @@ function PermissionRuleList({ permissions, onEdit, onDelete }: PermissionRuleLis
         <PermissionRuleItem
           key={`${permission.type}-${permission.type === 'resource' ? permission.resource : permission.tool}-${index}`}
           permission={permission}
-          onEdit={() => onEdit(index)}
-          onDelete={() => onDelete(index)}
+          onEdit={onEdit ? () => onEdit(index) : undefined}
+          onDelete={onDelete ? () => onDelete(index) : undefined}
         />
       ))}
     </div>

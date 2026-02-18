@@ -9,8 +9,8 @@ import { getResourceLabel, getToolLabel, getScopeLabel, getActionLabel } from '.
 
 interface PermissionRuleItemProps {
   permission: Permission
-  onEdit: () => void
-  onDelete: () => void
+  onEdit?: () => void
+  onDelete?: () => void
   className?: string
 }
 
@@ -46,19 +46,25 @@ function PermissionRuleItem({ permission, onEdit, onDelete, className }: Permiss
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" onClick={onEdit}>
-          <Pencil className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
+      {(onEdit || onDelete) && (
+        <div className="flex items-center gap-1">
+          {onEdit && (
+            <Button variant="ghost" size="icon" onClick={onEdit}>
+              <Pencil className="size-4" />
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

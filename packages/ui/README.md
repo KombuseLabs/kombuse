@@ -915,6 +915,18 @@ import { PermissionList, PermissionItem, PermissionFilters } from '@kombuse/ui/c
 - `filters`: `Omit<PermissionLogFilters, 'project_id'>` — current filter state
 - `onChange`: `(filters: Omit<PermissionLogFilters, 'project_id'>) => void` — filter change callback
 
+```typescript
+import { PermissionRulesTab } from '@kombuse/ui/components'
+
+// Read-only view of all agents' permission rules, grouped by agent
+<PermissionRulesTab />
+```
+
+`PermissionRulesTab` is a self-fetching component that uses `useAgents()` and `useAgentProfiles()` internally. It displays all agents that have permission rules configured, grouped by agent name. No props are required.
+
+`PermissionRulesTab` props:
+- `className`: Optional class name
+
 ### Permission Editor Components
 
 ```typescript
@@ -940,12 +952,18 @@ import { PermissionEditor, PermissionRuleForm, PermissionRuleList, PermissionRul
   onDelete={(index) => handleDelete(index)}
 />
 
+// Read-only list (no action buttons)
+<PermissionRuleList permissions={permissions} />
+
 // Single permission rule display
 <PermissionRuleItem
   permission={permission}
   onEdit={() => handleEdit()}
   onDelete={() => handleDelete()}
 />
+
+// Read-only display (no action buttons)
+<PermissionRuleItem permission={permission} />
 ```
 
 `PermissionEditor` props:
@@ -960,13 +978,13 @@ import { PermissionEditor, PermissionRuleForm, PermissionRuleList, PermissionRul
 
 `PermissionRuleList` props:
 - `permissions`: `Permission[]` — permissions to display
-- `onEdit`: `(index: number) => void` — called with the index of the permission to edit
-- `onDelete`: `(index: number) => void` — called with the index of the permission to delete
+- `onEdit`: Optional `(index: number) => void` — called with the index of the permission to edit. When omitted, items render without edit buttons
+- `onDelete`: Optional `(index: number) => void` — called with the index of the permission to delete. When omitted, items render without delete buttons
 
 `PermissionRuleItem` props:
 - `permission`: `Permission` — the permission to display
-- `onEdit`: `() => void` — edit callback
-- `onDelete`: `() => void` — delete callback
+- `onEdit`: Optional `() => void` — edit callback. When omitted, edit button is hidden
+- `onDelete`: Optional `() => void` — delete callback. When omitted, delete button is hidden
 - `className`: Optional class name
 
 Tool presets in `PermissionRuleForm` include Kombuse MCP actions such as `Get Ticket`, `Get Ticket Comment`, `Add Comment`, and `Update Ticket`.
