@@ -141,14 +141,27 @@ export function Home() {
               <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
                 Discovered from Claude Code
               </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs h-7"
-                onClick={selectAll}
-              >
-                Select all
-              </Button>
+              <div className="flex items-center gap-2">
+                {!hasProjects && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => setCreateDialogOpen(true)}
+                  >
+                    <Plus className="size-3.5 mr-1.5" />
+                    New Project
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={selectAll}
+                >
+                  Select all
+                </Button>
+              </div>
             </div>
             <div className="max-h-[40vh] overflow-y-auto p-2 space-y-1.5">
               {available.map((project) => (

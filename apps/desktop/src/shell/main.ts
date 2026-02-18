@@ -18,7 +18,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, protocol } from "electron";
+
+// Register app:// as a privileged scheme so it gets localStorage, cookies, fetch, etc.
+// Must be called before app.whenReady().
+protocol.registerSchemesAsPrivileged([
+  { scheme: "app", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
 
 // ESM equivalent of __dirname
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -128,10 +134,10 @@ ipcMain.handle("dialog:openDirectory", async () => {
   const focusedWindow = BrowserWindow.getFocusedWindow();
   const result = focusedWindow
     ? await dialog.showOpenDialog(focusedWindow, {
-        properties: ["openDirectory"],
+        properties: ["openDirectory", "createDirectory"],
       })
     : await dialog.showOpenDialog({
-        properties: ["openDirectory"],
+        properties: ["openDirectory", "createDirectory"],
       });
 
   if (result.canceled || result.filePaths.length === 0) {
