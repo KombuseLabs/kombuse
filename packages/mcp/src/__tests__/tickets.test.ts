@@ -3,8 +3,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '@kombuse/persistence/test-utils'
-import { ticketsRepository, projectsRepository, labelsRepository, profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository, commentsRepository, attachmentsRepository, eventsRepository } from '@kombuse/persistence'
+import { ticketsRepository, projectsRepository, labelsRepository, profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository, commentsRepository, attachmentsRepository, eventsRepository, profileSettingsRepository } from '@kombuse/persistence'
 import type { Permission } from '@kombuse/types'
+import { MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY, DEFAULT_PREFERENCE_PROFILE_ID } from '@kombuse/services'
 import { registerTicketTools } from '../index'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs'
 import { join } from 'path'
@@ -1521,5 +1522,251 @@ describe('permission enforcement', () => {
     const data = parseContent(result) as { title: string; loop_protection_enabled: boolean }
     expect(data.title).toBe('MCP no loop protection')
     expect(data.loop_protection_enabled).toBe(false)
+  })
+
+  // -- update_comment --
+
+  it('should allow non-agent callers (no kombuse_session_id) to update comments freely', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Original body',
+    })
+
+    const result = await client.callTool({
+      name: 'update_comment',
+      arguments: { comment_id: comment.id, body: 'Updated body' },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { body: string; is_edited: boolean }
+    expect(data.body).toBe('Updated body')
+    expect(data.is_edited).toBe(true)
+  })
+
+  it('should return error when updating non-existent comment', async () => {
+    const result = await client.callTool({
+      name: 'update_comment',
+      arguments: { comment_id: 99999, body: 'New body' },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('not found')
+  })
+
+  it('should deny agents without comment.update permission from updating comments', async () => {
+    const sessionId = createTestAgentSession([])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Original',
+    })
+
+    const result = await client.callTool({
+      name: 'update_comment',
+      arguments: { comment_id: comment.id, body: 'Should fail', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should allow agent with comment.update permission to update comments', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'comment', actions: ['update'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Original',
+    })
+
+    const result = await client.callTool({
+      name: 'update_comment',
+      arguments: { comment_id: comment.id, body: 'Agent updated', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { body: string }
+    expect(data.body).toBe('Agent updated')
+  })
+
+  // -- anonymous write access setting --
+
+  it('should deny anonymous update_ticket when anonymous write access is denied', async () => {
+    if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+      profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+    }
+    profileSettingsRepository.upsert({
+      profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+      setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+      setting_value: 'denied',
+    })
+
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, status: 'closed' },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+    expect(data.error).toContain('Anonymous')
+  })
+
+  it('should deny anonymous create_ticket when anonymous write access is denied', async () => {
+    if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+      profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+    }
+    profileSettingsRepository.upsert({
+      profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+      setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+      setting_value: 'denied',
+    })
+
+    const result = await client.callTool({
+      name: 'create_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, title: 'Should fail' },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should deny anonymous add_comment when anonymous write access is denied', async () => {
+    if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+      profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+    }
+    profileSettingsRepository.upsert({
+      profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+      setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+      setting_value: 'denied',
+    })
+
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'add_comment',
+      arguments: { ticket_id: ticket.id, body: 'Should fail' },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should deny anonymous update_comment when anonymous write access is denied', async () => {
+    if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+      profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+    }
+    profileSettingsRepository.upsert({
+      profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+      setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+      setting_value: 'denied',
+    })
+
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: TEST_USER_ID,
+      body: 'Original',
+    })
+
+    const result = await client.callTool({
+      name: 'update_comment',
+      arguments: { comment_id: comment.id, body: 'Should fail' },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should allow anonymous writes when setting is explicitly allowed', async () => {
+    if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+      profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+    }
+    profileSettingsRepository.upsert({
+      profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+      setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+      setting_value: 'allowed',
+    })
+
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, status: 'closed' },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { ticket: { status: string } }
+    expect(data.ticket.status).toBe('closed')
+  })
+
+  it('should still allow authenticated agents when anonymous write access is denied', async () => {
+    if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+      profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+    }
+    profileSettingsRepository.upsert({
+      profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+      setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+      setting_value: 'denied',
+    })
+
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'ticket', actions: ['update'], scope: 'global' },
+      { type: 'resource', resource: 'ticket.status', actions: ['update'], scope: 'global' },
+    ])
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'update_ticket',
+      arguments: { ticket_id: ticket.id, status: 'closed', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { ticket: { status: string } }
+    expect(data.ticket.status).toBe('closed')
   })
 })

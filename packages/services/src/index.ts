@@ -78,6 +78,7 @@ export {
   CHAT_DEFAULT_MODEL_SETTING_KEY,
   AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
   CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
+  MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
   MAX_CHAIN_DEPTH,
   getBackendCapability,
   resolveConfiguredBackendType,
@@ -88,6 +89,7 @@ export {
   readUserDefaultModelPreference,
   readUserDefaultMaxChainDepth,
   readUserBackendIdleTimeoutMinutes,
+  readMcpAnonymousWriteAccess,
 } from './session-preferences-service'
 export type {
   ResolveBackendTypeInput,

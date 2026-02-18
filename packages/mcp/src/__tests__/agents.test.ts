@@ -3,8 +3,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { setupTestDb } from '@kombuse/persistence/test-utils'
-import { profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository } from '@kombuse/persistence'
+import { profilesRepository, agentsRepository, agentTriggersRepository, agentInvocationsRepository, profileSettingsRepository } from '@kombuse/persistence'
 import type { Permission, Agent } from '@kombuse/types'
+import { MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY, DEFAULT_PREFERENCE_PROFILE_ID } from '@kombuse/services'
 import { registerAgentTools } from '../index'
 
 let cleanup: () => void
@@ -448,5 +449,57 @@ describe('permission enforcement', () => {
     expect(result.isError).toBeFalsy()
     const data = parseContent(result) as Agent
     expect(data.system_prompt).toBe('New')
+  })
+
+  // -- anonymous write access setting --
+
+  it('should deny anonymous create_agent when anonymous write access is denied', async () => {
+    if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+      profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+    }
+    profileSettingsRepository.upsert({
+      profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+      setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+      setting_value: 'denied',
+    })
+
+    const result = await client.callTool({
+      name: 'create_agent',
+      arguments: {
+        name: 'Test Agent',
+        description: 'Test',
+        system_prompt: 'Test prompt',
+      },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
+  })
+
+  it('should deny anonymous update_agent when anonymous write access is denied', async () => {
+    createAgentProfile('anon-upd-target', 'Target')
+    agentsRepository.create({ id: 'anon-upd-target', name: 'Test Agent', description: 'Test', system_prompt: 'Old' })
+
+    if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+      profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+    }
+    profileSettingsRepository.upsert({
+      profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+      setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+      setting_value: 'denied',
+    })
+
+    const result = await client.callTool({
+      name: 'update_agent',
+      arguments: {
+        agent_id: 'anon-upd-target',
+        system_prompt: 'Should fail',
+      },
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
   })
 })

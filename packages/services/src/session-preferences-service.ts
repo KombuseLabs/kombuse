@@ -6,6 +6,7 @@ export const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 export const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 export const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
 export const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
+export const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
 export const MAX_CHAIN_DEPTH = 15
 
 interface BackendCapability {
@@ -117,4 +118,12 @@ export function readUserBackendIdleTimeoutMinutes(
   const parsed = Number(setting.setting_value)
   if (!Number.isInteger(parsed) || parsed < 1) return undefined
   return parsed
+}
+
+export function readMcpAnonymousWriteAccess(
+  profileId: string = DEFAULT_PREFERENCE_PROFILE_ID
+): 'allowed' | 'denied' {
+  const setting = profileSettingsRepository.get(profileId, MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY)
+  if (setting?.setting_value === 'denied') return 'denied'
+  return 'allowed'
 }
