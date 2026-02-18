@@ -88,11 +88,17 @@ export async function ticketRoutes(fastify: FastifyInstance) {
       const ticket = ticketService.update(id, input, updated_by_id)
       return ticket
     } catch (error) {
-      const message = (error as Error).message
+      const message = error instanceof Error ? error.message : String(error)
+      if (message.includes('not found')) {
+        return reply.status(404).send({ error: message })
+      }
       if (message.includes('invalid for this project')) {
         return reply.status(400).send({ error: message })
       }
-      return reply.status(404).send({ error: message })
+      if (message.includes('FOREIGN KEY constraint failed')) {
+        return reply.status(422).send({ error: 'Invalid actor: the specified updated_by_id does not reference an existing profile' })
+      }
+      throw error
     }
   })
 

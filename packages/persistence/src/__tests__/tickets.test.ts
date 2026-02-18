@@ -1428,6 +1428,76 @@ describe('ticketsRepository', () => {
       expect(events).toHaveLength(1)
       expect(events[0]?.actor_type, 'User-closed ticket should have actor_type "user"').toBe('user')
     })
+
+    it('should set correct actor on ticket.updated event for a non-status change', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      db.prepare('DELETE FROM events').run()
+
+      ticketsRepository.update(ticket.id, { title: 'New title' }, TEST_AGENT_ID)
+
+      const events = eventsRepository.list({ event_type: 'ticket.updated' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_id, 'ticket.updated event should have correct actor_id').toBe(TEST_AGENT_ID)
+      expect(events[0]?.actor_type, 'Agent-updated ticket should have actor_type "agent"').toBe('agent')
+    })
+
+    it('should set actor_type to "user" on ticket.updated event when updated by a user', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_AGENT_ID,
+      })
+      db.prepare('DELETE FROM events').run()
+
+      ticketsRepository.update(ticket.id, { body: 'Updated body' }, TEST_USER_ID)
+
+      const events = eventsRepository.list({ event_type: 'ticket.updated' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_id).toBe(TEST_USER_ID)
+      expect(events[0]?.actor_type, 'User-updated ticket should have actor_type "user"').toBe('user')
+    })
+
+    it('should set correct actor on ticket.reopened event', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+        status: 'closed',
+      })
+      db.prepare('DELETE FROM events').run()
+
+      ticketsRepository.update(ticket.id, { status: 'open' }, TEST_AGENT_ID)
+
+      const events = eventsRepository.list({ event_type: 'ticket.reopened' })
+
+      expect(events).toHaveLength(1)
+      expect(events[0]?.actor_id, 'ticket.reopened event should have correct actor_id').toBe(TEST_AGENT_ID)
+      expect(events[0]?.actor_type, 'Agent-reopened ticket should have actor_type "agent"').toBe('agent')
+    })
+  })
+
+  describe('update atomicity', () => {
+    it('should roll back ticket update when updatedById references non-existent profile', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Original title',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      expect(
+        () => ticketsRepository.update(ticket.id, { title: 'New title' }, 'nonexistent-profile-id'),
+        'Should throw on FK constraint violation for non-existent updatedById'
+      ).toThrow()
+
+      const afterAttempt = ticketsRepository.get(ticket.id)
+      expect(afterAttempt?.title, 'Title should remain unchanged after rollback').toBe('Original title')
+    })
   })
 
   describe('countByStatus', () => {

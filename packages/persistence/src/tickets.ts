@@ -583,45 +583,49 @@ export const ticketsRepository = {
 
     if (fields.length === 0) return currentTicket
 
-    fields.push("updated_at = datetime('now')")
-    fields.push("last_activity_at = datetime('now')")
-    params.push(id)
+    const doUpdate = db.transaction(() => {
+      fields.push("updated_at = datetime('now')")
+      fields.push("last_activity_at = datetime('now')")
+      params.push(id)
 
-    db.prepare(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ?`).run(
-      ...params
-    )
+      db.prepare(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ?`).run(
+        ...params
+      )
 
-    if (updatedById) {
-      ticketViewsRepository.upsert({
-        ticket_id: id,
-        profile_id: updatedById,
-      })
-    }
-
-    const updatedTicket = this.get(id)
-
-    // Emit appropriate event based on status change
-    let eventType: string = EVENT_TYPES.TICKET_UPDATED
-    if (input.status && input.status !== currentTicket.status) {
-      if (input.status === 'closed') {
-        eventType = EVENT_TYPES.TICKET_CLOSED
-      } else if (currentTicket.status === 'closed') {
-        eventType = EVENT_TYPES.TICKET_REOPENED
+      if (updatedById) {
+        ticketViewsRepository.upsert({
+          ticket_id: id,
+          profile_id: updatedById,
+        })
       }
-    }
 
-    const updaterProfile = updatedById ? profilesRepository.get(updatedById) : null
-    const updaterActorType: ActorType = updaterProfile?.type === 'agent' ? 'agent' : 'user'
-    eventsRepository.create({
-      event_type: eventType,
-      project_id: currentTicket.project_id,
-      ticket_id: id,
-      actor_id: updatedById,
-      actor_type: updaterActorType,
-      payload: { changes: Object.keys(input) },
+      const updatedTicket = this.get(id)
+
+      // Emit appropriate event based on status change
+      let eventType: string = EVENT_TYPES.TICKET_UPDATED
+      if (input.status && input.status !== currentTicket.status) {
+        if (input.status === 'closed') {
+          eventType = EVENT_TYPES.TICKET_CLOSED
+        } else if (currentTicket.status === 'closed') {
+          eventType = EVENT_TYPES.TICKET_REOPENED
+        }
+      }
+
+      const updaterProfile = updatedById ? profilesRepository.get(updatedById) : null
+      const updaterActorType: ActorType = updaterProfile?.type === 'agent' ? 'agent' : 'user'
+      eventsRepository.create({
+        event_type: eventType,
+        project_id: currentTicket.project_id,
+        ticket_id: id,
+        actor_id: updatedById,
+        actor_type: updaterActorType,
+        payload: { changes: Object.keys(input) },
+      })
+
+      return updatedTicket
     })
 
-    return updatedTicket
+    return doUpdate()
   },
 
   /**

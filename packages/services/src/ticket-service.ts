@@ -23,7 +23,7 @@ export interface ITicketService {
   get(id: number): Ticket | null
   getWithRelations(id: number): TicketWithRelations | null
   create(input: CreateTicketInput): Ticket
-  update(id: number, input: UpdateTicketInput): Ticket
+  update(id: number, input: UpdateTicketInput, updatedById?: string): Ticket
   delete(id: number): void
   claim(input: ClaimTicketInput): ClaimResult
   unclaim(ticketId: number, requesterId?: string, force?: boolean): ClaimResult
