@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   useSessionsPerDay,
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@kombuse/ui/base'
-import { BarChart3, RefreshCw } from 'lucide-react'
+import { BarChart3, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@kombuse/ui/lib/utils'
 import {
   BarChart,
@@ -28,6 +28,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts'
+import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { useElementWidth } from '../hooks/use-element-width'
 
 const DAYS_OPTIONS = [
@@ -37,6 +38,21 @@ const DAYS_OPTIONS = [
 ]
 
 const CHART_HEIGHT = 256
+
+const SECTIONS = [
+  { id: 'sessions-per-day', title: 'Sessions per Day' },
+  { id: 'duration-percentiles', title: 'Session Duration by Agent', description: 'p50 / p90 / p99 duration of completed sessions' },
+  { id: 'pipeline-stage-duration', title: 'Pipeline Stage Duration', description: 'Average / p50 / p90 duration per agent invocation' },
+  { id: 'most-frequent-reads', title: 'Most Frequent Reads', description: 'Top 25 most-read files across all agent sessions', colSpan2: true },
+  { id: 'tool-call-volume', title: 'Tool Call Volume', description: 'Total calls and session spread per tool (cost proxy)' },
+  { id: 'slowest-tools', title: 'Slowest Tools', description: 'p50 / p90 / p99 tool call duration (excludes aborted calls)' },
+  { id: 'tool-calls-per-session', title: 'Tool Calls per Session', description: 'Tool call count by session, sorted by most active', colSpan2: true },
+] as const
+
+type SectionId = (typeof SECTIONS)[number]['id']
+
+const SECTION_IDS: SectionId[] = SECTIONS.map((s) => s.id)
+const STORAGE_KEY = 'analytics-expanded-sections'
 
 function formatMs(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`
@@ -54,72 +70,49 @@ const tooltipStyle = {
 export function Analytics() {
   const { projectId } = useParams<{ projectId: string }>()
   const [days, setDays] = useState(30)
+  const queryClient = useQueryClient()
+  const fetchingCount = useIsFetching({ queryKey: ['analytics'] })
+  const isAnyFetching = fetchingCount > 0
 
-  const sessionsQuery = useSessionsPerDay(projectId ?? '', days)
-  const durationQuery = useDurationPercentiles(projectId ?? '', days)
-  const pipelineQuery = usePipelineStageDuration(projectId ?? '', days)
-  const frequentReadsQuery = useMostFrequentReads(projectId ?? '', days)
-  const toolCallsQuery = useToolCallsPerSession(projectId ?? '', days)
-  const slowestToolsQuery = useSlowestTools(projectId ?? '', days)
-  const toolVolumeQuery = useToolCallVolume(projectId ?? '', days)
+  const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as string[]
+        return new Set(
+          parsed.filter((id): id is SectionId =>
+            (SECTION_IDS as readonly string[]).includes(id),
+          ),
+        )
+      }
+    } catch {
+      /* ignore */
+    }
+    return new Set<SectionId>()
+  })
 
-  const isAnyFetching =
-    sessionsQuery.isFetching ||
-    durationQuery.isFetching ||
-    pipelineQuery.isFetching ||
-    frequentReadsQuery.isFetching ||
-    toolCallsQuery.isFetching ||
-    slowestToolsQuery.isFetching ||
-    toolVolumeQuery.isFetching
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedSections]))
+  }, [expandedSections])
+
+  const toggleSection = useCallback((id: SectionId) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const allExpanded = expandedSections.size === SECTION_IDS.length
+
+  const toggleAll = useCallback(() => {
+    setExpandedSections(allExpanded ? new Set() : new Set(SECTION_IDS))
+  }, [allExpanded])
 
   function refetchAll() {
-    sessionsQuery.refetch()
-    durationQuery.refetch()
-    pipelineQuery.refetch()
-    frequentReadsQuery.refetch()
-    toolCallsQuery.refetch()
-    slowestToolsQuery.refetch()
-    toolVolumeQuery.refetch()
+    queryClient.invalidateQueries({ queryKey: ['analytics'] })
   }
-
-  const sessionsChart = useElementWidth()
-  const durationChart = useElementWidth()
-  const pipelineChart = useElementWidth()
-  const toolVolumeChart = useElementWidth()
-  const slowestToolsChart = useElementWidth()
-
-  const durationChartData = useMemo(
-    () =>
-      durationQuery.data?.map((row) => ({
-        name: row.agent_name ?? 'No Agent',
-        p50: Math.round(row.p50),
-        p90: Math.round(row.p90),
-        p99: Math.round(row.p99),
-      })),
-    [durationQuery.data],
-  )
-
-  const pipelineChartData = useMemo(
-    () =>
-      pipelineQuery.data?.map((row) => ({
-        name: row.agent_name,
-        avg: Math.round(row.avg_duration),
-        p50: Math.round(row.p50),
-        p90: Math.round(row.p90),
-      })),
-    [pipelineQuery.data],
-  )
-
-  const slowestToolsChartData = useMemo(
-    () =>
-      slowestToolsQuery.data?.map((row) => ({
-        name: row.tool_name,
-        p50: Math.round(row.p50),
-        p90: Math.round(row.p90),
-        p99: Math.round(row.p99),
-      })),
-    [slowestToolsQuery.data],
-  )
 
   return (
     <main className="flex flex-col h-full">
@@ -144,6 +137,9 @@ export function Analytics() {
               ))}
             </SelectContent>
           </Select>
+          <Button variant="outline" size="sm" onClick={toggleAll}>
+            {allExpanded ? 'Collapse All' : 'Load All'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -158,314 +154,408 @@ export function Analytics() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Sessions per Day */}
-          <section>
-            <h2 className="text-lg font-semibold mb-4">Sessions per Day</h2>
-            <ChartState query={sessionsQuery} emptyText={`No sessions in the last ${days} days.`}>
-              <div ref={sessionsChart.ref} className="h-64">
-                {sessionsChart.width > 0 && (
-                  <BarChart data={sessionsQuery.data} width={sessionsChart.width} height={CHART_HEIGHT}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(value: string) => {
-                        const d = new Date(value + 'T00:00:00')
-                        return d.toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                        })
-                      }}
-                    />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip
-                      labelFormatter={(value) => {
-                        const d = new Date(String(value) + 'T00:00:00')
-                        return d.toLocaleDateString(undefined, {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                        })
-                      }}
-                      contentStyle={tooltipStyle}
-                    />
-                    <Bar
-                      dataKey="count"
-                      name="Sessions"
-                      fill="hsl(var(--primary))"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                )}
-              </div>
-            </ChartState>
-          </section>
-
-          {/* Session Duration Percentiles */}
-          <section>
-            <h2 className="text-lg font-semibold mb-1">Session Duration by Agent</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              p50 / p90 / p99 duration of completed sessions
-            </p>
-            <ChartState
-              query={durationQuery}
-              emptyText={`No completed sessions in the last ${days} days.`}
+          {SECTIONS.map((section) => (
+            <ChartCard
+              key={section.id}
+              title={section.title}
+              description={'description' in section ? section.description : undefined}
+              expanded={expandedSections.has(section.id)}
+              onToggle={() => toggleSection(section.id)}
+              colSpan2={'colSpan2' in section ? section.colSpan2 : undefined}
             >
-              <div ref={durationChart.ref} className="h-64">
-                {durationChart.width > 0 && (
-                  <BarChart
-                    data={durationChartData}
-                    layout="vertical"
-                    width={durationChart.width}
-                    height={CHART_HEIGHT}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="stroke-border"
-                      horizontal={false}
-                    />
-                    <XAxis
-                      type="number"
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v) => formatMs(v)}
-                    />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
-                    <Tooltip
-                      formatter={(value) => formatMs(Number(value))}
-                      contentStyle={tooltipStyle}
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="p50"
-                      name="p50"
-                      fill="hsl(var(--primary))"
-                      radius={[0, 4, 4, 0]}
-                    />
-                    <Bar
-                      dataKey="p90"
-                      name="p90"
-                      fill="hsl(var(--primary) / 0.6)"
-                      radius={[0, 4, 4, 0]}
-                    />
-                    <Bar
-                      dataKey="p99"
-                      name="p99"
-                      fill="hsl(var(--primary) / 0.3)"
-                      radius={[0, 4, 4, 0]}
-                    />
-                  </BarChart>
-                )}
-              </div>
-            </ChartState>
-          </section>
-
-          {/* Pipeline Stage Duration */}
-          <section>
-            <h2 className="text-lg font-semibold mb-1">Pipeline Stage Duration</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Average / p50 / p90 duration per agent invocation
-            </p>
-            <ChartState
-              query={pipelineQuery}
-              emptyText={`No completed invocations in the last ${days} days.`}
-            >
-              <div ref={pipelineChart.ref} className="h-64">
-                {pipelineChart.width > 0 && (
-                  <BarChart data={pipelineChartData} width={pipelineChart.width} height={CHART_HEIGHT}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatMs(v)} />
-                    <Tooltip
-                      formatter={(value) => formatMs(Number(value))}
-                      contentStyle={tooltipStyle}
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="avg"
-                      name="Avg"
-                      fill="hsl(var(--primary))"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="p50"
-                      name="p50"
-                      fill="hsl(var(--primary) / 0.6)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="p90"
-                      name="p90"
-                      fill="hsl(var(--primary) / 0.3)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                )}
-              </div>
-            </ChartState>
-          </section>
-
-          {/* Most Frequent Reads */}
-          <section className="lg:col-span-2">
-            <h2 className="text-lg font-semibold mb-1">Most Frequent Reads</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Top 25 most-read files across all agent sessions
-            </p>
-            <ChartState
-              query={frequentReadsQuery}
-              emptyText={`No file reads in the last ${days} days.`}
-            >
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Rank</th>
-                      <th className="text-left py-2 pr-4 font-medium text-muted-foreground">File Path</th>
-                      <th className="text-right py-2 font-medium text-muted-foreground">Reads</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {frequentReadsQuery.data?.map((row, i) => (
-                      <tr key={row.file_path} className="border-b border-border/50">
-                        <td className="py-2 pr-4 text-muted-foreground">{i + 1}</td>
-                        <td className="py-2 pr-4 font-mono text-xs truncate max-w-md">{row.file_path}</td>
-                        <td className="py-2 text-right tabular-nums">{row.read_count.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </ChartState>
-          </section>
-
-          {/* Tool Call Volume */}
-          <section>
-            <h2 className="text-lg font-semibold mb-1">Tool Call Volume</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Total calls and session spread per tool (cost proxy)
-            </p>
-            <ChartState
-              query={toolVolumeQuery}
-              emptyText={`No tool calls in the last ${days} days.`}
-            >
-              <div ref={toolVolumeChart.ref} className="h-64">
-                {toolVolumeChart.width > 0 && (
-                  <BarChart data={toolVolumeQuery.data} width={toolVolumeChart.width} height={CHART_HEIGHT}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="tool_name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                    <Bar
-                      dataKey="call_count"
-                      name="Total Calls"
-                      fill="hsl(var(--primary))"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="session_count"
-                      name="Sessions"
-                      fill="hsl(var(--primary) / 0.4)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                )}
-              </div>
-            </ChartState>
-          </section>
-
-          {/* Slowest Tools */}
-          <section>
-            <h2 className="text-lg font-semibold mb-1">Slowest Tools</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              p50 / p90 / p99 tool call duration (excludes aborted calls)
-            </p>
-            <ChartState
-              query={slowestToolsQuery}
-              emptyText={`No tool duration data in the last ${days} days.`}
-            >
-              <div ref={slowestToolsChart.ref} className="h-64">
-                {slowestToolsChart.width > 0 && (
-                  <BarChart
-                    data={slowestToolsChartData}
-                    layout="vertical"
-                    width={slowestToolsChart.width}
-                    height={CHART_HEIGHT}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="stroke-border"
-                      horizontal={false}
-                    />
-                    <XAxis
-                      type="number"
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v) => formatMs(v)}
-                    />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
-                    <Tooltip
-                      formatter={(value) => formatMs(Number(value))}
-                      contentStyle={tooltipStyle}
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="p50"
-                      name="p50"
-                      fill="hsl(var(--primary))"
-                      radius={[0, 4, 4, 0]}
-                    />
-                    <Bar
-                      dataKey="p90"
-                      name="p90"
-                      fill="hsl(var(--primary) / 0.6)"
-                      radius={[0, 4, 4, 0]}
-                    />
-                    <Bar
-                      dataKey="p99"
-                      name="p99"
-                      fill="hsl(var(--primary) / 0.3)"
-                      radius={[0, 4, 4, 0]}
-                    />
-                  </BarChart>
-                )}
-              </div>
-            </ChartState>
-          </section>
-
-          {/* Tool Calls per Session */}
-          <section className="lg:col-span-2">
-            <h2 className="text-lg font-semibold mb-1">Tool Calls per Session</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Tool call count by session, sorted by most active
-            </p>
-            <ChartState
-              query={toolCallsQuery}
-              emptyText={`No tool calls in the last ${days} days.`}
-            >
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Session</th>
-                      <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Agent</th>
-                      <th className="text-right py-2 font-medium text-muted-foreground">Tool Calls</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {toolCallsQuery.data?.map((row) => (
-                      <tr key={row.session_id} className="border-b border-border/50">
-                        <td className="py-2 pr-4 font-mono text-xs">{row.session_id.slice(0, 12)}...</td>
-                        <td className="py-2 pr-4">{row.agent_name}</td>
-                        <td className="py-2 text-right tabular-nums">{row.call_count.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </ChartState>
-          </section>
+              <SectionContent
+                sectionId={section.id}
+                projectId={projectId ?? ''}
+                days={days}
+              />
+            </ChartCard>
+          ))}
         </div>
       </div>
     </main>
+  )
+}
+
+function ChartCard({
+  title,
+  description,
+  expanded,
+  onToggle,
+  colSpan2,
+  children,
+}: {
+  title: string
+  description?: string
+  expanded: boolean
+  onToggle: () => void
+  colSpan2?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <section className={colSpan2 ? 'lg:col-span-2' : undefined}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 text-left group"
+      >
+        {expanded ? (
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+        ) : (
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+        )}
+        <h2 className="text-lg font-semibold">{title}</h2>
+      </button>
+      {description && (
+        <p className="text-sm text-muted-foreground ml-6">{description}</p>
+      )}
+      {expanded && <div className="mt-4">{children}</div>}
+    </section>
+  )
+}
+
+function SectionContent({
+  sectionId,
+  projectId,
+  days,
+}: {
+  sectionId: SectionId
+  projectId: string
+  days: number
+}) {
+  switch (sectionId) {
+    case 'sessions-per-day':
+      return <SessionsPerDayContent projectId={projectId} days={days} />
+    case 'duration-percentiles':
+      return <DurationPercentilesContent projectId={projectId} days={days} />
+    case 'pipeline-stage-duration':
+      return <PipelineStageContent projectId={projectId} days={days} />
+    case 'most-frequent-reads':
+      return <MostFrequentReadsContent projectId={projectId} days={days} />
+    case 'tool-call-volume':
+      return <ToolCallVolumeContent projectId={projectId} days={days} />
+    case 'slowest-tools':
+      return <SlowestToolsContent projectId={projectId} days={days} />
+    case 'tool-calls-per-session':
+      return <ToolCallsPerSessionContent projectId={projectId} days={days} />
+  }
+}
+
+function SessionsPerDayContent({ projectId, days }: { projectId: string; days: number }) {
+  const query = useSessionsPerDay(projectId, days)
+  const chart = useElementWidth()
+
+  return (
+    <ChartState query={query} emptyText={`No sessions in the last ${days} days.`}>
+      <div ref={chart.ref} className="h-64">
+        {chart.width > 0 && (
+          <BarChart data={query.data} width={chart.width} height={CHART_HEIGHT}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value: string) => {
+                const d = new Date(value + 'T00:00:00')
+                return d.toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                })
+              }}
+            />
+            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+            <Tooltip
+              labelFormatter={(value) => {
+                const d = new Date(String(value) + 'T00:00:00')
+                return d.toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })
+              }}
+              contentStyle={tooltipStyle}
+            />
+            <Bar
+              dataKey="count"
+              name="Sessions"
+              fill="hsl(var(--primary))"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        )}
+      </div>
+    </ChartState>
+  )
+}
+
+function DurationPercentilesContent({ projectId, days }: { projectId: string; days: number }) {
+  const query = useDurationPercentiles(projectId, days)
+  const chart = useElementWidth()
+  const chartData = useMemo(
+    () =>
+      query.data?.map((row) => ({
+        name: row.agent_name ?? 'No Agent',
+        p50: Math.round(row.p50),
+        p90: Math.round(row.p90),
+        p99: Math.round(row.p99),
+      })),
+    [query.data],
+  )
+
+  return (
+    <ChartState query={query} emptyText={`No completed sessions in the last ${days} days.`}>
+      <div ref={chart.ref} className="h-64">
+        {chart.width > 0 && (
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            width={chart.width}
+            height={CHART_HEIGHT}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              className="stroke-border"
+              horizontal={false}
+            />
+            <XAxis
+              type="number"
+              tick={{ fontSize: 11 }}
+              tickFormatter={(v) => formatMs(v)}
+            />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
+            <Tooltip
+              formatter={(value) => formatMs(Number(value))}
+              contentStyle={tooltipStyle}
+            />
+            <Legend />
+            <Bar
+              dataKey="p50"
+              name="p50"
+              fill="hsl(var(--primary))"
+              radius={[0, 4, 4, 0]}
+            />
+            <Bar
+              dataKey="p90"
+              name="p90"
+              fill="hsl(var(--primary) / 0.6)"
+              radius={[0, 4, 4, 0]}
+            />
+            <Bar
+              dataKey="p99"
+              name="p99"
+              fill="hsl(var(--primary) / 0.3)"
+              radius={[0, 4, 4, 0]}
+            />
+          </BarChart>
+        )}
+      </div>
+    </ChartState>
+  )
+}
+
+function PipelineStageContent({ projectId, days }: { projectId: string; days: number }) {
+  const query = usePipelineStageDuration(projectId, days)
+  const chart = useElementWidth()
+  const chartData = useMemo(
+    () =>
+      query.data?.map((row) => ({
+        name: row.agent_name,
+        avg: Math.round(row.avg_duration),
+        p50: Math.round(row.p50),
+        p90: Math.round(row.p90),
+      })),
+    [query.data],
+  )
+
+  return (
+    <ChartState query={query} emptyText={`No completed invocations in the last ${days} days.`}>
+      <div ref={chart.ref} className="h-64">
+        {chart.width > 0 && (
+          <BarChart data={chartData} width={chart.width} height={CHART_HEIGHT}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatMs(v)} />
+            <Tooltip
+              formatter={(value) => formatMs(Number(value))}
+              contentStyle={tooltipStyle}
+            />
+            <Legend />
+            <Bar
+              dataKey="avg"
+              name="Avg"
+              fill="hsl(var(--primary))"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="p50"
+              name="p50"
+              fill="hsl(var(--primary) / 0.6)"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="p90"
+              name="p90"
+              fill="hsl(var(--primary) / 0.3)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        )}
+      </div>
+    </ChartState>
+  )
+}
+
+function MostFrequentReadsContent({ projectId, days }: { projectId: string; days: number }) {
+  const query = useMostFrequentReads(projectId, days)
+
+  return (
+    <ChartState query={query} emptyText={`No file reads in the last ${days} days.`}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Rank</th>
+              <th className="text-left py-2 pr-4 font-medium text-muted-foreground">File Path</th>
+              <th className="text-right py-2 font-medium text-muted-foreground">Reads</th>
+            </tr>
+          </thead>
+          <tbody>
+            {query.data?.map((row, i) => (
+              <tr key={row.file_path} className="border-b border-border/50">
+                <td className="py-2 pr-4 text-muted-foreground">{i + 1}</td>
+                <td className="py-2 pr-4 font-mono text-xs truncate max-w-md">{row.file_path}</td>
+                <td className="py-2 text-right tabular-nums">{row.read_count.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ChartState>
+  )
+}
+
+function ToolCallVolumeContent({ projectId, days }: { projectId: string; days: number }) {
+  const query = useToolCallVolume(projectId, days)
+  const chart = useElementWidth()
+
+  return (
+    <ChartState query={query} emptyText={`No tool calls in the last ${days} days.`}>
+      <div ref={chart.ref} className="h-64">
+        {chart.width > 0 && (
+          <BarChart data={query.data} width={chart.width} height={CHART_HEIGHT}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+            <XAxis dataKey="tool_name" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip contentStyle={tooltipStyle} />
+            <Legend />
+            <Bar
+              dataKey="call_count"
+              name="Total Calls"
+              fill="hsl(var(--primary))"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="session_count"
+              name="Sessions"
+              fill="hsl(var(--primary) / 0.4)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        )}
+      </div>
+    </ChartState>
+  )
+}
+
+function SlowestToolsContent({ projectId, days }: { projectId: string; days: number }) {
+  const query = useSlowestTools(projectId, days)
+  const chart = useElementWidth()
+  const chartData = useMemo(
+    () =>
+      query.data?.map((row) => ({
+        name: row.tool_name,
+        p50: Math.round(row.p50),
+        p90: Math.round(row.p90),
+        p99: Math.round(row.p99),
+      })),
+    [query.data],
+  )
+
+  return (
+    <ChartState query={query} emptyText={`No tool duration data in the last ${days} days.`}>
+      <div ref={chart.ref} className="h-64">
+        {chart.width > 0 && (
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            width={chart.width}
+            height={CHART_HEIGHT}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              className="stroke-border"
+              horizontal={false}
+            />
+            <XAxis
+              type="number"
+              tick={{ fontSize: 11 }}
+              tickFormatter={(v) => formatMs(v)}
+            />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
+            <Tooltip
+              formatter={(value) => formatMs(Number(value))}
+              contentStyle={tooltipStyle}
+            />
+            <Legend />
+            <Bar
+              dataKey="p50"
+              name="p50"
+              fill="hsl(var(--primary))"
+              radius={[0, 4, 4, 0]}
+            />
+            <Bar
+              dataKey="p90"
+              name="p90"
+              fill="hsl(var(--primary) / 0.6)"
+              radius={[0, 4, 4, 0]}
+            />
+            <Bar
+              dataKey="p99"
+              name="p99"
+              fill="hsl(var(--primary) / 0.3)"
+              radius={[0, 4, 4, 0]}
+            />
+          </BarChart>
+        )}
+      </div>
+    </ChartState>
+  )
+}
+
+function ToolCallsPerSessionContent({ projectId, days }: { projectId: string; days: number }) {
+  const query = useToolCallsPerSession(projectId, days)
+
+  return (
+    <ChartState query={query} emptyText={`No tool calls in the last ${days} days.`}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Session</th>
+              <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Agent</th>
+              <th className="text-right py-2 font-medium text-muted-foreground">Tool Calls</th>
+            </tr>
+          </thead>
+          <tbody>
+            {query.data?.map((row) => (
+              <tr key={row.session_id} className="border-b border-border/50">
+                <td className="py-2 pr-4 font-mono text-xs">{row.session_id.slice(0, 12)}...</td>
+                <td className="py-2 pr-4">{row.agent_name}</td>
+                <td className="py-2 text-right tabular-nums">{row.call_count.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ChartState>
   )
 }
 
