@@ -6,7 +6,7 @@ import {
   usePipelineStageDuration,
   useMostFrequentReads,
   useToolCallsPerSession,
-  useSlowestTools,
+
   useToolCallVolume,
   useTicketBurndown,
 } from '@kombuse/ui/hooks'
@@ -50,7 +50,8 @@ const SECTIONS = [
   { id: 'pipeline-stage-duration', title: 'Pipeline Stage Duration', description: 'Average / p50 / p90 duration per agent invocation' },
   { id: 'most-frequent-reads', title: 'Most Frequent Reads', description: 'Top 25 most-read files across all agent sessions', colSpan2: true },
   { id: 'tool-call-volume', title: 'Tool Call Volume', description: 'Total calls and session spread per tool (cost proxy)' },
-  { id: 'slowest-tools', title: 'Slowest Tools', description: 'p50 / p90 / p99 tool call duration (excludes aborted calls)' },
+  // Temporarily disabled — see #476
+  // { id: 'slowest-tools', title: 'Slowest Tools', description: 'p50 / p90 / p99 tool call duration (excludes aborted calls)' },
   { id: 'tool-calls-per-session', title: 'Tool Calls per Session', description: 'Tool call count by session, sorted by most active', colSpan2: true },
 ] as const
 
@@ -210,8 +211,9 @@ function SectionContent({
       return <MostFrequentReadsContent projectId={projectId} days={days} />
     case 'tool-call-volume':
       return <ToolCallVolumeContent projectId={projectId} days={days} />
-    case 'slowest-tools':
-      return <SlowestToolsContent projectId={projectId} days={days} />
+    // Temporarily disabled — see #476
+    // case 'slowest-tools':
+    //   return <SlowestToolsContent projectId={projectId} days={days} />
     case 'tool-calls-per-session':
       return <ToolCallsPerSessionContent projectId={projectId} days={days} />
   }
@@ -518,70 +520,71 @@ function ToolCallVolumeContent({ projectId, days }: { projectId: string; days: n
   )
 }
 
-function SlowestToolsContent({ projectId, days }: { projectId: string; days: number }) {
-  const query = useSlowestTools(projectId, days)
-  const chart = useElementWidth()
-  const chartData = useMemo(
-    () =>
-      query.data?.map((row) => ({
-        name: row.tool_name,
-        p50: Math.round(row.p50 ?? 0),
-        p90: Math.round(row.p90 ?? 0),
-        p99: Math.round(row.p99 ?? 0),
-      })),
-    [query.data],
-  )
-
-  return (
-    <ChartState query={query} emptyText={`No tool duration data in the last ${days} days.`}>
-      <div ref={chart.ref} className="h-64">
-        {chart.width > 0 && (
-          <BarChart
-            data={chartData}
-            layout="vertical"
-            width={chart.width}
-            height={CHART_HEIGHT}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              className="stroke-border"
-              horizontal={false}
-            />
-            <XAxis
-              type="number"
-              tick={{ fontSize: 11 }}
-              tickFormatter={(v) => formatMs(v)}
-            />
-            <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
-            <Tooltip
-              formatter={(value) => formatMs(Number(value))}
-              contentStyle={tooltipStyle}
-            />
-            <Legend />
-            <Bar
-              dataKey="p50"
-              name="p50"
-              fill="hsl(var(--primary))"
-              radius={[0, 4, 4, 0]}
-            />
-            <Bar
-              dataKey="p90"
-              name="p90"
-              fill="hsl(var(--primary) / 0.6)"
-              radius={[0, 4, 4, 0]}
-            />
-            <Bar
-              dataKey="p99"
-              name="p99"
-              fill="hsl(var(--primary) / 0.3)"
-              radius={[0, 4, 4, 0]}
-            />
-          </BarChart>
-        )}
-      </div>
-    </ChartState>
-  )
-}
+// Temporarily disabled — see #476
+// function SlowestToolsContent({ projectId, days }: { projectId: string; days: number }) {
+//   const query = useSlowestTools(projectId, days)
+//   const chart = useElementWidth()
+//   const chartData = useMemo(
+//     () =>
+//       query.data?.map((row) => ({
+//         name: row.tool_name,
+//         p50: Math.round(row.p50 ?? 0),
+//         p90: Math.round(row.p90 ?? 0),
+//         p99: Math.round(row.p99 ?? 0),
+//       })),
+//     [query.data],
+//   )
+//
+//   return (
+//     <ChartState query={query} emptyText={`No tool duration data in the last ${days} days.`}>
+//       <div ref={chart.ref} className="h-64">
+//         {chart.width > 0 && (
+//           <BarChart
+//             data={chartData}
+//             layout="vertical"
+//             width={chart.width}
+//             height={CHART_HEIGHT}
+//           >
+//             <CartesianGrid
+//               strokeDasharray="3 3"
+//               className="stroke-border"
+//               horizontal={false}
+//             />
+//             <XAxis
+//               type="number"
+//               tick={{ fontSize: 11 }}
+//               tickFormatter={(v) => formatMs(v)}
+//             />
+//             <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
+//             <Tooltip
+//               formatter={(value) => formatMs(Number(value))}
+//               contentStyle={tooltipStyle}
+//             />
+//             <Legend />
+//             <Bar
+//               dataKey="p50"
+//               name="p50"
+//               fill="hsl(var(--primary))"
+//               radius={[0, 4, 4, 0]}
+//             />
+//             <Bar
+//               dataKey="p90"
+//               name="p90"
+//               fill="hsl(var(--primary) / 0.6)"
+//               radius={[0, 4, 4, 0]}
+//             />
+//             <Bar
+//               dataKey="p99"
+//               name="p99"
+//               fill="hsl(var(--primary) / 0.3)"
+//               radius={[0, 4, 4, 0]}
+//             />
+//           </BarChart>
+//         )}
+//       </div>
+//     </ChartState>
+//   )
+// }
 
 function ToolCallsPerSessionContent({ projectId, days }: { projectId: string; days: number }) {
   const query = useToolCallsPerSession(projectId, days)
