@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BACKEND_TYPES } from "@kombuse/types";
-import { backendLabel } from "../lib/backend-utils";
+import { backendLabel, getInstallCommand } from "../lib/backend-utils";
 import {
   useBackendStatus,
   useRefreshBackendStatus,
@@ -10,16 +9,6 @@ import {
 import { Button } from "../base/button";
 import { AlertTriangle, RefreshCw, X } from "lucide-react";
 import { cn } from "../lib/utils";
-
-function getInstallCommand(backendType: string): string {
-  if (backendType === BACKEND_TYPES.CLAUDE_CODE) {
-    return "npm install -g @anthropic-ai/claude-code";
-  }
-  if (backendType === BACKEND_TYPES.CODEX) {
-    return "npm install -g @openai/codex";
-  }
-  return "";
-}
 
 function BackendStatusBanner() {
   const { data: statuses, isLoading } = useBackendStatus();
@@ -67,14 +56,16 @@ function BackendStatusBanner() {
           />
           Check Again
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7 text-amber-900 hover:bg-amber-100 hover:text-amber-900 dark:text-amber-200 dark:hover:bg-amber-900/40"
-          onClick={() => setDismissed(true)}
-        >
-          <X className="size-3.5" />
-        </Button>
+        {unavailable.length < statuses.length && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-amber-900 hover:bg-amber-100 hover:text-amber-900 dark:text-amber-200 dark:hover:bg-amber-900/40"
+            onClick={() => setDismissed(true)}
+          >
+            <X className="size-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   );

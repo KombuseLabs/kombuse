@@ -11,14 +11,14 @@ export function useAvailableBackends() {
   const { data: statuses, isLoading } = useBackendStatus()
 
   const availableBackends = useMemo(() => {
-    if (!statuses) return USER_FACING_BACKENDS
+    if (!statuses) return []
     return USER_FACING_BACKENDS.filter((bt) =>
       statuses.some((s) => s.backendType === bt && s.available),
     )
   }, [statuses])
 
   const isAvailable = useMemo(() => {
-    if (!statuses) return () => true
+    if (!statuses) return () => false
     const availableSet = new Set(
       statuses.filter((s) => s.available).map((s) => s.backendType),
     )

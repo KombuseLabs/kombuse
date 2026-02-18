@@ -26,6 +26,7 @@ src/
 │   ├── prompt-editor/    - System prompt editor with template variables
 │   ├── sidebar/          - Sidebar navigation (panel + icon rail variants) + backend status indicator
 │   ├── backend-status-banner.tsx - Warning banner for missing CLI backends
+│   ├── no-backend-screen.tsx     - Full-page blocking screen when no backends found
 │   ├── permissions/      - Permission decision log components
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components
@@ -61,7 +62,7 @@ src/
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
     ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database, agents, plugins)
-    ├── backend-utils.ts       - Backend display utilities (backendLabel, normalizeBackendType, normalizeBackendChoice)
+    ├── backend-utils.ts       - Backend display utilities (backendLabel, normalizeBackendType, normalizeBackendChoice, getInstallCommand)
     ├── remark-comment-links.ts  - Remark plugin: #N/c/M comment link syntax
     ├── remark-label-mentions.ts - Remark plugin: ~[Name](id) label mention syntax
     ├── remark-profile-mentions.ts - Remark plugin: @mention syntax
@@ -219,7 +220,7 @@ import { useAvailableBackends } from '@kombuse/ui/hooks'
 const { availableBackends, isAvailable, isLoading, noneAvailable } = useAvailableBackends()
 // availableBackends: BackendType[] — only installed user-facing backends (excludes mock)
 // isAvailable(bt): boolean — check if a specific backend is available
-// isLoading: boolean — true while fetching (returns all backends as fallback)
+// isLoading: boolean — true while fetching (returns empty list as pessimistic default)
 // noneAvailable: boolean — true when no backends are available after loading
 ```
 

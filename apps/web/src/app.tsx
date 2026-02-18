@@ -1,10 +1,11 @@
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner } from "@kombuse/ui/components";
+import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { getWsUrl } from "@kombuse/ui/lib/api";
-import { useDesktop } from "@kombuse/ui/hooks";
+import { useDesktop, useAvailableBackends } from "@kombuse/ui/hooks";
+import { Loader2 } from "lucide-react";
 import { CommandSetup, usePalette } from "./command-setup";
 import { useHistoryNavigationContext } from "./hooks/use-history-navigation";
 import { useSyncDefaultBackend } from "./hooks/use-sync-default-backend";
@@ -41,6 +42,7 @@ function AppContent() {
   const isHome = location.pathname === "/";
   useScrollbarActivity();
   useSyncDefaultBackend();
+  const { isLoading: backendsLoading, noneAvailable } = useAvailableBackends();
 
   return (
     <div
@@ -66,39 +68,58 @@ function AppContent() {
           </>
         )}
       </Header>
-      <BackendStatusBanner />
-      <div className="flex-1 min-h-0">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/settings" element={<Settings />} />
-          {/* Project routes with sidebar */}
-          <Route path="/projects/:projectId" element={<ProjectLayout />}>
-            <Route path="tickets" element={<Tickets />} />
-            <Route path="tickets/:ticketId" element={<Tickets />} />
-            <Route path="chats" element={<Chats />} />
-            <Route path="chats/:sessionId" element={<Chats />} />
-            <Route path="agents" element={<Agents />} />
-            <Route path="agents/:agentId" element={<Agents />} />
-            <Route path="labels" element={<Labels />} />
-            <Route path="labels/:labelId" element={<Labels />} />
-            <Route path="events" element={<Events />} />
-            <Route path="permissions" element={<Permissions />} />
-            <Route path="database" element={<DatabasePage />} />
-            <Route path="plugins" element={<PluginsPage />} />
-            <Route path="analytics" element={<Analytics />} />
-          </Route>
+      {noneAvailable ? (
+        <>
+          <BackendStatusBanner />
+          <div className="flex-1 min-h-0">
+            <Routes>
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<NoBackendScreen />} />
+            </Routes>
+          </div>
+        </>
+      ) : backendsLoading ? (
+        <div className="flex flex-1 items-center justify-center min-h-0">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          <BackendStatusBanner />
+          <div className="flex-1 min-h-0">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
+              {/* Project routes with sidebar */}
+              <Route path="/projects/:projectId" element={<ProjectLayout />}>
+                <Route path="tickets" element={<Tickets />} />
+                <Route path="tickets/:ticketId" element={<Tickets />} />
+                <Route path="chats" element={<Chats />} />
+                <Route path="chats/:sessionId" element={<Chats />} />
+                <Route path="agents" element={<Agents />} />
+                <Route path="agents/:agentId" element={<Agents />} />
+                <Route path="labels" element={<Labels />} />
+                <Route path="labels/:labelId" element={<Labels />} />
+                <Route path="events" element={<Events />} />
+                <Route path="permissions" element={<Permissions />} />
+                <Route path="database" element={<DatabasePage />} />
+                <Route path="plugins" element={<PluginsPage />} />
+                <Route path="analytics" element={<Analytics />} />
+              </Route>
 
-          {/* Global agents (outside project context) */}
-          <Route path="/agents" element={<Agents />} />
-          <Route path="/agents/:agentId" element={<Agents />} />
+              {/* Global agents (outside project context) */}
+              <Route path="/agents" element={<Agents />} />
+              <Route path="/agents/:agentId" element={<Agents />} />
 
-          {/* Claude Code session viewer */}
-          <Route path="/claude-code" element={<ClaudeCodeSessionViewer />} />
-          <Route path="/claude-code/:projectPath" element={<ClaudeCodeSessionViewer />} />
-          <Route path="/claude-code/:projectPath/sessions/:sessionId" element={<ClaudeCodeSessionViewer />} />
-        </Routes>
-      </div>
+              {/* Claude Code session viewer */}
+              <Route path="/claude-code" element={<ClaudeCodeSessionViewer />} />
+              <Route path="/claude-code/:projectPath" element={<ClaudeCodeSessionViewer />} />
+              <Route path="/claude-code/:projectPath/sessions/:sessionId" element={<ClaudeCodeSessionViewer />} />
+            </Routes>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -139,7 +139,8 @@ export function Chats() {
     localStorage.setItem(CHATS_PANEL_LAYOUT_KEY, JSON.stringify(layout));
   }, []);
 
-  const showDetailPanel = true;
+  const hasSessions = (sessions?.length ?? 0) > 0;
+  const showSessionList = hasSessions || selectedSessionId != null;
 
   const sessionListContent = (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'chats' | 'system')} className="h-full min-h-0 gap-0">
@@ -242,13 +243,13 @@ export function Chats() {
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
-        {showDetailPanel ? (
+        {showSessionList ? (
           <ResizablePanelGroup
             orientation="horizontal"
             defaultLayout={defaultLayout}
             onLayoutChanged={handleLayoutChanged}
           >
-            <ResizablePanel id="list" defaultSize={50} minSize={25} className="min-h-0">
+            <ResizablePanel id="list" defaultSize={35} minSize={25} className="min-h-0">
               <ResizableCardPanel side="list">
                 {sessionListContent}
               </ResizableCardPanel>
@@ -256,7 +257,7 @@ export function Chats() {
 
             <ResizableCardHandle />
 
-            <ResizablePanel id="detail" defaultSize={50} minSize={25} className="min-h-0">
+            <ResizablePanel id="detail" defaultSize={65} minSize={25} className="min-h-0">
               <ResizableCardPanel side="detail">
                 <Card className="flex h-full min-h-0 flex-col overflow-hidden">
                   {chatDetailContent}
@@ -266,7 +267,9 @@ export function Chats() {
           </ResizablePanelGroup>
         ) : (
           <div className="w-full h-full min-h-0 pt-3 px-6 pb-6">
-            {sessionListContent}
+            <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+              {chatDetailContent}
+            </Card>
           </div>
         )}
       </div>

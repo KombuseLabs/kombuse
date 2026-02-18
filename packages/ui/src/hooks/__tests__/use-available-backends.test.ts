@@ -30,16 +30,16 @@ beforeEach(() => {
 })
 
 describe('useAvailableBackends', () => {
-  it('returns all user-facing backends while loading', () => {
+  it('returns empty list while loading (pessimistic)', () => {
     mockGetStatus.mockReturnValue(new Promise(() => {}))
     const { result } = renderHook(() => useAvailableBackends(), {
       wrapper: createWrapper(),
     })
 
     expect(result.current.isLoading).toBe(true)
-    expect(result.current.availableBackends).toEqual(['claude-code', 'codex'])
-    expect(result.current.isAvailable('claude-code')).toBe(true)
-    expect(result.current.isAvailable('codex')).toBe(true)
+    expect(result.current.availableBackends).toEqual([])
+    expect(result.current.isAvailable('claude-code')).toBe(false)
+    expect(result.current.isAvailable('codex')).toBe(false)
     expect(result.current.noneAvailable).toBe(false)
   })
 
