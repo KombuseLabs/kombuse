@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { useScrollToBottom } from '../../hooks/use-scroll-to-bottom'
 import { isValidAskUserInput } from './ask-user-types'
-import { AskUserRenderer, BashRenderer, CompleteRenderer, EditRenderer, EnterPlanModeRenderer, ErrorRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PermissionResponseRenderer, PlanPermissionRenderer, PlanRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
+import { AskUserRenderer, BashRenderer, CompleteRenderer, EditRenderer, EnterPlanModeRenderer, ErrorRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, InitRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PermissionResponseRenderer, PlanPermissionRenderer, PlanRenderer, RateLimitRenderer, RawRenderer, ReadRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 interface SessionViewerProps {
@@ -148,6 +148,14 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
               <span className="ml-auto shrink-0 font-mono text-[10px]">{formatEventTime(event.timestamp)}</span>
             </div>
           )
+        }
+
+        if (event.type === 'raw' && event.sourceType === 'init') {
+          return <InitRenderer key={event.eventId} event={event} />
+        }
+
+        if (event.type === 'raw' && event.sourceType === 'rate_limit_event') {
+          return <RateLimitRenderer key={event.eventId} event={event} />
         }
 
         if (event.type === 'raw') {

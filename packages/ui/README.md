@@ -1170,6 +1170,15 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Matches the `process_spawn` inline style (no card wrapper)
 - Accepts optional `toolName` prop resolved from the matching `permission_request` event
 
+`InitRenderer` (in `renderers/`):
+- Minimal one-liner renderer for `init` raw events (session initialization)
+- Displays model name and Claude Code version inline with timestamp
+- Follows the same inline pattern as `process_spawn` (no card wrapper)
+
+`RateLimitRenderer` (in `renderers/`):
+- Amber warning-style `EventCard` for `rate_limit_event` raw events
+- Shows "Rate limited" header with `AlertTriangle` icon, optional message and retry duration
+
 `ErrorRenderer` (in `renderers/`):
 - Dedicated renderer for `error` session events
 - Shows error name and user-facing message with destructive styling

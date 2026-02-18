@@ -271,8 +271,19 @@ export function transformJsonlToAgentEvents(
       case 'file-history-snapshot':
         break
 
-      default:
+      default: {
+        const uuid = item.uuid ?? crypto.randomUUID()
+        const timestamp = parseTimestamp(item.timestamp)
+        events.push({
+          type: 'raw',
+          eventId: uuid,
+          backend: BACKEND,
+          timestamp,
+          sourceType: item.type,
+          data: item as unknown as JsonValue,
+        })
         break
+      }
     }
   }
 

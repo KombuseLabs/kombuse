@@ -479,10 +479,14 @@ describe('transformJsonlToAgentEvents – skipped types', () => {
     expect(events).toHaveLength(0)
   })
 
-  it('skips unknown types', () => {
-    const items = [{ type: 'some_future_type', data: 'whatever' }]
+  it('emits raw event for unknown types', () => {
+    const items = [{ type: 'some_future_type', data: 'whatever', uuid: 'uuid-future', timestamp: '2025-01-15T12:00:00.000Z' }]
     const events = transformJsonlToAgentEvents(items)
-    expect(events).toHaveLength(0)
+    expect(events).toHaveLength(1)
+    expect(events[0]!.type).toBe('raw')
+    if (events[0]!.type === 'raw') {
+      expect(events[0]!.sourceType).toBe('some_future_type')
+    }
   })
 })
 
