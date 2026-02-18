@@ -9,10 +9,12 @@ files:
   - dist/shell/**/*
   - "!**/*.{ts,map,md}"
 
-# Native modules must be outside ASAR
+# Native modules and their deps must be outside ASAR
 asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**
+  - node_modules/bindings/**
+  - node_modules/file-uri-to-path/**
 
 # Package bundled as separate resource (not in ASAR)
 extraResources:
