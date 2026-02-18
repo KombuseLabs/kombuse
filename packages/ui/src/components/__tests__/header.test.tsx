@@ -47,7 +47,7 @@ describe('Header', () => {
     const header = screen.getByRole('banner')
     expect(header.className).toContain('h-10')
     expect(header.className).toContain('electron-drag')
-    expect(header.className).toContain('pl-20')
+    expect(header.className).toContain('pl-24')
     expect(header.className).not.toContain('border-b')
 
     const centerZone = screen.getByText('Center Search').closest('div')?.parentElement
@@ -72,7 +72,7 @@ describe('Header', () => {
     const header = screen.getByRole('banner')
     expect(header.className).toContain('h-16')
     expect(header.className).not.toContain('electron-drag')
-    expect(header.className).not.toContain('pl-20')
+    expect(header.className).not.toContain('pl-24')
     expect(header.className).not.toContain('border-b')
   })
 
@@ -207,5 +207,60 @@ describe('Header', () => {
     const backBtn = screen.getByRole('button', { name: 'Go back' })
     const wrapper = backBtn.parentElement
     expect(wrapper?.className).toContain('electron-no-drag')
+  })
+
+  it('hides center section, nav arrows, and right nav when minimal is true', () => {
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    const { container } = render(
+      <Header
+        minimal
+        onGoBack={() => {}}
+        onGoForward={() => {}}
+        canGoBack={true}
+        canGoForward={true}
+        center={<span>Center Search</span>}
+      >
+        <button type="button" aria-label="Active Agents" />
+      </Header>
+    )
+
+    expect(screen.queryByRole('button', { name: 'Go back' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Go forward' })).toBeNull()
+    expect(screen.queryByText('Center Search')).toBeNull()
+    expect(container.querySelector('nav')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Toggle theme' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Active Agents' })).toBeNull()
+  })
+
+  it('still shows the title when minimal is true', () => {
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    render(<Header minimal />)
+
+    expect(screen.getByRole('button', { name: 'Kombuse' })).toBeDefined()
+  })
+
+  it('still applies macOS pl-24 padding and desktop classes when minimal is true', () => {
+    mockUseDesktop.mockReturnValue({
+      isDesktop: true,
+      platform: 'darwin',
+      selectDirectory: async () => null,
+    })
+
+    render(<Header minimal />)
+
+    const header = screen.getByRole('banner')
+    expect(header.className).toContain('pl-24')
+    expect(header.className).toContain('electron-drag')
+    expect(header.className).toContain('h-10')
   })
 })
