@@ -18,11 +18,6 @@ export const labelFiltersSchema = z.object({
   usage_scope: z.enum(['open']).optional(),
 })
 
-export const smartLabelIdsResponseSchema = z.object({
-  label_ids: z.array(z.number()),
-})
-
 export type CreateLabelBody = z.infer<typeof createLabelSchema>
 export type UpdateLabelBody = z.infer<typeof updateLabelSchema>
 export type LabelFiltersQuery = z.infer<typeof labelFiltersSchema>
-export type SmartLabelIdsResponse = z.infer<typeof smartLabelIdsResponseSchema>

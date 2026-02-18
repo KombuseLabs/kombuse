@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
   CreateAgentTriggerInput,
@@ -8,13 +9,13 @@ import { useAppContext } from './use-app-context'
 
 function useRefreshSmartLabels() {
   const { currentProjectId, setSmartLabelIds } = useAppContext()
-  return () => {
+  return useCallback(() => {
     if (currentProjectId) {
       labelsApi.getSmartLabelIds(currentProjectId).then((ids) => {
         setSmartLabelIds(new Set(ids))
-      }).catch(() => {})
+      }).catch((err) => console.error('[use-smart-labels] Failed to refresh smart label IDs:', err))
     }
-  }
+  }, [currentProjectId, setSmartLabelIds])
 }
 
 export function useTriggers(agentId: string) {

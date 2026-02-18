@@ -37,7 +37,7 @@ function LabelBadge({ label, className, onRemove, size = 'default' }: LabelBadge
       {isSmartLabel(label.id) && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Zap className="size-3 shrink-0" style={{ color: textColor }} />
+            <span className="inline-flex"><Zap className="size-3 shrink-0" style={{ color: textColor }} /></span>
           </TooltipTrigger>
           <TooltipContent>Triggers an agent</TooltipContent>
         </Tooltip>

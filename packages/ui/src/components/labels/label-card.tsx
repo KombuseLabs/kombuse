@@ -43,7 +43,7 @@ function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
             {isSmartLabel(label.id) && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Zap className="size-3 text-muted-foreground shrink-0" />
+                  <span className="inline-flex"><Zap className="size-3 text-muted-foreground shrink-0" /></span>
                 </TooltipTrigger>
                 <TooltipContent>Triggers an agent</TooltipContent>
               </Tooltip>
