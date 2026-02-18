@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   useSessionsPerDay,
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@kombuse/ui/base'
-import { BarChart3, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
+import { BarChart3, RefreshCw } from 'lucide-react'
 import { cn } from '@kombuse/ui/lib/utils'
 import {
   BarChart,
@@ -51,9 +51,6 @@ const SECTIONS = [
 
 type SectionId = (typeof SECTIONS)[number]['id']
 
-const SECTION_IDS: SectionId[] = SECTIONS.map((s) => s.id)
-const STORAGE_KEY = 'analytics-expanded-sections'
-
 function formatMs(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
@@ -73,42 +70,6 @@ export function Analytics() {
   const queryClient = useQueryClient()
   const fetchingCount = useIsFetching({ queryKey: ['analytics'] })
   const isAnyFetching = fetchingCount > 0
-
-  const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored) as string[]
-        return new Set(
-          parsed.filter((id): id is SectionId =>
-            (SECTION_IDS as readonly string[]).includes(id),
-          ),
-        )
-      }
-    } catch {
-      /* ignore */
-    }
-    return new Set<SectionId>()
-  })
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedSections]))
-  }, [expandedSections])
-
-  const toggleSection = useCallback((id: SectionId) => {
-    setExpandedSections((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  const allExpanded = expandedSections.size === SECTION_IDS.length
-
-  const toggleAll = useCallback(() => {
-    setExpandedSections(allExpanded ? new Set() : new Set(SECTION_IDS))
-  }, [allExpanded])
 
   function refetchAll() {
     queryClient.invalidateQueries({ queryKey: ['analytics'] })
@@ -137,9 +98,6 @@ export function Analytics() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={toggleAll}>
-            {allExpanded ? 'Collapse All' : 'Load All'}
-          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -159,8 +117,6 @@ export function Analytics() {
               key={section.id}
               title={section.title}
               description={'description' in section ? section.description : undefined}
-              expanded={expandedSections.has(section.id)}
-              onToggle={() => toggleSection(section.id)}
               colSpan2={'colSpan2' in section ? section.colSpan2 : undefined}
             >
               <SectionContent
@@ -206,40 +162,23 @@ class ChartErrorBoundary extends React.Component<
 function ChartCard({
   title,
   description,
-  expanded,
-  onToggle,
   colSpan2,
   children,
 }: {
   title: string
   description?: string
-  expanded: boolean
-  onToggle: () => void
   colSpan2?: boolean
   children: React.ReactNode
 }) {
   return (
     <section className={colSpan2 ? 'lg:col-span-2' : undefined}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-2 text-left group"
-      >
-        {expanded ? (
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-        ) : (
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-        )}
-        <h2 className="text-lg font-semibold">{title}</h2>
-      </button>
+      <h2 className="text-lg font-semibold">{title}</h2>
       {description && (
-        <p className="text-sm text-muted-foreground ml-6">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       )}
-      {expanded && (
-        <div className="mt-4">
-          <ChartErrorBoundary>{children}</ChartErrorBoundary>
-        </div>
-      )}
+      <div className="mt-4">
+        <ChartErrorBoundary>{children}</ChartErrorBoundary>
+      </div>
     </section>
   )
 }
@@ -324,9 +263,9 @@ function DurationPercentilesContent({ projectId, days }: { projectId: string; da
     () =>
       query.data?.map((row) => ({
         name: row.agent_name ?? 'No Agent',
-        p50: Math.round(row.p50),
-        p90: Math.round(row.p90),
-        p99: Math.round(row.p99),
+        p50: Math.round(row.p50 ?? 0),
+        p90: Math.round(row.p90 ?? 0),
+        p99: Math.round(row.p99 ?? 0),
       })),
     [query.data],
   )
@@ -389,9 +328,9 @@ function PipelineStageContent({ projectId, days }: { projectId: string; days: nu
     () =>
       query.data?.map((row) => ({
         name: row.agent_name,
-        avg: Math.round(row.avg_duration),
-        p50: Math.round(row.p50),
-        p90: Math.round(row.p90),
+        avg: Math.round(row.avg_duration ?? 0),
+        p50: Math.round(row.p50 ?? 0),
+        p90: Math.round(row.p90 ?? 0),
       })),
     [query.data],
   )
@@ -503,9 +442,9 @@ function SlowestToolsContent({ projectId, days }: { projectId: string; days: num
     () =>
       query.data?.map((row) => ({
         name: row.tool_name,
-        p50: Math.round(row.p50),
-        p90: Math.round(row.p90),
-        p99: Math.round(row.p99),
+        p50: Math.round(row.p50 ?? 0),
+        p90: Math.round(row.p90 ?? 0),
+        p99: Math.round(row.p99 ?? 0),
       })),
     [query.data],
   )

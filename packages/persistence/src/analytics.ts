@@ -61,9 +61,9 @@ export const analyticsRepository = {
           agent_name,
           ROUND(AVG(duration_ms)) AS avg,
           COUNT(*) AS count,
-          MAX(CASE WHEN rn = CAST(cnt * 0.50 AS INTEGER) + 1 THEN duration_ms END) AS p50,
-          MAX(CASE WHEN rn = CAST(cnt * 0.90 AS INTEGER) + 1 THEN duration_ms END) AS p90,
-          MAX(CASE WHEN rn = CAST(cnt * 0.99 AS INTEGER) + 1 THEN duration_ms END) AS p99
+          COALESCE(MAX(CASE WHEN rn = CAST(cnt * 0.50 AS INTEGER) + 1 THEN duration_ms END), ROUND(AVG(duration_ms))) AS p50,
+          COALESCE(MAX(CASE WHEN rn = CAST(cnt * 0.90 AS INTEGER) + 1 THEN duration_ms END), ROUND(AVG(duration_ms))) AS p90,
+          COALESCE(MAX(CASE WHEN rn = CAST(cnt * 0.99 AS INTEGER) + 1 THEN duration_ms END), ROUND(AVG(duration_ms))) AS p99
         FROM ranked
         GROUP BY agent_id, agent_name
         ORDER BY count DESC
@@ -104,8 +104,8 @@ export const analyticsRepository = {
           agent_name,
           ROUND(AVG(duration_ms)) AS avg_duration,
           COUNT(*) AS count,
-          MAX(CASE WHEN rn = CAST(cnt * 0.50 AS INTEGER) + 1 THEN duration_ms END) AS p50,
-          MAX(CASE WHEN rn = CAST(cnt * 0.90 AS INTEGER) + 1 THEN duration_ms END) AS p90
+          COALESCE(MAX(CASE WHEN rn = CAST(cnt * 0.50 AS INTEGER) + 1 THEN duration_ms END), ROUND(AVG(duration_ms))) AS p50,
+          COALESCE(MAX(CASE WHEN rn = CAST(cnt * 0.90 AS INTEGER) + 1 THEN duration_ms END), ROUND(AVG(duration_ms))) AS p90
         FROM ranked
         GROUP BY agent_id, agent_name
         ORDER BY count DESC
@@ -217,9 +217,9 @@ export const analyticsRepository = {
           tool_name,
           COUNT(*) AS count,
           ROUND(AVG(duration_ms)) AS avg,
-          MAX(CASE WHEN rn = CAST(cnt * 0.50 AS INTEGER) + 1 THEN duration_ms END) AS p50,
-          MAX(CASE WHEN rn = CAST(cnt * 0.90 AS INTEGER) + 1 THEN duration_ms END) AS p90,
-          MAX(CASE WHEN rn = CAST(cnt * 0.99 AS INTEGER) + 1 THEN duration_ms END) AS p99
+          COALESCE(MAX(CASE WHEN rn = CAST(cnt * 0.50 AS INTEGER) + 1 THEN duration_ms END), ROUND(AVG(duration_ms))) AS p50,
+          COALESCE(MAX(CASE WHEN rn = CAST(cnt * 0.90 AS INTEGER) + 1 THEN duration_ms END), ROUND(AVG(duration_ms))) AS p90,
+          COALESCE(MAX(CASE WHEN rn = CAST(cnt * 0.99 AS INTEGER) + 1 THEN duration_ms END), ROUND(AVG(duration_ms))) AS p99
         FROM ranked
         GROUP BY tool_name
         ORDER BY p90 DESC
