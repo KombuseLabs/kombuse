@@ -19,7 +19,7 @@ import { ConditionEditor } from './condition-editor'
 import { EVENT_TYPE_OPTIONS, EVENT_TYPE_CATEGORIES } from './event-type-constants'
 import { LabelPicker } from '../labels/label-picker'
 import { MentionTypePicker } from './mention-type-picker'
-import { AuthorTypePicker } from './author-type-picker'
+import { AuthorFilterPicker } from './author-filter-picker'
 import { AllowedInvokersEditor } from './allowed-invokers-editor'
 import { useProjectLabels, useCreateLabel } from '../../hooks/use-labels'
 import { useAppContext } from '../../hooks/use-app-context'
@@ -40,18 +40,18 @@ interface TriggerFormProps {
   isLoading?: boolean
 }
 
-function stripAuthorTypeCondition(
+function stripAuthorFilterConditions(
   currentConditions: Record<string, unknown> | null | undefined
 ): Record<string, unknown> | null {
   if (!currentConditions) return null
-  const { author_type: _authorType, ...rest } = currentConditions
+  const { author_type: _authorType, author_id: _authorId, ...rest } = currentConditions
   return Object.keys(rest).length > 0 ? rest : null
 }
 
 function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: TriggerFormProps) {
   const [eventType, setEventType] = useState(trigger?.event_type ?? '')
   const [conditions, setConditions] = useState<Record<string, unknown> | null>(() =>
-    stripAuthorTypeCondition(trigger?.conditions ?? null)
+    stripAuthorFilterConditions(trigger?.conditions ?? null)
   )
   const [priority, setPriority] = useState(trigger?.priority ?? 0)
   const [isEnabled, setIsEnabled] = useState(trigger?.is_enabled ?? true)
@@ -64,6 +64,11 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
   const [selectedAuthorType, setSelectedAuthorType] = useState<ActorType | null>(
     (trigger?.conditions?.author_type as ActorType) ?? null
   )
+  const [selectedAuthorIds, setSelectedAuthorIds] = useState<string[]>(() => {
+    const ids = trigger?.conditions?.author_id
+    if (Array.isArray(ids)) return ids as string[]
+    return []
+  })
   const [allowedInvokers, setAllowedInvokers] = useState<AllowedInvoker[] | null>(
     trigger?.allowed_invokers ?? null
   )
@@ -82,13 +87,13 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
 
   useEffect(() => {
     if (isCommentEvent) {
-      setConditions((current) => stripAuthorTypeCondition(current))
+      setConditions((current) => stripAuthorFilterConditions(current))
     }
   }, [isCommentEvent])
 
   const handleConditionsChange = (nextConditions: Record<string, unknown> | null) => {
     if (isCommentEvent) {
-      setConditions(stripAuthorTypeCondition(nextConditions))
+      setConditions(stripAuthorFilterConditions(nextConditions))
       return
     }
     setConditions(nextConditions)
@@ -108,6 +113,9 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
         }
       } else if (isCommentEvent && selectedAuthorType) {
         finalConditions = { ...finalConditions, author_type: selectedAuthorType }
+        if (selectedAuthorIds.length > 0) {
+          finalConditions = { ...finalConditions, author_id: selectedAuthorIds }
+        }
       }
 
       onSubmit({
@@ -177,9 +185,12 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
           </>
         ) : isCommentEvent ? (
           <>
-            <AuthorTypePicker
-              value={selectedAuthorType}
-              onValueChange={setSelectedAuthorType}
+            <AuthorFilterPicker
+              value={{ authorType: selectedAuthorType, authorIds: selectedAuthorIds }}
+              onValueChange={({ authorType, authorIds }) => {
+                setSelectedAuthorType(authorType)
+                setSelectedAuthorIds(authorIds)
+              }}
               disabled={isLoading}
             />
             <ConditionEditor

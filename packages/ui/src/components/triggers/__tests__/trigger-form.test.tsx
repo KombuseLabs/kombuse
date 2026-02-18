@@ -3,27 +3,50 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import type { ActorType, AgentTrigger, AllowedInvoker } from '@kombuse/types'
 import { TriggerForm } from '../trigger-form'
 
-// Track AuthorTypePicker renders and capture props
-const authorTypePickerRender = vi.fn()
+interface AuthorFilterValue {
+  authorType: ActorType | null
+  authorIds: string[]
+}
 
-vi.mock('../author-type-picker', () => ({
-  AuthorTypePicker: (props: {
-    value: ActorType | null
-    onValueChange: (value: ActorType | null) => void
+// Track AuthorFilterPicker renders and capture props
+const authorFilterPickerRender = vi.fn()
+
+vi.mock('../author-filter-picker', () => ({
+  AuthorFilterPicker: (props: {
+    value: AuthorFilterValue
+    onValueChange: (value: AuthorFilterValue) => void
     disabled?: boolean
   }) => {
-    authorTypePickerRender(props)
+    authorFilterPickerRender(props)
     return (
-      <div data-testid="author-type-picker" data-value={props.value ?? ''}>
+      <div
+        data-testid="author-filter-picker"
+        data-author-type={props.value.authorType ?? ''}
+        data-author-ids={JSON.stringify(props.value.authorIds)}
+      >
         <button
           data-testid="pick-user"
-          onClick={() => props.onValueChange('user')}
+          onClick={() => props.onValueChange({ authorType: 'user', authorIds: [] })}
         >
           Pick User
         </button>
         <button
+          data-testid="pick-agent-specific"
+          onClick={() =>
+            props.onValueChange({ authorType: 'agent', authorIds: ['agent-1', 'agent-2'] })
+          }
+        >
+          Pick Specific Agents
+        </button>
+        <button
+          data-testid="pick-agent-all"
+          onClick={() => props.onValueChange({ authorType: 'agent', authorIds: [] })}
+        >
+          Pick All Agents
+        </button>
+        <button
           data-testid="pick-clear"
-          onClick={() => props.onValueChange(null)}
+          onClick={() => props.onValueChange({ authorType: null, authorIds: [] })}
         >
           Clear
         </button>
@@ -179,37 +202,37 @@ describe('TriggerForm comment-event behavior', () => {
     vi.clearAllMocks()
   })
 
-  it('shows AuthorTypePicker when comment.added is selected', () => {
+  it('shows AuthorFilterPicker when comment.added is selected', () => {
     render(<TriggerForm {...defaultProps} />)
 
     fireEvent.change(screen.getByTestId('event-type-select'), {
       target: { value: 'comment.added' },
     })
 
-    expect(screen.getByTestId('author-type-picker')).toBeDefined()
+    expect(screen.getByTestId('author-filter-picker')).toBeDefined()
   })
 
-  it('shows AuthorTypePicker when comment.edited is selected', () => {
+  it('shows AuthorFilterPicker when comment.edited is selected', () => {
     render(<TriggerForm {...defaultProps} />)
 
     fireEvent.change(screen.getByTestId('event-type-select'), {
       target: { value: 'comment.edited' },
     })
 
-    expect(screen.getByTestId('author-type-picker')).toBeDefined()
+    expect(screen.getByTestId('author-filter-picker')).toBeDefined()
   })
 
-  it('does NOT show AuthorTypePicker for non-comment events', () => {
+  it('does NOT show AuthorFilterPicker for non-comment events', () => {
     render(<TriggerForm {...defaultProps} />)
 
     fireEvent.change(screen.getByTestId('event-type-select'), {
       target: { value: 'ticket.created' },
     })
 
-    expect(screen.queryByTestId('author-type-picker')).toBeNull()
+    expect(screen.queryByTestId('author-filter-picker')).toBeNull()
   })
 
-  it('prefills AuthorTypePicker from existing trigger conditions', () => {
+  it('prefills AuthorFilterPicker from existing trigger conditions', () => {
     const trigger = buildTrigger({
       event_type: 'comment.added',
       conditions: { author_type: 'agent' },
@@ -217,9 +240,23 @@ describe('TriggerForm comment-event behavior', () => {
 
     render(<TriggerForm {...defaultProps} trigger={trigger} />)
 
-    expect(authorTypePickerRender).toHaveBeenCalled()
-    const lastCall = authorTypePickerRender.mock.calls.at(-1)?.[0]
-    expect(lastCall.value).toBe('agent')
+    expect(authorFilterPickerRender).toHaveBeenCalled()
+    const lastCall = authorFilterPickerRender.mock.calls.at(-1)?.[0]
+    expect(lastCall.value.authorType).toBe('agent')
+    expect(lastCall.value.authorIds).toEqual([])
+  })
+
+  it('prefills AuthorFilterPicker with author_id from existing trigger', () => {
+    const trigger = buildTrigger({
+      event_type: 'comment.added',
+      conditions: { author_type: 'agent', author_id: ['agent-1'] },
+    })
+
+    render(<TriggerForm {...defaultProps} trigger={trigger} />)
+
+    const picker = screen.getByTestId('author-filter-picker')
+    expect(picker.getAttribute('data-author-type')).toBe('agent')
+    expect(picker.getAttribute('data-author-ids')).toBe(JSON.stringify(['agent-1']))
   })
 
   it('submits with author_type in conditions when set', () => {
@@ -242,6 +279,54 @@ describe('TriggerForm comment-event behavior', () => {
     )
   })
 
+  it('submits with author_id array when specific agents selected', () => {
+    render(<TriggerForm {...defaultProps} />)
+
+    fireEvent.change(screen.getByTestId('event-type-select'), {
+      target: { value: 'comment.added' },
+    })
+
+    fireEvent.click(screen.getByTestId('pick-agent-specific'))
+
+    const form = screen.getByTestId('event-type-select').closest('form')!
+    fireEvent.submit(form)
+
+    expect(defaultProps.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_type: 'comment.added',
+        conditions: expect.objectContaining({
+          author_type: 'agent',
+          author_id: ['agent-1', 'agent-2'],
+        }),
+      })
+    )
+  })
+
+  it('submits without author_id when agent type selected but no specific agents', () => {
+    // Pre-build a trigger with author_type: 'agent' already set
+    const trigger = buildTrigger({
+      event_type: 'comment.added',
+      conditions: { author_type: 'agent' },
+    })
+
+    render(<TriggerForm {...defaultProps} trigger={trigger} />)
+
+    // Verify the picker shows agent type
+    const lastCall = authorFilterPickerRender.mock.calls.at(-1)?.[0]
+    expect(lastCall.value.authorType).toBe('agent')
+    expect(lastCall.value.authorIds).toEqual([])
+
+    // Submit without changing anything — should have author_type but no author_id
+    const form = screen.getByTestId('event-type-select').closest('form')!
+    fireEvent.submit(form)
+
+    expect(defaultProps.onSubmit).toHaveBeenCalled()
+    const submitCall = defaultProps.onSubmit.mock.calls[0]?.[0]
+    expect(submitCall.event_type).toBe('comment.added')
+    expect(submitCall.conditions?.author_type).toBe('agent')
+    expect(submitCall.conditions).not.toHaveProperty('author_id')
+  })
+
   it('submits without author_type when no author type is selected', () => {
     const trigger = buildTrigger({
       event_type: 'comment.added',
@@ -250,8 +335,8 @@ describe('TriggerForm comment-event behavior', () => {
 
     render(<TriggerForm {...defaultProps} trigger={trigger} />)
 
-    // AuthorTypePicker should be shown with null value (no filter selected)
-    expect(screen.getByTestId('author-type-picker').getAttribute('data-value')).toBe('')
+    // AuthorFilterPicker should be shown with null authorType
+    expect(screen.getByTestId('author-filter-picker').getAttribute('data-author-type')).toBe('')
 
     const form = screen.getByTestId('event-type-select').closest('form')!
     fireEvent.submit(form)

@@ -464,6 +464,7 @@ export const commentsRepository = {
           comment_id: commentId,
           ticket_id: payload.ticket_id,
           author_type: actorType,
+          author_id: payload.author_id,
         },
       })
 
@@ -653,7 +654,7 @@ export const commentsRepository = {
             actor_id: existingRow.author_id,
             actor_type: editActorType,
             kombuse_session_id: existingRow.kombuse_session_id ?? undefined,
-            payload: { comment_id: id, author_type: editActorType },
+            payload: { comment_id: id, author_type: editActorType, author_id: existingRow.author_id },
           })
         }
       }

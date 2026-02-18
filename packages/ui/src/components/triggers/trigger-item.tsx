@@ -7,7 +7,8 @@ import { Button } from '../../base/button'
 import { Switch } from '../../base/switch'
 import { getEventTypeOption } from './event-type-constants'
 import { getMentionTypeLabel } from './mention-type-picker'
-import { getAuthorTypeLabel } from './author-type-picker'
+import { getAuthorFilterLabel } from './author-filter-picker'
+import { useAgentProfiles } from '../../hooks/use-agents'
 import { summarizeInvokers } from './allowed-invokers-editor'
 
 interface TriggerItemProps {
@@ -29,6 +30,7 @@ function TriggerItem({
   isDeleting,
   isToggling,
 }: TriggerItemProps) {
+  const { data: agentProfiles } = useAgentProfiles()
   const eventOption = getEventTypeOption(trigger.event_type)
 
   const resolvedLabel = (() => {
@@ -43,7 +45,15 @@ function TriggerItem({
       return getMentionTypeLabel(String(conditions.mention_type))
     }
     if (conditions.author_type) {
-      return getAuthorTypeLabel(String(conditions.author_type))
+      const authorIds = Array.isArray(conditions.author_id) ? (conditions.author_id as string[]) : []
+      if (authorIds.length > 0 && agentProfiles) {
+        const names = authorIds.map((id) => {
+          const profile = agentProfiles.find((p) => p.id === id)
+          return profile?.name ?? id.slice(0, 8) + '...'
+        })
+        return getAuthorFilterLabel(String(conditions.author_type), names)
+      }
+      return getAuthorFilterLabel(String(conditions.author_type))
     }
     if (conditions.label_id != null) {
       if (resolvedLabel) return resolvedLabel.name

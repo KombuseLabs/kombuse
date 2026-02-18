@@ -388,6 +388,73 @@ describe('agentService', () => {
     })
 
     // ============================================
+    // condition-side array matching (author_id)
+    // ============================================
+
+    it('should match when condition author_id array includes payload author_id', () => {
+      const specificAgent1 = createAgentProfile()
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'comment.added',
+        conditions: { author_type: 'agent', author_id: [specificAgent1, 'specific-agent-2'] },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'comment.added',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: specificAgent1,
+        actor_type: 'agent',
+        payload: { comment_id: 1, ticket_id: testTicketId, author_type: 'agent', author_id: specificAgent1 },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should match because author_id is in the condition array').toHaveLength(1)
+    })
+
+    it('should reject when condition author_id array does not include payload author_id', () => {
+      const otherAgent = createAgentProfile()
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'comment.added',
+        conditions: { author_type: 'agent', author_id: ['specific-agent-1', 'specific-agent-2'] },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'comment.added',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: otherAgent,
+        actor_type: 'agent',
+        payload: { comment_id: 1, ticket_id: testTicketId, author_type: 'agent', author_id: otherAgent },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should not match because author_id is not in the condition array').toHaveLength(0)
+    })
+
+    it('should match author_type agent without author_id array for any agent', () => {
+      const anyAgent = createAgentProfile()
+      agentService.createTrigger({
+        agent_id: agentId,
+        event_type: 'comment.added',
+        conditions: { author_type: 'agent' },
+      })
+
+      const event = eventsRepository.create({
+        event_type: 'comment.added',
+        project_id: TEST_PROJECT_ID,
+        ticket_id: testTicketId,
+        actor_id: anyAgent,
+        actor_type: 'agent',
+        payload: { comment_id: 1, ticket_id: testTicketId, author_type: 'agent', author_id: anyAgent },
+      })
+
+      const matches = agentService.findMatchingTriggers(event)
+      expect(matches, 'Should match any agent when no author_id condition specified').toHaveLength(1)
+    })
+
+    // ============================================
     // allowed_invokers ACL tests
     // ============================================
 

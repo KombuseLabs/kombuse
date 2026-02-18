@@ -88,8 +88,10 @@ function matchGlob(pattern: string, value: string): boolean {
  * - Strict equality: `{ label_id: 4 }` matches when `payload.label_id === 4`
  * - Negation via `exclude_` prefix: `{ exclude_agent_id: 'x' }` matches when
  *   `payload.agent_id !== 'x'`
- * - Array containment: if the payload value is an array,
+ * - Array containment (payload is array): if the payload value is an array,
  *   `{ changes: 'status' }` matches when `payload.changes` includes `'status'`
+ * - Array containment (condition is array): if the condition value is an array,
+ *   `{ author_id: ['id-1', 'id-2'] }` matches when `payload.author_id` is in the array
  */
 function matchConditions(
   conditions: Record<string, unknown> | null,
@@ -113,6 +115,14 @@ function matchConditions(
     // Array containment: if the payload value is an array, check includes
     if (Array.isArray(actualValue)) {
       if (!actualValue.includes(expectedValue)) {
+        return false
+      }
+      continue
+    }
+
+    // Condition-side array: if the condition value is an array, check if payload value is in it
+    if (Array.isArray(expectedValue)) {
+      if (!expectedValue.includes(actualValue)) {
         return false
       }
       continue

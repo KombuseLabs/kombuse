@@ -512,6 +512,25 @@ describe('commentsRepository', () => {
       expect(events[0]?.actor_type, 'User-authored comment should have actor_type "user"').toBe('user')
     })
 
+    it('should include author_id in comment.added event payload', () => {
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_AGENT_ID,
+        body: 'Agent comment for author_id test',
+      })
+
+      const events = eventsRepository.list({ event_type: 'comment.added' })
+
+      expect(events).toHaveLength(1)
+      const payload =
+        typeof events[0]!.payload === 'string'
+          ? JSON.parse(events[0]!.payload)
+          : events[0]!.payload
+      expect(payload.author_id, 'comment.added payload should include author_id').toBe(TEST_AGENT_ID)
+    })
+
     it('should set actor_type to "agent" on mention.created events for agent-authored @mentions', () => {
       db.prepare(
         'INSERT INTO profiles (id, type, name, is_active) VALUES (?, ?, ?, 1)'
@@ -1267,6 +1286,27 @@ describe('commentsRepository', () => {
           ? JSON.parse(events[0]!.payload)
           : events[0]!.payload
       expect(payload.author_type, 'comment.edited payload should include author_type').toBe('agent')
+    })
+
+    it('should include author_id in comment.edited event payload', () => {
+      const comment = commentsRepository.create({
+        ticket_id: testTicketId,
+        author_id: TEST_USER_ID,
+        body: 'Original body for author_id test',
+      })
+
+      db.prepare('DELETE FROM events').run()
+
+      commentsRepository.update(comment.id, { body: 'Updated body for author_id test' })
+
+      const events = eventsRepository.list({ event_type: 'comment.edited' })
+
+      expect(events).toHaveLength(1)
+      const payload =
+        typeof events[0]!.payload === 'string'
+          ? JSON.parse(events[0]!.payload)
+          : events[0]!.payload
+      expect(payload.author_id, 'comment.edited payload should include author_id').toBe(TEST_USER_ID)
     })
   })
 

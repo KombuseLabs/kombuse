@@ -16,8 +16,8 @@ export type { ConditionEditorProps } from './condition-editor'
 export { MentionTypePicker, getMentionTypeLabel } from './mention-type-picker'
 export type { MentionTypePickerProps } from './mention-type-picker'
 
-export { AuthorTypePicker, getAuthorTypeLabel } from './author-type-picker'
-export type { AuthorTypePickerProps } from './author-type-picker'
+export { AuthorFilterPicker, getAuthorFilterLabel } from './author-filter-picker'
+export type { AuthorFilterPickerProps, AuthorFilterValue } from './author-filter-picker'
 
 export { AllowedInvokersEditor, summarizeInvokers } from './allowed-invokers-editor'
 export type { AllowedInvokersEditorProps } from './allowed-invokers-editor'

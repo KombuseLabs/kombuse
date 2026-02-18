@@ -618,7 +618,7 @@ import {
 ```typescript
 import { TriggerEditor, TriggerForm, TriggerList, TriggerItem } from '@kombuse/ui/components'
 import { MentionTypePicker, getMentionTypeLabel } from '@kombuse/ui/components'
-import { AuthorTypePicker, getAuthorTypeLabel } from '@kombuse/ui/components'
+import { AuthorFilterPicker, getAuthorFilterLabel } from '@kombuse/ui/components'
 import { AllowedInvokersEditor, summarizeInvokers } from '@kombuse/ui/components'
 
 // Mention type picker for trigger conditions (select between @profile and #ticket)
@@ -628,10 +628,13 @@ import { AllowedInvokersEditor, summarizeInvokers } from '@kombuse/ui/components
   disabled={false}
 />
 
-// Comment author type picker for trigger conditions (human users or agents)
-<AuthorTypePicker
-  value={selectedAuthorType}
-  onValueChange={(type) => setSelectedAuthorType(type)}
+// Comment author filter for trigger conditions (human users, agents, or specific agents)
+<AuthorFilterPicker
+  value={{ authorType: selectedAuthorType, authorIds: selectedAuthorIds }}
+  onValueChange={({ authorType, authorIds }) => {
+    setSelectedAuthorType(authorType)
+    setSelectedAuthorIds(authorIds)
+  }}
   disabled={false}
 />
 
@@ -639,9 +642,10 @@ import { AllowedInvokersEditor, summarizeInvokers } from '@kombuse/ui/components
 getMentionTypeLabel('profile') // => "Profile mention (@)"
 getMentionTypeLabel('ticket')  // => "Ticket mention (#)"
 
-// Get human-readable label for an author type
-getAuthorTypeLabel('user')  // => "Human only"
-getAuthorTypeLabel('agent') // => "Agent only"
+// Get human-readable label for an author filter
+getAuthorFilterLabel('user')                       // => "Human only"
+getAuthorFilterLabel('agent')                      // => "Agent only"
+getAuthorFilterLabel('agent', ['Alice', 'Bob'])    // => "Agents: Alice, Bob"
 ```
 
 Props for `MentionTypePicker`:
@@ -649,10 +653,12 @@ Props for `MentionTypePicker`:
 - `onValueChange`: `(value: MentionType) => void` — selection callback
 - `disabled`: Optional boolean
 
-Props for `AuthorTypePicker`:
-- `value`: `ActorType | null` — current selection
-- `onValueChange`: `(value: ActorType) => void` — selection callback
+Props for `AuthorFilterPicker`:
+- `value`: `{ authorType: ActorType | null; authorIds: string[] }` — current selection
+- `onValueChange`: `(value: { authorType: ActorType | null; authorIds: string[] }) => void` — selection callback
 - `disabled`: Optional boolean
+- When `authorType` is `'agent'`, shows a multi-select dropdown of enabled agents
+- Leaving agent selection empty means "any agent"
 
 #### AllowedInvokersEditor
 
