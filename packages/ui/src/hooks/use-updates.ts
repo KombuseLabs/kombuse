@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UpdateStatus, UpdateCheckResult, ServerMessage } from '@kombuse/types'
 import { useWebSocket } from './use-websocket'
+import { getServerPort } from '../lib/api'
 
-const API_BASE = 'http://localhost:3331/api'
+const API_BASE = `http://localhost:${getServerPort()}/api`
 
 interface UseUpdatesReturn {
   /** Current update status */

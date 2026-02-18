@@ -76,7 +76,7 @@ declare global {
 }
 
 export function getServerPort(): number {
-  return window.electron?.serverPort ?? 3332
+  return window.electron?.serverPort ?? 3331
 }
 
 export function getWsUrl(): string {

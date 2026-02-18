@@ -199,7 +199,7 @@ const isDirectExecution =
   process.argv[1]?.endsWith("tsx");
 
 if (isDirectExecution) {
-  const { writeFileSync } = await import("node:fs");
+  const { writeFileSync, unlinkSync } = await import("node:fs");
   const { join } = await import("node:path");
   const { homedir } = await import("node:os");
 
@@ -210,6 +210,13 @@ if (isDirectExecution) {
     const address = await server.listen();
     const port = new URL(address).port;
     writeFileSync(portFile, port);
+
+    const cleanup = () => {
+      try { unlinkSync(portFile); } catch { /* already removed */ }
+      process.exit(0);
+    };
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
   } catch (err) {
     server.instance.log.error(err);
     process.exit(1);
