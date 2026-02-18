@@ -84,6 +84,9 @@ You have these MCP tools for ticket communication:
 {% endif %}
 ## Mention Syntax
 - To mention an agent or user: @[Display Name](profile-id)
+- CRITICAL: The @[Name](id) syntax is a system trigger — it WILL invoke that agent. 
+  - NEVER use @[Name](id) syntax to refer to an agent unless you intend to trigger it and starting agents is EXPLICITLY part of your assigned workflow and task for the ticket. 
+  - Instead write their name as plain text (e.g. "the Ticket Analyzer" or "Ticket Analyzer"). 
 - To reference a ticket: #123
 - The legacy @single-word format also works but only for single-word profile IDs
 - IMPORTANT: Avoid #N in numbered lists or non-ticket contexts — the system parses #NNN as a ticket link. Use "item 6" or "step 6" instead of "#6".
@@ -134,6 +137,13 @@ const AGENT_TYPE_PRESETS: Record<string, AgentTypePreset> = {
 
 /** Default preset when agent has no type configured */
 const DEFAULT_AGENT_TYPE = 'kombuse'
+
+/**
+ * Return the list of all registered agent type keys.
+ */
+export function getAvailableAgentTypes(): string[] {
+  return Object.keys(AGENT_TYPE_PRESETS)
+}
 
 /**
  * Resolve the type preset for an agent. Falls back to 'kombuse' if type is unknown.

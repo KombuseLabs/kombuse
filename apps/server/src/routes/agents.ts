@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
-import { agentService, pluginExportService } from '@kombuse/services'
+import type { Agent, ResolvedPreset } from '@kombuse/types'
+import { agentService, pluginExportService, getTypePreset } from '@kombuse/services'
 import { eventsRepository } from '@kombuse/persistence'
 import {
   createAgentSchema,
@@ -11,6 +12,19 @@ import {
   processEventSchema,
   agentExportSchema,
 } from '../schemas/agents'
+
+function enrichWithPreset(agent: Agent): Agent & { resolved_preset: ResolvedPreset } {
+  const agentType = agent.config.type as string | undefined
+  const preset = getTypePreset(agentType)
+  return {
+    ...agent,
+    resolved_preset: {
+      type: typeof agentType === 'string' ? agentType : 'kombuse',
+      autoApprovedTools: preset.autoApprovedTools,
+      autoApprovedBashCommands: preset.autoApprovedBashCommands,
+    },
+  }
+}
 
 export async function agentRoutes(fastify: FastifyInstance) {
   // ============================================
@@ -24,7 +38,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return agentService.listAgents(parseResult.data)
+    const agents = agentService.listAgents(parseResult.data)
+    return agents.map(enrichWithPreset)
   })
 
   // Get agent by slug
@@ -35,7 +50,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
     if (!agent) {
       return reply.status(404).send({ error: 'Agent not found' })
     }
-    return agent
+    return enrichWithPreset(agent)
   })
 
   // Get single agent
@@ -46,7 +61,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
     if (!agent) {
       return reply.status(404).send({ error: 'Agent not found' })
     }
-    return agent
+    return enrichWithPreset(agent)
   })
 
   // Create agent

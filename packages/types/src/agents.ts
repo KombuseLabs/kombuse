@@ -36,6 +36,16 @@ export interface ToolPermission {
 export type Permission = ResourcePermission | ToolPermission
 
 /**
+ * Resolved agent type preset — computed from config.type, not stored in DB.
+ * Attached to API responses so the UI can display auto-approved tools.
+ */
+export interface ResolvedPreset {
+  type: string
+  autoApprovedTools: string[]
+  autoApprovedBashCommands: string[]
+}
+
+/**
  * Provider-specific config for Anthropic models
  */
 export interface AnthropicConfig {
@@ -106,6 +116,8 @@ export interface Agent {
   is_enabled: boolean
   /** Plugin that installed this agent, if any */
   plugin_id: string | null
+  /** Resolved type preset, populated by the API (not stored in DB) */
+  resolved_preset?: ResolvedPreset
   created_at: string
   updated_at: string
 }

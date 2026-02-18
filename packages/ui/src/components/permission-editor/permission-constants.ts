@@ -36,10 +36,23 @@ export const COMMON_TOOLS = [
   { value: 'mcp__kombuse__list_tickets', label: 'List Tickets' },
   { value: 'mcp__kombuse__update_comment', label: 'Update Comment' },
   { value: 'mcp__kombuse__query_db', label: 'Query Database' },
+  { value: 'mcp__kombuse__list_labels', label: 'List Labels' },
+  { value: 'mcp__kombuse__list_tables', label: 'List Tables' },
+  { value: 'mcp__kombuse__describe_table', label: 'Describe Table' },
+  { value: 'mcp__kombuse__list_api_endpoints', label: 'List API Endpoints' },
+  { value: 'mcp__kombuse__call_api', label: 'Call API' },
+  { value: 'mcp__kombuse__list_agents', label: 'List Agents' },
+  { value: 'mcp__kombuse__create_agent', label: 'Create Agent' },
+  { value: 'mcp__kombuse__update_agent', label: 'Update Agent' },
   { value: 'Write', label: 'File Write' },
   { value: 'Edit', label: 'File Edit' },
   { value: 'Read', label: 'File Read' },
+  { value: 'Grep', label: 'Grep Search' },
+  { value: 'Glob', label: 'Glob File Match' },
   { value: 'Bash', label: 'Bash Command' },
+  { value: 'Task', label: 'Task Runner' },
+  { value: 'TodoWrite', label: 'Todo List' },
+  { value: 'EnterPlanMode', label: 'Enter Plan Mode' },
 ] as const
 
 export function getResourceLabel(resource: string): string {
