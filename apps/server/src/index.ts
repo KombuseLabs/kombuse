@@ -96,9 +96,9 @@ export async function createServer({ port, dbPath }: ServerOptions) {
   fastify.addHook("preSerialization", createResponseValidationHook());
 
   // Enable CORS for web app
-  // Note: app:// protocol sends null origin (opaque origin)
+  // app:// is the Electron production origin (registered as privileged scheme)
   await fastify.register(cors, {
-    origin: ["http://localhost:3333", "null"],
+    origin: ["http://localhost:3333", "app://."],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
 
