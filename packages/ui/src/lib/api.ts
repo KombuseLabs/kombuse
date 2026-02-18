@@ -949,6 +949,14 @@ export type ToolCallVolumeEntry = {
   session_count: number
 }
 
+export type BurndownEntry = {
+  date: string
+  total: number
+  open: number
+  closed: number
+  ideal: number | null
+}
+
 export const analyticsApi = {
   async sessionsPerDay(projectId: string, days?: number): Promise<SessionsPerDayEntry[]> {
     const params = new URLSearchParams()
@@ -1027,6 +1035,22 @@ export const analyticsApi = {
 
     const response = await fetch(`${API_BASE}/analytics/tool-call-volume?${params}`)
     return handleResponse<ToolCallVolumeEntry[]>(response)
+  },
+
+  async ticketBurndown(
+    projectId: string,
+    days?: number,
+    milestoneId?: number,
+    labelId?: number,
+  ): Promise<BurndownEntry[]> {
+    const params = new URLSearchParams()
+    params.set('project_id', projectId)
+    if (days !== undefined) params.set('days', String(days))
+    if (milestoneId !== undefined) params.set('milestone_id', String(milestoneId))
+    if (labelId !== undefined) params.set('label_id', String(labelId))
+
+    const response = await fetch(`${API_BASE}/analytics/ticket-burndown?${params}`)
+    return handleResponse<BurndownEntry[]>(response)
   },
 }
 

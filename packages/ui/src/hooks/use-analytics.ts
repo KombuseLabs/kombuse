@@ -70,3 +70,18 @@ export function useToolCallVolume(projectId: string, days?: number) {
     refetchOnWindowFocus: false,
   })
 }
+
+export function useTicketBurndown(
+  projectId: string,
+  days?: number,
+  milestoneId?: number,
+  labelId?: number,
+) {
+  return useQuery({
+    queryKey: ['analytics', 'ticket-burndown', projectId, days, milestoneId, labelId],
+    queryFn: () => analyticsApi.ticketBurndown(projectId, days, milestoneId, labelId),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}

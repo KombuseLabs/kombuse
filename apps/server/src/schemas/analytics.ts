@@ -50,3 +50,12 @@ export const toolCallVolumeQuerySchema = z.object({
 })
 
 export type ToolCallVolumeQuery = z.infer<typeof toolCallVolumeQuerySchema>
+
+export const ticketBurndownQuerySchema = z.object({
+  project_id: z.string().min(1),
+  days: z.coerce.number().int().positive().optional(),
+  milestone_id: z.coerce.number().int().positive().optional(),
+  label_id: z.coerce.number().int().positive().optional(),
+})
+
+export type TicketBurndownQuery = z.infer<typeof ticketBurndownQuerySchema>

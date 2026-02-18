@@ -1,4 +1,4 @@
-import { analyticsRepository } from '@kombuse/persistence'
+import { analyticsRepository, milestonesRepository } from '@kombuse/persistence'
 import type {
   SessionDurationPercentile,
   PipelineStageDuration,
@@ -6,6 +6,7 @@ import type {
   ToolCallsPerSession,
   ToolDurationPercentile,
   ToolCallVolume,
+  BurndownEntry,
 } from '@kombuse/types'
 
 export interface IAnalyticsService {
@@ -16,6 +17,7 @@ export interface IAnalyticsService {
   toolCallsPerSession(projectId: string, days?: number, agentId?: string): ToolCallsPerSession[]
   slowestTools(projectId: string, days?: number): ToolDurationPercentile[]
   toolCallVolume(projectId: string, days?: number): ToolCallVolume[]
+  ticketBurndown(projectId: string, days?: number, milestoneId?: number, labelId?: number): BurndownEntry[]
 }
 
 export class AnalyticsService implements IAnalyticsService {
@@ -45,6 +47,36 @@ export class AnalyticsService implements IAnalyticsService {
 
   toolCallVolume(projectId: string, days?: number): ToolCallVolume[] {
     return analyticsRepository.toolCallVolume(projectId, days)
+  }
+
+  ticketBurndown(projectId: string, days?: number, milestoneId?: number, labelId?: number): BurndownEntry[] {
+    const raw = analyticsRepository.ticketBurndown(projectId, days, milestoneId, labelId)
+    if (raw.length === 0) return []
+
+    let dueDate: string | null = null
+    if (milestoneId !== undefined) {
+      const milestone = milestonesRepository.get(milestoneId)
+      dueDate = milestone?.due_date ?? null
+    }
+
+    const startDate = raw[0]!.date
+    const startTotal = raw[0]!.total
+
+    return raw.map((entry) => {
+      let ideal: number | null = null
+      if (dueDate && startTotal > 0) {
+        const startMs = new Date(startDate + 'T00:00:00Z').getTime()
+        const dueMs = new Date(dueDate + 'T00:00:00Z').getTime()
+        const currentMs = new Date(entry.date + 'T00:00:00Z').getTime()
+        const totalSpan = dueMs - startMs
+        if (totalSpan > 0) {
+          const elapsed = currentMs - startMs
+          const ratio = Math.min(elapsed / totalSpan, 1)
+          ideal = Math.max(0, Math.round(startTotal * (1 - ratio)))
+        }
+      }
+      return { ...entry, ideal }
+    })
   }
 }
 

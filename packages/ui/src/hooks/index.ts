@@ -138,4 +138,5 @@ export {
   useToolCallsPerSession,
   useSlowestTools,
   useToolCallVolume,
+  useTicketBurndown,
 } from './use-analytics'

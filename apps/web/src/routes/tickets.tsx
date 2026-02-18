@@ -46,6 +46,7 @@ import {
   useTextareaAutocomplete,
   useMarkTicketViewed,
   useTicketStatusCounts,
+  useTicketBurndown,
   useFileStaging,
   useSessions,
   useScrollToBottom,
@@ -54,7 +55,7 @@ import {
 import { LabelBadge, MilestoneBadge, StagedFilePreviews } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip, Check, ChevronsUpDown } from "lucide-react";
 import type { Ticket, TicketStatus, TicketFilters, CommentWithAuthor } from "@kombuse/types";
-import { sessionsApi } from "@kombuse/ui/lib/api";
+import { sessionsApi, type BurndownEntry } from "@kombuse/ui/lib/api";
 
 const TICKETS_PANEL_LAYOUT_KEY = "tickets-panel-layout";
 
@@ -147,6 +148,7 @@ export function Tickets() {
 
   // Server-side status counts (not affected by pagination limits)
   const { data: statusCounts } = useTicketStatusCounts(projectId);
+  const { data: burndownData } = useTicketBurndown(projectId ?? '', 14);
   const openCount = statusCounts?.open ?? 0;
   const closedCount = statusCounts?.closed ?? 0;
   const inProgressCount = statusCounts?.in_progress ?? 0;
@@ -655,6 +657,9 @@ export function Tickets() {
                   >
                     {closedCount} Closed
                   </button>
+                  {burndownData && burndownData.length >= 2 && (
+                    <MiniSparkline data={burndownData} projectId={projectId!} />
+                  )}
                 </span>
               ) : null
             }
@@ -1154,5 +1159,40 @@ export function Tickets() {
       </div>
 
     </div>
+  );
+}
+
+function MiniSparkline({ data, projectId }: { data: BurndownEntry[]; projectId: string }) {
+  const navigate = useNavigate();
+  const maxOpen = Math.max(...data.map((d) => d.open), 1);
+  const width = 120;
+  const height = 32;
+  const padding = 2;
+
+  const points = data
+    .map((d, i) => {
+      const x = padding + (i / (data.length - 1)) * (width - padding * 2);
+      const y = height - padding - (d.open / maxOpen) * (height - padding * 2);
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(`/projects/${projectId}/analytics`)}
+      className="inline-block ml-3 opacity-60 hover:opacity-100 transition-opacity"
+      title="View burndown chart"
+    >
+      <svg width={width} height={height} className="align-middle">
+        <polyline
+          points={points}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   );
 }

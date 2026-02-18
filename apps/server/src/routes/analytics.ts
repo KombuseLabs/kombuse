@@ -8,6 +8,7 @@ import {
   toolCallsPerSessionQuerySchema,
   slowestToolsQuerySchema,
   toolCallVolumeQuerySchema,
+  ticketBurndownQuerySchema,
 } from '../schemas/analytics'
 
 export async function analyticsRoutes(fastify: FastifyInstance) {
@@ -112,6 +113,21 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       return analyticsService.toolCallVolume(project_id, days)
     } catch (error) {
       request.log.error({ err: error, route: 'toolCallVolume', params: request.query })
+      throw error
+    }
+  })
+
+  fastify.get('/analytics/ticket-burndown', async (request, reply) => {
+    const parseResult = ticketBurndownQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    try {
+      const { project_id, days, milestone_id, label_id } = parseResult.data
+      return analyticsService.ticketBurndown(project_id, days, milestone_id, label_id)
+    } catch (error) {
+      request.log.error({ err: error, route: 'ticketBurndown', params: request.query })
       throw error
     }
   })

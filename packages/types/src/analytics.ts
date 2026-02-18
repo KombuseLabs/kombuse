@@ -43,3 +43,11 @@ export interface ToolCallVolume {
   call_count: number
   session_count: number
 }
+
+export interface BurndownEntry {
+  date: string
+  total: number
+  open: number
+  closed: number
+  ideal: number | null
+}

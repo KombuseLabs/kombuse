@@ -229,6 +229,60 @@ export const analyticsRepository = {
       .all(projectId, -days) as ToolDurationPercentile[]
   },
 
+  ticketBurndown(
+    projectId: string,
+    days = 30,
+    milestoneId?: number,
+    labelId?: number,
+  ): Array<{ date: string; total: number; open: number; closed: number }> {
+    const db = getDatabase()
+    const conditions: string[] = ['t.project_id = ?']
+    const params: (string | number)[] = [-days, projectId]
+
+    if (milestoneId !== undefined) {
+      conditions.push('t.milestone_id = ?')
+      params.push(milestoneId)
+    }
+    if (labelId !== undefined) {
+      conditions.push(
+        'EXISTS (SELECT 1 FROM ticket_labels tl WHERE tl.ticket_id = t.id AND tl.label_id = ?)'
+      )
+      params.push(labelId)
+    }
+
+    const whereClause = conditions.join(' AND ')
+
+    return db
+      .prepare(
+        `
+        WITH RECURSIVE
+          date_range(d) AS (
+            SELECT date('now', ? || ' days')
+            UNION ALL
+            SELECT date(d, '+1 day') FROM date_range WHERE d < date('now')
+          ),
+          scoped_tickets AS (
+            SELECT t.id, date(t.created_at) AS created_date, date(t.closed_at) AS closed_date
+            FROM tickets t
+            WHERE ${whereClause}
+          )
+        SELECT
+          dr.d AS date,
+          (SELECT COUNT(*) FROM scoped_tickets st WHERE st.created_date <= dr.d) AS total,
+          (SELECT COUNT(*) FROM scoped_tickets st
+            WHERE st.created_date <= dr.d
+              AND (st.closed_date IS NULL OR st.closed_date > dr.d)) AS open,
+          (SELECT COUNT(*) FROM scoped_tickets st
+            WHERE st.created_date <= dr.d
+              AND st.closed_date IS NOT NULL
+              AND st.closed_date <= dr.d) AS closed
+        FROM date_range dr
+        ORDER BY dr.d ASC
+      `
+      )
+      .all(...params) as Array<{ date: string; total: number; open: number; closed: number }>
+  },
+
   toolCallVolume(projectId: string, days = 30): ToolCallVolume[] {
     const db = getDatabase()
     return db

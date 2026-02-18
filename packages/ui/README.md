@@ -1428,6 +1428,7 @@ const { data: permissions, isLoading } = usePermissions('project-id', {
 import {
   useSessionsPerDay, useDurationPercentiles, usePipelineStageDuration,
   useMostFrequentReads, useToolCallsPerSession, useSlowestTools, useToolCallVolume,
+  useTicketBurndown,
 } from '@kombuse/ui/hooks'
 
 // Fetch daily session counts for a project (default: last 30 days)
@@ -1460,6 +1461,11 @@ const { data: slowest } = useSlowestTools('project-id', 30)
 // Fetch tool call volume (cost proxy) — total calls and session spread
 const { data: volume } = useToolCallVolume('project-id', 30)
 // Returns Array<{ tool_name: string; call_count: number; session_count: number }>
+
+// Fetch ticket burndown data (optional milestone_id / label_id filters)
+const { data: burndown } = useTicketBurndown('project-id', 30, milestoneId, labelId)
+// Returns Array<{ date: string; total: number; open: number; closed: number; ideal: number | null }>
+// ideal is computed from milestone due_date when milestoneId is provided
 ```
 
 ### Database Hooks

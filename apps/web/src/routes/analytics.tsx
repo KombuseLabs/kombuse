@@ -8,6 +8,7 @@ import {
   useToolCallsPerSession,
   useSlowestTools,
   useToolCallVolume,
+  useTicketBurndown,
 } from '@kombuse/ui/hooks'
 import {
   Button,
@@ -27,6 +28,9 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  AreaChart,
+  Area,
+  Line,
 } from 'recharts'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { useElementWidth } from '../hooks/use-element-width'
@@ -40,6 +44,7 @@ const DAYS_OPTIONS = [
 const CHART_HEIGHT = 256
 
 const SECTIONS = [
+  { id: 'ticket-burndown', title: 'Ticket Burndown', description: 'Open tickets over time with ideal trend line' },
   { id: 'sessions-per-day', title: 'Sessions per Day' },
   { id: 'duration-percentiles', title: 'Session Duration by Agent', description: 'p50 / p90 / p99 duration of completed sessions' },
   { id: 'pipeline-stage-duration', title: 'Pipeline Stage Duration', description: 'Average / p50 / p90 duration per agent invocation' },
@@ -193,6 +198,8 @@ function SectionContent({
   days: number
 }) {
   switch (sectionId) {
+    case 'ticket-burndown':
+      return <TicketBurndownContent projectId={projectId} days={days} />
     case 'sessions-per-day':
       return <SessionsPerDayContent projectId={projectId} days={days} />
     case 'duration-percentiles':
@@ -208,6 +215,82 @@ function SectionContent({
     case 'tool-calls-per-session':
       return <ToolCallsPerSessionContent projectId={projectId} days={days} />
   }
+}
+
+function TicketBurndownContent({ projectId, days }: { projectId: string; days: number }) {
+  const query = useTicketBurndown(projectId, days)
+  const chart = useElementWidth()
+  const hasData = query.data && query.data.some((d) => d.total > 0)
+  const hasIdeal = query.data?.some((d) => d.ideal !== null)
+
+  return (
+    <ChartState
+      query={{
+        ...query,
+        data: hasData ? query.data : undefined,
+      }}
+      emptyText={`No tickets in the last ${days} days.`}
+    >
+      <div ref={chart.ref} className="h-64">
+        {chart.width > 0 && (
+          <AreaChart data={query.data} width={chart.width} height={CHART_HEIGHT}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value: string) => {
+                const d = new Date(value + 'T00:00:00')
+                return d.toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                })
+              }}
+            />
+            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+            <Tooltip
+              labelFormatter={(value) => {
+                const d = new Date(String(value) + 'T00:00:00')
+                return d.toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })
+              }}
+              contentStyle={tooltipStyle}
+            />
+            <Legend />
+            <Area
+              type="monotone"
+              dataKey="open"
+              name="Open"
+              fill="hsl(var(--primary) / 0.2)"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+            />
+            <Area
+              type="monotone"
+              dataKey="closed"
+              name="Closed"
+              fill="hsl(var(--primary) / 0.05)"
+              stroke="hsl(var(--primary) / 0.4)"
+              strokeWidth={1}
+            />
+            {hasIdeal && (
+              <Line
+                type="monotone"
+                dataKey="ideal"
+                name="Ideal"
+                stroke="hsl(var(--muted-foreground))"
+                strokeDasharray="5 5"
+                strokeWidth={1.5}
+                dot={false}
+              />
+            )}
+          </AreaChart>
+        )}
+      </div>
+    </ChartState>
+  )
 }
 
 function SessionsPerDayContent({ projectId, days }: { projectId: string; days: number }) {

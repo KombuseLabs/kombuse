@@ -682,4 +682,120 @@ describe('analyticsRepository', () => {
       expect(analyticsRepository.toolCallVolume(TEST_PROJECT_ID, 90)).toHaveLength(1)
     })
   })
+
+  describe('ticketBurndown', () => {
+    // Note: beforeEach creates one "Test ticket for analytics" in TEST_PROJECT_ID.
+    // We account for that base ticket in assertions.
+
+    it('should return a date series for each day in range', () => {
+      const result = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 7)
+      expect(result).toHaveLength(8) // today + 7 prior days
+    })
+
+    it('should count open tickets for each day', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Open ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      db.prepare("UPDATE tickets SET created_at = date('now', '-5 days') WHERE id = ?").run(ticket.id)
+
+      const result = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 7)
+
+      // Today should show both the base ticket and the new one as open
+      const today = result[result.length - 1]!
+      expect(today.total).toBe(2)
+      expect(today.open).toBe(2)
+      expect(today.closed).toBe(0)
+    })
+
+    it('should track closed tickets correctly', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Closed ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      db.prepare(
+        "UPDATE tickets SET created_at = date('now', '-10 days'), closed_at = date('now', '-3 days'), status = 'closed' WHERE id = ?"
+      ).run(ticket.id)
+
+      const result = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 14)
+
+      // Today: base ticket is open, closed ticket is closed
+      const today = result[result.length - 1]!
+      expect(today.total).toBe(2)
+      expect(today.open).toBe(1)
+      expect(today.closed).toBe(1)
+    })
+
+    it('should filter by project_id', () => {
+      const otherProjectId = 'other-project'
+      db.prepare(
+        `INSERT INTO projects (id, name, owner_id) VALUES (?, 'Other', ?)`
+      ).run(otherProjectId, TEST_USER_ID)
+
+      ticketsRepository.create({
+        title: 'Other project ticket',
+        project_id: otherProjectId,
+        author_id: TEST_USER_ID,
+      })
+
+      // Other project should have exactly 1 ticket
+      const result = analyticsRepository.ticketBurndown(otherProjectId, 7)
+      const today = result[result.length - 1]!
+      expect(today.total).toBe(1)
+    })
+
+    it('should filter by milestone_id', () => {
+      db.prepare(
+        `INSERT INTO milestones (project_id, title) VALUES (?, 'M1')`
+      ).run(TEST_PROJECT_ID)
+      const milestoneId = (db.prepare('SELECT last_insert_rowid() AS id').get() as { id: number }).id
+
+      const t1 = ticketsRepository.create({
+        title: 'T1',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      db.prepare('UPDATE tickets SET milestone_id = ? WHERE id = ?').run(milestoneId, t1.id)
+
+      const filtered = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 7, milestoneId)
+      const unfiltered = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 7)
+
+      expect(filtered[filtered.length - 1]!.total).toBe(1)
+      // Unfiltered includes base ticket + t1
+      expect(unfiltered[unfiltered.length - 1]!.total).toBe(2)
+    })
+
+    it('should filter by label_id', () => {
+      db.prepare(
+        `INSERT INTO labels (project_id, name, color) VALUES (?, 'Bug', '#ff0000')`
+      ).run(TEST_PROJECT_ID)
+      const labelId = (db.prepare('SELECT last_insert_rowid() AS id').get() as { id: number }).id
+
+      const t1 = ticketsRepository.create({
+        title: 'T1',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      db.prepare('INSERT INTO ticket_labels (ticket_id, label_id) VALUES (?, ?)').run(t1.id, labelId)
+
+      const filtered = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 7, undefined, labelId)
+      expect(filtered[filtered.length - 1]!.total).toBe(1)
+    })
+
+    it('should respect the days parameter', () => {
+      const result7 = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 7)
+      const result30 = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 30)
+      expect(result7).toHaveLength(8)
+      expect(result30).toHaveLength(31)
+    })
+
+    it('should return dates sorted ascending', () => {
+      const result = analyticsRepository.ticketBurndown(TEST_PROJECT_ID, 7)
+      for (let i = 1; i < result.length; i++) {
+        expect(result[i]!.date > result[i - 1]!.date).toBe(true)
+      }
+    })
+  })
 })
