@@ -929,6 +929,84 @@ describe('agentInvocationsRepository', () => {
     })
   })
 
+  describe('findActiveByAgentAndTicket', () => {
+    it('should return null when no invocations exist', () => {
+      const result = agentInvocationsRepository.findActiveByAgentAndTicket(agentId, 999)
+      expect(result).toBeNull()
+    })
+
+    it('should return active invocation with status running', () => {
+      const invocation = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 123 },
+      })
+      agentInvocationsRepository.update(invocation.id, { status: 'running' })
+
+      const result = agentInvocationsRepository.findActiveByAgentAndTicket(agentId, 123)
+      expect(result).not.toBeNull()
+      expect(result!.id).toBe(invocation.id)
+      expect(result!.status).toBe('running')
+    })
+
+    it('should return active invocation with status pending', () => {
+      const invocation = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 123 },
+      })
+
+      const result = agentInvocationsRepository.findActiveByAgentAndTicket(agentId, 123)
+      expect(result).not.toBeNull()
+      expect(result!.id).toBe(invocation.id)
+      expect(result!.status).toBe('pending')
+    })
+
+    it('should return null when only completed or failed invocations exist', () => {
+      const inv1 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 123 },
+      })
+      agentInvocationsRepository.update(inv1.id, { status: 'completed', completed_at: new Date().toISOString() })
+
+      const inv2 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 123 },
+      })
+      agentInvocationsRepository.update(inv2.id, { status: 'failed', error: 'test', completed_at: new Date().toISOString() })
+
+      const result = agentInvocationsRepository.findActiveByAgentAndTicket(agentId, 123)
+      expect(result).toBeNull()
+    })
+
+    it('should return null for a different agent on the same ticket', () => {
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 123 },
+      })
+
+      const otherAgentId = createAgentProfile()
+      agentsRepository.create(agentInput({ id: otherAgentId, system_prompt: 'Other agent' }))
+
+      const result = agentInvocationsRepository.findActiveByAgentAndTicket(otherAgentId, 123)
+      expect(result).toBeNull()
+    })
+
+    it('should return null for the same agent on a different ticket', () => {
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        context: { ticket_id: 123 },
+      })
+
+      const result = agentInvocationsRepository.findActiveByAgentAndTicket(agentId, 456)
+      expect(result).toBeNull()
+    })
+  })
+
   describe('delete', () => {
     it('should delete invocation and return true', () => {
       const invocation = agentInvocationsRepository.create({

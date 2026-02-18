@@ -481,6 +481,25 @@ export const agentInvocationsRepository = {
   },
 
   /**
+   * Find an active (pending or running) invocation for a given agent on a given ticket.
+   * Used for deduplication guards to prevent concurrent duplicate invocations.
+   */
+  findActiveByAgentAndTicket(agentId: string, ticketId: number): AgentInvocation | null {
+    const db = getDatabase()
+    const row = db
+      .prepare(
+        `SELECT * FROM agent_invocations
+         WHERE agent_id = ?
+           AND json_extract(context, '$.ticket_id') = ?
+           AND status IN ('pending', 'running')
+         ORDER BY created_at DESC
+         LIMIT 1`
+      )
+      .get(agentId, ticketId) as RawAgentInvocation | undefined
+    return row ? mapAgentInvocation(row) : null
+  },
+
+  /**
    * Delete an invocation
    */
   delete(id: number): boolean {

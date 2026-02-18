@@ -258,6 +258,24 @@ export async function processEventAndRunAgents(
       }
     }
 
+    // Dedup guard: skip if same agent already active on this ticket
+    if (ticketId) {
+      const existingActive = agentInvocationsRepository.findActiveByAgentAndTicket(
+        invocation.agent_id,
+        ticketId
+      )
+      if (existingActive && existingActive.id !== invocation.id) {
+        const errorMessage = `Skipped: agent ${invocation.agent_id} already has active invocation #${existingActive.id} on ticket #${ticketId}`
+        console.log(`[Server] ${errorMessage}`)
+        agentInvocationsRepository.update(invocation.id, {
+          status: 'failed',
+          error: errorMessage,
+          completed_at: new Date().toISOString(),
+        })
+        continue
+      }
+    }
+
     if (invocation.attempts >= invocation.max_attempts) {
       const errorMessage = `Invocation exceeded max attempts (${invocation.max_attempts})`
       agentInvocationsRepository.update(invocation.id, {
