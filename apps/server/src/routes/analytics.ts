@@ -21,6 +21,7 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       const { project_id, days } = parseResult.data
       return analyticsService.sessionsPerDay(project_id, days)
     } catch (error) {
+      request.log.error({ err: error, route: 'sessionsPerDay', params: request.query })
       throw error
     }
   })
@@ -35,6 +36,7 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       const { project_id, days } = parseResult.data
       return analyticsService.durationPercentiles(project_id, days)
     } catch (error) {
+      request.log.error({ err: error, route: 'durationPercentiles', params: request.query })
       throw error
     }
   })
@@ -49,6 +51,7 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       const { project_id, days } = parseResult.data
       return analyticsService.pipelineStageDuration(project_id, days)
     } catch (error) {
+      request.log.error({ err: error, route: 'pipelineStageDuration', params: request.query })
       throw error
     }
   })
@@ -63,6 +66,7 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       const { project_id, days, limit } = parseResult.data
       return analyticsService.mostFrequentReads(project_id, days, limit)
     } catch (error) {
+      request.log.error({ err: error, route: 'mostFrequentReads', params: request.query })
       throw error
     }
   })
@@ -77,6 +81,7 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       const { project_id, days, agent_id } = parseResult.data
       return analyticsService.toolCallsPerSession(project_id, days, agent_id)
     } catch (error) {
+      request.log.error({ err: error, route: 'toolCallsPerSession', params: request.query })
       throw error
     }
   })
@@ -91,6 +96,7 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       const { project_id, days } = parseResult.data
       return analyticsService.slowestTools(project_id, days)
     } catch (error) {
+      request.log.error({ err: error, route: 'slowestTools', params: request.query })
       throw error
     }
   })
@@ -105,6 +111,7 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       const { project_id, days } = parseResult.data
       return analyticsService.toolCallVolume(project_id, days)
     } catch (error) {
+      request.log.error({ err: error, route: 'toolCallVolume', params: request.query })
       throw error
     }
   })

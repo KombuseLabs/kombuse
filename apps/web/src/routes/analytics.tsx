@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   useSessionsPerDay,
@@ -176,6 +176,33 @@ export function Analytics() {
   )
 }
 
+class ChartErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-destructive mb-2">Something went wrong rendering this chart.</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => this.setState({ hasError: false })}
+          >
+            Try again
+          </Button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 function ChartCard({
   title,
   description,
@@ -208,7 +235,11 @@ function ChartCard({
       {description && (
         <p className="text-sm text-muted-foreground ml-6">{description}</p>
       )}
-      {expanded && <div className="mt-4">{children}</div>}
+      {expanded && (
+        <div className="mt-4">
+          <ChartErrorBoundary>{children}</ChartErrorBoundary>
+        </div>
+      )}
     </section>
   )
 }

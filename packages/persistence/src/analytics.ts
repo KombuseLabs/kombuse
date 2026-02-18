@@ -223,6 +223,7 @@ export const analyticsRepository = {
         FROM ranked
         GROUP BY tool_name
         ORDER BY p90 DESC
+        LIMIT 50
       `
       )
       .all(projectId, -days) as ToolDurationPercentile[]
