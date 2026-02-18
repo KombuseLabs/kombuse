@@ -126,6 +126,29 @@ describe('analyticsRepository', () => {
       expect(row.avg).toBeGreaterThan(0)
     })
 
+    it('should return valid percentiles for a single completed session (not NULL)', () => {
+      const s = sessionsRepository.create({ project_id: TEST_PROJECT_ID, agent_id: TEST_AGENT_ID })
+      db.prepare(
+        `UPDATE sessions SET status = 'completed',
+           started_at = datetime('now', '-120 seconds'),
+           completed_at = datetime('now')
+         WHERE id = ?`
+      ).run(s.id)
+
+      const result = analyticsRepository.durationPercentiles(TEST_PROJECT_ID, 365)
+
+      expect(result).toHaveLength(1)
+      const row = result[0]!
+      expect(row.count).toBe(1)
+      expect(row.avg, 'avg should not be null').not.toBeNull()
+      expect(row.p50, 'p50 should not be null').not.toBeNull()
+      expect(row.p90, 'p90 should not be null').not.toBeNull()
+      expect(row.p99, 'p99 should not be null').not.toBeNull()
+      expect(row.p50).toBeGreaterThan(0)
+      expect(row.p90).toBeGreaterThan(0)
+      expect(row.p99).toBeGreaterThan(0)
+    })
+
     it('should exclude non-completed sessions', () => {
       const s = sessionsRepository.create({ project_id: TEST_PROJECT_ID, agent_id: TEST_AGENT_ID })
       db.prepare(
@@ -209,6 +232,27 @@ describe('analyticsRepository', () => {
       expect(row.avg_duration).toBeGreaterThan(0)
       expect(row.p50).toBeGreaterThan(0)
       expect(row.p90).toBeGreaterThanOrEqual(row.p50)
+    })
+
+    it('should return valid percentiles for a single completed invocation (not NULL)', () => {
+      db.prepare(
+        `INSERT INTO agent_invocations
+           (agent_id, trigger_id, project_id, status, context,
+            started_at, completed_at)
+         VALUES (?, ?, ?, 'completed', '{}',
+           datetime('now', '-120 seconds'), datetime('now'))`
+      ).run(TEST_AGENT_ID, triggerId, TEST_PROJECT_ID)
+
+      const result = analyticsRepository.pipelineStageDuration(TEST_PROJECT_ID, 365)
+
+      expect(result).toHaveLength(1)
+      const row = result[0]!
+      expect(row.count).toBe(1)
+      expect(row.avg_duration, 'avg_duration should not be null').not.toBeNull()
+      expect(row.p50, 'p50 should not be null').not.toBeNull()
+      expect(row.p90, 'p90 should not be null').not.toBeNull()
+      expect(row.p50).toBeGreaterThan(0)
+      expect(row.p90).toBeGreaterThan(0)
     })
 
     it('should exclude non-completed invocations', () => {
@@ -479,6 +523,32 @@ describe('analyticsRepository', () => {
       expect(row.p50).toBeGreaterThan(0)
       expect(row.p90).toBeGreaterThanOrEqual(row.p50)
       expect(row.p99).toBeGreaterThanOrEqual(row.p90)
+    })
+
+    it('should return valid percentiles for a single tool call (not NULL)', () => {
+      const session = sessionsRepository.create({ project_id: TEST_PROJECT_ID })
+
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 1, 'tool_use', ?)`
+      ).run(session.id, JSON.stringify({ name: 'Bash', id: 'single-tu', timestamp: 1000 }))
+      db.prepare(
+        `INSERT INTO session_events (session_id, seq, event_type, payload)
+         VALUES (?, 2, 'tool_result', ?)`
+      ).run(session.id, JSON.stringify({ toolUseId: 'single-tu', timestamp: 1500 }))
+
+      const result = analyticsRepository.slowestTools(TEST_PROJECT_ID, 365)
+
+      expect(result).toHaveLength(1)
+      const row = result[0]!
+      expect(row.count).toBe(1)
+      expect(row.avg).not.toBeNull()
+      expect(row.p50).not.toBeNull()
+      expect(row.p90).not.toBeNull()
+      expect(row.p99).not.toBeNull()
+      expect(row.p50).toBe(row.avg)
+      expect(row.p90).toBe(row.avg)
+      expect(row.p99).toBe(row.avg)
     })
 
     it('should exclude tool_use events without matching tool_result', () => {
