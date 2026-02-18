@@ -148,6 +148,9 @@ export class SessionPersistenceService implements ISessionPersistenceService {
   markSessionRunning(sessionId: string): void {
     sessionsRepository.update(sessionId, {
       status: 'running',
+      completed_at: null,
+      failed_at: null,
+      aborted_at: null,
     })
   }
 

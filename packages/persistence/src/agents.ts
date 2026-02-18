@@ -509,6 +509,19 @@ export const agentInvocationsRepository = {
       .run(id)
     return result.changes > 0
   },
+
+  failBySessionId(sessionId: string, error: string): number {
+    const db = getDatabase()
+    const now = new Date().toISOString()
+    const result = db
+      .prepare(
+        `UPDATE agent_invocations
+         SET status = 'failed', error = ?, completed_at = ?
+         WHERE session_id = ? AND status IN ('pending', 'running')`
+      )
+      .run(error, now, sessionId)
+    return result.changes
+  },
 }
 
 // Raw types from database (JSON stored as TEXT, booleans as INTEGER)

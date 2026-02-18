@@ -1021,6 +1021,123 @@ describe('agentInvocationsRepository', () => {
       expect(agentInvocationsRepository.get(invocation.id)).toBeNull()
     })
   })
+
+  describe('failBySessionId', () => {
+    it('should fail pending and running invocations for a session', () => {
+      const session = sessionsRepository.create()
+
+      const inv1 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        session_id: session.id,
+        context: { ticket_id: 100 },
+      })
+
+      const inv2 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        session_id: session.id,
+        context: { ticket_id: 100 },
+      })
+      agentInvocationsRepository.update(inv2.id, { status: 'running' })
+
+      const count = agentInvocationsRepository.failBySessionId(
+        session.id,
+        'session_aborted',
+      )
+
+      expect(count, 'Should fail 2 invocations').toBe(2)
+
+      const updated1 = agentInvocationsRepository.get(inv1.id)
+      expect(updated1?.status).toBe('failed')
+      expect(updated1?.error).toBe('session_aborted')
+      expect(updated1?.completed_at).not.toBeNull()
+
+      const updated2 = agentInvocationsRepository.get(inv2.id)
+      expect(updated2?.status).toBe('failed')
+      expect(updated2?.error).toBe('session_aborted')
+      expect(updated2?.completed_at).not.toBeNull()
+    })
+
+    it('should not affect already completed or failed invocations', () => {
+      const session = sessionsRepository.create()
+
+      const inv1 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        session_id: session.id,
+        context: { ticket_id: 200 },
+      })
+      agentInvocationsRepository.update(inv1.id, {
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      })
+
+      const inv2 = agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        session_id: session.id,
+        context: { ticket_id: 200 },
+      })
+      agentInvocationsRepository.update(inv2.id, {
+        status: 'failed',
+        error: 'original error',
+        completed_at: new Date().toISOString(),
+      })
+
+      const count = agentInvocationsRepository.failBySessionId(
+        session.id,
+        'session_aborted',
+      )
+
+      expect(count, 'Should not affect terminal invocations').toBe(0)
+
+      const updated2 = agentInvocationsRepository.get(inv2.id)
+      expect(updated2?.error, 'Original error should be preserved').toBe('original error')
+    })
+
+    it('should return 0 when no matching invocations exist', () => {
+      const count = agentInvocationsRepository.failBySessionId(
+        'non-existent-session',
+        'session_aborted',
+      )
+      expect(count).toBe(0)
+    })
+
+    it('should not affect invocations for a different session', () => {
+      const session1 = sessionsRepository.create()
+      const session2 = sessionsRepository.create()
+
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        session_id: session1.id,
+        context: { ticket_id: 300 },
+      })
+
+      agentInvocationsRepository.create({
+        agent_id: agentId,
+        trigger_id: triggerId,
+        session_id: session2.id,
+        context: { ticket_id: 300 },
+      })
+
+      const count = agentInvocationsRepository.failBySessionId(
+        session1.id,
+        'session_aborted',
+      )
+
+      expect(count, 'Should only fail session1 invocations').toBe(1)
+
+      const session2Invocations = agentInvocationsRepository.list({
+        session_id: session2.id,
+      })
+      expect(
+        session2Invocations[0]?.status,
+        'Session2 invocation should remain pending',
+      ).toBe('pending')
+    })
+  })
 })
 
 describe('sessionsRepository', () => {

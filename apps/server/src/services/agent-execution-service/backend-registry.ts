@@ -1,4 +1,4 @@
-import { sessionsRepository, ticketsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, sessionsRepository, ticketsRepository } from '@kombuse/persistence'
 import type { SessionStateMachine } from '@kombuse/services'
 import { BACKEND_TYPES, type ActiveSessionInfo, type AgentActivityStatus, type AgentBackend, type BackendType, type ServerMessage, type Session, type SessionMetadata } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
@@ -397,6 +397,7 @@ function abortSessionWithDiagnostics(
         error: reason,
         metadataPatch,
       })
+      agentInvocationsRepository.failBySessionId(session.id, reason)
       return
     } catch (error) {
       const errorText =
@@ -423,6 +424,7 @@ function abortSessionWithDiagnostics(
     session.backend_session_id ?? undefined
   )
   dependencies.sessionPersistence.setMetadata(session.id, metadataPatch)
+  agentInvocationsRepository.failBySessionId(session.id, reason)
 }
 
 /**

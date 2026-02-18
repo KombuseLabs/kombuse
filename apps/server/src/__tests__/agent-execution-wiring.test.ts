@@ -48,6 +48,7 @@ vi.mock('@kombuse/persistence', () => ({
     create: vi.fn((input: Record<string, unknown>) => ({ id: 100, ...input, status: 'pending', attempts: 0, max_attempts: 3, run_at: new Date().toISOString(), result: null, error: null, started_at: null, completed_at: null, created_at: new Date().toISOString() })),
     countRecentByTicketId: vi.fn(() => 0),
     update: vi.fn(() => null),
+    failBySessionId: vi.fn(() => 0),
   },
   commentsRepository: {
     get: vi.fn(() => null),
@@ -3090,6 +3091,7 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
     vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
     vi.mocked(sessionsRepository.update as ReturnType<typeof vi.fn>).mockReturnValue(undefined)
     vi.mocked(sessionsRepository.listByTicket as ReturnType<typeof vi.fn>).mockReturnValue([])
+    vi.mocked(agentInvocationsRepository.failBySessionId as ReturnType<typeof vi.fn>).mockClear()
   })
 
   it('broadcasts agent.complete for each orphaned session', () => {
@@ -3154,6 +3156,14 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
         type: 'agent.complete',
         kombuseSessionId: 'orphan-session-bbb',
       })
+    )
+    expect(agentInvocationsRepository.failBySessionId).toHaveBeenCalledWith(
+      'session-1',
+      'backend_unavailable',
+    )
+    expect(agentInvocationsRepository.failBySessionId).toHaveBeenCalledWith(
+      'session-2',
+      'backend_unavailable',
     )
   })
 
@@ -3289,6 +3299,42 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
         status: 'aborted',
         reason: 'server_startup_recovery',
       })
+    )
+  })
+
+  it('fails linked invocations for each aborted session during startup cleanup', () => {
+    const orphanedSession = {
+      id: 'session-startup',
+      kombuse_session_id: 'startup-orphan',
+      ticket_id: 10,
+      status: 'running',
+      updated_at: new Date().toISOString(),
+    }
+
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([orphanedSession])
+      .mockReturnValueOnce([])
+
+    const deps = {
+      sessionPersistence: {
+        persistEvent: vi.fn(),
+        abortSession: vi.fn(),
+        setMetadata: vi.fn(),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+      },
+    }
+
+    cleanupOrphanedSessions({
+      source: 'startup_cleanup',
+      reason: 'server_startup_recovery',
+      minInactiveMs: 0,
+    }, deps as any)
+
+    expect(agentInvocationsRepository.failBySessionId).toHaveBeenCalledWith(
+      'session-startup',
+      'server_startup_recovery',
     )
   })
 })

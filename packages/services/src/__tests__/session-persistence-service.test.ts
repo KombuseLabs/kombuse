@@ -136,4 +136,70 @@ describe('SessionPersistenceService', () => {
       expect(metadata.cli_version).toBeUndefined()
     })
   })
+
+  describe('markSessionRunning clears terminal timestamps', () => {
+    it('should clear completed_at when resuming a completed session', () => {
+      const sessionId = service.ensureSession(
+        'chat-completed-resume' as KombuseSessionId,
+        'claude-code',
+        testTicketId,
+      )
+
+      service.completeSession(sessionId)
+
+      let session = sessionsRepository.get(sessionId)
+      expect(session?.status).toBe('completed')
+      expect(session?.completed_at).not.toBeNull()
+
+      service.markSessionRunning(sessionId)
+
+      session = sessionsRepository.get(sessionId)
+      expect(session?.status).toBe('running')
+      expect(session?.completed_at, 'completed_at should be cleared').toBeNull()
+      expect(session?.failed_at, 'failed_at should be cleared').toBeNull()
+      expect(session?.aborted_at, 'aborted_at should be cleared').toBeNull()
+    })
+
+    it('should clear failed_at when resuming a failed session', () => {
+      const sessionId = service.ensureSession(
+        'chat-failed-resume' as KombuseSessionId,
+        'claude-code',
+        testTicketId,
+      )
+
+      service.failSession(sessionId)
+
+      let session = sessionsRepository.get(sessionId)
+      expect(session?.status).toBe('failed')
+      expect(session?.failed_at).not.toBeNull()
+
+      service.markSessionRunning(sessionId)
+
+      session = sessionsRepository.get(sessionId)
+      expect(session?.status).toBe('running')
+      expect(session?.failed_at, 'failed_at should be cleared').toBeNull()
+    })
+
+    it('should clear aborted_at and failed_at when resuming an aborted session', () => {
+      const sessionId = service.ensureSession(
+        'chat-aborted-resume' as KombuseSessionId,
+        'claude-code',
+        testTicketId,
+      )
+
+      service.abortSession(sessionId)
+
+      let session = sessionsRepository.get(sessionId)
+      expect(session?.status).toBe('aborted')
+      expect(session?.aborted_at).not.toBeNull()
+
+      service.markSessionRunning(sessionId)
+
+      session = sessionsRepository.get(sessionId)
+      expect(session?.status).toBe('running')
+      expect(session?.aborted_at, 'aborted_at should be cleared').toBeNull()
+      expect(session?.failed_at, 'failed_at should be cleared').toBeNull()
+      expect(session?.completed_at, 'completed_at should be cleared').toBeNull()
+    })
+  })
 })
