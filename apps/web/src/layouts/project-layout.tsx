@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Outlet, useParams } from "react-router-dom";
-import { Sidebar, SidebarItem, BackendStatusIndicator } from "@kombuse/ui/components";
+import { Sidebar, SidebarItem } from "@kombuse/ui/components";
 import { useProject, useProfileSetting, useAppContext } from "@kombuse/ui/hooks";
 import { Ticket, Bot, MessageSquare, History, Tags, Shield, Database, Puzzle, BarChart3 } from "lucide-react";
 
@@ -35,7 +35,7 @@ export function ProjectLayout() {
 
   return (
     <div className="flex h-full">
-      <Sidebar variant="rail" footer={<BackendStatusIndicator />}>
+      <Sidebar variant="rail">
         <SidebarItem
           icon={<Ticket className="size-4" />}
           label="Tickets"

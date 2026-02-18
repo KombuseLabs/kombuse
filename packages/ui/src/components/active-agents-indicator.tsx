@@ -1,12 +1,15 @@
 'use client'
 
-import { Bot, ExternalLink } from 'lucide-react'
+import { Bot, ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '../base/button'
 import { Badge } from '../base/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '../base/popover'
 import { useAppContext } from '../hooks/use-app-context'
+import { useBackendStatus, useRefreshBackendStatus } from '../hooks/use-backend-status'
+import { backendLabel } from '../lib/backend-utils'
+import { cn } from '../lib/utils'
 import { StatusIndicator } from './status-indicator'
-import type { ActiveSessionInfo } from '@kombuse/types'
+import type { ActiveSessionInfo, BackendStatus } from '@kombuse/types'
 
 export interface ActiveAgentsIndicatorProps {
   onNavigate?: (path: string) => void
@@ -29,6 +32,10 @@ function humanizeBackend(backend: ActiveSessionInfo['effectiveBackend']): string
     .join(' ')
 }
 
+function statusDotColor(status: BackendStatus): string {
+  return status.available ? 'bg-green-500' : 'bg-amber-500'
+}
+
 function formatDuration(startedAt: string): string {
   const elapsed = Date.now() - new Date(startedAt).getTime()
   const seconds = Math.floor(elapsed / 1000)
@@ -41,6 +48,8 @@ function formatDuration(startedAt: string): string {
 
 export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps) {
   const { activeSessions, currentProjectId } = useAppContext()
+  const { data: backendStatuses } = useBackendStatus()
+  const refreshMutation = useRefreshBackendStatus()
 
   const sessions = [...activeSessions.values()]
   const count = sessions.length
@@ -136,6 +145,52 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {backendStatuses && backendStatuses.length > 0 && (
+          <div className="border-t">
+            <div className="px-3 py-2">
+              <h4 className="text-sm font-medium">Backend Status</h4>
+            </div>
+            <div className="space-y-2 px-3 pb-3">
+              {backendStatuses.map((status) => (
+                <div key={status.backendType} className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'size-2 shrink-0 rounded-full',
+                      statusDotColor(status),
+                    )}
+                  />
+                  <span className="text-sm font-medium">
+                    {backendLabel(status.backendType)}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {status.available
+                      ? status.version ?? 'installed'
+                      : 'not found'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {backendStatuses.some((s) => !s.available) && (
+              <div className="border-t px-3 py-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => refreshMutation.mutate()}
+                  disabled={refreshMutation.isPending}
+                >
+                  <RefreshCw
+                    className={cn(
+                      'mr-1.5 size-3',
+                      refreshMutation.isPending && 'animate-spin',
+                    )}
+                  />
+                  Check Again
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </PopoverContent>

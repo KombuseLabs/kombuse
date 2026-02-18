@@ -1,9 +1,19 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useMemo, type ReactNode } from 'react'
 import type { ActiveSessionInfo, AppContextValue } from '@kombuse/types'
 import { ActiveAgentsIndicator } from '../active-agents-indicator'
 import { AppCtx } from '../../providers/app-context'
+import * as backendStatusHooks from '../../hooks/use-backend-status'
+
+const mockMutate = vi.fn()
+
+vi.mock('../../hooks/use-backend-status', () => ({
+  useBackendStatus: vi.fn(() => ({ data: undefined, isLoading: false })),
+  useRefreshBackendStatus: vi.fn(() => ({ mutate: mockMutate, isPending: false })),
+}))
+
+const mockedUseBackendStatus = vi.mocked(backendStatusHooks.useBackendStatus)
 
 function TestProvider({
   children,
@@ -49,6 +59,11 @@ function renderIndicator(sessions: ActiveSessionInfo[], onNavigate?: (path: stri
 
   fireEvent.click(screen.getByRole('button'))
 }
+
+beforeEach(() => {
+  mockedUseBackendStatus.mockReturnValue({ data: undefined, isLoading: false } as ReturnType<typeof backendStatusHooks.useBackendStatus>)
+  mockMutate.mockClear()
+})
 
 describe('ActiveAgentsIndicator ticket context rendering', () => {
   it('renders ticket id and title snippet when both are available', () => {
@@ -147,5 +162,90 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(onNavigate).toHaveBeenCalledWith('/projects/1/chats/session-5')
+  })
+})
+
+describe('ActiveAgentsIndicator backend status section', () => {
+  it('renders backend status with correct dots and labels', () => {
+    mockedUseBackendStatus.mockReturnValue({
+      data: [
+        { backendType: 'claude-code', available: true, version: '1.0.59', path: '/usr/bin/claude' },
+        { backendType: 'codex', available: false, version: null, path: null },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof backendStatusHooks.useBackendStatus>)
+
+    renderIndicator([])
+
+    expect(screen.getByText('Backend Status')).toBeDefined()
+    expect(screen.getByText('Claude Code')).toBeDefined()
+    expect(screen.getByText('1.0.59')).toBeDefined()
+    expect(screen.getByText('Codex')).toBeDefined()
+    expect(screen.getByText('not found')).toBeDefined()
+  })
+
+  it('shows version string when available', () => {
+    mockedUseBackendStatus.mockReturnValue({
+      data: [
+        { backendType: 'claude-code', available: true, version: '1.0.59', path: '/usr/bin/claude' },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof backendStatusHooks.useBackendStatus>)
+
+    renderIndicator([])
+
+    expect(screen.getByText('1.0.59')).toBeDefined()
+  })
+
+  it('shows Check Again button only when a backend is unavailable', () => {
+    mockedUseBackendStatus.mockReturnValue({
+      data: [
+        { backendType: 'claude-code', available: true, version: '1.0.59', path: '/usr/bin/claude' },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof backendStatusHooks.useBackendStatus>)
+
+    renderIndicator([])
+
+    expect(screen.queryByText('Check Again')).toBeNull()
+  })
+
+  it('shows Check Again button when a backend is unavailable', () => {
+    mockedUseBackendStatus.mockReturnValue({
+      data: [
+        { backendType: 'claude-code', available: true, version: '1.0.59', path: '/usr/bin/claude' },
+        { backendType: 'codex', available: false, version: null, path: null },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof backendStatusHooks.useBackendStatus>)
+
+    renderIndicator([])
+
+    expect(screen.getByText('Check Again')).toBeDefined()
+  })
+
+  it('calls refresh mutation when Check Again is clicked', () => {
+    mockedUseBackendStatus.mockReturnValue({
+      data: [
+        { backendType: 'codex', available: false, version: null, path: null },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof backendStatusHooks.useBackendStatus>)
+
+    renderIndicator([])
+
+    fireEvent.click(screen.getByText('Check Again'))
+    expect(mockMutate).toHaveBeenCalledOnce()
+  })
+
+  it('does not render backend status section when data is undefined', () => {
+    mockedUseBackendStatus.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as ReturnType<typeof backendStatusHooks.useBackendStatus>)
+
+    renderIndicator([])
+
+    expect(screen.queryByText('Backend Status')).toBeNull()
   })
 })
