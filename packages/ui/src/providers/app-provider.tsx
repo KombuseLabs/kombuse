@@ -221,10 +221,19 @@ export function AppProvider({
           break
         }
         case 'ticket.agent_status': {
-          updateTicketAgentStatus(message.ticketId, {
-            status: message.status,
-            sessionCount: message.sessionCount,
-          })
+          if (message.status === 'idle') {
+            setTicketAgentStatus((prev) => {
+              if (!prev.has(message.ticketId)) return prev
+              const next = new Map(prev)
+              next.delete(message.ticketId)
+              return next
+            })
+          } else {
+            updateTicketAgentStatus(message.ticketId, {
+              status: message.status,
+              sessionCount: message.sessionCount,
+            })
+          }
           break
         }
       }
@@ -243,10 +252,12 @@ export function AppProvider({
         addPendingPermission(perm)
       }
       for (const tas of state.ticketAgentStatuses) {
-        updateTicketAgentStatus(tas.ticketId, {
-          status: tas.status,
-          sessionCount: tas.sessionCount,
-        })
+        if (tas.status !== 'idle') {
+          updateTicketAgentStatus(tas.ticketId, {
+            status: tas.status,
+            sessionCount: tas.sessionCount,
+          })
+        }
       }
       for (const session of state.activeSessions) {
         addActiveSession(session)
@@ -282,17 +293,29 @@ export function AppProvider({
           addActiveSession(session)
         }
 
-        // Reconcile ticket agent statuses
-        for (const tas of state.ticketAgentStatuses) {
-          updateTicketAgentStatus(tas.ticketId, {
-            status: tas.status,
-            sessionCount: tas.sessionCount,
-          })
-        }
+        // Reconcile ticket agent statuses: full snapshot replacement.
+        // Idle entries are omitted (absence from map = idle).
+        setTicketAgentStatus((prev) => {
+          const next = new Map<number, TicketAgentStatus>()
+          for (const tas of state.ticketAgentStatuses) {
+            if (tas.status !== 'idle') {
+              next.set(tas.ticketId, { status: tas.status, sessionCount: tas.sessionCount })
+            }
+          }
+          if (next.size === prev.size) {
+            let same = true
+            for (const [id, entry] of next) {
+              const p = prev.get(id)
+              if (!p || p.status !== entry.status || p.sessionCount !== entry.sessionCount) { same = false; break }
+            }
+            if (same) return prev
+          }
+          return next
+        })
       }).catch(() => {})
     }, 30_000)
     return () => clearInterval(interval)
-  }, [addActiveSession, updateTicketAgentStatus])
+  }, [addActiveSession])
 
   const value = useMemo<AppContextValue>(
     () => ({

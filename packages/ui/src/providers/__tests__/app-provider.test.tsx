@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useContext } from 'react'
@@ -222,5 +222,107 @@ describe('AppProvider active session metadata handling', () => {
     expect(session?.effectiveBackend).toBe('claude-code')
     expect(session?.appliedModel).toBeUndefined()
     expect(session?.startedAt).toBe('2026-02-14T10:00:00.000Z')
+  })
+})
+
+describe('AppProvider ticketAgentStatus pruning', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mockWebSocketHandler = undefined
+    mockGetState.mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('prunes stale ticketAgentStatus entries after periodic sync', async () => {
+    // Mount sync returns ticket 42 with error status
+    let callCount = 0
+    mockGetState.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.resolve({
+          pendingPermissions: [],
+          ticketAgentStatuses: [
+            { ticketId: 42, status: 'error', sessionCount: 0 },
+          ],
+          activeSessions: [],
+        })
+      }
+      // Periodic sync: ticket 42 no longer present
+      return Promise.resolve({
+        pendingPermissions: [],
+        ticketAgentStatuses: [],
+        activeSessions: [],
+      })
+    })
+
+    const { getCtx } = renderProvider()
+
+    // Flush the mount sync promise and resulting state updates
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(getCtx().ticketAgentStatus.get(42)?.status).toBe('error')
+
+    // Advance past the 30s periodic sync interval
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000)
+    })
+
+    expect(getCtx().ticketAgentStatus.has(42)).toBe(false)
+  })
+
+  it('does not store idle entries from server sync response', async () => {
+    mockGetState.mockResolvedValue({
+      pendingPermissions: [],
+      ticketAgentStatuses: [
+        { ticketId: 42, status: 'error', sessionCount: 0 },
+        { ticketId: 99, status: 'idle', sessionCount: 0 },
+      ],
+      activeSessions: [],
+    })
+
+    const { getCtx } = renderProvider()
+
+    // Flush the mount sync promise and resulting state updates
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(getCtx().ticketAgentStatus.get(42)?.status).toBe('error')
+    expect(getCtx().ticketAgentStatus.has(99)).toBe(false)
+  })
+
+  it('removes ticketAgentStatus entry when WebSocket sends idle status', async () => {
+    mockGetState.mockResolvedValue({
+      pendingPermissions: [],
+      ticketAgentStatuses: [
+        { ticketId: 42, status: 'running', sessionCount: 1 },
+      ],
+      activeSessions: [],
+    })
+
+    const { getCtx } = renderProvider()
+
+    // Flush the mount sync promise and resulting state updates
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(getCtx().ticketAgentStatus.get(42)?.status).toBe('running')
+
+    act(() => {
+      mockWebSocketHandler?.({
+        type: 'ticket.agent_status',
+        ticketId: 42,
+        status: 'idle',
+        sessionCount: 0,
+      })
+    })
+
+    expect(getCtx().ticketAgentStatus.has(42)).toBe(false)
   })
 })

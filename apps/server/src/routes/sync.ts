@@ -32,9 +32,7 @@ export async function syncRoutes(fastify: FastifyInstance) {
 
     for (const ticketId of ticketIds) {
       const { status, sessionCount } = computeTicketAgentStatus(ticketId)
-      if (status !== 'idle') {
-        ticketAgentStatuses.push({ ticketId, status, sessionCount })
-      }
+      ticketAgentStatuses.push({ ticketId, status, sessionCount })
     }
 
     const activeSessions = getActiveSessions()
