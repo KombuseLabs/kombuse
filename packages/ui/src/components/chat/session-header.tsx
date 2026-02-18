@@ -33,15 +33,9 @@ interface SessionHeaderProps {
   appliedModel?: string | null
   /** Preferred model configured for this session */
   modelPreference?: string | null
+  /** Agent name associated with the session */
+  agentName?: string | null
   className?: string
-}
-
-/** Truncate to prefix + first 8 chars of the UUID portion */
-function truncateId(id: string): string {
-  const dashIndex = id.indexOf('-')
-  if (dashIndex === -1) return id.slice(0, 12)
-  const prefix = id.slice(0, dashIndex + 1)
-  return prefix + id.slice(dashIndex + 1, dashIndex + 9)
 }
 
 function humanizeReason(reason: string | null | undefined): string | null {
@@ -72,6 +66,7 @@ function SessionHeader({
   effectiveBackend,
   appliedModel,
   modelPreference,
+  agentName,
   className,
 }: SessionHeaderProps) {
   const [copiedId, setCopiedId] = useState<'session' | 'backend' | null>(null)
@@ -91,7 +86,6 @@ function SessionHeader({
     })
   }
 
-  const truncatedSessionId = sessionId ? truncateId(sessionId) : null
   const usedModelLabel = appliedModel ?? 'Backend default'
   const hasBackendDetails = Boolean(
     sessionId
@@ -173,17 +167,10 @@ function SessionHeader({
         </>
       )}
 
-      {truncatedSessionId && (
+      {agentName && (
         <>
           <div className="w-px h-4 bg-border" />
-          <button
-            type="button"
-            onClick={() => handleCopy(sessionId!, 'session')}
-            title={`Click to copy: ${sessionId}`}
-            className="font-mono text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors cursor-pointer"
-          >
-            {copiedId === 'session' ? 'Copied!' : truncatedSessionId}
-          </button>
+          <span className="text-sm text-muted-foreground">{agentName}</span>
         </>
       )}
 

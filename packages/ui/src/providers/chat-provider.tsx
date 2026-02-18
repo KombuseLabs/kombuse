@@ -547,6 +547,7 @@ export function ChatProvider({
   const effectiveBackend = sessionData?.effective_backend ?? sessionData?.backend_type ?? null
   const appliedModel = sessionData?.applied_model ?? null
   const sessionModelPreference = sessionData?.model_preference ?? null
+  const agentName = sessionData?.agent_name ?? null
 
   const value = useMemo(
     () => ({
@@ -563,6 +564,7 @@ export function ChatProvider({
       effectiveBackend,
       appliedModel,
       modelPreference: sessionModelPreference,
+      agentName,
       pendingPermission,
       send,
       respondToPermission,
@@ -582,6 +584,7 @@ export function ChatProvider({
       effectiveBackend,
       appliedModel,
       sessionModelPreference,
+      agentName,
       pendingPermission,
       send,
       respondToPermission,

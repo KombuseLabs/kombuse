@@ -33,6 +33,8 @@ export interface ChatContextValue {
   appliedModel: string | null
   /** Session model preference (if set) */
   modelPreference: string | null
+  /** Agent name associated with the session (if any) */
+  agentName: string | null
   /** Pending permission request awaiting user response */
   pendingPermission: SerializedAgentPermissionRequestEvent | null
   /** Send a message (with optional image files) to the agent */

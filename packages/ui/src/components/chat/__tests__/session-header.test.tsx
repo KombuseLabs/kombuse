@@ -52,7 +52,6 @@ describe('SessionHeader', () => {
     expect(getByText('Connected')).toBeDefined()
     expect(getByText('Running')).toBeDefined()
     expect(getByText('3 events')).toBeDefined()
-    expect(getByText('chat-00000000')).toBeDefined()
 
     fireEvent.click(getByRole('button', { name: 'Backend details' }))
 
@@ -96,5 +95,21 @@ describe('SessionHeader', () => {
       expect(clipboardWriteText).toHaveBeenNthCalledWith(1, sessionId)
       expect(clipboardWriteText).toHaveBeenNthCalledWith(2, backendSessionId)
     })
+  })
+
+  it('renders agent name when agentName prop is provided', () => {
+    const { getByText } = renderHeader({
+      agentName: 'Coding Agent',
+    })
+
+    expect(getByText('Coding Agent')).toBeDefined()
+  })
+
+  it('does not render agent name when agentName is null', () => {
+    const { queryByText } = renderHeader({
+      agentName: null,
+    })
+
+    expect(queryByText('Coding Agent')).toBeNull()
   })
 })
