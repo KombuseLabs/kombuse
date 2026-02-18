@@ -48,6 +48,7 @@ function createMockDeps(sessionOverrides: Partial<Session> = {}): StateMachineDe
     invocations: {
       markCompleted: vi.fn(),
       markFailed: vi.fn(),
+      emitLifecycleEvent: vi.fn(),
     },
   }
 }
@@ -340,6 +341,55 @@ describe('SessionStateMachine', () => {
       sm.transition('session-1', 'abort', baseCtx({ invocationId: 10 }))
 
       expect(deps.invocations.markFailed).toHaveBeenCalledWith(10, 'session_aborted')
+    })
+
+    it('complete with invocationId calls emitLifecycleEvent with completed', () => {
+      const deps = createMockDeps({ status: 'running' })
+      const sm = new SessionStateMachine(deps)
+      const ctx = baseCtx({ invocationId: 42, backendSessionId: 'backend-123' })
+
+      sm.transition('session-1', 'complete', ctx)
+
+      expect(deps.invocations.emitLifecycleEvent).toHaveBeenCalledWith(42, 'completed', ctx)
+    })
+
+    it('fail with invocationId calls emitLifecycleEvent with failed', () => {
+      const deps = createMockDeps({ status: 'running' })
+      const sm = new SessionStateMachine(deps)
+      const ctx = baseCtx({ invocationId: 42, error: 'something broke' })
+
+      sm.transition('session-1', 'fail', ctx)
+
+      expect(deps.invocations.emitLifecycleEvent).toHaveBeenCalledWith(42, 'failed', ctx)
+    })
+
+    it('abort with invocationId calls emitLifecycleEvent with failed', () => {
+      const deps = createMockDeps({ status: 'running' })
+      const sm = new SessionStateMachine(deps)
+      const ctx = baseCtx({ invocationId: 42 })
+
+      sm.transition('session-1', 'abort', ctx)
+
+      expect(deps.invocations.emitLifecycleEvent).toHaveBeenCalledWith(42, 'failed', ctx)
+    })
+
+    it('complete without invocationId does not call emitLifecycleEvent', () => {
+      const deps = createMockDeps({ status: 'running' })
+      const sm = new SessionStateMachine(deps)
+
+      sm.transition('session-1', 'complete', baseCtx())
+
+      expect(deps.invocations.emitLifecycleEvent).not.toHaveBeenCalled()
+    })
+
+    it('emitLifecycleEvent is optional and does not throw when undefined', () => {
+      const deps = createMockDeps({ status: 'running' })
+      deps.invocations.emitLifecycleEvent = undefined
+      const sm = new SessionStateMachine(deps)
+
+      expect(() => {
+        sm.transition('session-1', 'complete', baseCtx({ invocationId: 42 }))
+      }).not.toThrow()
     })
   })
 

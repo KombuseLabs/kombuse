@@ -482,7 +482,7 @@ export function startAgentChatSession(
   message: AgentInvokeMessage,
   emit: (event: AgentExecutionEvent) => void,
   dependencies: AgentExecutionDependencies,
-  options?: { projectPath?: string; ticketId?: number; systemPromptOverride?: string }
+  options?: { projectPath?: string; ticketId?: number; systemPromptOverride?: string; initialInvocationId?: number }
 ): void {
   const {
     agentId,
@@ -664,6 +664,22 @@ export function startAgentChatSession(
       started_at: new Date().toISOString(),
     })
     continuationInvocationId = continuation.id
+  } else if (lastInvocation && lastInvocation.status === 'running') {
+    // Reuse the stuck running invocation (e.g., server restarted mid-execution).
+    // The state machine will mark it completed/failed when the session finishes.
+    continuationInvocationId = lastInvocation.id
+    continuationProjectId = resolveContinuationProjectId({
+      messageProjectId: projectId,
+      persistedSessionProjectId: existingSession?.project_id,
+      invocationProjectId: lastInvocation.project_id,
+      invocationContext: lastInvocation.context,
+    })
+  }
+
+  // If no continuation was resolved but an initial invocation ID was provided
+  // (e.g., trigger-orchestrator passing the original invocation), use it.
+  if (continuationInvocationId === null && options?.initialInvocationId) {
+    continuationInvocationId = options.initialInvocationId
   }
 
   const effectiveProjectId: string | undefined =

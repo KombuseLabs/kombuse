@@ -1,47 +1,14 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
-import { agentInvocationsRepository, commentsRepository, eventsRepository, sessionsRepository, ticketsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, commentsRepository, sessionsRepository, ticketsRepository } from '@kombuse/persistence'
 import { buildTemplateContext, getTypePreset, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplate } from '@kombuse/services'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, type KombuseSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import { serializeAgentStreamEvent } from '../../websocket/serialize-agent-event'
 import { broadcastTicketAgentStatus } from './backend-registry'
 import { readAgentsMd, startAgentChatSession } from './chat-session-runner'
+import { emitAgentEvent } from './emit-agent-event'
 import type { AgentExecutionDependencies } from './types'
-
-/**
- * Emit an agent lifecycle event for ticket activity timeline.
- * Only emits if the invocation context includes a ticket_id.
- */
-function emitAgentEvent(
-  eventType: string,
-  agentId: string,
-  invocationId: number,
-  context: Record<string, unknown>,
-  additionalPayload?: Record<string, unknown>,
-  kombuseSessionId?: string
-): void {
-  const ticketId = context.ticket_id as number | undefined
-  const projectId = context.project_id as string | undefined
-
-  if (!ticketId) {
-    return
-  }
-
-  eventsRepository.create({
-    event_type: eventType,
-    ticket_id: ticketId,
-    project_id: projectId,
-    actor_id: agentId,
-    actor_type: 'agent',
-    kombuse_session_id: kombuseSessionId,
-    payload: {
-      invocation_id: invocationId,
-      agent_id: agentId,
-      ...additionalPayload,
-    },
-  })
-}
 
 /**
  * Result of building a trigger prompt — separates system prompt from user message.
@@ -171,17 +138,11 @@ export async function processEventAndRunAgents(
   event: EventWithActor,
   dependencies: AgentExecutionDependencies
 ): Promise<void> {
-  console.log(
-    `[Server] Processing event #${event.id} (${event.event_type}) for agent triggers...`
-  )
 
   const isLifecycleEvent = (AGENT_LIFECYCLE_EVENTS as readonly string[]).includes(event.event_type)
   const isPassthroughEvent = (AGENT_PASSTHROUGH_EVENTS as readonly string[]).includes(event.event_type)
 
   if (event.actor_type !== 'user' && !isPassthroughEvent) {
-    console.log(
-      `[Server] Skipping non-user event #${event.id} (${event.event_type}, actor_type=${event.actor_type})`
-    )
     return
   }
 
@@ -355,31 +316,6 @@ export async function processEventAndRunAgents(
       triggerPrompt.systemPrompt += `\n\n## Project Agent Instructions (AGENTS.md)\n${agentsMdContent}`
     }
 
-    let invocationFailed = false
-    const markFailed = (message?: string) => {
-      invocationFailed = true
-      agentInvocationsRepository.update(invocation.id, {
-        status: 'failed',
-        error: message ?? 'Agent invocation failed',
-        completed_at: new Date().toISOString(),
-      })
-      emitAgentEvent(
-        EVENT_TYPES.AGENT_FAILED,
-        invocation.agent_id,
-        invocation.id,
-        invocation.context,
-        {
-          error: message ?? 'Agent invocation failed',
-          completing_agent_id: invocation.agent_id,
-          completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
-        },
-        kombuseSessionId
-      )
-      if (ticketIdFromContext) {
-        broadcastTicketAgentStatus(ticketIdFromContext)
-      }
-    }
-
     const ticketIdFromContext = invocation.context.ticket_id as number | undefined
 
     startAgentChatSession(
@@ -408,9 +344,6 @@ export async function processEventAndRunAgents(
             broadcastTicketAgentStatus(evt.ticketId)
           }
         } else if (evt.type === 'event') {
-          if (evt.event.type === 'error') {
-            markFailed(evt.event.message)
-          }
           const serialized = serializeAgentStreamEvent(evt.event)
           if (serialized) {
             const msg: ServerMessage = {
@@ -421,29 +354,9 @@ export async function processEventAndRunAgents(
             wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           }
         } else if (evt.type === 'complete') {
-          const completionFailed =
-            evt.status === 'failed'
-            || evt.status === 'aborted'
-          if (completionFailed && !invocationFailed) {
-            markFailed(evt.errorMessage ?? evt.reason ?? 'Agent invocation failed')
-          }
-          if (!completionFailed && !invocationFailed) {
-            agentInvocationsRepository.update(invocation.id, {
-              status: 'completed',
-              completed_at: new Date().toISOString(),
-            })
-            emitAgentEvent(
-              EVENT_TYPES.AGENT_COMPLETED,
-              invocation.agent_id,
-              invocation.id,
-              invocation.context,
-              {
-                completing_agent_id: invocation.agent_id,
-                completing_agent_type: (agent.config?.type as string) ?? 'kombuse',
-              },
-              kombuseSessionId
-            )
-          }
+          // Invocation status updates and domain event emission are now handled
+          // by the state machine via emitLifecycleEvent. This callback only
+          // handles WebSocket broadcasts.
           const msg: ServerMessage = {
             type: 'agent.complete',
             kombuseSessionId: evt.kombuseSessionId,
@@ -458,12 +371,10 @@ export async function processEventAndRunAgents(
           if (evt.ticketId) {
             broadcastTicketAgentStatus(evt.ticketId)
           }
-        } else if (evt.type === 'error') {
-          markFailed(evt.message)
         }
       },
       dependencies,
-      { projectPath: projectPathOverride, ticketId: ticketIdFromContext, systemPromptOverride: triggerPrompt.systemPrompt }
+      { projectPath: projectPathOverride, ticketId: ticketIdFromContext, systemPromptOverride: triggerPrompt.systemPrompt, initialInvocationId: invocation.id }
     )
   }
 }

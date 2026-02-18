@@ -4,7 +4,8 @@ import {
   SessionStateMachine,
   sessionPersistenceService,
 } from '@kombuse/services'
-import { createSessionId } from '@kombuse/types'
+import { createSessionId, EVENT_TYPES } from '@kombuse/types'
+import { emitAgentEvent } from './emit-agent-event'
 import { createServerAgentBackend } from './backend-factory'
 import {
   cleanupOrphanedSessions,
@@ -56,6 +57,39 @@ const defaultStateMachine = new SessionStateMachine({
         completed_at: new Date().toISOString(),
       })
     },
+    emitLifecycleEvent(invocationId, event, ctx) {
+      const invocation = agentInvocationsRepository.get(invocationId)
+      if (!invocation) return
+
+      const agent = agentService.getAgent(invocation.agent_id)
+      const agentType = (agent?.config as Record<string, unknown> | undefined)?.type as string ?? 'kombuse'
+
+      const eventType = event === 'completed'
+        ? EVENT_TYPES.AGENT_COMPLETED
+        : EVENT_TYPES.AGENT_FAILED
+
+      const additionalPayload: Record<string, unknown> = {
+        completing_agent_id: invocation.agent_id,
+        completing_agent_type: agentType,
+      }
+      if (event === 'failed') {
+        additionalPayload.error = ctx.error ?? 'Unknown error'
+      }
+
+      emitAgentEvent(
+        eventType,
+        invocation.agent_id,
+        invocationId,
+        invocation.context,
+        additionalPayload,
+        ctx.kombuseSessionId
+      )
+
+      const ticketId = invocation.context.ticket_id as number | undefined
+      if (ticketId) {
+        broadcastTicketAgentStatus(ticketId)
+      }
+    },
   },
 })
 
@@ -86,7 +120,7 @@ export function startAgentChatSession(
   message: AgentInvokeMessage,
   emit: (event: AgentExecutionEvent) => void,
   dependencies: AgentExecutionDependencies = defaultDependencies,
-  options?: { projectPath?: string; ticketId?: number; systemPromptOverride?: string }
+  options?: { projectPath?: string; ticketId?: number; systemPromptOverride?: string; initialInvocationId?: number }
 ): void {
   startAgentChatSessionImpl(message, emit, dependencies, options)
 }

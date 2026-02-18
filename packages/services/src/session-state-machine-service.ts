@@ -42,6 +42,7 @@ export interface StateMachineDeps {
   invocations: {
     markCompleted(invocationId: number): void
     markFailed(invocationId: number, error: string): void
+    emitLifecycleEvent?(invocationId: number, event: 'completed' | 'failed', ctx: TransitionContext): void
   }
 }
 
@@ -136,6 +137,7 @@ export class SessionStateMachine {
         this.deps.sessionPersistence.completeSession(sessionId, ctx.backendSessionId)
         if (ctx.invocationId) {
           this.deps.invocations.markCompleted(ctx.invocationId)
+          this.deps.invocations.emitLifecycleEvent?.(ctx.invocationId, 'completed', ctx)
         }
         this.deps.backends.resetIdleTimeout(ctx.kombuseSessionId)
         break
@@ -146,6 +148,7 @@ export class SessionStateMachine {
         this.deps.sessionPersistence.failSession(sessionId, ctx.backendSessionId)
         if (ctx.invocationId) {
           this.deps.invocations.markFailed(ctx.invocationId, ctx.error ?? 'Unknown error')
+          this.deps.invocations.emitLifecycleEvent?.(ctx.invocationId, 'failed', ctx)
         }
         this.deps.backends.unregister(ctx.kombuseSessionId)
         this.deps.backends.clearIdleTimeout(ctx.kombuseSessionId)
@@ -159,6 +162,7 @@ export class SessionStateMachine {
         this.deps.backends.clearIdleTimeout(ctx.kombuseSessionId)
         if (ctx.invocationId) {
           this.deps.invocations.markFailed(ctx.invocationId, 'session_aborted')
+          this.deps.invocations.emitLifecycleEvent?.(ctx.invocationId, 'failed', ctx)
         }
         break
       }
