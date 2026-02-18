@@ -1,6 +1,7 @@
 'use client'
 
-import type { AgentTrigger, Label } from '@kombuse/types'
+import { useMemo } from 'react'
+import type { AgentTrigger, Label, Profile } from '@kombuse/types'
 import { Pencil, Shield, Trash2, Zap } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
@@ -31,6 +32,17 @@ function TriggerItem({
   isToggling,
 }: TriggerItemProps) {
   const { data: agentProfiles } = useAgentProfiles()
+
+  const profileMap = useMemo(() => {
+    const map = new Map<string, Profile>()
+    if (agentProfiles) {
+      for (const p of agentProfiles) {
+        map.set(p.id, p)
+      }
+    }
+    return map
+  }, [agentProfiles])
+
   const eventOption = getEventTypeOption(trigger.event_type)
 
   const resolvedLabel = (() => {
@@ -107,7 +119,7 @@ function TriggerItem({
           {trigger.allowed_invokers && trigger.allowed_invokers.length > 0 && (
             <span className="flex items-center gap-1">
               <Shield className="size-3" />
-              <span>{summarizeInvokers(trigger.allowed_invokers)}</span>
+              <span>{summarizeInvokers(trigger.allowed_invokers, profileMap)}</span>
             </span>
           )}
         </div>

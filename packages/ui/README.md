@@ -647,7 +647,7 @@ Props for `AuthorFilterPicker`:
 
 #### AllowedInvokersEditor
 
-Editor for trigger invoker restrictions (ACL). Provides a toggle between "Allow all" (null) and "Restrict to specific invokers" (array of rules). When restricted, users can add/remove rules with type selectors (Anyone, Human users, Agent, System) and optional agent-specific fields (agent ID, agent type).
+Editor for trigger invoker restrictions (ACL). Provides a toggle between "Allow all" (null) and "Restrict to specific invokers" (array of rules). When restricted, users can add/remove rules with type selectors (Anyone, Human users, Agent, System). When "Agent" is selected, shows a searchable agent picker dropdown for selecting a specific agent by name, and a Select dropdown for agent type (dynamically populated from enabled agents).
 
 ```typescript
 <AllowedInvokersEditor
@@ -656,15 +656,18 @@ Editor for trigger invoker restrictions (ACL). Provides a toggle between "Allow 
   disabled={false}
 />
 
-// Get human-readable summary of invoker rules
-summarizeInvokers([{ type: 'user' }])                    // => "Users"
-summarizeInvokers([{ type: 'agent', agent_type: 'coder' }]) // => "type:coder"
+// Get human-readable summary of invoker rules (with optional name resolution)
+summarizeInvokers([{ type: 'user' }])                                      // => "Users"
+summarizeInvokers([{ type: 'agent', agent_type: 'coder' }])                // => "type:coder"
+summarizeInvokers([{ type: 'agent', agent_id: 'abc-123' }], profileMap)    // => "My Agent" (resolved)
 ```
 
 Props for `AllowedInvokersEditor`:
 - `value`: `AllowedInvoker[] | null` — current invoker rules (null = allow all)
 - `onChange`: `(value: AllowedInvoker[] | null) => void` — called when rules change
 - `disabled`: Optional boolean
+
+`summarizeInvokers` accepts an optional second parameter `profileMap: Map<string, Profile>` for resolving agent UUIDs to display names. When omitted, falls back to truncated UUID display.
 
 #### ConditionEditor
 
