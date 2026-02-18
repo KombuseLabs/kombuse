@@ -55,3 +55,15 @@ export function useDefaultBackendType() {
   const { defaultBackendType, setDefaultBackendType } = useAppContext()
   return { defaultBackendType, setDefaultBackendType }
 }
+
+/**
+ * Hook to access the set of smart label IDs (labels that trigger agents).
+ * Returns a helper to check if a given label ID is "smart".
+ */
+export function useSmartLabels() {
+  const { smartLabelIds } = useAppContext()
+  return {
+    smartLabelIds,
+    isSmartLabel: (labelId: number) => smartLabelIds.has(labelId),
+  }
+}

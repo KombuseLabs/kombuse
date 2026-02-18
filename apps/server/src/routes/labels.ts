@@ -166,4 +166,12 @@ export async function labelRoutes(fastify: FastifyInstance) {
 
     return agentService.listTriggersByLabelId(labelId)
   })
+
+  // Get smart label IDs for a project (labels with enabled agent triggers)
+  fastify.get<{
+    Params: { projectId: string }
+  }>('/projects/:projectId/smart-label-ids', async (request) => {
+    const labelIds = agentService.listSmartLabelIds(request.params.projectId)
+    return { label_ids: labelIds }
+  })
 }

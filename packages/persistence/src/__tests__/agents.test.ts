@@ -458,6 +458,88 @@ describe('agentTriggersRepository', () => {
     })
   })
 
+  describe('listSmartLabelIds', () => {
+    it('should return empty array when no triggers have label conditions', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+      })
+
+      const ids = agentTriggersRepository.listSmartLabelIds()
+      expect(ids).toEqual([])
+    })
+
+    it('should return label IDs from enabled triggers with label_id conditions', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'label.added',
+        conditions: { label_id: 42 },
+      })
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'label.added',
+        conditions: { label_id: 99 },
+      })
+
+      const ids = agentTriggersRepository.listSmartLabelIds()
+      expect(ids).toContain(42)
+      expect(ids).toContain(99)
+    })
+
+    it('should exclude disabled triggers', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'label.added',
+        conditions: { label_id: 50 },
+        is_enabled: false,
+      })
+
+      const ids = agentTriggersRepository.listSmartLabelIds()
+      expect(ids).not.toContain(50)
+    })
+
+    it('should return distinct label IDs', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'label.added',
+        conditions: { label_id: 42 },
+      })
+      const agentId2 = createAgentProfile()
+      agentsRepository.create(agentInput({ id: agentId2, system_prompt: 'Another agent' }))
+      agentTriggersRepository.create({
+        agent_id: agentId2,
+        event_type: 'label.added',
+        conditions: { label_id: 42 },
+      })
+
+      const ids = agentTriggersRepository.listSmartLabelIds()
+      expect(ids.filter((id) => id === 42)).toHaveLength(1)
+    })
+
+    it('should include global triggers for project-scoped queries', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'label.added',
+        conditions: { label_id: 10 },
+      })
+
+      const ids = agentTriggersRepository.listSmartLabelIds(TEST_PROJECT_ID)
+      expect(ids).toContain(10)
+    })
+
+    it('should include project-specific triggers when project matches', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'label.added',
+        conditions: { label_id: 20 },
+        project_id: TEST_PROJECT_ID,
+      })
+
+      const ids = agentTriggersRepository.listSmartLabelIds(TEST_PROJECT_ID)
+      expect(ids).toContain(20)
+    })
+  })
+
   describe('update', () => {
     it('should update trigger event_type', () => {
       const trigger = agentTriggersRepository.create({

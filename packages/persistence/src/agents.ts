@@ -304,6 +304,24 @@ export const agentTriggersRepository = {
       .all(labelId) as RawAgentTrigger[]
     return rows.map(mapAgentTrigger)
   },
+
+  /**
+   * List distinct label IDs referenced by enabled triggers.
+   * Returns labels that have at least one enabled trigger with a label_id condition.
+   */
+  listSmartLabelIds(projectId?: string): number[] {
+    const db = getDatabase()
+    const rows = db
+      .prepare(
+        `SELECT DISTINCT CAST(json_extract(conditions, '$.label_id') AS INTEGER) as label_id
+         FROM agent_triggers
+         WHERE is_enabled = 1
+           AND json_extract(conditions, '$.label_id') IS NOT NULL
+           AND (project_id IS NULL OR project_id = ?)`
+      )
+      .all(projectId ?? null) as { label_id: number }[]
+    return rows.map((r) => r.label_id)
+  },
 }
 
 /**

@@ -14,7 +14,9 @@ import {
   CommandItem,
   CommandSeparator,
 } from '../../base/command'
-import { Check, ChevronsUpDown, Tag, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Check, ChevronsUpDown, Tag, Plus, Pencil, Trash2, Zap } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
+import { useSmartLabels } from '../../hooks/use-app-context'
 import { LabelForm } from './label-form'
 
 interface LabelSelectorProps {
@@ -46,6 +48,7 @@ function LabelSelector({
   isDeleting,
   className,
 }: LabelSelectorProps) {
+  const { isSmartLabel } = useSmartLabels()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'select' | 'create' | 'edit'>('select')
   const [editingLabel, setEditingLabel] = useState<Label | null>(null)
@@ -155,6 +158,14 @@ function LabelSelector({
                       style={{ backgroundColor: label.color }}
                     />
                     <span className="flex-1 truncate">{label.name}</span>
+                    {isSmartLabel(label.id) && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Zap className="size-3 text-muted-foreground shrink-0" />
+                        </TooltipTrigger>
+                        <TooltipContent>Triggers an agent</TooltipContent>
+                      </Tooltip>
+                    )}
                     {isSelected(label.id) && (
                       <Check className="size-4 text-primary shrink-0" />
                     )}

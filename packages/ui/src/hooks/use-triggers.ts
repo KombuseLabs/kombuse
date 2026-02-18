@@ -3,7 +3,19 @@ import type {
   CreateAgentTriggerInput,
   UpdateAgentTriggerInput,
 } from '@kombuse/types'
-import { triggersApi } from '../lib/api'
+import { triggersApi, labelsApi } from '../lib/api'
+import { useAppContext } from './use-app-context'
+
+function useRefreshSmartLabels() {
+  const { currentProjectId, setSmartLabelIds } = useAppContext()
+  return () => {
+    if (currentProjectId) {
+      labelsApi.getSmartLabelIds(currentProjectId).then((ids) => {
+        setSmartLabelIds(new Set(ids))
+      }).catch(() => {})
+    }
+  }
+}
 
 export function useTriggers(agentId: string) {
   return useQuery({
@@ -23,6 +35,7 @@ export function useTrigger(id: number) {
 
 export function useCreateTrigger() {
   const queryClient = useQueryClient()
+  const refreshSmartLabels = useRefreshSmartLabels()
   return useMutation({
     mutationFn: ({
       agentId,
@@ -33,38 +46,45 @@ export function useCreateTrigger() {
     }) => triggersApi.create(agentId, input),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['triggers', variables.agentId] })
+      refreshSmartLabels()
     },
   })
 }
 
 export function useUpdateTrigger() {
   const queryClient = useQueryClient()
+  const refreshSmartLabels = useRefreshSmartLabels()
   return useMutation({
     mutationFn: ({ id, input }: { id: number; input: UpdateAgentTriggerInput }) =>
       triggersApi.update(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['triggers'] })
+      refreshSmartLabels()
     },
   })
 }
 
 export function useDeleteTrigger() {
   const queryClient = useQueryClient()
+  const refreshSmartLabels = useRefreshSmartLabels()
   return useMutation({
     mutationFn: (id: number) => triggersApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['triggers'] })
+      refreshSmartLabels()
     },
   })
 }
 
 export function useToggleTrigger() {
   const queryClient = useQueryClient()
+  const refreshSmartLabels = useRefreshSmartLabels()
   return useMutation({
     mutationFn: ({ id, is_enabled }: { id: number; is_enabled: boolean }) =>
       triggersApi.update(id, { is_enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['triggers'] })
+      refreshSmartLabels()
     },
   })
 }

@@ -5,6 +5,7 @@ import type { ActiveSessionInfo, AppContextValue } from '@kombuse/types'
 import { ActiveAgentsIndicator } from '../active-agents-indicator'
 import { AppCtx } from '../../providers/app-context'
 import * as backendStatusHooks from '../../hooks/use-backend-status'
+import * as profileSettingsHooks from '../../hooks/use-profile-settings'
 
 const mockMutate = vi.fn()
 
@@ -12,6 +13,14 @@ vi.mock('../../hooks/use-backend-status', () => ({
   useBackendStatus: vi.fn(() => ({ data: undefined, isLoading: false })),
   useRefreshBackendStatus: vi.fn(() => ({ mutate: mockMutate, isPending: false })),
 }))
+
+vi.mock('../../hooks/use-profile-settings', () => ({
+  useProfileSetting: vi.fn(() => ({ data: null })),
+  useProfileSettings: vi.fn(() => ({ data: null })),
+  useUpsertProfileSetting: vi.fn(() => ({ mutate: vi.fn() })),
+}))
+
+const mockedUseProfileSetting = vi.mocked(profileSettingsHooks.useProfileSetting)
 
 const mockedUseBackendStatus = vi.mocked(backendStatusHooks.useBackendStatus)
 
@@ -32,6 +41,7 @@ function TestProvider({
     ticketAgentStatus: new Map(),
     activeSessions: new Map(sessions.map((session) => [session.kombuseSessionId, session])),
     defaultBackendType: 'claude-code',
+    smartLabelIds: new Set(),
     setCurrentTicket: () => {},
     setCurrentProjectId: () => {},
     setView: () => {},
@@ -45,6 +55,7 @@ function TestProvider({
     addActiveSession: () => {},
     removeActiveSession: () => {},
     setDefaultBackendType: () => {},
+    setSmartLabelIds: () => {},
   }), [sessions])
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>

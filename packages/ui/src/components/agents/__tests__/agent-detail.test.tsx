@@ -85,6 +85,7 @@ const mockAppContext: AppContextValue = {
   ticketAgentStatus: new Map(),
   activeSessions: new Map(),
   defaultBackendType: 'claude-code',
+  smartLabelIds: new Set(),
   setCurrentTicket: () => {},
   setCurrentProjectId: () => {},
   setView: () => {},
@@ -98,6 +99,7 @@ const mockAppContext: AppContextValue = {
   addActiveSession: () => {},
   removeActiveSession: () => {},
   setDefaultBackendType: () => {},
+  setSmartLabelIds: () => {},
 }
 
 function TestWrapper({ children }: { children: ReactNode }) {

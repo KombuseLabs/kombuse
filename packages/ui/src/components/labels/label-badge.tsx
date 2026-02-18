@@ -1,6 +1,8 @@
 import type { Label } from '@kombuse/types'
 import { cn } from '../../lib/utils'
-import { X } from 'lucide-react'
+import { X, Zap } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
+import { useSmartLabels } from '../../hooks/use-app-context'
 
 interface LabelBadgeProps {
   label: Label
@@ -20,6 +22,7 @@ function getContrastColor(hexColor: string): string {
 
 function LabelBadge({ label, className, onRemove, size = 'default' }: LabelBadgeProps) {
   const textColor = getContrastColor(label.color)
+  const { isSmartLabel } = useSmartLabels()
 
   return (
     <span
@@ -31,6 +34,14 @@ function LabelBadge({ label, className, onRemove, size = 'default' }: LabelBadge
       style={{ backgroundColor: label.color, color: textColor }}
     >
       {label.name}
+      {isSmartLabel(label.id) && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Zap className="size-3 shrink-0" style={{ color: textColor }} />
+          </TooltipTrigger>
+          <TooltipContent>Triggers an agent</TooltipContent>
+        </Tooltip>
+      )}
       {onRemove && (
         <button
           type="button"

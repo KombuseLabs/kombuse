@@ -26,6 +26,8 @@ export interface PendingPermission {
   description?: string
   /** Ticket ID if this permission is for a ticket-triggered session */
   ticketId?: number
+  /** Project ID for project-scoped filtering */
+  projectId?: string
 }
 
 /**
@@ -49,6 +51,7 @@ export interface ActiveSessionInfo {
   agentName: string
   ticketId?: number
   ticketTitle?: string
+  projectId?: string
   effectiveBackend?: BackendType
   appliedModel?: string
   startedAt: string
@@ -76,6 +79,8 @@ export interface AppState {
   activeSessions: Map<string, ActiveSessionInfo>
   /** Default backend type from user profile settings */
   defaultBackendType: BackendType
+  /** Set of label IDs that trigger agents ("smart labels") */
+  smartLabelIds: Set<number>
 }
 
 /**
@@ -100,6 +105,8 @@ export interface AppActions {
   removeActiveSession: (kombuseSessionId: string) => void
   /** Set the default backend type */
   setDefaultBackendType: (backendType: BackendType) => void
+  /** Replace the full set of smart label IDs */
+  setSmartLabelIds: (ids: Set<number>) => void
 }
 
 /**

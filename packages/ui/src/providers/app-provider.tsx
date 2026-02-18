@@ -16,7 +16,7 @@ import type {
 import { BACKEND_TYPES } from '@kombuse/types'
 import { AppCtx } from './app-context'
 import { useWebSocket } from '../hooks/use-websocket'
-import { syncApi } from '../lib/api'
+import { syncApi, labelsApi } from '../lib/api'
 
 interface AppProviderProps {
   children: ReactNode
@@ -53,6 +53,7 @@ export function AppProvider({
     Map<string, ActiveSessionInfo>
   >(() => new Map())
   const [defaultBackendType, setDefaultBackendTypeState] = useState<BackendType>(BACKEND_TYPES.CLAUDE_CODE)
+  const [smartLabelIds, setSmartLabelIdsState] = useState<Set<number>>(() => new Set())
 
   // Wrap setters in useCallback for stable references
   const setCurrentTicket = useCallback((ticket: Ticket | null) => {
@@ -154,6 +155,7 @@ export function AppProvider({
         existing.agentName === merged.agentName
         && existing.ticketId === merged.ticketId
         && existing.ticketTitle === merged.ticketTitle
+        && existing.projectId === merged.projectId
         && existing.effectiveBackend === merged.effectiveBackend
         && existing.appliedModel === merged.appliedModel
         && existing.startedAt === merged.startedAt
@@ -180,6 +182,15 @@ export function AppProvider({
     setDefaultBackendTypeState(backendType)
   }, [])
 
+  const setSmartLabelIds = useCallback((ids: Set<number>) => {
+    setSmartLabelIdsState((prev) => {
+      if (prev.size === ids.size && [...ids].every((id) => prev.has(id))) {
+        return prev
+      }
+      return ids
+    })
+  }, [])
+
   // Global WebSocket handler to track pending permissions and ticket agent status
   const handleMessage = useCallback(
     (message: ServerMessage) => {
@@ -190,6 +201,7 @@ export function AppProvider({
             agentName: message.agentName ?? 'Agent',
             ticketId: message.ticketId,
             ticketTitle: message.ticketTitle,
+            projectId: message.projectId,
             effectiveBackend: message.effectiveBackend,
             appliedModel: message.appliedModel,
             startedAt: message.startedAt ?? new Date().toISOString(),
@@ -207,6 +219,7 @@ export function AppProvider({
             input: message.input,
             description: message.description,
             ticketId: message.ticketId,
+            projectId: message.projectId,
           })
           break
         }
@@ -317,6 +330,23 @@ export function AppProvider({
     return () => clearInterval(interval)
   }, [addActiveSession])
 
+  // Fetch smart label IDs when project changes
+  useEffect(() => {
+    if (!currentProjectId) {
+      setSmartLabelIds(new Set())
+      return
+    }
+    let cancelled = false
+    labelsApi.getSmartLabelIds(currentProjectId).then((ids) => {
+      if (!cancelled) {
+        setSmartLabelIds(new Set(ids))
+      }
+    }).catch((err) => {
+      console.error('[app-provider] Failed to fetch smart label IDs:', err)
+    })
+    return () => { cancelled = true }
+  }, [currentProjectId, setSmartLabelIds])
+
   const value = useMemo<AppContextValue>(
     () => ({
       // State
@@ -329,6 +359,7 @@ export function AppProvider({
       ticketAgentStatus,
       activeSessions,
       defaultBackendType,
+      smartLabelIds,
       // Actions
       setCurrentTicket,
       setCurrentProjectId,
@@ -343,6 +374,7 @@ export function AppProvider({
       addActiveSession,
       removeActiveSession,
       setDefaultBackendType,
+      setSmartLabelIds,
     }),
     [
       currentTicket,
@@ -354,6 +386,7 @@ export function AppProvider({
       ticketAgentStatus,
       activeSessions,
       defaultBackendType,
+      smartLabelIds,
       setCurrentTicket,
       setCurrentProjectId,
       setView,
@@ -367,6 +400,7 @@ export function AppProvider({
       addActiveSession,
       removeActiveSession,
       setDefaultBackendType,
+      setSmartLabelIds,
     ]
   )
 

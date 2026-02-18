@@ -5,6 +5,7 @@ import type { AppContextValue, PendingPermission } from '@kombuse/types'
 import { NotificationBell } from '../notification-bell'
 import { useAppContext } from '../../hooks/use-app-context'
 import { AppCtx } from '../../providers/app-context'
+import * as profileSettingsHooks from '../../hooks/use-profile-settings'
 
 const mockSend = vi.fn()
 
@@ -14,6 +15,14 @@ vi.mock('../../hooks/use-websocket', () => ({
     send: mockSend,
   }),
 }))
+
+vi.mock('../../hooks/use-profile-settings', () => ({
+  useProfileSetting: vi.fn(() => ({ data: null })),
+  useProfileSettings: vi.fn(() => ({ data: null })),
+  useUpsertProfileSetting: vi.fn(() => ({ mutate: vi.fn() })),
+}))
+
+const mockedUseProfileSetting = vi.mocked(profileSettingsHooks.useProfileSetting)
 
 function createPermission(permission: PendingPermission): PendingPermission {
   return permission
@@ -59,6 +68,7 @@ function TestProvider({
     ticketAgentStatus: new Map(),
     activeSessions: new Map(),
     defaultBackendType: 'claude-code',
+    smartLabelIds: new Set(),
     setCurrentTicket: () => {},
     setCurrentProjectId: () => {},
     setView: () => {},
@@ -102,6 +112,7 @@ function TestProvider({
     addActiveSession: () => {},
     removeActiveSession: () => {},
     setDefaultBackendType: () => {},
+    setSmartLabelIds: () => {},
   }), [pendingPermissions])
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
@@ -241,5 +252,107 @@ describe('NotificationBell permission key handling', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reply' }))
 
     expect(onNavigate).toHaveBeenCalledWith('/projects/1/chats/chat-only')
+  })
+})
+
+describe('NotificationBell project scoping', () => {
+  beforeEach(() => {
+    mockSend.mockReset()
+    mockedUseProfileSetting.mockReturnValue({ data: null } as ReturnType<typeof profileSettingsHooks.useProfileSetting>)
+  })
+
+  it('filters permissions by project when scope is project (default)', () => {
+    render(
+      <TestProvider
+        initialPermissions={[
+          createPermission({
+            permissionKey: 'sess-a:req-1',
+            sessionId: 'sess-a',
+            requestId: 'req-1',
+            toolName: 'Bash',
+            input: { command: 'ls' },
+            description: 'Same project',
+            projectId: '1',
+          }),
+          createPermission({
+            permissionKey: 'sess-b:req-1',
+            sessionId: 'sess-b',
+            requestId: 'req-1',
+            toolName: 'Bash',
+            input: { command: 'pwd' },
+            description: 'Other project',
+            projectId: '2',
+          }),
+        ]}
+      >
+        <NotificationBell />
+      </TestProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(screen.getByText('Same project')).toBeDefined()
+    expect(screen.queryByText('Other project')).toBeNull()
+  })
+
+  it('shows all permissions when scope is all', () => {
+    mockedUseProfileSetting.mockReturnValue({
+      data: { setting_value: 'all' },
+    } as ReturnType<typeof profileSettingsHooks.useProfileSetting>)
+
+    render(
+      <TestProvider
+        initialPermissions={[
+          createPermission({
+            permissionKey: 'sess-a:req-1',
+            sessionId: 'sess-a',
+            requestId: 'req-1',
+            toolName: 'Bash',
+            input: { command: 'ls' },
+            description: 'Same project',
+            projectId: '1',
+          }),
+          createPermission({
+            permissionKey: 'sess-b:req-1',
+            sessionId: 'sess-b',
+            requestId: 'req-1',
+            toolName: 'Bash',
+            input: { command: 'pwd' },
+            description: 'Other project',
+            projectId: '2',
+          }),
+        ]}
+      >
+        <NotificationBell />
+      </TestProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(screen.getByText('Same project')).toBeDefined()
+    expect(screen.getByText('Other project')).toBeDefined()
+  })
+
+  it('shows permissions without projectId regardless of scope', () => {
+    render(
+      <TestProvider
+        initialPermissions={[
+          createPermission({
+            permissionKey: 'sess-c:req-1',
+            sessionId: 'sess-c',
+            requestId: 'req-1',
+            toolName: 'Bash',
+            input: { command: 'echo hi' },
+            description: 'No project set',
+          }),
+        ]}
+      >
+        <NotificationBell />
+      </TestProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(screen.getByText('No project set')).toBeDefined()
   })
 })

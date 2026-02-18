@@ -2,6 +2,9 @@
 
 import type { Label } from '@kombuse/types'
 import { cn } from '../../lib/utils'
+import { Zap } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
+import { useSmartLabels } from '../../hooks/use-app-context'
 
 interface LabelCardProps {
   label: Label
@@ -10,6 +13,8 @@ interface LabelCardProps {
 }
 
 function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
+  const { isSmartLabel } = useSmartLabels()
+
   return (
     <div
       className={cn(
@@ -30,11 +35,19 @@ function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
         />
         <div className="flex-1 min-w-0">
           <h3 className={cn(
-            'text-sm truncate',
+            'text-sm flex items-center gap-1',
             isSelected ? 'font-semibold' : 'font-medium',
           )}
           >
-            {label.name}
+            <span className="truncate">{label.name}</span>
+            {isSmartLabel(label.id) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Zap className="size-3 text-muted-foreground shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent>Triggers an agent</TooltipContent>
+              </Tooltip>
+            )}
           </h3>
           {label.description && (
             <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">

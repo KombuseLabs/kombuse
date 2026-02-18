@@ -5,6 +5,7 @@ export {
   useAppView,
   useGenerating,
   useDefaultBackendType,
+  useSmartLabels,
 } from './use-app-context'
 export { useCommandContext } from './use-command-context'
 export { useCommand } from './use-command'

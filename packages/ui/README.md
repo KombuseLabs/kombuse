@@ -1715,6 +1715,15 @@ import { useTriggersByLabel } from '@kombuse/ui/hooks'
 const { data: triggers } = useTriggersByLabel(labelId)
 ```
 
+```typescript
+import { useSmartLabels } from '@kombuse/ui/hooks'
+
+// Check if a label triggers an agent ("smart label")
+const { smartLabelIds, isSmartLabel } = useSmartLabels()
+// smartLabelIds: Set<number> — label IDs with enabled agent triggers
+// isSmartLabel(labelId): boolean — true if the label triggers an agent
+```
+
 ### Code Diff
 
 ```typescript

@@ -295,6 +295,12 @@ export const labelsApi = {
     })
     await handleEmptyResponse(response)
   },
+
+  async getSmartLabelIds(projectId: string): Promise<number[]> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/smart-label-ids`)
+    const data = await handleResponse<{ label_ids: number[] }>(response)
+    return data.label_ids
+  },
 }
 
 export const milestonesApi = {
@@ -725,6 +731,7 @@ export interface SyncState {
     agentName: string
     ticketId?: number
     ticketTitle?: string
+    projectId?: string
     effectiveBackend?: BackendType
     appliedModel?: string
     startedAt: string
