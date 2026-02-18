@@ -175,7 +175,10 @@ export function Home() {
                 </label>
               ))}
             </div>
-            <div className="flex justify-end px-4 py-3 border-t border-border/40">
+            <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-border/40">
+              {importMutation.isError && (
+                <p className="text-sm text-destructive">Import failed. Please try again.</p>
+              )}
               <Button
                 onClick={handleImport}
                 disabled={selected.size === 0 || importMutation.isPending}

@@ -131,6 +131,7 @@ const EXPECTED_MIGRATIONS = [
   '024_trigger_allowed_invokers',
   '025_session_events_event_type_index',
   '026_session_events_type_created_index',
+  '027_projects_local_path_unique',
 ]
 
 describe('database', () => {
@@ -288,7 +289,8 @@ describe('database', () => {
         );
 
         CREATE TABLE projects (
-          id TEXT PRIMARY KEY
+          id TEXT PRIMARY KEY,
+          local_path TEXT
         );
 
         CREATE TABLE tickets (

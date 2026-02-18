@@ -972,6 +972,13 @@ const migrations: Array<{ name: string; sql: string; postMigrate?: (db: Database
         ON session_events(event_type, created_at);
     `,
   },
+  {
+    name: '027_projects_local_path_unique',
+    sql: `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_local_path
+        ON projects(local_path) WHERE local_path IS NOT NULL;
+    `,
+  },
 ]
 
 /**

@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, basename } from 'node:path'
+import { join, basename, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import type { ClaudeCodeProject } from '@kombuse/types'
+import { UUID_REGEX } from '@kombuse/types'
 
 interface SessionEntry {
   sessionId: string
@@ -40,8 +41,18 @@ export class ClaudeCodeScanner implements IClaudeCodeScanner {
     return join(this.getProjectsDir(), this.encodeProjectPath(projectPath))
   }
 
+  private validateProjectDir(projectPath: string): string {
+    const projectDir = resolve(this.getProjectDir(projectPath))
+    const projectsDir = resolve(this.getProjectsDir())
+    if (!projectDir.startsWith(projectsDir + '/')) {
+      throw new Error('Invalid project path')
+    }
+    return projectDir
+  }
+
   listSessions(projectPath: string): SessionEntry[] {
-    const indexPath = join(this.getProjectDir(projectPath), 'sessions-index.json')
+    const projectDir = this.validateProjectDir(projectPath)
+    const indexPath = join(projectDir, 'sessions-index.json')
     if (!existsSync(indexPath)) return []
 
     const raw = readFileSync(indexPath, 'utf-8')
@@ -55,7 +66,12 @@ export class ClaudeCodeScanner implements IClaudeCodeScanner {
   }
 
   getSessionContent(projectPath: string, sessionId: string): Record<string, unknown>[] {
-    const filePath = join(this.getProjectDir(projectPath), `${sessionId}.jsonl`)
+    if (!UUID_REGEX.test(sessionId)) {
+      throw new Error('Invalid session ID format')
+    }
+
+    const projectDir = this.validateProjectDir(projectPath)
+    const filePath = join(projectDir, `${sessionId}.jsonl`)
     if (!existsSync(filePath)) {
       throw new Error(`Session file not found: ${filePath}`)
     }

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { basename } from 'node:path'
 import { claudeCodeScanner, projectService } from '@kombuse/services'
 import { validateJsonlItem, transformJsonlToAgentEvents } from '@kombuse/agent'
+import { UUID_REGEX } from '@kombuse/types'
 import { importClaudeCodeProjectsSchema } from '../schemas/claude-code'
 
 export async function claudeCodeRoutes(fastify: FastifyInstance) {
@@ -46,12 +47,17 @@ export async function claudeCodeRoutes(fastify: FastifyInstance) {
     for (const path of paths) {
       if (importedPaths.has(path)) continue
 
-      const project = projectService.create({
-        name: basename(path),
-        owner_id: 'user-1',
-        local_path: path,
-      })
-      created.push(project)
+      try {
+        const project = projectService.create({
+          name: basename(path),
+          owner_id: 'user-1',
+          local_path: path,
+        })
+        created.push(project)
+        importedPaths.add(path)
+      } catch {
+        // Skip duplicate local_path (UNIQUE constraint violation)
+      }
     }
 
     return reply.status(201).send(created)
@@ -90,6 +96,10 @@ export async function claudeCodeRoutes(fastify: FastifyInstance) {
 
       if (!path) {
         return reply.status(400).send({ error: 'Missing required query param: path' })
+      }
+
+      if (!UUID_REGEX.test(sessionId)) {
+        return reply.status(400).send({ error: 'Invalid session ID format' })
       }
 
       try {
