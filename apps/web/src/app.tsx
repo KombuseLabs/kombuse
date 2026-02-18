@@ -47,24 +47,25 @@ function AppContent() {
       className="h-dvh flex flex-col overflow-hidden"
       style={isDesktop ? { "--header-height": "2.5rem" } as React.CSSProperties : undefined}
     >
-      {!isHome ? (
-        <Header
-          onNavigateHome={() => navigate("/")}
-          canGoBack={canGoBack}
-          canGoForward={canGoForward}
-          onGoBack={goBack}
-          onGoForward={goForward}
-          center={
-            <CommandPalette open={open} onOpenChange={setOpen} onNavigate={navigate} />
-          }
-        >
-          <ActiveAgentsIndicator onNavigate={navigate} />
-          <NotificationBell onNavigate={navigate} />
-          <ProfileButton onNavigate={navigate} />
-        </Header>
-      ) : isDesktop ? (
-        <div className="electron-drag h-10 absolute inset-x-0 top-0 z-50" />
-      ) : null}
+      <Header
+        onNavigateHome={isHome ? undefined : () => navigate("/")}
+        minimal={isHome}
+        {...(!isHome && {
+          canGoBack,
+          canGoForward,
+          onGoBack: goBack,
+          onGoForward: goForward,
+          center: <CommandPalette open={open} onOpenChange={setOpen} onNavigate={navigate} />,
+        })}
+      >
+        {!isHome && (
+          <>
+            <ActiveAgentsIndicator onNavigate={navigate} />
+            <NotificationBell onNavigate={navigate} />
+            <ProfileButton onNavigate={navigate} />
+          </>
+        )}
+      </Header>
       <BackendStatusBanner />
       <div className="flex-1 min-h-0">
         <Routes>

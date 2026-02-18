@@ -9,6 +9,7 @@ import { ModeToggle } from "./mode-toggle";
 
 interface HeaderProps extends React.ComponentProps<"header"> {
   center?: ReactNode;
+  minimal?: boolean;
   onNavigateHome?: () => void;
   canGoBack?: boolean;
   canGoForward?: boolean;
@@ -19,6 +20,7 @@ interface HeaderProps extends React.ComponentProps<"header"> {
 function Header({
   className,
   center,
+  minimal,
   onNavigateHome,
   canGoBack,
   canGoForward,
@@ -48,39 +50,43 @@ function Header({
       >
         Kombuse
       </button>
-      <div className="flex flex-1 justify-center px-[21px] mt-[10px]">
-        {showNavArrows && (
-          <div className="flex items-center gap-0.5 mr-2 electron-no-drag">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={!canGoBack}
-              onClick={onGoBack}
-              aria-label="Go back"
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={!canGoForward}
-              onClick={onGoForward}
-              aria-label="Go forward"
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        )}
-        {center ? <div className="electron-no-drag">{center}</div> : null}
-      </div>
-      <nav className="flex shrink-0 items-center gap-4 px-[5px] electron-no-drag mt-[5px]">
-        {children}
-        <ModeToggle />
-      </nav>
+      {!minimal && (
+        <div className="flex flex-1 justify-center px-[21px] mt-[10px]">
+          {showNavArrows && (
+            <div className="flex items-center gap-0.5 mr-2 electron-no-drag">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                disabled={!canGoBack}
+                onClick={onGoBack}
+                aria-label="Go back"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                disabled={!canGoForward}
+                onClick={onGoForward}
+                aria-label="Go forward"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          )}
+          {center ? <div className="electron-no-drag">{center}</div> : null}
+        </div>
+      )}
+      {!minimal && (
+        <nav className="flex shrink-0 items-center gap-4 px-[5px] electron-no-drag mt-[5px]">
+          {children}
+          <ModeToggle />
+        </nav>
+      )}
     </header>
   );
 }

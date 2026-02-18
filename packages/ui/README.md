@@ -429,6 +429,7 @@ import { ProfileButton } from '@kombuse/ui/components'
 
 // Header props:
 // - center: ReactNode rendered in the center between title and nav
+// - minimal: Optional boolean. When true, hides center and right nav sections (shows only title + macOS padding)
 // - onNavigateHome: Optional callback when the "Kombuse" logo is clicked
 // - children: rendered in the right nav area
 // - canGoBack: Optional boolean, enables the back arrow button
@@ -1146,8 +1147,9 @@ import type { ViewMode } from '@kombuse/ui/components'
 - `lastEventTime`: Timestamp of last event
 - `viewMode`: `'clean' | 'normal'` — controls display mode toggle state
 - `onViewModeChange`: Callback when toggle is switched
-- `sessionId`: Optional kombuse session ID string (e.g. `"chat-abc123..."`) — displayed as a truncated monospace label with click-to-copy for debugging
-- `backendSessionId`: Optional Claude backend session ID — displayed as a truncated monospace label with click-to-copy for debugging
+- `sessionId`: Optional kombuse session ID string — available in the Backend details popover for debugging
+- `backendSessionId`: Optional Claude backend session ID — available in the Backend details popover for debugging
+- `agentName`: Optional agent name string — when provided, displays the agent name in the header bar
 
 `SessionViewer` props:
 - `events`: `SerializedAgentEvent[]` to render
