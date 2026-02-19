@@ -1,4 +1,4 @@
-import type { PermissionMode } from '@kombuse/types'
+import type { AgentConfig, PermissionMode } from '@kombuse/types'
 
 /**
  * Agent type preset — determines auto-approved tools and system preamble for an agent class.
@@ -156,6 +156,27 @@ export function getTypePreset(agentType?: string): AgentTypePreset {
     return AGENT_TYPE_PRESETS[agentType]!
   }
   return AGENT_TYPE_PRESETS[DEFAULT_AGENT_TYPE]!
+}
+
+/**
+ * Resolve the effective preset for an agent, applying config overrides.
+ * If config contains override arrays, they replace the base preset values.
+ * Undefined overrides fall through to the base preset.
+ */
+export function getEffectivePreset(agentType?: string, config?: AgentConfig): AgentTypePreset {
+  const base = getTypePreset(agentType)
+  if (!config) return base
+
+  const toolsOverride = config.auto_approved_tools_override
+  const bashOverride = config.auto_approved_bash_commands_override
+
+  if (toolsOverride === undefined && bashOverride === undefined) return base
+
+  return {
+    ...base,
+    autoApprovedTools: toolsOverride ?? base.autoApprovedTools,
+    autoApprovedBashCommands: bashOverride ?? base.autoApprovedBashCommands,
+  }
 }
 
 /**

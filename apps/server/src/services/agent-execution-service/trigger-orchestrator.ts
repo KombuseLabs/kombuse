@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 import { agentInvocationsRepository, commentsRepository, sessionsRepository, ticketsRepository } from '@kombuse/persistence'
-import { buildTemplateContext, getTypePreset, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplate } from '@kombuse/services'
+import { buildTemplateContext, getEffectivePreset, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplate } from '@kombuse/services'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, type KombuseSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import { serializeAgentStreamEvent } from '../../websocket/serialize-agent-event'
@@ -34,7 +34,7 @@ function buildTriggerPrompt(
     kombuse_session_id: kombuseSessionId,
   }
 
-  const preset = getTypePreset(agent.config.type as string | undefined)
+  const preset = getEffectivePreset(agent.config.type as string | undefined, agent.config)
   const systemPrompt = preset.preambleTemplate
     ? renderTemplate(preset.preambleTemplate, templateContext)
     : ''

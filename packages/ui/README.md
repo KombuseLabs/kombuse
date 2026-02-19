@@ -931,6 +931,18 @@ import { PermissionRulesTab } from '@kombuse/ui/components'
 `PermissionRulesTab` props:
 - `className`: Optional class name
 
+```typescript
+import { AutoApprovedToolsTab } from '@kombuse/ui/components'
+
+// Editable view of per-agent auto-approved tools and bash commands
+<AutoApprovedToolsTab />
+```
+
+`AutoApprovedToolsTab` is a self-fetching component that uses `useAgents()`, `useAgentProfiles()`, and `useUpdateAgent()` internally. It displays all agents with their auto-approved tool lists and allows editing per-agent overrides (stored in the agent's `config` JSON column). Supports toggling individual tools, adding custom tools, managing bash command prefixes, and resetting to type preset defaults.
+
+`AutoApprovedToolsTab` props:
+- `className`: Optional class name
+
 ### Permission Editor Components
 
 ```typescript

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import type { Agent, ResolvedPreset } from '@kombuse/types'
-import { agentService, pluginExportService, getTypePreset } from '@kombuse/services'
+import { agentService, pluginExportService, getEffectivePreset } from '@kombuse/services'
 import { eventsRepository } from '@kombuse/persistence'
 import {
   createAgentSchema,
@@ -15,7 +15,7 @@ import {
 
 function enrichWithPreset(agent: Agent): Agent & { resolved_preset: ResolvedPreset } {
   const agentType = agent.config.type as string | undefined
-  const preset = getTypePreset(agentType)
+  const preset = getEffectivePreset(agentType, agent.config)
   return {
     ...agent,
     resolved_preset: {

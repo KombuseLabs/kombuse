@@ -32,7 +32,7 @@ import {
 import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registry'
 import { buildPersistedContent } from './content-helpers'
 import { broadcastPermissionPending } from './permission-service'
-import { getTypePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from '@kombuse/services'
+import { getEffectivePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from '@kombuse/services'
 import { activeBackends, createPermissionKey, setSessionTurnActive } from './runtime-state'
 import type {
   AgentExecutionDependencies,
@@ -743,7 +743,7 @@ export function startAgentChatSession(
     })
 
     const agentType = (agent?.config as { type?: string } | undefined)?.type
-    const preset = getTypePreset(agentType)
+    const preset = getEffectivePreset(agentType, agent?.config)
     dependencies.stateMachine.setMetadata(persistentSessionId, {
       agent_preset_type: agentType ?? 'kombuse',
       permission_mode: preset.permissionMode ?? null,
@@ -899,7 +899,7 @@ export function startAgentChatSession(
       : undefined)
 
   const agentType = (agent?.config as { type?: string } | undefined)?.type
-  const preset = getTypePreset(agentType)
+  const preset = getEffectivePreset(agentType, agent?.config)
   dependencies.stateMachine.setMetadata(persistentSessionId, {
     agent_preset_type: agentType ?? 'kombuse',
     permission_mode: preset.permissionMode ?? null,

@@ -94,6 +94,11 @@ export interface AgentConfig {
   /** Maximum chain depth for loop detection */
   max_chain_depth?: number
 
+  /** Override auto-approved tools (replaces preset list when present) */
+  auto_approved_tools_override?: string[]
+  /** Override auto-approved bash command prefixes (replaces preset list when present) */
+  auto_approved_bash_commands_override?: string[]
+
   /** Additional custom settings */
   [key: string]: unknown
 }

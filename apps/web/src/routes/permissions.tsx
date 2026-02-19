@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { usePermissions } from '@kombuse/ui/hooks'
-import { PermissionList, PermissionFilters, PermissionRulesTab } from '@kombuse/ui/components'
+import { PermissionList, PermissionFilters, PermissionRulesTab, AutoApprovedToolsTab } from '@kombuse/ui/components'
 import { Button } from '@kombuse/ui/base'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@kombuse/ui/base'
 import { Shield, RefreshCw } from 'lucide-react'
@@ -35,6 +35,7 @@ export function Permissions() {
           <TabsList>
             <TabsTrigger value="decision-log">Decision Log</TabsTrigger>
             <TabsTrigger value="permission-rules">Permission Rules</TabsTrigger>
+            <TabsTrigger value="auto-approved-tools">Auto-Approved Tools</TabsTrigger>
           </TabsList>
         </div>
 
@@ -94,6 +95,15 @@ export function Permissions() {
           className="flex-1 overflow-y-auto p-6 data-[state=inactive]:hidden"
         >
           <PermissionRulesTab />
+        </TabsContent>
+
+        <TabsContent
+          value="auto-approved-tools"
+          forceMount
+          hidden={activeTab !== 'auto-approved-tools'}
+          className="flex-1 overflow-y-auto p-6 data-[state=inactive]:hidden"
+        >
+          <AutoApprovedToolsTab />
         </TabsContent>
       </Tabs>
     </main>

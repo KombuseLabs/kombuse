@@ -52,6 +52,8 @@ export const agentConfigSchema = z.object({
   enabled_for_chat: z.boolean().optional(),
   can_invoke_agents: z.boolean().optional(),
   max_chain_depth: z.number().int().min(1).max(100).optional(),
+  auto_approved_tools_override: z.array(z.string()).optional(),
+  auto_approved_bash_commands_override: z.array(z.string()).optional(),
 }).catchall(z.unknown())
 
 export const agentSchema = z.object({
