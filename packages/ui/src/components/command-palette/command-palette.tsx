@@ -93,7 +93,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
 
   const { data: ticketResults = [], isLoading: isSearching } = useTicketSearch(
     ticketSearchTerm,
-    { enabled: ticketSearchTerm.length >= 2 }
+    { enabled: ticketSearchTerm.length >= 2, projectId: context.currentProjectId }
   )
 
   // Exact #N match for direct "go to ticket" navigation
