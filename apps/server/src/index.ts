@@ -35,6 +35,7 @@ import {
   claudeCodeRoutes,
   profileSettingsRoutes,
   codexMcpRoutes,
+  claudeCodeMcpRoutes,
   modelRoutes,
   backendStatusRoutes,
   pluginRoutes,
@@ -152,6 +153,7 @@ export async function createServer({ port, dbPath }: ServerOptions) {
   fastify.register(claudeCodeRoutes, { prefix: "/api" });
   fastify.register(profileSettingsRoutes, { prefix: "/api" });
   fastify.register(codexMcpRoutes, { prefix: "/api" });
+  fastify.register(claudeCodeMcpRoutes, { prefix: "/api" });
   fastify.register(modelRoutes, { prefix: "/api" });
   fastify.register(backendStatusRoutes, { prefix: "/api" });
   fastify.register(pluginRoutes, { prefix: "/api" });

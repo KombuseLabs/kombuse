@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import {
   useAvailableBackends,
+  useClaudeCodeMcpStatus,
   useCodexMcpStatus,
   useProfileSetting,
+  useSetClaudeCodeMcpEnabled,
   useSetCodexMcpEnabled,
   useUpsertProfileSetting,
 } from '@kombuse/ui/hooks'
@@ -54,6 +56,8 @@ export function Settings() {
   const { data: notificationScopeSetting } = useProfileSetting(USER_PROFILE_ID, NOTIFICATIONS_SCOPE_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
+  const { data: claudeCodeMcpStatus, isLoading: claudeCodeMcpStatusLoading } = useClaudeCodeMcpStatus()
+  const setClaudeCodeMcpEnabled = useSetClaudeCodeMcpEnabled()
   const upsertSetting = useUpsertProfileSetting()
   const [maxChainDepthValue, setMaxChainDepthValue] = useState(maxChainDepthSetting?.setting_value ?? '')
   const [backendTimeoutValue, setBackendTimeoutValue] = useState(backendTimeoutSetting?.setting_value ?? '30')
@@ -67,6 +71,7 @@ export function Settings() {
   const defaultBackendType = normalizeBackendType(defaultBackendSetting?.setting_value)
   const { availableBackends, isAvailable, noneAvailable } = useAvailableBackends()
   const codexMcpEnabled = codexMcpStatus?.enabled === true
+  const claudeCodeMcpEnabled = claudeCodeMcpStatus?.enabled === true
 
   useEffect(() => {
     setMaxChainDepthValue(maxChainDepthSetting?.setting_value ?? '')
@@ -372,6 +377,39 @@ export function Settings() {
             <p className="text-sm text-muted-foreground">
               Writes to your local Codex config at{' '}
               <code>{codexMcpStatus?.config_path ?? '~/.codex/config.toml'}</code>.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Claude Code */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Claude Code</CardTitle>
+            <CardDescription>Configure Claude Code MCP access.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="claude-code-mcp-enabled" className="font-normal">Enable MCP for Claude Code</Label>
+              <Switch
+                id="claude-code-mcp-enabled"
+                checked={claudeCodeMcpEnabled}
+                disabled={claudeCodeMcpStatusLoading || setClaudeCodeMcpEnabled.isPending}
+                onCheckedChange={(checked) => {
+                  setClaudeCodeMcpEnabled.mutate(checked, {
+                    onError: (error) => {
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : 'Failed to update Claude Code MCP setting'
+                      )
+                    },
+                  })
+                }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Writes to{' '}
+              <code>{claudeCodeMcpStatus?.config_path ?? '~/.claude/settings.local.json'}</code>.
             </p>
           </CardContent>
         </Card>

@@ -12,6 +12,10 @@
       "types": "./src/codex-config.ts",
       "default": "./src/codex-config.ts"
     },
+    "./claude-code-mcp-config": {
+      "types": "./src/claude-code-mcp-config.ts",
+      "default": "./src/claude-code-mcp-config.ts"
+    },
     "./commands": {
       "types": "./src/commands/index.ts",
       "default": "./src/commands/index.ts"

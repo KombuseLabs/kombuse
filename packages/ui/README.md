@@ -365,6 +365,20 @@ const { ready, highlight } = useShiki()
 Used internally by `Markdown` for fenced code block highlighting. Preloads 16 common languages (TypeScript, JavaScript, TSX, JSX, Python, Bash, JSON, HTML, CSS, Go, Rust, YAML, SQL, Markdown, Diff). Supports dual themes (`github-light` / `github-dark`) with automatic dark mode switching via CSS variables.
 
 ```typescript
+import { useClaudeCodeMcpStatus, useSetClaudeCodeMcpEnabled } from '@kombuse/ui/hooks'
+
+// Query Claude Code MCP registration status
+const { data: status, isLoading } = useClaudeCodeMcpStatus()
+// status?.enabled => boolean (whether kombuse entry exists in settings.local.json)
+// status?.config_path => string (absolute path to settings.local.json)
+
+// Toggle Claude Code MCP registration
+const setEnabled = useSetClaudeCodeMcpEnabled()
+setEnabled.mutate(true)  // writes mcpServers.kombuse to ~/.claude/settings.local.json
+setEnabled.mutate(false) // removes mcpServers.kombuse entry
+```
+
+```typescript
 import { useDefaultBackendType } from '@kombuse/ui/hooks'
 
 // Access the global default backend type from AppContext

@@ -118,6 +118,7 @@ export {
 export { useDesktop } from './use-desktop'
 export { useProfileSetting, useProfileSettings, useUpsertProfileSetting } from './use-profile-settings'
 export { useCodexMcpStatus, useSetCodexMcpEnabled } from './use-codex-mcp'
+export { useClaudeCodeMcpStatus, useSetClaudeCodeMcpEnabled } from './use-claude-code-mcp'
 export { useModels } from './use-models'
 export { useShiki } from './use-shiki'
 export { useAutoResizeTextarea, type UseAutoResizeTextareaOptions } from './use-auto-resize-textarea'

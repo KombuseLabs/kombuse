@@ -230,6 +230,29 @@ export function stopActiveCodexBackends(): number {
 }
 
 /**
+ * Stop only active Claude Code backends so Claude Code MCP config changes take effect
+ * on the next Claude Code session start.
+ */
+export function stopActiveClaudeCodeBackends(): number {
+  let stoppedCount = 0
+
+  for (const [sessionId, backend] of activeBackends) {
+    if (backend.name !== BACKEND_TYPES.CLAUDE_CODE) {
+      continue
+    }
+
+    void backend.stop().catch(() => {})
+
+    clearBackendIdleTimeout(sessionId)
+    activeSessionTurns.delete(sessionId)
+    activeBackends.delete(sessionId)
+    stoppedCount += 1
+  }
+
+  return stoppedCount
+}
+
+/**
  * Compute aggregated agent status for a ticket.
  * Uses DB status (running/pending) as the single source of truth.
  * Only considers failures more recent than the last completed session

@@ -50,6 +50,7 @@ import type {
   UpdateMilestoneInput,
   BackendType,
   CodexMcpStatus,
+  ClaudeCodeMcpStatus,
   DatabaseTablesResponse,
   DatabaseQueryInput,
   DatabaseQueryResponse,
@@ -829,6 +830,22 @@ export const codexApi = {
       body: JSON.stringify({ enabled }),
     })
     return handleResponse<CodexMcpStatus>(response)
+  },
+}
+
+export const claudeCodeMcpApi = {
+  async getMcpStatus(): Promise<ClaudeCodeMcpStatus> {
+    const response = await fetch(`${API_BASE}/claude-code/mcp`)
+    return handleResponse<ClaudeCodeMcpStatus>(response)
+  },
+
+  async setMcpEnabled(enabled: boolean): Promise<ClaudeCodeMcpStatus> {
+    const response = await fetch(`${API_BASE}/claude-code/mcp`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    })
+    return handleResponse<ClaudeCodeMcpStatus>(response)
   },
 }
 
