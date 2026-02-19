@@ -6,8 +6,8 @@
  * - dev: doesn't use package (server runs externally)
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { app } from "electron";
 import { getCurrentPackagePath } from "../paths";
 import { is } from "../env";
@@ -114,6 +114,45 @@ export function getPackageInfo(): PackageInfo {
 }
 
 /**
+ * Ensure the package directory has a node_modules symlink to the app's
+ * unpacked native modules (better-sqlite3, etc.).
+ *
+ * Downloaded packages at ~/.kombuse/packages/ don't include node_modules,
+ * but the server bundle requires better-sqlite3 at runtime. The native
+ * module ships with the app in app.asar.unpacked/node_modules/.
+ *
+ * Runs on every startup so it self-heals if the app is relocated.
+ */
+function ensureNativeModulesLink(serverBundlePath: string): void {
+  const packagePath = dirname(dirname(serverBundlePath));
+
+  // Only needed for installed packages outside the app bundle.
+  // Bundled packages (Resources/package/) are handled by afterPack.cjs.
+  if (!app.isPackaged || packagePath.startsWith(process.resourcesPath)) return;
+
+  const nativeModulesDir = join(process.resourcesPath, "app.asar.unpacked", "node_modules");
+  if (!existsSync(nativeModulesDir)) {
+    console.warn("[native] Native modules not found:", nativeModulesDir);
+    return;
+  }
+
+  const nodeModulesLink = join(packagePath, "node_modules");
+
+  // Check if symlink already exists and points to the right place
+  try {
+    const target = readlinkSync(nodeModulesLink);
+    if (target === nativeModulesDir) return;
+    // Wrong target (app was moved?) — recreate
+    unlinkSync(nodeModulesLink);
+  } catch {
+    // Doesn't exist yet
+  }
+
+  symlinkSync(nativeModulesDir, nodeModulesLink);
+  console.log(`[native] Linked: ${nodeModulesLink} -> ${nativeModulesDir}`);
+}
+
+/**
  * Dynamically load the server module from the package.
  */
 export async function loadPackage(serverBundlePath: string): Promise<{
@@ -128,6 +167,8 @@ export async function loadPackage(serverBundlePath: string): Promise<{
     onStatusChange(listener: (status: unknown) => void): () => void;
   }) => void;
 }> {
+  ensureNativeModulesLink(serverBundlePath);
+
   // Dynamic import of the bundled server
   const module = await import(serverBundlePath);
   return module;

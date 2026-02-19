@@ -33,12 +33,14 @@
     "@kombuse/services": "*",
     "@kombuse/types": "*",
     "@modelcontextprotocol/sdk": "^1.18.1",
+    "better-sqlite3": "^12.6.2",
     "fastify": "^5.7.4",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
+    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
     "eslint": "^9.39.1",
