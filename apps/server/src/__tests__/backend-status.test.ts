@@ -165,6 +165,27 @@ describe('checkAllBackendStatuses', () => {
     expect(mockResolveClaudePath).toHaveBeenCalledTimes(2)
   })
 
+  it('reports codex available when resolved via npm-global path', () => {
+    const npmGlobalPath = '/Users/test/.npm-global/bin/codex'
+    mockResolveClaudePath.mockReturnValue('claude')
+    mockResolveCodexPath.mockReturnValue(npmGlobalPath)
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === npmGlobalPath) return
+      throw new Error('not found')
+    })
+    mockExecFileSync.mockImplementation((path: string) => {
+      if (path === npmGlobalPath) return 'codex 0.3.2\n'
+      throw new Error('not found')
+    })
+
+    const statuses = refreshBackendStatuses()
+    const codex = statuses.find((s) => s.backendType === 'codex')
+
+    expect(codex?.available).toBe(true)
+    expect(codex?.version).toBe('0.3.2')
+    expect(codex?.path).toBe(npmGlobalPath)
+  })
+
   it('parses semver from version output with extra text', () => {
     mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
     mockResolveCodexPath.mockReturnValue('codex')

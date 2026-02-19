@@ -43,21 +43,17 @@ function checkSingleBackend(backendType: BackendType): BackendStatus {
 
   const isReal = isExecutableAtPath(resolvedPath)
 
-  if (!isReal) {
+  if (isReal) {
     const version = getVersion(resolvedPath)
-    if (version) {
-      return { backendType, available: true, version, path: null }
-    }
-    return { backendType, available: false, version: null, path: null }
+    return { backendType, available: true, version, path: resolvedPath }
   }
 
+  // Bare-name fallback — try PATH resolution via --version
   const version = getVersion(resolvedPath)
-  return {
-    backendType,
-    available: true,
-    version,
-    path: resolvedPath,
+  if (version) {
+    return { backendType, available: true, version, path: null }
   }
+  return { backendType, available: false, version: null, path: null }
 }
 
 export function checkAllBackendStatuses(): BackendStatus[] {

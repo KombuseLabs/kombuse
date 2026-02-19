@@ -21,6 +21,7 @@ export function resolveCodexPath(): string {
     `${homeDir}/.local/bin/codex`,
     '/usr/local/bin/codex',
     '/opt/homebrew/bin/codex',
+    `${homeDir}/.npm-global/bin/codex`,
   ]
 
   for (const path of possiblePaths) {
