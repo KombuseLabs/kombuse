@@ -8,7 +8,8 @@
  */
 
 import { app } from "electron";
-import { autoUpdater as electronAutoUpdater } from "electron-updater";
+import pkg from "electron-updater";
+const { autoUpdater: electronAutoUpdater } = pkg;
 import type { UpdateInfo, UpdateStatus, UpdateCheckResult, UpdateState } from "@kombuse/types";
 
 type StatusListener = (status: UpdateStatus) => void;
