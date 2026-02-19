@@ -469,7 +469,13 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     if ('errors' in event && event.errors.length > 0) {
       return event.errors.join('; ')
     }
-    return `Claude run ended with ${event.subtype}`
+    if ('result' in event && typeof event.result === 'string' && event.result.trim()) {
+      const trimmed = event.result.trim()
+      return trimmed.length > 500 ? trimmed.slice(0, 500) + '…' : trimmed
+    }
+    return event.is_error
+      ? `Claude run failed (subtype: ${event.subtype})`
+      : `Claude run ended with ${event.subtype}`
   }
 
   private updateBackendSessionId(event: ClaudeEvent): void {

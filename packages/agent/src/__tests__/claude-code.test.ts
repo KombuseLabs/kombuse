@@ -340,6 +340,37 @@ describe('ClaudeCodeBackend', () => {
       expect(backend.getBackendSessionId()).toBe('session_err')
     })
 
+    it('should use result field as error message for ClaudeResultSuccess with is_error: true', () => {
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'success',
+          uuid: 'test-uuid',
+          session_id: 'session_success_err',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: true,
+          num_turns: 1,
+          result: 'The agent encountered an error',
+          total_cost_usd: 0.01,
+          usage: { input_tokens: 10, output_tokens: 20 },
+          modelUsage: {},
+          permission_denials: [],
+        },
+      }
+
+      callHandleMessage(backend, msg)
+
+      expect(events).toHaveLength(3)
+      expect(events[0]!.type).toBe('raw')
+      expect(events[1]!.type).toBe('complete')
+      if (events[1]!.type === 'complete') {
+        expect(events[1]!.success).toBe(false)
+        expect(events[1]!.errorMessage).toBe('The agent encountered an error')
+      }
+      expect(events[2]!.type).toBe('error')
+    })
+
     it('should set resumeFailed when result error contains "session does not exist"', () => {
       const msg: ParsedClaudeMessage = {
         data: {
