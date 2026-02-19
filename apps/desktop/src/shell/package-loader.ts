@@ -6,7 +6,7 @@
  * - dev: doesn't use package (server runs externally)
  */
 
-import { existsSync, readFileSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { app } from "electron";
 import { getCurrentPackagePath } from "../paths";
@@ -140,10 +140,16 @@ function ensureNativeModulesLink(serverBundlePath: string): void {
 
   // Check if symlink already exists and points to the right place
   try {
-    const target = readlinkSync(nodeModulesLink);
-    if (target === nativeModulesDir) return;
-    // Wrong target (app was moved?) — recreate
-    unlinkSync(nodeModulesLink);
+    const stat = lstatSync(nodeModulesLink);
+    if (stat.isSymbolicLink()) {
+      const target = readlinkSync(nodeModulesLink);
+      if (target === nativeModulesDir) return;
+      // Wrong target (app was moved?) — recreate
+      unlinkSync(nodeModulesLink);
+    } else {
+      // Real directory — don't touch it, native modules may already be present
+      return;
+    }
   } catch {
     // Doesn't exist yet
   }

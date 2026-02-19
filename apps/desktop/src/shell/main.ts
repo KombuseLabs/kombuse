@@ -199,7 +199,8 @@ app.whenReady().then(async () => {
       }, 5000);
     }
   } catch (error) {
-    console.error("Failed to start application:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    dialog.showErrorBox("Kombuse failed to start", msg);
     app.quit();
   }
 });
