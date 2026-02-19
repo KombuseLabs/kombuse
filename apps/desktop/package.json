@@ -22,7 +22,8 @@
     "dist": "electron-builder",
     "dist:mac": "electron-builder --mac",
     "lint": "eslint . --max-warnings 0",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@kombuse/types": "*",
@@ -30,6 +31,7 @@
     "bindings": "^1.5.0",
     "dotenv": "^17.2.3",
     "server": "*",
+    "semver": "^7.7.3",
     "tar": "^7.4.3"
   },
   "devDependencies": {
@@ -37,6 +39,7 @@
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/mime-types": "^3.0.1",
+    "@types/semver": "^7.5.0",
     "electron": "40.3.0",
     "electron-builder": "^26.7.0",
     "esbuild": "^0.25.0",

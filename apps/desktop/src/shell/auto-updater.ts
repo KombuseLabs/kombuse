@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { extract } from "tar";
 import type { UpdateInfo, UpdateStatus, UpdateCheckResult, UpdateState } from "@kombuse/types";
 import { installPackage, listPackages } from "./updater";
+import { isNewerVersion } from "./version-utils";
 
 // Update server endpoint (proxies GitHub releases with auth)
 // Set UPDATE_API_BASE env var to override (e.g., for local testing)
@@ -114,7 +115,7 @@ export class AutoUpdater {
         return { hasUpdate: false, updateInfo: null, currentVersion: this.status.currentVersion };
       }
 
-      const hasUpdate = this.isNewerVersion(release.version, this.status.currentVersion);
+      const hasUpdate = isNewerVersion(release.version, this.status.currentVersion);
       console.log(`[AutoUpdater] Latest release: ${release.version}, hasUpdate: ${hasUpdate}`);
 
       if (!hasUpdate) {
@@ -289,19 +290,6 @@ export class AutoUpdater {
     if (actualHash !== expectedHash) {
       throw new Error(`Checksum mismatch: expected ${expectedHash.slice(0, 8)}..., got ${actualHash.slice(0, 8)}...`);
     }
-  }
-
-  private isNewerVersion(latest: string, current: string): boolean {
-    const latestParts = latest.split(".").map(Number);
-    const currentParts = current.split(".").map(Number);
-
-    for (let i = 0; i < 3; i++) {
-      const l = latestParts[i] ?? 0;
-      const c = currentParts[i] ?? 0;
-      if (l > c) return true;
-      if (l < c) return false;
-    }
-    return false;
   }
 }
 

@@ -34,14 +34,16 @@ interface UseUpdatesReturn {
 export function useUpdates(): UseUpdatesReturn {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<UpdateStatus | null>(null)
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissedVersion, setDismissedVersion] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem('kombuse:update-dismissed-version')
+  })
 
   // Handle WebSocket messages for update status
   const handleMessage = useCallback(
     (message: ServerMessage) => {
       if (message.type === 'update:status') {
         setStatus(message.status)
-        setDismissed(false) // Reset dismissed when status changes
         queryClient.invalidateQueries({ queryKey: ['updates', 'status'] })
       }
     },
@@ -108,11 +110,20 @@ export function useUpdates(): UseUpdatesReturn {
   }, [])
 
   const dismiss = useCallback(() => {
-    setDismissed(true)
-  }, [])
+    const version = status?.updateInfo?.version ?? null
+    setDismissedVersion(version)
+    if (version && typeof window !== 'undefined') {
+      localStorage.setItem('kombuse:update-dismissed-version', version)
+    }
+  }, [status])
 
-  // Return null status if dismissed and in 'available' state
-  const effectiveStatus = dismissed && status?.state === 'available' ? null : status
+  // Return null status if dismissed version matches the available update
+  const effectiveStatus =
+    dismissedVersion != null &&
+    status?.state === 'available' &&
+    status?.updateInfo?.version === dismissedVersion
+      ? null
+      : status
 
   return {
     status: effectiveStatus,

@@ -122,7 +122,7 @@ export function listPackages(): Array<{
   if (existsSync(symlinkPath)) {
     try {
       const target = readlinkSync(symlinkPath);
-      const match = target.match(/v(\d+\.\d+\.\d+)/);
+      const match = target.match(/v(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?(?:\+[a-zA-Z0-9.]+)?)/)
       if (match && match[1]) {
         currentVersion = match[1];
       }
