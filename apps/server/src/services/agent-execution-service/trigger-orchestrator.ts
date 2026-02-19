@@ -112,7 +112,10 @@ export function resolveProjectPathForProject(projectId: string | null): string |
  */
 export function resolveDefaultProjectPath(): string {
   const projects = projectService.list()
-  for (const project of projects) {
+  // Iterate oldest-first so the fallback path is stable when new projects are added
+  for (let i = projects.length - 1; i >= 0; i--) {
+    const project = projects[i]
+    if (!project) continue
     const resolved = resolveProjectPathForProject(project.id)
     if (resolved) return resolved
   }

@@ -163,5 +163,7 @@ function handleAgentInvoke(
         })
         break
     }
+  }, undefined, {
+    ticketId: message.ticketId,
   })
 }

@@ -40,6 +40,7 @@ export type ClientMessage =
       images?: ImageAttachment[]
       kombuseSessionId?: string
       projectId?: string
+      ticketId?: number
       backendType?: BackendType
       /** Optional per-session model preference override for first invocation. */
       modelPreference?: string

@@ -464,11 +464,13 @@ export function Tickets() {
         type: "agent.invoke",
         agentId,
         message: originalPrompt,
+        ticketId: selectedTicket?.id,
+        projectId: selectedTicket?.project_id,
       });
     } catch {
       toast.error("Failed to fetch session history for rerun.");
     }
-  }, [wsSend]);
+  }, [wsSend, selectedTicket]);
 
   const handleAddComment = async (body: string, files?: File[]) => {
     let newComment: CommentWithAuthor | undefined;
