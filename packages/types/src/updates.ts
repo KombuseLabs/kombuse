@@ -55,8 +55,3 @@ export type UpdateMessage =
   | { type: 'update:progress'; progress: number }
   | { type: 'update:ready'; version: string }
   | { type: 'update:error'; error: string }
-
-/**
- * Identifies the source/target of an update (package or shell).
- */
-export type UpdateSource = 'package' | 'shell'

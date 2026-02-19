@@ -43,7 +43,7 @@ jobs:
         working-directory: apps/desktop
 
       - name: Build Electron app
-        run: npx electron-builder --mac --${{ matrix.arch }}
+        run: npx electron-builder --mac --${{ matrix.arch }} --publish never
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
