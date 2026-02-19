@@ -35,7 +35,7 @@ export function resolveClaudePath(): string {
   ]
 
   try {
-    const npmPrefix = execSync('npm config get prefix', {
+    const npmPrefix = execSync('npm config get prefix --no-workspaces', {
       encoding: 'utf-8',
       timeout: 3000,
     }).trim()
