@@ -92,7 +92,7 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
         )
       }
       return (
-        <a href={href} {...props}>
+        <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
           {linkChildren}
         </a>
       )

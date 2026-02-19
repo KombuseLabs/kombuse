@@ -18,7 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
-import { app, BrowserWindow, dialog, ipcMain, protocol } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from "electron";
 
 // Register app:// as a privileged scheme so it gets localStorage, cookies, fetch, etc.
 // Must be called before app.whenReady().
@@ -107,12 +107,29 @@ function createWindow(path?: string): void {
     },
   });
 
+  // Intercept in-page navigation to external URLs
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    const parsed = new URL(url);
+    const appOrigin = new URL(webUrl).origin;
+    if (parsed.origin === appOrigin || parsed.protocol === "app:") {
+      return;
+    }
+    event.preventDefault();
+    shell.openExternal(url);
+  });
+
+  // Intercept window.open() / target="_blank" links
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
+
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
 
-  const url = path ? `${webUrl}${path}` : webUrl;
-  mainWindow.loadURL(url);
+  const loadUrl = path ? `${webUrl}${path}` : webUrl;
+  mainWindow.loadURL(loadUrl);
 }
 
 // IPC handler for server port (used by renderer to discover API address)
