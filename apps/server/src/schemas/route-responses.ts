@@ -292,6 +292,10 @@ registerSuccessSchema('GET', '/api/claude-code/sessions/:sessionId', claudeCodeS
 registerSuccessSchema('GET', '/api/codex/mcp', codexMcpStatusSchema)
 registerSuccessSchema('PUT', '/api/codex/mcp', codexMcpUpdateResponseSchema)
 
+// Claude Code MCP routes
+registerSuccessSchema('GET', '/api/claude-code/mcp', codexMcpStatusSchema)
+registerSuccessSchema('PUT', '/api/claude-code/mcp', codexMcpUpdateResponseSchema)
+
 // Model routes
 registerSuccessSchema('GET', '/api/models', modelCatalogResponseSchema)
 
@@ -335,7 +339,7 @@ registerSuccessSchema('GET', '/api/projects/:projectId/permissions', z.array(per
 
 // Profile settings routes
 registerSuccessSchema('GET', '/api/profiles/:profileId/settings', z.array(profileSettingSchema))
-registerSuccessSchema('GET', '/api/profiles/:profileId/settings/:key', profileSettingSchema)
+registerSuccessSchema('GET', '/api/profiles/:profileId/settings/:key', profileSettingSchema.nullable())
 registerSuccessSchema('PUT', '/api/profile-settings', profileSettingSchema)
 
 // Profile routes
@@ -477,6 +481,11 @@ registerSuccessSchema('GET', '/api/tickets/:id/timeline', ticketTimelineResponse
 registerSuccessSchema('GET', '/api/updates/status', updateStatusSchema)
 registerSuccessSchema('POST', '/api/updates/check', updateCheckResultSchema)
 registerSuccessSchema('POST', '/api/updates/install', successFlagSchema)
+
+// Shell update routes
+registerSuccessSchema('GET', '/api/shell-updates/status', updateStatusSchema)
+registerSuccessSchema('POST', '/api/shell-updates/check', updateCheckResultSchema)
+registerSuccessSchema('POST', '/api/shell-updates/install', successFlagSchema)
 
 export function toRouteKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path}`
