@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
 import type { Process, ProcessBehavior } from '../../types'
 import type { JsonRpcMessage } from './types'
@@ -23,6 +24,18 @@ export function resolveCodexPath(): string {
     '/opt/homebrew/bin/codex',
     `${homeDir}/.npm-global/bin/codex`,
   ]
+
+  try {
+    const npmPrefix = execSync('npm config get prefix', {
+      encoding: 'utf-8',
+      timeout: 3000,
+    }).trim()
+    if (npmPrefix) {
+      possiblePaths.push(`${npmPrefix}/bin/codex`)
+    }
+  } catch {
+    // npm not available or timed out — skip
+  }
 
   for (const path of possiblePaths) {
     try {

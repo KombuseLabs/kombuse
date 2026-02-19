@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { accessSync, constants } from 'fs'
 import type { ProcessBehavior, Process } from '../../types'
 import type { ClaudeEvent } from './types'
@@ -32,6 +33,18 @@ export function resolveClaudePath(): string {
     '/opt/homebrew/bin/claude',
     `${homeDir}/.npm-global/bin/claude`,
   ]
+
+  try {
+    const npmPrefix = execSync('npm config get prefix', {
+      encoding: 'utf-8',
+      timeout: 3000,
+    }).trim()
+    if (npmPrefix) {
+      possiblePaths.push(`${npmPrefix}/bin/claude`)
+    }
+  } catch {
+    // npm not available or timed out — skip
+  }
 
   for (const path of possiblePaths) {
     try {
