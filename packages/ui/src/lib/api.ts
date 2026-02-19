@@ -792,11 +792,11 @@ export const claudeCodeApi = {
 }
 
 export const profileSettingsApi = {
-  async get(profileId: string, key: string): Promise<ProfileSetting> {
+  async get(profileId: string, key: string): Promise<ProfileSetting | null> {
     const response = await fetch(
       `${API_BASE}/profiles/${profileId}/settings/${encodeURIComponent(key)}`
     )
-    return handleResponse<ProfileSetting>(response)
+    return handleResponse<ProfileSetting | null>(response)
   },
 
   async getAll(profileId: string): Promise<ProfileSetting[]> {

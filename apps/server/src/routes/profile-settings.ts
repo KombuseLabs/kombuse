@@ -15,15 +15,11 @@ export async function profileSettingsRoutes(fastify: FastifyInstance) {
   // Get a single profile setting by key
   fastify.get<{
     Params: { profileId: string; key: string }
-  }>('/profiles/:profileId/settings/:key', async (request, reply) => {
-    const setting = profileSettingsRepository.get(
+  }>('/profiles/:profileId/settings/:key', async (request) => {
+    return profileSettingsRepository.get(
       request.params.profileId,
       request.params.key
     )
-    if (!setting) {
-      return reply.status(404).send({ error: 'Setting not found' })
-    }
-    return setting
   })
 
   // Create or update a profile setting
