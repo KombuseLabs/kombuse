@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { backendLabel, getInstallCommand } from "../lib/backend-utils";
+import { backendLabel } from "../lib/backend-utils";
 import {
   useBackendStatus,
   useRefreshBackendStatus,
@@ -29,16 +29,6 @@ function BackendStatusBanner() {
             ? "No agent backends found"
             : `${unavailable.map((s) => backendLabel(s.backendType)).join(" and ")} not found`}
         </p>
-        <div className="mt-1 space-y-0.5">
-          {unavailable.map((status) => (
-            <p key={status.backendType} className="text-xs opacity-80">
-              {backendLabel(status.backendType)}:{" "}
-              <code className="rounded bg-amber-100 px-1 py-0.5 text-[11px] dark:bg-amber-900/50">
-                {getInstallCommand(status.backendType)}
-              </code>
-            </p>
-          ))}
-        </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button
