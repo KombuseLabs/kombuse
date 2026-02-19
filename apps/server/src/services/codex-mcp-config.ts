@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { dirname, join, resolve as resolvePath } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { parseKombuseMcpSection, updateKombuseMcpSection } from '@kombuse/core/codex-config'
+import { parseKombuseMcpSection, updateKombuseMcpSection, updateProjectTrustEntry } from '@kombuse/core/codex-config'
 import type { CodexMcpStatus } from '@kombuse/types'
 
 const PACKAGED_BRIDGE_PATH = '/Applications/Kombuse.app/Contents/Resources/package/server/mcp-bridge.mjs'
@@ -193,4 +193,31 @@ export function setCodexMcpEnabled(enabled: boolean): CodexMcpStatus {
   writeConfigFile(status.config_path, nextContent)
 
   return getCodexMcpStatus()
+}
+
+export function ensureCodexProjectTrust(projectPath: string): void {
+  const resolvedPath = resolvePath(projectPath)
+  const configPath = getCodexConfigPath()
+  const existing = readConfigFile(configPath)
+  const updated = updateProjectTrustEntry(existing, resolvedPath)
+  writeConfigFile(configPath, updated)
+}
+
+export function initializeProjectCodexConfig(projectPath: string): void {
+  const projectConfigPath = join(projectPath, '.codex', 'config.toml')
+  if (existsSync(projectConfigPath)) {
+    return
+  }
+
+  const bridgeConfig = resolveKombuseBridgeCommandConfig()
+  if (!bridgeConfig) {
+    return
+  }
+
+  const content = updateKombuseMcpSection('', {
+    enabled: true,
+    command: bridgeConfig.command,
+    args: bridgeConfig.args,
+  })
+  writeConfigFile(projectConfigPath, content)
 }

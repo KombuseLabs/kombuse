@@ -5,6 +5,26 @@ import {
   updateProjectSchema,
   projectFiltersSchema,
 } from '../schemas/projects'
+import {
+  ensureCodexProjectTrust,
+  initializeProjectCodexConfig,
+} from '../services/codex-mcp-config'
+
+function configureCodexForProject(localPath: string | null | undefined): void {
+  if (!localPath) {
+    return
+  }
+  try {
+    ensureCodexProjectTrust(localPath)
+    initializeProjectCodexConfig(localPath)
+  } catch (error) {
+    console.warn(
+      '[Server] Failed to configure Codex for project path:',
+      localPath,
+      error instanceof Error ? error.message : error
+    )
+  }
+}
 
 export async function projectRoutes(fastify: FastifyInstance) {
   // List projects with optional filters
@@ -36,6 +56,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
     }
 
     const project = projectService.create(parseResult.data)
+    configureCodexForProject(project.local_path)
     return reply.status(201).send(project)
   })
 
@@ -50,6 +71,9 @@ export async function projectRoutes(fastify: FastifyInstance) {
 
     try {
       const project = projectService.update(request.params.id, parseResult.data)
+      if (parseResult.data.local_path !== undefined) {
+        configureCodexForProject(project.local_path)
+      }
       return project
     } catch (error) {
       if (error instanceof Error && error.message.includes('not found')) {

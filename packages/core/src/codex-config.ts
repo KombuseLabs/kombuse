@@ -72,3 +72,19 @@ export function updateKombuseMcpSection(
   const stringifyInput = config as Parameters<typeof TOML.stringify>[0]
   return TOML.stringify(stringifyInput)
 }
+
+export function updateProjectTrustEntry(
+  content: string,
+  projectPath: string,
+  trustLevel: string = 'trusted'
+): string {
+  const config = parseTomlSafe(content)
+  const projects = asRecord(config.projects)
+  projects[projectPath] = {
+    ...asRecord(projects[projectPath]),
+    trust_level: trustLevel,
+  }
+  config.projects = projects
+  const stringifyInput = config as Parameters<typeof TOML.stringify>[0]
+  return TOML.stringify(stringifyInput)
+}
