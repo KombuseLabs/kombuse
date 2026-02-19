@@ -35,12 +35,15 @@ if (existsSync(localBridgePath)) {
   process.env.KOMBUSE_MCP_BRIDGE_PATH = localBridgePath;
 }
 
-import { createServer as createServerDirect, setAutoUpdater } from "server";
+import { createServer as createServerDirect, setAutoUpdater, setShellAutoUpdater } from "server";
 import { registerAppProtocol } from "./protocol";
 import { getPackageInfo, loadPackage } from "./package-loader";
 import { autoUpdater } from "./auto-updater";
+import { ShellUpdater } from "./shell-updater";
 import { buildAppMenu, refreshMenu } from "./menu";
 import { is, getMode } from "../env";
+
+const shellUpdater = new ShellUpdater();
 
 const DEV_WEB_URL = "http://localhost:3333";
 
@@ -51,8 +54,9 @@ const PORT_FILE = join(homedir(), ".kombuse", "server-port");
  * Start embedded server in dev mode (direct import, no package).
  */
 async function startDevServer() {
-  // Wire up auto-updater to server (available in dev for testing)
+  // Wire up auto-updaters to server (available in dev for testing)
   setAutoUpdater(autoUpdater);
+  setShellAutoUpdater(shellUpdater);
 
   const server = await createServerDirect({ port: 0 });
   const address = await server.listen();
@@ -70,10 +74,11 @@ async function startPackageServer() {
   const pkg = getPackageInfo();
   console.log(`Loading package v${pkg.manifest.version} from ${pkg.path}`);
 
-  const { createServer, setAutoUpdater: setPackageAutoUpdater } = await loadPackage(pkg.serverBundle);
+  const { createServer, setAutoUpdater: setPackageAutoUpdater, setShellAutoUpdater: setPackageShellAutoUpdater } = await loadPackage(pkg.serverBundle);
 
-  // Wire up auto-updater to server
+  // Wire up auto-updaters to server
   setPackageAutoUpdater(autoUpdater);
+  if (setPackageShellAutoUpdater) setPackageShellAutoUpdater(shellUpdater);
 
   const server = await createServer({ port: 0 });
   const address = await server.listen();
@@ -146,6 +151,12 @@ ipcMain.handle("app:restart", () => {
   app.quit();
 });
 
+// IPC handler for shell update quit-and-install
+ipcMain.handle("shell:update:quit-and-install", () => {
+  console.log("[Main] Shell update: quit and install requested");
+  shellUpdater.quitAndInstall();
+});
+
 // IPC handler for opening a native directory picker
 ipcMain.handle("dialog:openDirectory", async () => {
   const focusedWindow = BrowserWindow.getFocusedWindow();
@@ -209,11 +220,14 @@ app.whenReady().then(async () => {
     // Auto-check for updates after startup (prod mode only)
     if (is.prod()) {
       setTimeout(() => {
-        console.log("Checking for updates...");
+        console.log("Checking for package updates...");
         autoUpdater.checkForUpdates().catch((err) => {
-          console.error("Update check failed:", err);
+          console.error("Package update check failed:", err);
         });
       }, 5000);
+
+      // Shell auto-update: check every 24 hours, first check after 10s
+      shellUpdater.startPeriodicChecks();
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
@@ -223,6 +237,7 @@ app.whenReady().then(async () => {
 });
 
 app.on("will-quit", () => {
+  shellUpdater.stopPeriodicChecks();
   try { unlinkSync(PORT_FILE); } catch { /* already removed */ }
 });
 

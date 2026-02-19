@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '../base/button'
 import { Progress } from '../base/progress'
 import { useUpdates } from '../hooks/use-updates'
+import { useShellUpdates } from '../hooks/use-shell-updates'
 
 interface UpdateAvailableToastProps {
   version: string
@@ -165,5 +166,135 @@ export function UpdateNotification() {
   }, [status, installUpdate, restartApp, dismiss])
 
   // This component only manages toasts, no visible UI
+  return null
+}
+
+function ShellUpdateAvailableToast({ version, onInstall, onDismiss }: UpdateAvailableToastProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium">App Update Available</p>
+      <p className="text-sm text-muted-foreground">
+        Shell version {version} is ready to download.
+      </p>
+      <div className="flex gap-2 mt-2">
+        <Button size="sm" onClick={onInstall}>
+          Download
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDismiss}>
+          Later
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function ShellDownloadProgressToast({ progress }: { progress: number }) {
+  return (
+    <div className="flex flex-col gap-2 w-full min-w-[200px]">
+      <p className="text-sm font-medium">Downloading App Update...</p>
+      <Progress value={progress} className="w-full" />
+      <p className="text-xs text-muted-foreground">{progress}%</p>
+    </div>
+  )
+}
+
+function ShellUpdateReadyToast({ version, onRestart, onDismiss }: UpdateReadyToastProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium">App Update Ready</p>
+      <p className="text-sm text-muted-foreground">
+        Quit and update to version {version}.
+      </p>
+      <div className="flex gap-2 mt-2">
+        <Button size="sm" onClick={onRestart}>
+          Quit & Update
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDismiss}>
+          Later
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Component that listens for shell update status changes and shows
+ * appropriate toast notifications.
+ *
+ * Place alongside UpdateNotification in your app root.
+ * Only shows notifications in the desktop app.
+ */
+export function ShellUpdateNotification() {
+  const { status, installUpdate, quitAndInstall, dismiss } = useShellUpdates()
+  const toastIdRef = useRef<string | number | null>(null)
+  const lastStateRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!status) return
+
+    if (status.state === lastStateRef.current) {
+      if (status.state === 'downloading' && toastIdRef.current) {
+        toast.custom(
+          () => <ShellDownloadProgressToast progress={status.downloadProgress} />,
+          { id: toastIdRef.current, duration: Infinity }
+        )
+      }
+      return
+    }
+    lastStateRef.current = status.state
+
+    if (toastIdRef.current) {
+      toast.dismiss(toastIdRef.current)
+      toastIdRef.current = null
+    }
+
+    switch (status.state) {
+      case 'available':
+        if (status.updateInfo) {
+          toastIdRef.current = toast.custom(
+            (t) => (
+              <ShellUpdateAvailableToast
+                version={status.updateInfo!.version}
+                onInstall={installUpdate}
+                onDismiss={() => {
+                  toast.dismiss(t)
+                  dismiss()
+                }}
+              />
+            ),
+            { duration: Infinity }
+          )
+        }
+        break
+
+      case 'downloading':
+        toastIdRef.current = toast.custom(
+          () => <ShellDownloadProgressToast progress={status.downloadProgress} />,
+          { duration: Infinity }
+        )
+        break
+
+      case 'ready':
+        toastIdRef.current = toast.custom(
+          (t) => (
+            <ShellUpdateReadyToast
+              version={status.updateInfo?.version ?? status.currentVersion}
+              onRestart={quitAndInstall}
+              onDismiss={() => {
+                toast.dismiss(t)
+                dismiss()
+              }}
+            />
+          ),
+          { duration: Infinity }
+        )
+        break
+
+      case 'error':
+        toast.error(`App update failed: ${status.error}`)
+        break
+    }
+  }, [status, installUpdate, quitAndInstall, dismiss])
+
   return null
 }

@@ -47,6 +47,7 @@ src/
 │   ├── use-claude-code.ts     - Claude Code project scanner hooks
 │   ├── use-database.ts        - Database table/query hooks
 │   ├── use-desktop.ts         - Electron desktop detection hook
+│   ├── use-shell-updates.ts   - Shell (Electron) auto-update hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
 │   ├── use-analytics.ts       - Analytics query hooks (sessions, duration, tool usage)

@@ -9,7 +9,7 @@
     "build": "bun run build:shell",
     "build:server": "bun run --cwd ../server build",
     "build:bridge": "esbuild ../server/src/mcp-bridge.ts --bundle --platform=node --format=esm --outfile=dist/shell/mcp-bridge.mjs",
-    "build:shell": "bun run build:bridge && esbuild src/shell/main.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=dist/shell/main.mjs && esbuild src/shell/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/shell/preload.cjs",
+    "build:shell": "bun run build:bridge && esbuild src/shell/main.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --external:electron-updater --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=dist/shell/main.mjs && esbuild src/shell/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/shell/preload.cjs",
     "build:web": "bun run --filter web build",
     "build:package": "bun run build:server && bun run build:web && bun run build/build-package.ts",
     "install-package": "bun run scripts/install-package.ts",
@@ -30,6 +30,7 @@
     "better-sqlite3": "^12.6.2",
     "bindings": "^1.5.0",
     "dotenv": "^17.2.3",
+    "electron-updater": "^6.3.9",
     "server": "*",
     "semver": "^7.7.3",
     "tar": "^7.4.3"

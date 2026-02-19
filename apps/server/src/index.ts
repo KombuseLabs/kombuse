@@ -28,6 +28,7 @@ import {
   agentRoutes,
   sessionRoutes,
   updateRoutes,
+  shellUpdateRoutes,
   attachmentRoutes,
   permissionRoutes,
   databaseRoutes,
@@ -51,6 +52,7 @@ import { createResponseValidationHook } from "./schemas/response-validation";
 
 // Re-export for desktop shell integration
 export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
+export { setShellAutoUpdater } from "./routes";
 
 export interface ServerOptions {
   port: number;
@@ -146,6 +148,7 @@ export async function createServer({ port, dbPath }: ServerOptions) {
   fastify.register(agentRoutes, { prefix: "/api" });
   fastify.register(sessionRoutes, { prefix: "/api" });
   fastify.register(updateRoutes, { prefix: "/api" });
+  fastify.register(shellUpdateRoutes, { prefix: "/api" });
   fastify.register(attachmentRoutes, { prefix: "/api" });
   fastify.register(permissionRoutes, { prefix: "/api" });
   fastify.register(databaseRoutes, { prefix: "/api" });

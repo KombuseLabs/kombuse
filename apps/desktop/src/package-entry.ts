@@ -4,13 +4,14 @@
  * It re-exports the server's createServer function with a clean interface.
  */
 
-import { createServer, setAutoUpdater } from "server";
+import { createServer, setAutoUpdater, setShellAutoUpdater } from "server";
 import type { ServerOptions, AutoUpdaterInterface } from "server";
 
 export interface PackageExports {
   createServer: typeof createServer;
   setAutoUpdater: typeof setAutoUpdater;
+  setShellAutoUpdater: typeof setShellAutoUpdater;
 }
 
-export { createServer, setAutoUpdater };
+export { createServer, setAutoUpdater, setShellAutoUpdater };
 export type { ServerOptions, AutoUpdaterInterface };

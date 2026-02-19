@@ -28,4 +28,11 @@ contextBridge.exposeInMainWorld("electron", {
    * The platform the app is running on ('darwin', 'win32', 'linux').
    */
   platform: process.platform,
+
+  /**
+   * Shell (Electron binary) update controls.
+   */
+  shellUpdate: {
+    quitAndInstall: () => ipcRenderer.invoke("shell:update:quit-and-install"),
+  },
 });

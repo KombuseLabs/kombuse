@@ -43,6 +43,7 @@ export { useCommentOperations } from './use-comment-operations'
 export { useWebSocket } from './use-websocket'
 export { useRealtimeUpdates } from './use-realtime-updates'
 export { useUpdates } from './use-updates'
+export { useShellUpdates } from './use-shell-updates'
 export {
   useAgents,
   useAgent,

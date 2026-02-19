@@ -1,7 +1,7 @@
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UpdateNotification, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen } from "@kombuse/ui/components";
+import { Header, UpdateNotification, ShellUpdateNotification, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { getWsUrl } from "@kombuse/ui/lib/api";
 import { useDesktop, useAvailableBackends } from "@kombuse/ui/hooks";
@@ -141,6 +141,7 @@ export function App() {
           </AppProvider>
           <Toaster />
           <UpdateNotification />
+          <ShellUpdateNotification />
         </WebSocketProvider>
       </ThemeProvider>
     </QueryClientProvider>

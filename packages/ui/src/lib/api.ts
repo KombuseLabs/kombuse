@@ -72,6 +72,9 @@ declare global {
       restart?: () => Promise<void>
       selectDirectory?: () => Promise<string | null>
       platform?: string
+      shellUpdate?: {
+        quitAndInstall: () => Promise<void>
+      }
     }
   }
 }

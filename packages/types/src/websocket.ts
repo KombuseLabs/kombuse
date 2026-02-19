@@ -69,6 +69,7 @@ export type ServerMessage =
   | { type: 'pong' }
   | { type: 'error'; message: string }
   | { type: 'update:status'; status: UpdateStatus }
+  | { type: 'shell-update:status'; status: UpdateStatus }
   | {
       type: 'agent.started'
       kombuseSessionId: string
