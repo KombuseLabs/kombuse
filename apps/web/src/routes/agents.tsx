@@ -1,13 +1,18 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
+  Badge,
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Input,
   Label,
+  Switch,
   Textarea,
   ResizableCardHandle,
   ResizableCardPanel,
@@ -39,10 +44,11 @@ import {
   useAvailablePlugins,
   useInstalledPlugins,
   useInstallPlugin,
+  useUpdatePlugin,
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
-import { Plus, Bot, X, Save, Package } from "lucide-react";
-import type { Agent, AgentConfig, Permission, Profile } from "@kombuse/types";
+import { Plus, Bot, X, Save, Package, Puzzle, ChevronDown } from "lucide-react";
+import type { Agent, AgentConfig, Permission, Plugin, Profile } from "@kombuse/types";
 
 const AGENTS_PANEL_LAYOUT_KEY = "agents-panel-layout";
 
@@ -73,10 +79,11 @@ export function Agents() {
   const deleteTrigger = useDeleteTrigger();
   const toggleTriggerMutation = useToggleTrigger();
 
-  // Plugin hooks for onboarding
+  // Plugin hooks for onboarding and grouping
   const { data: availablePlugins } = useAvailablePlugins(projectId ?? "");
   const { data: installedPlugins } = useInstalledPlugins(projectId ?? "");
   const installPlugin = useInstallPlugin();
+  const updatePlugin = useUpdatePlugin();
   const [dismissed, setDismissed] = useState(() => {
     if (!projectId) return false;
     return localStorage.getItem(`plugin-onboarding-dismissed-${projectId}`) === "true";
@@ -85,6 +92,59 @@ export function Agents() {
   const uninstalledPlugins = availablePlugins?.filter((p) => !p.installed) ?? [];
   const hasNoPlugins = (installedPlugins?.length ?? 0) === 0;
   const showOnboarding = hasNoPlugins && uninstalledPlugins.length > 0 && !dismissed;
+
+  // Plugin grouping
+  const pluginMap = useMemo(() => {
+    const map = new Map<string, Plugin>();
+    installedPlugins?.forEach((p) => map.set(p.id, p));
+    return map;
+  }, [installedPlugins]);
+
+  const agentSections = useMemo(() => {
+    if (!agents) return [];
+    const groups = new Map<string | null, Agent[]>();
+    for (const agent of agents) {
+      const key = agent.plugin_id ?? null;
+      const group = groups.get(key);
+      if (group) group.push(agent);
+      else groups.set(key, [agent]);
+    }
+    const sections: { pluginId: string | null; plugin: Plugin | null; agents: Agent[] }[] = [];
+    // Plugin sections sorted by install date (oldest first)
+    const pluginEntries = [...groups.entries()].filter(([key]) => key !== null) as [string, Agent[]][];
+    pluginEntries.sort((a, b) => {
+      const pa = pluginMap.get(a[0]);
+      const pb = pluginMap.get(b[0]);
+      return (pa?.installed_at ?? "").localeCompare(pb?.installed_at ?? "");
+    });
+    for (const [pluginId, agentList] of pluginEntries) {
+      sections.push({ pluginId, plugin: pluginMap.get(pluginId) ?? null, agents: agentList });
+    }
+    // Custom section last
+    const custom = groups.get(null);
+    if (custom?.length) {
+      sections.push({ pluginId: null, plugin: null, agents: custom });
+    }
+    return sections;
+  }, [agents, pluginMap]);
+
+  // Collapsible section state persisted in localStorage
+  const SECTIONS_STORAGE_KEY = `agent-plugin-sections-${projectId}`;
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    const stored = localStorage.getItem(SECTIONS_STORAGE_KEY);
+    if (stored) {
+      try { return JSON.parse(stored); } catch { return {}; }
+    }
+    return {};
+  });
+
+  const toggleSection = useCallback((sectionKey: string) => {
+    setCollapsedSections((prev) => {
+      const next = { ...prev, [sectionKey]: !prev[sectionKey] };
+      localStorage.setItem(SECTIONS_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [SECTIONS_STORAGE_KEY]);
 
   const handleInstallPlugin = (directory: string) => {
     if (!projectId) return;
@@ -289,22 +349,63 @@ export function Agents() {
             isProjectContext ? (
               <div className="min-h-0 flex-1 overflow-y-auto p-2">
                 <div className="space-y-1">
-                  {agents.map((agent) => {
-                    const profile = profileMap.get(agent.id);
-                    if (!profile) return null;
+                  {agentSections.map((section) => {
+                    const sectionKey = section.pluginId ?? "custom";
+                    const isCollapsed = collapsedSections[sectionKey] ?? false;
                     return (
-                      <AgentCard
-                        key={agent.id}
-                        agent={agent}
-                        profile={profile}
-                        variant="card"
-                        isSelected={agent.id === agentId}
-                        onClick={() => handleAgentClick(agent)}
-                        onToggle={(enabled) =>
-                          toggleAgent.mutate({ id: agent.id, is_enabled: enabled })
-                        }
-                        isToggling={toggleAgent.isPending}
-                      />
+                      <Collapsible
+                        key={sectionKey}
+                        open={!isCollapsed}
+                        onOpenChange={() => toggleSection(sectionKey)}
+                      >
+                        <div className="flex items-center gap-2 px-2 py-2">
+                          <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer">
+                            <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
+                            {section.plugin ? (
+                              <Puzzle className="size-3.5 shrink-0 text-muted-foreground" />
+                            ) : null}
+                            <span className="text-sm font-medium text-muted-foreground truncate">
+                              {section.plugin?.name ?? "Custom"}
+                            </span>
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                              {section.agents.length}
+                            </Badge>
+                          </CollapsibleTrigger>
+                          {section.plugin && (
+                            <Switch
+                              checked={section.plugin.is_enabled}
+                              onCheckedChange={(checked) => {
+                                updatePlugin.mutate({ id: section.plugin!.id, input: { is_enabled: checked } });
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={updatePlugin.isPending}
+                            />
+                          )}
+                        </div>
+                        <CollapsibleContent>
+                          <div className="space-y-1">
+                            {section.agents.map((agent) => {
+                              const profile = profileMap.get(agent.id);
+                              if (!profile) return null;
+                              return (
+                                <AgentCard
+                                  key={agent.id}
+                                  agent={agent}
+                                  profile={profile}
+                                  variant="card"
+                                  pluginName={section.plugin?.name}
+                                  isSelected={agent.id === agentId}
+                                  onClick={() => handleAgentClick(agent)}
+                                  onToggle={(enabled) =>
+                                    toggleAgent.mutate({ id: agent.id, is_enabled: enabled })
+                                  }
+                                  isToggling={toggleAgent.isPending}
+                                />
+                              );
+                            })}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     );
                   })}
                 </div>
@@ -430,6 +531,7 @@ export function Agents() {
           agent={selectedAgentData.agent}
           profile={selectedAgentData.profile}
           triggers={triggers}
+          pluginName={selectedAgentData.agent.plugin_id ? pluginMap.get(selectedAgentData.agent.plugin_id)?.name : undefined}
           onClose={handleCloseDetail}
           onSave={handleSaveAgent}
           onDelete={handleDeleteAgent}

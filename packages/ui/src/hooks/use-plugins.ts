@@ -43,6 +43,8 @@ export function useUpdatePlugin() {
       pluginsApi.update(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['labels'] })
     },
   })
 }

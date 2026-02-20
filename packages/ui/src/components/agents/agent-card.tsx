@@ -4,12 +4,14 @@ import type { Agent, Profile } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Switch } from '../../base/switch'
 import { getAvatarIcon } from './avatar-picker'
+import { Puzzle } from 'lucide-react'
 
 interface AgentCardProps {
   agent: Agent
   profile: Profile
   isSelected?: boolean
   variant?: 'default' | 'card'
+  pluginName?: string
   onClick?: () => void
   onToggle?: (enabled: boolean) => void
   isToggling?: boolean
@@ -20,6 +22,7 @@ function AgentCard({
   profile,
   isSelected,
   variant = 'default',
+  pluginName,
   onClick,
   onToggle,
   isToggling,
@@ -42,7 +45,8 @@ function AgentCard({
             isSelected
               ? 'bg-accent border-l-primary'
               : 'hover:bg-accent/50'
-          )
+          ),
+        pluginName && !agent.is_enabled && 'opacity-50',
       )}
       onClick={onClick}
     >
@@ -63,7 +67,15 @@ function AgentCard({
               >
                 {profile.name}
               </h3>
-              <p className="font-mono text-[11px] text-muted-foreground/60 truncate">{agent.slug ?? agent.id}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-mono text-[11px] text-muted-foreground/60 truncate">{agent.slug ?? agent.id}</p>
+                {pluginName && (
+                  <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground shrink-0">
+                    <Puzzle className="size-3" />
+                    {pluginName}
+                  </span>
+                )}
+              </div>
             </div>
             <Switch
               checked={agent.is_enabled}

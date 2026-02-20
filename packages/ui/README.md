@@ -540,6 +540,7 @@ import {
 <LabelCard
   label={label}
   isSelected={isSelected}
+  pluginName="default"       // Optional: shows Puzzle icon + plugin name badge
   onClick={() => handleClick(label)}
 />
 
@@ -547,6 +548,7 @@ import {
 <LabelDetail
   label={label}
   projectId={projectId}
+  pluginName="default"             // Optional: shows Puzzle icon + plugin name in header
   onClose={() => ...}
   onSave={(data) => ...}           // { name?, color?, description? }
   onDelete={() => ...}
@@ -1041,6 +1043,7 @@ import { AgentCard, AgentDetail, AgentHoverCard, AgentPreviewCard } from '@kombu
   agent={agent}
   profile={profile}
   isSelected={isSelected}
+  pluginName="default"       // Optional: shows Puzzle icon + plugin name badge
   onClick={() => handleSelect(agent.id)}
   onToggle={(enabled) => handleToggle(agent.id, enabled)}
   isToggling={false}
@@ -1051,6 +1054,7 @@ import { AgentCard, AgentDetail, AgentHoverCard, AgentPreviewCard } from '@kombu
   agent={agent}
   profile={profile}
   triggers={triggers}
+  pluginName="default"       // Optional: shows Puzzle icon + plugin name in header
   onClose={() => ...}
   onSave={(updates) => ...}
   onDelete={() => ...}

@@ -1,7 +1,7 @@
 'use client'
 
 import type { Label as LabelType } from '@kombuse/types'
-import { X, Trash2, Zap, ExternalLink } from 'lucide-react'
+import { X, Trash2, Zap, ExternalLink, Puzzle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
 import { Badge } from '../../base/badge'
@@ -14,6 +14,7 @@ import { useAgentProfiles } from '../../hooks/use-agents'
 interface LabelDetailProps {
   label: LabelType
   projectId: string
+  pluginName?: string
   onClose?: () => void
   onSave?: (data: { name?: string; color?: string; description?: string }) => Promise<void>
   onDelete?: () => void
@@ -25,6 +26,7 @@ interface LabelDetailProps {
 function LabelDetail({
   label,
   projectId,
+  pluginName,
   onClose,
   onSave,
   onDelete,
@@ -57,7 +59,15 @@ function LabelDetail({
             />
             <div>
               <CardTitle className="text-xl">{label.name}</CardTitle>
-              <span className="text-sm text-muted-foreground">ID: {label.id}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">ID: {label.id}</span>
+                {pluginName && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Puzzle className="size-3" />
+                    {pluginName}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">

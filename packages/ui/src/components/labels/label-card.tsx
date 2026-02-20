@@ -2,17 +2,18 @@
 
 import type { Label } from '@kombuse/types'
 import { cn } from '../../lib/utils'
-import { Zap } from 'lucide-react'
+import { Puzzle, Zap } from 'lucide-react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
 import { useSmartLabels } from '../../hooks/use-app-context'
 
 interface LabelCardProps {
   label: Label
   isSelected?: boolean
+  pluginName?: string
   onClick?: () => void
 }
 
-function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
+function LabelCard({ label, isSelected, pluginName, onClick }: LabelCardProps) {
   const { isSmartLabel } = useSmartLabels()
 
   return (
@@ -21,7 +22,8 @@ function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
         'cursor-pointer rounded-xl px-3 py-3 transition-colors',
         isSelected
           ? 'bg-accent/70 shadow-sm ring-1 ring-primary/35'
-          : 'hover:bg-accent/35'
+          : 'hover:bg-accent/35',
+        pluginName && !label.is_enabled && 'opacity-50',
       )}
       onClick={onClick}
     >
@@ -47,6 +49,12 @@ function LabelCard({ label, isSelected, onClick }: LabelCardProps) {
                 </TooltipTrigger>
                 <TooltipContent>Triggers an agent</TooltipContent>
               </Tooltip>
+            )}
+            {pluginName && (
+              <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground shrink-0">
+                <Puzzle className="size-3" />
+                {pluginName}
+              </span>
             )}
           </h3>
           {label.description && (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { BACKEND_TYPES, type Agent, type AgentConfig, type AgentTrigger, type BackendType, type Permission, type Profile, type UpdateAgentInput, type UpdateProfileInput } from '@kombuse/types'
-import { X, Trash2, Save, Copy, Check } from 'lucide-react'
+import { X, Trash2, Save, Copy, Check, Puzzle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
@@ -24,6 +24,7 @@ interface AgentDetailProps {
   agent: Agent
   profile: Profile
   triggers?: AgentTrigger[]
+  pluginName?: string
   onClose?: () => void
   onSave?: (updates: {
     profile: UpdateProfileInput
@@ -46,6 +47,7 @@ function AgentDetail({
   agent,
   profile,
   triggers = [],
+  pluginName,
   onClose,
   onSave,
   onDelete,
@@ -170,6 +172,12 @@ function AgentDetail({
                 >
                   {agent.is_enabled ? 'Enabled' : 'Disabled'}
                 </span>
+                {pluginName && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Puzzle className="size-3" />
+                    {pluginName}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={handleCopyId}
