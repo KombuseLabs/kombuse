@@ -10,16 +10,25 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: 'Getting Started',
-          autogenerate: { directory: 'getting-started' },
+          label: 'User Guide',
+          autogenerate: { directory: 'users' },
         },
         {
-          label: 'Guides',
-          autogenerate: { directory: 'guides' },
-        },
-        {
-          label: 'Reference',
-          autogenerate: { directory: 'reference' },
+          label: 'Developers',
+          items: [
+            {
+              label: 'Getting Started',
+              autogenerate: { directory: 'developers/getting-started' },
+            },
+            {
+              label: 'Guides',
+              autogenerate: { directory: 'developers/guides' },
+            },
+            {
+              label: 'Reference',
+              autogenerate: { directory: 'developers/reference' },
+            },
+          ],
         },
       ],
     }),
