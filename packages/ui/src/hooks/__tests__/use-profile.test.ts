@@ -19,6 +19,7 @@ const TEST_PROFILE: Profile = {
   id: 'user-1',
   type: 'user',
   name: 'Test User',
+  slug: null,
   email: 'test@example.com',
   description: 'A test user',
   avatar_url: 'bot',

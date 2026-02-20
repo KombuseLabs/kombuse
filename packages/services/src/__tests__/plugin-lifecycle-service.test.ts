@@ -19,6 +19,7 @@ import {
   pluginLifecycleService,
   PluginNotFoundError,
 } from '../plugin-lifecycle-service'
+import { pluginImportService } from '../plugin-import-service'
 
 // --- Helpers ---
 
@@ -281,6 +282,76 @@ describe('pluginLifecycleService', () => {
       // Triggers cascade-deleted with agent
       const triggers = agentTriggersRepository.listByAgent(agentId)
       expect(triggers).toHaveLength(0)
+    })
+  })
+
+  describe('uninstallPlugin — delete then reinstall', () => {
+    it('should reuse the same profile ID after uninstall and reinstall', () => {
+      // Create a plugin package on disk for the import service
+      const tempDir = mkdtempSync(join(tmpdir(), 'lifecycle-reinstall-'))
+      const agentSlug = `reinstall-agent-${Date.now()}`
+      const pluginDir = join(tempDir, '.claude-plugin')
+      mkdirSync(pluginDir, { recursive: true })
+      writeFileSync(
+        join(pluginDir, 'plugin.json'),
+        JSON.stringify({
+          name: 'reinstall-test-plugin',
+          version: '1.0.0',
+          kombuse: {
+            plugin_system_version: 'kombuse-plugin-v1',
+            project_id: TEST_PROJECT_ID,
+            exported_at: new Date().toISOString(),
+            labels: [],
+          },
+        })
+      )
+      const agentsDir = join(tempDir, 'agents')
+      mkdirSync(agentsDir, { recursive: true })
+      writeFileSync(
+        join(agentsDir, `${agentSlug}.md`),
+        `---\nname: "Reinstall Agent"\nslug: "${agentSlug}"\ntype: "kombuse"\nis_enabled: true\nenabled_for_chat: false\npermissions: []\ntriggers: []\n---\n\nTest prompt`
+      )
+
+      // Install
+      const first = pluginImportService.installPackage({
+        package_path: tempDir,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(first.agents_created).toBe(1)
+      const originalProfile = profilesRepository.getBySlug(agentSlug)
+      expect(originalProfile).not.toBeNull()
+      const originalId = originalProfile!.id
+
+      // Uninstall with delete mode
+      pluginLifecycleService.uninstallPlugin(first.plugin_id, 'delete')
+
+      // Profile should be soft-deleted
+      const deletedProfile = profilesRepository.getBySlug(agentSlug)
+      expect(deletedProfile).not.toBeNull()
+      expect(deletedProfile!.is_active).toBe(false)
+
+      // Reinstall
+      const second = pluginImportService.installPackage({
+        package_path: tempDir,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(second.agents_created).toBe(1)
+
+      // Profile should be reactivated with the same ID
+      const reinstalledProfile = profilesRepository.getBySlug(agentSlug)
+      expect(reinstalledProfile).not.toBeNull()
+      expect(reinstalledProfile!.id, 'Profile ID should be reused').toBe(originalId)
+      expect(reinstalledProfile!.is_active, 'Profile should be active after reinstall').toBe(true)
+
+      // No orphaned profiles — count profiles with this slug
+      const db = getDatabase()
+      const count = db
+        .prepare('SELECT COUNT(*) as cnt FROM profiles WHERE slug = ?')
+        .get(agentSlug) as { cnt: number }
+      expect(count.cnt, 'Should have exactly one profile for this slug').toBe(1)
+
+      // Clean up temp dir
+      rmSync(tempDir, { recursive: true })
     })
   })
 

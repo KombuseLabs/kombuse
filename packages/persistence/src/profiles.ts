@@ -99,6 +99,17 @@ export const profilesRepository = {
   },
 
   /**
+   * Get a profile by slug (includes soft-deleted profiles)
+   */
+  getBySlug(slug: string): Profile | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM profiles WHERE slug = ?')
+      .get(slug) as RawProfile | undefined
+    return row ? mapProfile(row) : null
+  },
+
+  /**
    * Create a new profile
    */
   create(input: CreateProfileInput): Profile {
@@ -108,15 +119,16 @@ export const profilesRepository = {
     db.prepare(
       `
       INSERT INTO profiles (
-        id, type, name, email, description, avatar_url,
+        id, type, name, slug, email, description, avatar_url,
         external_source, external_id, is_active
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `
     ).run(
       id,
       input.type,
       input.name,
+      input.slug ?? null,
       input.email ?? null,
       input.description ?? null,
       input.avatar_url ?? null,
@@ -209,6 +221,7 @@ interface RawProfile {
   id: string
   type: 'user' | 'agent'
   name: string
+  slug: string | null
   email: string | null
   description: string | null
   avatar_url: string | null

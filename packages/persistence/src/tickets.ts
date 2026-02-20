@@ -68,6 +68,7 @@ interface RawTicketWithProfiles {
   last_activity_at: string
   author_type: string
   author_name: string
+  author_slug: string | null
   author_email: string | null
   author_description: string | null
   author_avatar_url: string | null
@@ -78,6 +79,7 @@ interface RawTicketWithProfiles {
   author_updated_at: string
   assignee_type: string | null
   assignee_name: string | null
+  assignee_slug: string | null
   assignee_email: string | null
   assignee_description: string | null
   assignee_avatar_url: string | null
@@ -90,12 +92,12 @@ interface RawTicketWithProfiles {
 
 const TICKET_WITH_PROFILES_SELECT = `
   SELECT t.*,
-    ap.type AS author_type, ap.name AS author_name, ap.email AS author_email,
+    ap.type AS author_type, ap.name AS author_name, ap.slug AS author_slug, ap.email AS author_email,
     ap.description AS author_description, ap.avatar_url AS author_avatar_url,
     ap.external_source AS author_external_source, ap.external_id AS author_external_id,
     ap.is_active AS author_is_active, ap.created_at AS author_created_at,
     ap.updated_at AS author_updated_at,
-    asp.type AS assignee_type, asp.name AS assignee_name, asp.email AS assignee_email,
+    asp.type AS assignee_type, asp.name AS assignee_name, asp.slug AS assignee_slug, asp.email AS assignee_email,
     asp.description AS assignee_description, asp.avatar_url AS assignee_avatar_url,
     asp.external_source AS assignee_external_source, asp.external_id AS assignee_external_id,
     asp.is_active AS assignee_is_active, asp.created_at AS assignee_created_at,
@@ -134,6 +136,7 @@ function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelat
       id: row.author_id,
       type: row.author_type as 'user' | 'agent',
       name: row.author_name,
+      slug: row.author_slug,
       email: row.author_email,
       description: row.author_description,
       avatar_url: row.author_avatar_url,
@@ -147,6 +150,7 @@ function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelat
       id: row.assignee_id,
       type: row.assignee_type as 'user' | 'agent',
       name: row.assignee_name!,
+      slug: row.assignee_slug ?? null,
       email: row.assignee_email ?? null,
       description: row.assignee_description ?? null,
       avatar_url: row.assignee_avatar_url ?? null,

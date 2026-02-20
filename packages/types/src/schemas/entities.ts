@@ -17,6 +17,7 @@ export const profileSchema = z.object({
   id: z.string().min(1),
   type: profileTypeSchema,
   name: z.string().min(1),
+  slug: z.string().nullable(),
   email: z.string().nullable(),
   description: z.string().nullable(),
   avatar_url: z.string().nullable(),

@@ -12,6 +12,7 @@ import {
   labelsRepository,
   pluginsRepository,
   profilesRepository,
+  getDatabase,
 } from '@kombuse/persistence'
 import { SELF_PLACEHOLDER } from '@kombuse/types'
 import type { KombusePluginManifest } from '@kombuse/types'
@@ -20,6 +21,7 @@ import {
   PluginAlreadyInstalledError,
   InvalidManifestError,
 } from '../plugin-import-service'
+import { pluginLifecycleService } from '../plugin-lifecycle-service'
 
 // --- Helpers ---
 
@@ -840,6 +842,110 @@ describe('pluginImportService', () => {
 
       // remove-agent should be gone
       expect(agentsRepository.getBySlug('remove-agent')).toBeNull()
+    })
+  })
+
+  describe('uninstall (delete) then reinstall — profile reuse', () => {
+    it('should reuse soft-deleted profile on reinstall instead of creating a duplicate', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'reinstall-plugin' },
+          agents: [
+            {
+              filename: 'reinstall-agent.md',
+              frontmatter: {
+                name: 'Reinstall Agent',
+                slug: 'reinstall-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v1 prompt',
+            },
+          ],
+        })
+      )
+
+      // First install
+      const first = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(first.agents_created).toBe(1)
+      const originalProfile = profilesRepository.getBySlug('reinstall-agent')
+      expect(originalProfile).not.toBeNull()
+      const originalId = originalProfile!.id
+      expect(originalProfile!.is_active).toBe(true)
+
+      // Uninstall with delete mode
+      pluginLifecycleService.uninstallPlugin(first.plugin_id, 'delete')
+
+      // Agent should be gone, profile should be soft-deleted
+      expect(agentsRepository.getBySlug('reinstall-agent')).toBeNull()
+      const deletedProfile = profilesRepository.getBySlug('reinstall-agent')
+      expect(deletedProfile).not.toBeNull()
+      expect(deletedProfile!.is_active).toBe(false)
+
+      // Reinstall
+      const second = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(second.agents_created).toBe(1)
+
+      // Profile should be reactivated with the same ID
+      const reinstalledProfile = profilesRepository.getBySlug('reinstall-agent')
+      expect(reinstalledProfile).not.toBeNull()
+      expect(reinstalledProfile!.id, 'Profile ID should be preserved across reinstall').toBe(originalId)
+      expect(reinstalledProfile!.is_active, 'Profile should be active after reinstall').toBe(true)
+
+      // Agent should point to the same profile
+      const reinstalledAgent = agentsRepository.getBySlug('reinstall-agent')
+      expect(reinstalledAgent).not.toBeNull()
+      expect(reinstalledAgent!.id).toBe(originalId)
+
+      // No orphaned profiles
+      const db = getDatabase()
+      const count = db
+        .prepare('SELECT COUNT(*) as cnt FROM profiles WHERE slug = ?')
+        .get('reinstall-agent') as { cnt: number }
+      expect(count.cnt, 'Should have exactly one profile for this slug').toBe(1)
+    })
+
+    it('should create a fresh profile when installing for the first time', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'fresh-plugin' },
+          agents: [
+            {
+              filename: 'fresh-agent.md',
+              frontmatter: {
+                name: 'Fresh Agent',
+                slug: 'fresh-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'fresh prompt',
+            },
+          ],
+        })
+      )
+
+      const result = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(result.agents_created).toBe(1)
+
+      const profile = profilesRepository.getBySlug('fresh-agent')
+      expect(profile).not.toBeNull()
+      expect(profile!.slug).toBe('fresh-agent')
+      expect(profile!.is_active).toBe(true)
     })
   })
 

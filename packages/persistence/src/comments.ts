@@ -40,6 +40,7 @@ function mapComment(row: RawComment): Comment {
 interface RawCommentWithAuthor extends RawComment {
   author_type: string
   author_name: string
+  author_slug: string | null
   author_email: string | null
   author_description: string | null
   author_avatar_url: string | null
@@ -58,7 +59,7 @@ const COMMENT_WITH_AUTHOR_FROM = `
 
 const COMMENT_WITH_AUTHOR_SELECT = `
   SELECT c.*,
-    p.type AS author_type, p.name AS author_name, p.email AS author_email,
+    p.type AS author_type, p.name AS author_name, p.slug AS author_slug, p.email AS author_email,
     p.description AS author_description, p.avatar_url AS author_avatar_url,
     p.external_source AS author_external_source, p.external_id AS author_external_id,
     p.is_active AS author_is_active, p.created_at AS author_created_at,
@@ -140,6 +141,7 @@ function mapCommentWithAuthor(row: RawCommentWithAuthor): CommentWithAuthor {
       id: row.author_id,
       type: row.author_type as 'user' | 'agent',
       name: row.author_name,
+      slug: row.author_slug,
       email: row.author_email,
       description: row.author_description,
       avatar_url: row.author_avatar_url,

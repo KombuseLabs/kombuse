@@ -16,6 +16,7 @@ interface RawEventWithActor {
   // Joined profile columns (nullable because LEFT JOIN)
   actor_profile_type: string | null
   actor_name: string | null
+  actor_slug: string | null
   actor_email: string | null
   actor_description: string | null
   actor_avatar_url: string | null
@@ -28,7 +29,7 @@ interface RawEventWithActor {
 
 const EVENT_WITH_ACTOR_SELECT = `
   SELECT e.*,
-    p.type AS actor_profile_type, p.name AS actor_name, p.email AS actor_email,
+    p.type AS actor_profile_type, p.name AS actor_name, p.slug AS actor_slug, p.email AS actor_email,
     p.description AS actor_description, p.avatar_url AS actor_avatar_url,
     p.external_source AS actor_external_source, p.external_id AS actor_external_id,
     p.is_active AS actor_is_active, p.created_at AS actor_created_at,
@@ -53,6 +54,7 @@ function mapEventWithActor(row: RawEventWithActor): EventWithActor {
       id: row.actor_id,
       type: row.actor_profile_type as 'user' | 'agent',
       name: row.actor_name,
+      slug: row.actor_slug,
       email: row.actor_email,
       description: row.actor_description,
       avatar_url: row.actor_avatar_url,

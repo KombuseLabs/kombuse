@@ -506,6 +506,14 @@ const migrations: Array<{ name: string; sql: string }> = [
       END;
     `,
   },
+  {
+    name: '002_profiles_slug',
+    sql: `
+      ALTER TABLE profiles ADD COLUMN slug TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_slug ON profiles(slug) WHERE slug IS NOT NULL;
+      UPDATE profiles SET slug = (SELECT slug FROM agents WHERE agents.id = profiles.id) WHERE type = 'agent';
+    `,
+  },
 ]
 
 /**

@@ -171,16 +171,29 @@ export class PluginImportService implements IPluginImportService {
           importedAgentIds.add(agentId)
           agentsUpdated++
         } else {
-          // Create new agent + profile
-          const agentId = crypto.randomUUID()
+          // Check for a soft-deleted profile from a previous install
+          const existingProfile = profilesRepository.getBySlug(slug)
+          const agentId = existingProfile?.id ?? crypto.randomUUID()
 
-          profilesRepository.create({
-            id: agentId,
-            type: 'agent',
-            name: frontmatter.name,
-            description: frontmatter.description ?? undefined,
-            avatar_url: frontmatter.avatar ?? undefined,
-          })
+          if (existingProfile) {
+            // Reactivate the profile
+            profilesRepository.update(agentId, {
+              name: frontmatter.name,
+              description: frontmatter.description ?? undefined,
+              avatar_url: frontmatter.avatar ?? undefined,
+              is_active: true,
+            })
+          } else {
+            // Create brand new profile
+            profilesRepository.create({
+              id: agentId,
+              type: 'agent',
+              slug,
+              name: frontmatter.name,
+              description: frontmatter.description ?? undefined,
+              avatar_url: frontmatter.avatar ?? undefined,
+            })
+          }
 
           agentsRepository.create({
             id: agentId,

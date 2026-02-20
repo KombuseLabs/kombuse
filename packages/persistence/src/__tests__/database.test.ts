@@ -106,6 +106,7 @@ const EXPECTED_INDEXES = [
 ]
 const EXPECTED_MIGRATIONS = [
   '001_schema',
+  '002_profiles_slug',
 ]
 
 describe('database', () => {

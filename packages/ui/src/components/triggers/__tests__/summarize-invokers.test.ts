@@ -7,6 +7,7 @@ function makeProfile(id: string, name: string): Profile {
     id,
     type: 'agent',
     name,
+    slug: null,
     email: null,
     description: null,
     avatar_url: null,

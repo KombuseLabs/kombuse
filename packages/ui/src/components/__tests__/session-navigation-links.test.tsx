@@ -47,6 +47,7 @@ function buildProfile(overrides: Partial<Profile> = {}): Profile {
     id: 'user-1',
     type: 'user',
     name: 'User One',
+    slug: null,
     email: null,
     description: null,
     avatar_url: null,

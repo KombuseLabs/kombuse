@@ -10,6 +10,7 @@ export interface Profile {
   id: string
   type: ProfileType
   name: string
+  slug: string | null
   email: string | null
   description: string | null
   avatar_url: string | null
@@ -27,6 +28,7 @@ export interface CreateProfileInput {
   id?: string
   type: ProfileType
   name: string
+  slug?: string
   email?: string
   description?: string
   avatar_url?: string

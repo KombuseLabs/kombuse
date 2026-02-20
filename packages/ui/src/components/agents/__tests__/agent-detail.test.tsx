@@ -53,6 +53,7 @@ function buildProfile(overrides: Partial<Profile> = {}): Profile {
     id: 'agent-1',
     type: 'agent',
     name: 'Agent One',
+    slug: null,
     email: null,
     description: 'Agent description',
     avatar_url: 'bot',

@@ -224,6 +224,70 @@ describe('profilesRepository', () => {
     })
   })
 
+  describe('getBySlug', () => {
+    it('should return active profile by slug', () => {
+      const profile = profilesRepository.create({
+        type: 'agent',
+        name: uniqueName('Slug Agent'),
+        slug: `slug-agent-${Date.now()}`,
+      })
+
+      const found = profilesRepository.getBySlug(profile.slug!)
+
+      expect(found).not.toBeNull()
+      expect(found?.id).toBe(profile.id)
+      expect(found?.slug).toBe(profile.slug)
+    })
+
+    it('should return soft-deleted profile by slug', () => {
+      const slug = `deleted-agent-${Date.now()}`
+      const profile = profilesRepository.create({
+        type: 'agent',
+        name: uniqueName('Deleted Agent'),
+        slug,
+      })
+      profilesRepository.delete(profile.id) // Soft delete
+
+      const found = profilesRepository.getBySlug(slug)
+
+      expect(found, 'Should find soft-deleted profiles by slug').not.toBeNull()
+      expect(found?.id).toBe(profile.id)
+      expect(found?.is_active).toBe(false)
+    })
+
+    it('should return null for unknown slug', () => {
+      const found = profilesRepository.getBySlug('non-existent-slug')
+
+      expect(found).toBeNull()
+    })
+  })
+
+  describe('create with slug', () => {
+    it('should persist slug when provided', () => {
+      const slug = `test-slug-${Date.now()}`
+      const profile = profilesRepository.create({
+        type: 'agent',
+        name: uniqueName('Slugged Agent'),
+        slug,
+      })
+
+      expect(profile.slug).toBe(slug)
+
+      const fetched = profilesRepository.get(profile.id)
+      expect(fetched?.slug).toBe(slug)
+    })
+
+    it('should set slug to null when not provided', () => {
+      const profile = profilesRepository.create({
+        type: 'user',
+        name: 'No Slug User',
+        email: uniqueEmail(),
+      })
+
+      expect(profile.slug).toBeNull()
+    })
+  })
+
   /*
    * LIST TESTS
    */
