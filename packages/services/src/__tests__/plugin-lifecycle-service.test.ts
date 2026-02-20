@@ -131,15 +131,17 @@ describe('pluginLifecycleService', () => {
   })
 
   describe('enablePlugin', () => {
-    it('should enable plugin and cascade to agents and triggers', () => {
+    it('should enable plugin and cascade to agents, triggers, and labels', () => {
       const pluginId = createTestPlugin({ is_enabled: false })
       const agentId = createLinkedAgent(pluginId)
       const triggerId = createLinkedTrigger(agentId, pluginId)
+      const labelId = createLinkedLabel(pluginId)
 
-      // Manually disable agent and trigger to simulate disabled state
+      // Manually disable agent, trigger, and label to simulate disabled state
       const db = getDatabase()
       db.prepare('UPDATE agents SET is_enabled = 0 WHERE id = ?').run(agentId)
       db.prepare('UPDATE agent_triggers SET is_enabled = 0 WHERE id = ?').run(triggerId)
+      db.prepare('UPDATE labels SET is_enabled = 0 WHERE id = ?').run(labelId)
 
       const result = pluginLifecycleService.enablePlugin(pluginId)
 
@@ -150,6 +152,9 @@ describe('pluginLifecycleService', () => {
 
       const triggers = agentTriggersRepository.listByAgent(agentId)
       expect(triggers[0]!.is_enabled).toBe(true)
+
+      const label = labelsRepository.get(labelId)
+      expect(label!.is_enabled).toBe(1)
     })
 
     it('should throw PluginNotFoundError for non-existent plugin', () => {
@@ -192,15 +197,28 @@ describe('pluginLifecycleService', () => {
       expect(agentsRepository.get(agentB)!.is_enabled).toBe(true)
     })
 
-    it('should not affect labels', () => {
+    it('should cascade disable to labels', () => {
       const pluginId = createTestPlugin()
       const labelId = createLinkedLabel(pluginId)
 
       pluginLifecycleService.disablePlugin(pluginId)
 
-      // Label should still exist (labels don't have is_enabled)
       const label = labelsRepository.get(labelId)
       expect(label).not.toBeNull()
+      expect(label!.is_enabled).toBe(0)
+    })
+
+    it('should not affect labels from other plugins', () => {
+      const pluginA = createTestPlugin({ name: 'plugin-label-a' })
+      const pluginB = createTestPlugin({ name: 'plugin-label-b' })
+
+      const labelA = createLinkedLabel(pluginA)
+      const labelB = createLinkedLabel(pluginB)
+
+      pluginLifecycleService.disablePlugin(pluginA)
+
+      expect(labelsRepository.get(labelA)!.is_enabled).toBe(0)
+      expect(labelsRepository.get(labelB)!.is_enabled).toBe(1)
     })
 
     it('should throw PluginNotFoundError for non-existent plugin', () => {

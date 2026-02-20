@@ -9,7 +9,12 @@ import {
   initializeDatabase,
   seedDatabase,
   onEventCreated,
+  pluginsRepository,
 } from "@kombuse/persistence";
+import {
+  pluginImportService,
+  pluginLifecycleService,
+} from "@kombuse/services";
 import {
   registerTicketTools,
   registerDatabaseTools,
@@ -61,6 +66,27 @@ export interface ServerOptions {
   desktop?: boolean;
 }
 
+function seedPlugins() {
+  const installed = pluginsRepository.list({ project_id: '1' })
+  if (installed.length > 0) return
+
+  const available = pluginLifecycleService.getAvailablePlugins('1')
+  const kombuseDev = available.find((p) => p.name === 'kombuse-dev')
+  if (!kombuseDev) return
+
+  try {
+    const result = pluginImportService.installPackage({
+      package_path: kombuseDev.directory,
+      project_id: '1',
+    })
+    console.log(
+      `[Server] Auto-installed plugin "${result.plugin_name}": ${result.agents_created} agents, ${result.labels_created} labels`
+    )
+  } catch (err) {
+    console.warn('[Server] Failed to auto-install default plugin:', err)
+  }
+}
+
 /**
  * Create a configured Fastify server instance.
  * Initializes and seeds the database internally.
@@ -69,6 +95,7 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   const db = initializeDatabase(dbPath);
   seedDatabase(db);
   setDatabase(db);
+  seedPlugins();
 
   // Clean up orphaned sessions from previous runs.
   // Startup recovery should reconcile immediately because in-process backends

@@ -38,6 +38,7 @@ export class PluginLifecycleService implements IPluginLifecycleService {
     db.prepare("UPDATE plugins SET is_enabled = 1, updated_at = datetime('now') WHERE id = ?").run(pluginId)
     db.prepare("UPDATE agents SET is_enabled = 1, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
     db.prepare("UPDATE agent_triggers SET is_enabled = 1, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
+    db.prepare('UPDATE labels SET is_enabled = 1 WHERE plugin_id = ?').run(pluginId)
 
     return pluginsRepository.get(pluginId)!
   }
@@ -51,6 +52,7 @@ export class PluginLifecycleService implements IPluginLifecycleService {
     db.prepare("UPDATE plugins SET is_enabled = 0, updated_at = datetime('now') WHERE id = ?").run(pluginId)
     db.prepare("UPDATE agents SET is_enabled = 0, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
     db.prepare("UPDATE agent_triggers SET is_enabled = 0, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
+    db.prepare('UPDATE labels SET is_enabled = 0 WHERE plugin_id = ?').run(pluginId)
 
     return pluginsRepository.get(pluginId)!
   }

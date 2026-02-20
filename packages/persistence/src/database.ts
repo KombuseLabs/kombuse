@@ -979,6 +979,12 @@ const migrations: Array<{ name: string; sql: string; postMigrate?: (db: Database
         ON projects(local_path) WHERE local_path IS NOT NULL;
     `,
   },
+  {
+    name: '028_labels_is_enabled',
+    sql: `
+      ALTER TABLE labels ADD COLUMN is_enabled INTEGER NOT NULL DEFAULT 1;
+    `,
+  },
 ]
 
 /**

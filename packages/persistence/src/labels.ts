@@ -30,6 +30,9 @@ export const labelsRepository = {
       conditions.push('(l.name LIKE ? OR l.description LIKE ?)')
       params.push(`%${filters.search}%`, `%${filters.search}%`)
     }
+    if (filters?.is_enabled !== false) {
+      conditions.push('l.is_enabled = 1')
+    }
 
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -76,10 +79,11 @@ export const labelsRepository = {
   /**
    * Get all labels for a project
    */
-  getByProject(projectId: string): Label[] {
+  getByProject(projectId: string, includeDisabled = false): Label[] {
     const db = getDatabase()
+    const enabledClause = includeDisabled ? '' : ' AND is_enabled = 1'
     return db
-      .prepare('SELECT * FROM labels WHERE project_id = ? ORDER BY name ASC')
+      .prepare(`SELECT * FROM labels WHERE project_id = ?${enabledClause} ORDER BY name ASC`)
       .all(projectId) as Label[]
   },
 
@@ -131,6 +135,10 @@ export const labelsRepository = {
     if (input.plugin_id !== undefined) {
       fields.push('plugin_id = ?')
       params.push(input.plugin_id)
+    }
+    if (input.is_enabled !== undefined) {
+      fields.push('is_enabled = ?')
+      params.push(input.is_enabled ? 1 : 0)
     }
 
     if (fields.length === 0) return this.get(id)

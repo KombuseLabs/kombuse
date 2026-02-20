@@ -30,6 +30,8 @@ export function useInstallPlugin() {
     mutationFn: (input: PluginInstallInput) => pluginsApi.install(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['labels'] })
     },
   })
 }

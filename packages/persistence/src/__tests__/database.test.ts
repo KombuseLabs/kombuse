@@ -132,6 +132,7 @@ const EXPECTED_MIGRATIONS = [
   '025_session_events_event_type_index',
   '026_session_events_type_created_index',
   '027_projects_local_path_unique',
+  '028_labels_is_enabled',
 ]
 
 describe('database', () => {

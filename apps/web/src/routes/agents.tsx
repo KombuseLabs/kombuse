@@ -14,6 +14,7 @@ import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
+  toast,
 } from "@kombuse/ui/base";
 import {
   AgentCard,
@@ -35,9 +36,12 @@ import {
   useUpdateTrigger,
   useDeleteTrigger,
   useToggleTrigger,
+  useAvailablePlugins,
+  useInstalledPlugins,
+  useInstallPlugin,
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
-import { Plus, Bot, X, Save } from "lucide-react";
+import { Plus, Bot, X, Save, Package } from "lucide-react";
 import type { Agent, AgentConfig, Permission, Profile } from "@kombuse/types";
 
 const AGENTS_PANEL_LAYOUT_KEY = "agents-panel-layout";
@@ -68,6 +72,43 @@ export function Agents() {
   const updateTrigger = useUpdateTrigger();
   const deleteTrigger = useDeleteTrigger();
   const toggleTriggerMutation = useToggleTrigger();
+
+  // Plugin hooks for onboarding
+  const { data: availablePlugins } = useAvailablePlugins(projectId ?? "");
+  const { data: installedPlugins } = useInstalledPlugins(projectId ?? "");
+  const installPlugin = useInstallPlugin();
+  const [dismissed, setDismissed] = useState(() => {
+    if (!projectId) return false;
+    return localStorage.getItem(`plugin-onboarding-dismissed-${projectId}`) === "true";
+  });
+
+  const uninstalledPlugins = availablePlugins?.filter((p) => !p.installed) ?? [];
+  const hasNoPlugins = (installedPlugins?.length ?? 0) === 0;
+  const showOnboarding = hasNoPlugins && uninstalledPlugins.length > 0 && !dismissed;
+
+  const handleInstallPlugin = (directory: string) => {
+    if (!projectId) return;
+    installPlugin.mutate(
+      { package_path: directory, project_id: projectId },
+      {
+        onSuccess: (result) => {
+          toast.success(
+            `Installed "${result.plugin_name}": ${result.agents_created} agents, ${result.labels_created} labels`
+          );
+        },
+        onError: (err) => {
+          toast.error(`Failed to install plugin: ${err.message}`);
+        },
+      }
+    );
+  };
+
+  const handleDismissOnboarding = () => {
+    if (projectId) {
+      localStorage.setItem(`plugin-onboarding-dismissed-${projectId}`, "true");
+    }
+    setDismissed(true);
+  };
 
   // Create form state
   const [newAgentName, setNewAgentName] = useState("");
@@ -211,9 +252,39 @@ export function Agents() {
             </div>
           )}
           {agents.length === 0 && !isCreating ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No agents yet. Create one to get started.
-            </div>
+            showOnboarding ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 text-center">
+                <Package className="size-10 text-muted-foreground" />
+                <div>
+                  <h3 className="text-lg font-semibold">Get started with agents</h3>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                    Install the default plugin to get pre-configured agents for triage, planning, code review, and more.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {uninstalledPlugins.map((plugin) => (
+                    <Button
+                      key={plugin.name}
+                      onClick={() => handleInstallPlugin(plugin.directory)}
+                      disabled={installPlugin.isPending}
+                    >
+                      <Package className="size-4" />
+                      {installPlugin.isPending ? "Installing..." : `Install ${plugin.name}`}
+                    </Button>
+                  ))}
+                </div>
+                <button
+                  onClick={handleDismissOnboarding}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Start from scratch
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No agents yet. Create one to get started.
+              </div>
+            )
           ) : (
             isProjectContext ? (
               <div className="min-h-0 flex-1 overflow-y-auto p-2">

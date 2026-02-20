@@ -37,6 +37,7 @@ const buildLabel = (overrides: Partial<Label> = {}): Label => ({
   color: '#d73a4a',
   description: null,
   plugin_id: null,
+  is_enabled: true,
   project_id: '1',
   created_at: '2026-01-01T00:00:00Z',
   ...overrides,

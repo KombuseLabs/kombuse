@@ -617,6 +617,84 @@ describe('labelsRepository', () => {
     })
   })
 
+  describe('is_enabled filtering', () => {
+    it('should default is_enabled to true on create', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'enabled-label',
+      })
+
+      expect(label.is_enabled).toBe(1)
+    })
+
+    it('should exclude disabled labels from list() by default', () => {
+      labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'enabled' })
+      const disabled = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'disabled' })
+      db.prepare('UPDATE labels SET is_enabled = 0 WHERE id = ?').run(disabled.id)
+
+      const labels = labelsRepository.list({ project_id: TEST_PROJECT_ID })
+
+      expect(labels).toHaveLength(1)
+      expect(labels[0]?.name).toBe('enabled')
+    })
+
+    it('should include disabled labels when is_enabled filter is false', () => {
+      labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'enabled' })
+      const disabled = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'disabled' })
+      db.prepare('UPDATE labels SET is_enabled = 0 WHERE id = ?').run(disabled.id)
+
+      const labels = labelsRepository.list({ project_id: TEST_PROJECT_ID, is_enabled: false })
+
+      expect(labels).toHaveLength(2)
+    })
+
+    it('should exclude disabled labels from getByProject() by default', () => {
+      labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'enabled' })
+      const disabled = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'disabled' })
+      db.prepare('UPDATE labels SET is_enabled = 0 WHERE id = ?').run(disabled.id)
+
+      const labels = labelsRepository.getByProject(TEST_PROJECT_ID)
+
+      expect(labels).toHaveLength(1)
+      expect(labels[0]?.name).toBe('enabled')
+    })
+
+    it('should include disabled labels in getByProject() when includeDisabled is true', () => {
+      labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'enabled' })
+      const disabled = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'disabled' })
+      db.prepare('UPDATE labels SET is_enabled = 0 WHERE id = ?').run(disabled.id)
+
+      const labels = labelsRepository.getByProject(TEST_PROJECT_ID, true)
+
+      expect(labels).toHaveLength(2)
+    })
+
+    it('should still return disabled labels on tickets via getTicketLabels()', () => {
+      const disabled = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'disabled' })
+      db.prepare('UPDATE labels SET is_enabled = 0 WHERE id = ?').run(disabled.id)
+
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      labelsRepository.addToTicket(ticket.id, disabled.id)
+
+      const labels = labelsRepository.getTicketLabels(ticket.id)
+
+      expect(labels).toHaveLength(1)
+      expect(labels[0]?.name).toBe('disabled')
+    })
+
+    it('should update is_enabled via update()', () => {
+      const label = labelsRepository.create({ project_id: TEST_PROJECT_ID, name: 'test' })
+
+      const updated = labelsRepository.update(label.id, { is_enabled: false })
+
+      expect(updated?.is_enabled).toBe(0)
+    })
+  })
+
   describe('getTicketIds', () => {
     it('should return all ticket IDs with a specific label', () => {
       const label = labelsRepository.create({

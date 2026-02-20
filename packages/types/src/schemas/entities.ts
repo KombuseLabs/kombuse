@@ -48,6 +48,8 @@ export const labelSchema = z.object({
   name: z.string().min(1),
   color: z.string().min(1),
   description: z.string().nullable(),
+  plugin_id: z.string().nullable().optional(),
+  is_enabled: z.union([z.boolean(), z.number().transform((v) => v === 1)]),
   usage_count: z.number().int().nonnegative().optional(),
   created_at: timestampSchema,
 })

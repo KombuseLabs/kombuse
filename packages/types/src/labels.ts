@@ -8,6 +8,7 @@ export interface Label {
   color: string
   description: string | null
   plugin_id: string | null
+  is_enabled: boolean
   usage_count?: number
   created_at: string
 }
@@ -34,6 +35,7 @@ export interface UpdateLabelInput {
   color?: string
   description?: string
   plugin_id?: string | null
+  is_enabled?: boolean
 }
 
 /**
@@ -44,4 +46,5 @@ export interface LabelFilters {
   search?: string
   sort?: LabelSortBy
   usage_scope?: LabelUsageScope
+  is_enabled?: boolean
 }
