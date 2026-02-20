@@ -71,7 +71,7 @@ function AppContent() {
       {noneAvailable ? (
         <>
           <BackendStatusBanner />
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             <Routes>
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
@@ -86,7 +86,7 @@ function AppContent() {
       ) : (
         <>
           <BackendStatusBanner />
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
