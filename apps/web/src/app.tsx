@@ -22,6 +22,7 @@ import { Analytics } from "./routes/analytics";
 import { ClaudeCodeSessionViewer } from "./routes/claude-code-session";
 import { Profile } from "./routes/profile";
 import { Settings } from "./routes/settings";
+import { ProjectPage } from "./routes/project";
 import { ProjectLayout } from "./layouts/project-layout";
 import { useScrollbarActivity } from "./hooks/use-scrollbar-activity";
 
@@ -93,6 +94,7 @@ function AppContent() {
               <Route path="/settings" element={<Settings />} />
               {/* Project routes with sidebar */}
               <Route path="/projects/:projectId" element={<ProjectLayout />}>
+                <Route index element={<ProjectPage />} />
                 <Route path="tickets" element={<Tickets />} />
                 <Route path="tickets/:ticketId" element={<Tickets />} />
                 <Route path="chats" element={<Chats />} />
