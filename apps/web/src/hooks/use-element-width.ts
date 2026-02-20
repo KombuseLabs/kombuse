@@ -1,14 +1,17 @@
-import { useRef, useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export function useElementWidth() {
-  const ref = useRef<HTMLDivElement>(null)
+  const [element, setElement] = useState<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(0)
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    setElement(node)
+  }, [])
 
-    setWidth(el.clientWidth)
+  useEffect(() => {
+    if (!element) return
+
+    setWidth(element.clientWidth)
 
     let rafId: number | undefined
     const observer = new ResizeObserver((entries) => {
@@ -20,13 +23,13 @@ export function useElementWidth() {
       })
     })
 
-    observer.observe(el)
+    observer.observe(element)
 
     return () => {
       if (rafId !== undefined) cancelAnimationFrame(rafId)
       observer.disconnect()
     }
-  }, [])
+  }, [element])
 
   return { ref, width }
 }
