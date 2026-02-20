@@ -19,7 +19,7 @@ export function ProjectPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [localPath, setLocalPath] = useState('')
-  const [repoSource, setRepoSource] = useState('')
+  const [repoSource, setRepoSource] = useState('none')
   const [repoOwner, setRepoOwner] = useState('')
   const [repoName, setRepoName] = useState('')
 
@@ -28,7 +28,7 @@ export function ProjectPage() {
       setName(project.name)
       setDescription(project.description ?? '')
       setLocalPath(project.local_path ?? '')
-      setRepoSource(project.repo_source ?? '')
+      setRepoSource(project.repo_source ?? 'none')
       setRepoOwner(project.repo_owner ?? '')
       setRepoName(project.repo_name ?? '')
     }
@@ -54,7 +54,7 @@ export function ProjectPage() {
     name !== project.name ||
     description !== (project.description ?? '') ||
     localPath !== (project.local_path ?? '') ||
-    repoSource !== (project.repo_source ?? '') ||
+    repoSource !== (project.repo_source ?? 'none') ||
     repoOwner !== (project.repo_owner ?? '') ||
     repoName !== (project.repo_name ?? '')
 
@@ -66,7 +66,7 @@ export function ProjectPage() {
           name: name.trim(),
           description: description.trim() || undefined,
           local_path: localPath.trim() || undefined,
-          repo_source: (repoSource as RepoSource) || undefined,
+          repo_source: repoSource !== 'none' ? (repoSource as RepoSource) : undefined,
           repo_owner: repoOwner.trim() || undefined,
           repo_name: repoName.trim() || undefined,
         },
@@ -87,7 +87,7 @@ export function ProjectPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
+    <div className="mx-auto max-w-2xl p-8">
       <h1 className="mb-8 text-2xl font-bold">Project Settings</h1>
 
       <div className="space-y-6">
@@ -162,7 +162,7 @@ export function ProjectPage() {
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="github">GitHub</SelectItem>
                   <SelectItem value="gitlab">GitLab</SelectItem>
                   <SelectItem value="bitbucket">Bitbucket</SelectItem>
@@ -231,6 +231,6 @@ export function ProjectPage() {
           Save Changes
         </Button>
       </div>
-    </main>
+    </div>
   )
 }
