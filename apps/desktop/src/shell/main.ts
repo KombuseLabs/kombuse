@@ -38,6 +38,7 @@ if (existsSync(localBridgePath)) {
 import { createServer as createServerDirect, setAutoUpdater, setShellAutoUpdater } from "server";
 import { registerAppProtocol } from "./protocol";
 import { getPackageInfo, loadPackage } from "./package-loader";
+import { desktopApiPlugin } from "./desktop-api";
 import { autoUpdater } from "./auto-updater";
 import { ShellUpdater } from "./shell-updater";
 import { buildAppMenu, refreshMenu } from "./menu";
@@ -58,7 +59,8 @@ async function startDevServer() {
   setAutoUpdater(autoUpdater);
   setShellAutoUpdater(shellUpdater);
 
-  const server = await createServerDirect({ port: 0 });
+  const server = await createServerDirect({ port: 0, desktop: true });
+  server.instance.register(desktopApiPlugin, { prefix: "/api", createWindow, getWebUrl: () => webUrl } as any);
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
@@ -80,7 +82,8 @@ async function startPackageServer() {
   setPackageAutoUpdater(autoUpdater);
   if (setPackageShellAutoUpdater) setPackageShellAutoUpdater(shellUpdater);
 
-  const server = await createServer({ port: 0 });
+  const server = await createServer({ port: 0, desktop: true });
+  server.instance.register(desktopApiPlugin, { prefix: "/api", createWindow, getWebUrl: () => webUrl } as any);
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
@@ -91,7 +94,7 @@ async function startPackageServer() {
 
 let webUrl = DEV_WEB_URL;
 
-function createWindow(path?: string): void {
+function createWindow(path?: string): BrowserWindow {
   const focused = BrowserWindow.getFocusedWindow();
   const bounds = focused?.getBounds();
   const x = bounds ? bounds.x + 20 : undefined;
@@ -135,6 +138,8 @@ function createWindow(path?: string): void {
 
   const loadUrl = path ? `${webUrl}${path}` : webUrl;
   mainWindow.loadURL(loadUrl);
+
+  return mainWindow;
 }
 
 // IPC handler for server port (used by renderer to discover API address)

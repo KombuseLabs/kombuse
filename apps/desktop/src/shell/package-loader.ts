@@ -162,9 +162,10 @@ function ensureNativeModulesLink(serverBundlePath: string): void {
  * Dynamically load the server module from the package.
  */
 export async function loadPackage(serverBundlePath: string): Promise<{
-  createServer: (options: { port: number; dbPath?: string }) => Promise<{
+  createServer: (options: { port: number; dbPath?: string; desktop?: boolean }) => Promise<{
     listen: () => Promise<string>;
     close: () => Promise<void>;
+    instance: { register: (plugin: any, opts?: any) => any };
   }>;
   setAutoUpdater: (updater: {
     getStatus(): unknown;

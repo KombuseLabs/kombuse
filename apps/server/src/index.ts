@@ -15,6 +15,7 @@ import {
   registerDatabaseTools,
   registerApiTools,
   registerAgentTools,
+  registerDesktopTools,
   type ApiRouteInfo,
 } from "@kombuse/mcp";
 import {
@@ -57,13 +58,14 @@ export { setShellAutoUpdater } from "./routes";
 export interface ServerOptions {
   port: number;
   dbPath?: string;
+  desktop?: boolean;
 }
 
 /**
  * Create a configured Fastify server instance.
  * Initializes and seeds the database internally.
  */
-export async function createServer({ port, dbPath }: ServerOptions) {
+export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   const db = initializeDatabase(dbPath);
   seedDatabase(db);
   setDatabase(db);
@@ -181,6 +183,7 @@ export async function createServer({ port, dbPath }: ServerOptions) {
     registerDatabaseTools(mcpServer);
     registerApiTools(mcpServer, fastify, apiRoutes);
     registerAgentTools(mcpServer);
+    if (desktop) registerDesktopTools(mcpServer, fastify);
     await mcpServer.server.connect(transport);
 
     await transport.handleRequest(request.raw, reply.raw, request.body);

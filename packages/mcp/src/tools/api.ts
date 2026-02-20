@@ -10,6 +10,7 @@ export interface InjectableServer {
   inject(opts: {
     method: string
     url: string
+    payload?: unknown
   }): Promise<{ statusCode: number; body: string }>
 }
 
