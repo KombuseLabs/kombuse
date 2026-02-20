@@ -96,7 +96,7 @@ You have these MCP tools for ticket communication:
 {% if agents and agents.length > 0 %}
 ## Agent Directory
 Available agents you can @mention:
-{% for agent in agents %}- @[{{ agent.name }}]({{ agent.id }}){% if agent.description %} — {{ agent.description }}{% endif %}
+{% for agent in agents %}- @[{{ agent.name }}]({{ agent.slug or agent.id }}){% if agent.description %} — {{ agent.description }}{% endif %}
 {% endfor %}{% endif %}`
 
 /**

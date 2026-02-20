@@ -69,13 +69,16 @@ export function buildTemplateContext(event: Event): TemplateContext {
     context.actor = profilesRepository.get(event.actor_id)
   }
 
-  // Inject active agent profiles for the mention directory
+  // Inject active agent profiles for the mention directory (exclude orphaned profiles without agent records)
   context.agents = profilesRepository
     .list({ type: 'agent', is_active: true })
     .map((p) => {
       const agent = agentsRepository.get(p.id)
-      return { id: p.id, name: p.name, description: p.description, slug: agent?.slug ?? null }
+      return agent
+        ? { id: p.id, name: p.name, description: p.description, slug: agent.slug ?? null }
+        : null
     })
+    .filter((a): a is NonNullable<typeof a> => a !== null)
 
   return context
 }
