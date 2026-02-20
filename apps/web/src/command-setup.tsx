@@ -241,6 +241,16 @@ export function CommandSetup({ children }: CommandSetupProps) {
         },
       }),
       registry.register({
+        id: "nav.projectSettings",
+        title: "Go to Project Settings",
+        category: "Navigation",
+        icon: "Settings",
+        when: (ctx) => ctx.currentProjectId != null,
+        handler: () => {
+          navigate(`/projects/${currentProjectId}`);
+        },
+      }),
+      registry.register({
         id: "nav.back",
         title: "Go Back",
         category: "Navigation",
