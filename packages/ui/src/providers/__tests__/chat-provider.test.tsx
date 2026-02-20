@@ -119,7 +119,7 @@ function makeSerializedEvent(seq: number): Extract<SerializedAgentEvent, { type:
 }
 
 /** Renders ChatProvider and captures the context value via a consumer child. */
-function renderProvider(props: { sessionId?: string | null; agentId?: string } = {}) {
+function renderProvider(props: { sessionId?: string | null; agentId?: string; projectId?: string | null } = {}) {
   let ctx: ChatContextValue | null = null
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -141,19 +141,19 @@ function renderProvider(props: { sessionId?: string | null; agentId?: string } =
   }
 
   const utils = render(
-    <ChatProvider sessionId={resolvedSessionId} agentId={props.agentId}>
+    <ChatProvider sessionId={resolvedSessionId} agentId={props.agentId} projectId={props.projectId}>
       <Consumer />
     </ChatProvider>,
     { wrapper: Wrapper }
   )
 
-  function rerenderProvider(nextProps: { sessionId?: string | null; agentId?: string } = {}) {
+  function rerenderProvider(nextProps: { sessionId?: string | null; agentId?: string; projectId?: string | null } = {}) {
     const nextResolvedSessionId = Object.prototype.hasOwnProperty.call(nextProps, 'sessionId')
       ? nextProps.sessionId
       : 'sess-1'
 
     utils.rerender(
-      <ChatProvider sessionId={nextResolvedSessionId} agentId={nextProps.agentId}>
+      <ChatProvider sessionId={nextResolvedSessionId} agentId={nextProps.agentId} projectId={nextProps.projectId}>
         <Consumer />
       </ChatProvider>
     )
@@ -505,5 +505,100 @@ describe('ChatProvider historical event loading', () => {
       expect(getCtx().historyLoadedCount).toBeNull()
       expect(getCtx().historyTotalCount).toBeNull()
     })
+  })
+})
+
+describe('ChatProvider agent.started project filtering', () => {
+  beforeEach(() => {
+    mockSessionData = undefined
+    mockSessionEventsData = undefined
+    mockPendingPermissions = new Map()
+    mockActiveSessions = new Map()
+    mockWebSocketOnMessage = undefined
+    mockWebSocketSend.mockReset()
+    mockUseSessionByKombuseId.mockClear()
+    mockUseSessionEvents.mockClear()
+  })
+
+  it('rejects agent.started from a different project when no session is set', () => {
+    renderProvider({ sessionId: null, projectId: 'proj-A' })
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'agent.started',
+        kombuseSessionId: 'trigger-from-proj-B',
+        projectId: 'proj-B',
+      })
+    })
+
+    // kombuseSessionId should remain null — the message was rejected
+    expect(mockUseSessionByKombuseId).toHaveBeenCalledWith(null)
+  })
+
+  it('adopts agent.started from the same project when no session is set', () => {
+    const { getCtx } = renderProvider({ sessionId: null, projectId: 'proj-A' })
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'agent.started',
+        kombuseSessionId: 'trigger-from-proj-A',
+        projectId: 'proj-A',
+      })
+    })
+
+    expect(getCtx().isLoading, 'should adopt the session and start loading').toBe(true)
+  })
+
+  it('adopts any agent.started when provider has no projectId', () => {
+    const { getCtx } = renderProvider({ sessionId: null })
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'agent.started',
+        kombuseSessionId: 'trigger-any',
+        projectId: 'proj-X',
+      })
+    })
+
+    expect(getCtx().isLoading, 'should adopt message when provider has no projectId').toBe(true)
+  })
+
+  it('adopts agent.started when message has no projectId (backwards compat)', () => {
+    const { getCtx } = renderProvider({ sessionId: null, projectId: 'proj-A' })
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'agent.started',
+        kombuseSessionId: 'trigger-no-project',
+      })
+    })
+
+    expect(getCtx().isLoading, 'should adopt message without projectId').toBe(true)
+  })
+
+  it('uses session guard (not project guard) when session is already set', () => {
+    const sessionId = 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId
+    mockSessionData = makeSession({ kombuse_session_id: sessionId, status: 'running' })
+    mockActiveSessions = new Map([
+      [sessionId, { kombuseSessionId: sessionId, agentName: 'Test', startedAt: new Date().toISOString() }],
+    ])
+
+    const { getCtx } = renderProvider({ sessionId: 'sess-1', projectId: 'proj-A' })
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'agent.started',
+        kombuseSessionId: 'trigger-different-session',
+        projectId: 'proj-A',
+      })
+    })
+
+    // Session guard should reject — different kombuseSessionId
+    expect(getCtx().sessionStatus).toBe('running')
   })
 })

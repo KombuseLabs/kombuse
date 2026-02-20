@@ -290,6 +290,10 @@ export function ChatProvider({
         if (effectiveKombuseSessionId && message.kombuseSessionId !== effectiveKombuseSessionId) {
           break
         }
+        // When no session is set (new chat), reject events from other projects
+        if (!effectiveKombuseSessionId && message.projectId && projectId && message.projectId !== projectId) {
+          break
+        }
         setKombuseSessionId(message.kombuseSessionId)
         setIsLoading(true)
         setSessionStatus('running')
@@ -383,7 +387,7 @@ export function ChatProvider({
         break
       }
     }
-  }, [effectiveKombuseSessionId, refreshSessions, updateSessionStatus])
+  }, [effectiveKombuseSessionId, projectId, refreshSessions, updateSessionStatus])
 
   const sessionTopics = useMemo(() => {
     if (effectiveKombuseSessionId) {
