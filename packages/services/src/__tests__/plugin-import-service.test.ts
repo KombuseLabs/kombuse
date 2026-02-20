@@ -371,8 +371,8 @@ describe('pluginImportService', () => {
     })
   })
 
-  describe('slug collision handling', () => {
-    it('should suffix slug when collision exists', () => {
+  describe('slug match — update in place', () => {
+    it('should update existing agent in place when slug matches', () => {
       // Pre-create an agent with the same slug
       const existingId = crypto.randomUUID()
       profilesRepository.create({ id: existingId, type: 'agent', name: 'Existing' })
@@ -381,7 +381,7 @@ describe('pluginImportService', () => {
         name: 'Existing',
         description: 'Existing agent',
         slug: 'collide-agent',
-        system_prompt: 'existing',
+        system_prompt: 'old prompt',
       })
 
       const pkg = trackDir(
@@ -391,15 +391,16 @@ describe('pluginImportService', () => {
             {
               filename: 'collide-agent.md',
               frontmatter: {
-                name: 'Collide Agent',
+                name: 'Updated Agent',
                 slug: 'collide-agent',
+                description: 'Updated description',
                 type: 'kombuse',
                 is_enabled: true,
                 enabled_for_chat: false,
                 permissions: [],
                 triggers: [],
               },
-              body: 'Collide prompt',
+              body: 'Updated prompt',
             },
           ],
         })
@@ -410,42 +411,105 @@ describe('pluginImportService', () => {
         project_id: TEST_PROJECT_ID,
       })
 
-      expect(result.warnings).toHaveLength(1)
-      expect(result.warnings[0]).toContain('collide-agent')
-      expect(result.warnings[0]).toContain('collide-agent-my-plugin')
+      // Should update, not create
+      expect(result.agents_created).toBe(0)
+      expect(result.agents_updated).toBe(1)
+      expect(result.warnings).toEqual([])
 
-      // Verify new agent has suffixed slug
-      const newAgent = agentsRepository.getBySlug('collide-agent-my-plugin')
-      expect(newAgent).not.toBeNull()
-      expect(newAgent!.plugin_id).toBe(result.plugin_id)
+      // Agent ID should be preserved
+      const agent = agentsRepository.getBySlug('collide-agent')
+      expect(agent).not.toBeNull()
+      expect(agent!.id).toBe(existingId)
+      expect(agent!.system_prompt).toBe('Updated prompt')
+      expect(agent!.plugin_id).toBe(result.plugin_id)
+
+      // Profile should be updated
+      const profile = profilesRepository.get(existingId)
+      expect(profile!.name).toBe('Updated Agent')
+      expect(profile!.description).toBe('Updated description')
     })
 
-    it('should add timestamp suffix on double collision', () => {
-      // Create two agents that block both slug variants
-      const id1 = crypto.randomUUID()
-      profilesRepository.create({ id: id1, type: 'agent', name: 'Existing 1' })
-      agentsRepository.create({ id: id1, name: 'Existing 1', description: 'e1', slug: 'double-collide', system_prompt: 'p1' })
-
-      const id2 = crypto.randomUUID()
-      profilesRepository.create({ id: id2, type: 'agent', name: 'Existing 2' })
-      agentsRepository.create({ id: id2, name: 'Existing 2', description: 'e2', slug: 'double-collide-test-plugin', system_prompt: 'p2' })
+    it('should replace triggers when updating existing agent', () => {
+      const existingId = crypto.randomUUID()
+      profilesRepository.create({ id: existingId, type: 'agent', name: 'Existing' })
+      agentsRepository.create({
+        id: existingId,
+        name: 'Existing',
+        description: 'Existing',
+        slug: 'trigger-agent',
+        system_prompt: 'old prompt',
+      })
+      // Create an old trigger
+      agentTriggersRepository.create({
+        agent_id: existingId,
+        event_type: 'ticket.created',
+        is_enabled: true,
+        priority: 0,
+      })
 
       const pkg = trackDir(
         createPluginPackage({
-          manifest: { name: 'test-plugin' },
           agents: [
             {
-              filename: 'double-collide.md',
+              filename: 'trigger-agent.md',
               frontmatter: {
-                name: 'Double Collide',
-                slug: 'double-collide',
+                name: 'Trigger Agent',
+                slug: 'trigger-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { event_type: 'comment.added', conditions: null, is_enabled: true, priority: 5 },
+                ],
+              },
+              body: 'New prompt',
+            },
+          ],
+        })
+      )
+
+      const result = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      expect(result.agents_updated).toBe(1)
+      expect(result.triggers_created).toBe(1)
+
+      // Old trigger should be gone, new one should exist
+      const triggers = agentTriggersRepository.listByAgent(existingId)
+      expect(triggers).toHaveLength(1)
+      expect(triggers[0]!.event_type).toBe('comment.added')
+    })
+
+    it('should create new agents that do not match existing slugs', () => {
+      // Pre-create an agent with a different slug
+      const existingId = crypto.randomUUID()
+      profilesRepository.create({ id: existingId, type: 'agent', name: 'Existing' })
+      agentsRepository.create({
+        id: existingId,
+        name: 'Existing',
+        description: 'Existing agent',
+        slug: 'existing-agent',
+        system_prompt: 'existing',
+      })
+
+      const pkg = trackDir(
+        createPluginPackage({
+          agents: [
+            {
+              filename: 'new-agent.md',
+              frontmatter: {
+                name: 'New Agent',
+                slug: 'new-agent',
                 type: 'kombuse',
                 is_enabled: true,
                 enabled_for_chat: false,
                 permissions: [],
                 triggers: [],
               },
-              body: 'prompt',
+              body: 'New prompt',
             },
           ],
         })
@@ -457,14 +521,17 @@ describe('pluginImportService', () => {
       })
 
       expect(result.agents_created).toBe(1)
-      // The warning should mention the first collision
-      expect(result.warnings).toHaveLength(1)
+      expect(result.agents_updated).toBe(0)
 
-      // The final slug should contain a timestamp suffix
-      const agents = agentsRepository.list({ limit: 100 })
-      const pluginAgent = agents.find((a) => a.plugin_id === result.plugin_id)
-      expect(pluginAgent).toBeDefined()
-      expect(pluginAgent!.slug).toMatch(/^double-collide-test-plugin-\d+$/)
+      // New agent should exist
+      const newAgent = agentsRepository.getBySlug('new-agent')
+      expect(newAgent).not.toBeNull()
+      expect(newAgent!.plugin_id).toBe(result.plugin_id)
+
+      // Existing agent should be untouched
+      const existing = agentsRepository.getBySlug('existing-agent')
+      expect(existing).not.toBeNull()
+      expect(existing!.id).toBe(existingId)
     })
   })
 
@@ -663,7 +730,7 @@ describe('pluginImportService', () => {
   })
 
   describe('overwrite mode', () => {
-    it('should replace existing plugin when overwrite is true', () => {
+    it('should preserve agent ID when overwrite reinstalls a plugin', () => {
       const pkg = trackDir(
         createPluginPackage({
           manifest: { name: 'overwrite-plugin' },
@@ -691,6 +758,8 @@ describe('pluginImportService', () => {
         project_id: TEST_PROJECT_ID,
       })
       expect(first.agents_created).toBe(1)
+      const originalAgent = agentsRepository.getBySlug('ow-agent')
+      const originalId = originalAgent!.id
 
       // Second install with overwrite
       const second = pluginImportService.installPackage({
@@ -699,14 +768,78 @@ describe('pluginImportService', () => {
         overwrite: true,
       })
 
-      expect(second.agents_created).toBe(1)
+      // Agent should be updated, not recreated
+      expect(second.agents_created).toBe(0)
+      expect(second.agents_updated).toBe(1)
       expect(second.plugin_id).not.toBe(first.plugin_id)
+
+      // Agent ID should be preserved
+      const updatedAgent = agentsRepository.getBySlug('ow-agent')
+      expect(updatedAgent!.id).toBe(originalId)
+      expect(updatedAgent!.plugin_id).toBe(second.plugin_id)
 
       // Old plugin should be gone
       expect(pluginsRepository.get(first.plugin_id)).toBeNull()
 
       // New plugin should exist
       expect(pluginsRepository.get(second.plugin_id)).not.toBeNull()
+    })
+
+    it('should delete agents from old plugin not in new manifest', () => {
+      const pkg1 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'shrinking-plugin' },
+          agents: [
+            {
+              filename: 'keep-agent.md',
+              frontmatter: { name: 'Keep', slug: 'keep-agent', type: 'kombuse', is_enabled: true, enabled_for_chat: false, permissions: [], triggers: [] },
+              body: 'keep prompt',
+            },
+            {
+              filename: 'remove-agent.md',
+              frontmatter: { name: 'Remove', slug: 'remove-agent', type: 'kombuse', is_enabled: true, enabled_for_chat: false, permissions: [], triggers: [] },
+              body: 'remove prompt',
+            },
+          ],
+        })
+      )
+
+      const first = pluginImportService.installPackage({
+        package_path: pkg1,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(first.agents_created).toBe(2)
+
+      // Second package only has keep-agent
+      const pkg2 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'shrinking-plugin' },
+          agents: [
+            {
+              filename: 'keep-agent.md',
+              frontmatter: { name: 'Keep Updated', slug: 'keep-agent', type: 'kombuse', is_enabled: true, enabled_for_chat: false, permissions: [], triggers: [] },
+              body: 'keep prompt v2',
+            },
+          ],
+        })
+      )
+
+      const second = pluginImportService.installPackage({
+        package_path: pkg2,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      expect(second.agents_updated).toBe(1)
+      expect(second.agents_created).toBe(0)
+
+      // keep-agent should still exist with updated prompt
+      const kept = agentsRepository.getBySlug('keep-agent')
+      expect(kept).not.toBeNull()
+      expect(kept!.system_prompt).toBe('keep prompt v2')
+
+      // remove-agent should be gone
+      expect(agentsRepository.getBySlug('remove-agent')).toBeNull()
     })
   })
 

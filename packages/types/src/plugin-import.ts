@@ -8,6 +8,7 @@ export interface PluginInstallResult {
   plugin_id: string
   plugin_name: string
   agents_created: number
+  agents_updated: number
   labels_created: number
   labels_merged: number
   triggers_created: number

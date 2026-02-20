@@ -44,6 +44,7 @@ export const pluginInstallResultSchema = z.object({
   plugin_id: z.string().min(1),
   plugin_name: z.string().min(1),
   agents_created: z.number().int().nonnegative(),
+  agents_updated: z.number().int().nonnegative(),
   labels_created: z.number().int().nonnegative(),
   labels_merged: z.number().int().nonnegative(),
   triggers_created: z.number().int().nonnegative(),

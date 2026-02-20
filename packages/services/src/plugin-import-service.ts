@@ -51,9 +51,16 @@ export class PluginImportService implements IPluginImportService {
     if (existing && !overwrite) {
       throw new PluginAlreadyInstalledError(manifest.name)
     }
+    let oldPluginAgentIds = new Set<string>()
     if (existing && overwrite) {
-      // Delete existing plugin entities before reinstall
-      this.deletePluginEntities(existing.id)
+      const db = getDatabase()
+      // Collect agent IDs BEFORE plugin delete (FK cascade nulls plugin_id)
+      const oldAgents = db
+        .prepare('SELECT id FROM agents WHERE plugin_id = ?')
+        .all(existing.id) as { id: string }[]
+      oldPluginAgentIds = new Set(oldAgents.map((a) => a.id))
+      // Delete only labels (agents are handled by the import loop below)
+      db.prepare('DELETE FROM labels WHERE plugin_id = ?').run(existing.id)
       pluginsRepository.delete(existing.id)
     }
 
@@ -73,7 +80,9 @@ export class PluginImportService implements IPluginImportService {
     let labelsCreated = 0
     let labelsMerged = 0
     let agentsCreated = 0
+    let agentsUpdated = 0
     let triggersCreated = 0
+    const importedAgentIds = new Set<string>()
 
     // Step 4: Import labels
     const labelNameToId = new Map<string, number>()
@@ -118,32 +127,7 @@ export class PluginImportService implements IPluginImportService {
         const content = readFileSync(join(agentsDir, file), 'utf-8')
         const { frontmatter, systemPrompt } = this.parseAgentMarkdown(content)
 
-        // Determine slug
-        let slug = frontmatter.slug ?? file.replace(/\.md$/, '')
-
-        // Check for slug collision
-        const existingAgent = agentsRepository.getBySlug(slug)
-        if (existingAgent) {
-          const oldSlug = slug
-          slug = `${slug}-${manifest.name}`
-          warnings.push(
-            `Agent slug "${oldSlug}" already exists, using "${slug}" instead`
-          )
-          // If the suffixed slug also collides, append a random suffix
-          if (agentsRepository.getBySlug(slug)) {
-            slug = `${slug}-${Date.now()}`
-          }
-        }
-
-        // Create profile
-        const agentId = crypto.randomUUID()
-        profilesRepository.create({
-          id: agentId,
-          type: 'agent',
-          name: frontmatter.name,
-          description: frontmatter.description ?? undefined,
-          avatar_url: frontmatter.avatar ?? undefined,
-        })
+        const slug = frontmatter.slug ?? file.replace(/\.md$/, '')
 
         // Build agent config (reverse the "promoted config keys" extraction)
         const config: AgentConfig = {
@@ -154,47 +138,77 @@ export class PluginImportService implements IPluginImportService {
           enabled_for_chat: frontmatter.enabled_for_chat ?? false,
         }
 
-        // Create agent
-        agentsRepository.create({
-          id: agentId,
-          name: frontmatter.name,
-          description: frontmatter.description ?? '',
-          slug,
-          system_prompt: systemPrompt,
-          permissions: frontmatter.permissions ?? [],
-          config,
-          is_enabled: frontmatter.is_enabled !== false,
-          plugin_id: pluginId,
-        })
-        agentsCreated++
+        const existingAgent = agentsRepository.getBySlug(slug)
 
-        // Create triggers
-        if (frontmatter.triggers) {
-          for (const trigger of frontmatter.triggers) {
-            // Resolve label_name → label_id in conditions
-            const conditions = this.resolveLabelNames(
-              trigger.conditions,
-              labelNameToId
-            )
+        if (existingAgent) {
+          // Update existing agent in place
+          const agentId = existingAgent.id
 
-            // Resolve $SELF → agent ID
-            const resolvedConditions = this.resolveSelfPlaceholder(
-              conditions,
-              agentId
-            )
+          profilesRepository.update(agentId, {
+            name: frontmatter.name,
+            description: frontmatter.description ?? undefined,
+            avatar_url: frontmatter.avatar ?? undefined,
+          })
 
-            agentTriggersRepository.create({
-              agent_id: agentId,
-              event_type: trigger.event_type,
-              project_id: trigger.project_id ?? project_id,
-              conditions: resolvedConditions ?? undefined,
-              is_enabled: trigger.is_enabled !== false,
-              priority: trigger.priority ?? 0,
-              plugin_id: pluginId,
-            })
-            triggersCreated++
+          agentsRepository.update(agentId, {
+            system_prompt: systemPrompt,
+            permissions: frontmatter.permissions ?? [],
+            config,
+            is_enabled: frontmatter.is_enabled !== false,
+            plugin_id: pluginId,
+          })
+
+          // Replace triggers: delete old, create new
+          const oldTriggers = agentTriggersRepository.listByAgent(agentId)
+          for (const t of oldTriggers) {
+            agentTriggersRepository.delete(t.id)
           }
+
+          triggersCreated += this.importAgentTriggers(
+            agentId, frontmatter.triggers, pluginId, project_id, labelNameToId
+          )
+
+          importedAgentIds.add(agentId)
+          agentsUpdated++
+        } else {
+          // Create new agent + profile
+          const agentId = crypto.randomUUID()
+
+          profilesRepository.create({
+            id: agentId,
+            type: 'agent',
+            name: frontmatter.name,
+            description: frontmatter.description ?? undefined,
+            avatar_url: frontmatter.avatar ?? undefined,
+          })
+
+          agentsRepository.create({
+            id: agentId,
+            name: frontmatter.name,
+            description: frontmatter.description ?? '',
+            slug,
+            system_prompt: systemPrompt,
+            permissions: frontmatter.permissions ?? [],
+            config,
+            is_enabled: frontmatter.is_enabled !== false,
+            plugin_id: pluginId,
+          })
+
+          triggersCreated += this.importAgentTriggers(
+            agentId, frontmatter.triggers, pluginId, project_id, labelNameToId
+          )
+
+          importedAgentIds.add(agentId)
+          agentsCreated++
         }
+      }
+    }
+
+    // Clean up agents from old plugin that are not in the new manifest
+    for (const oldId of oldPluginAgentIds) {
+      if (!importedAgentIds.has(oldId)) {
+        agentsRepository.delete(oldId)
+        profilesRepository.delete(oldId)
       }
     }
 
@@ -202,6 +216,7 @@ export class PluginImportService implements IPluginImportService {
       plugin_id: pluginId,
       plugin_name: manifest.name,
       agents_created: agentsCreated,
+      agents_updated: agentsUpdated,
       labels_created: labelsCreated,
       labels_merged: labelsMerged,
       triggers_created: triggersCreated,
@@ -291,22 +306,31 @@ export class PluginImportService implements IPluginImportService {
     return result
   }
 
-  private deletePluginEntities(pluginId: string): void {
-    const db = getDatabase()
+  private importAgentTriggers(
+    agentId: string,
+    triggers: AgentExportFrontmatter['triggers'],
+    pluginId: string,
+    projectId: string,
+    labelNameToId: Map<string, number>
+  ): number {
+    if (!triggers) return 0
+    let count = 0
+    for (const trigger of triggers) {
+      const conditions = this.resolveLabelNames(trigger.conditions, labelNameToId)
+      const resolvedConditions = this.resolveSelfPlaceholder(conditions, agentId)
 
-    // Get all agents linked to this plugin to delete their profiles
-    const agentIds = db
-      .prepare('SELECT id FROM agents WHERE plugin_id = ?')
-      .all(pluginId) as { id: string }[]
-
-    // Delete agents (cascades to triggers via FK)
-    for (const { id } of agentIds) {
-      agentsRepository.delete(id)
-      profilesRepository.delete(id)
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: trigger.event_type,
+        project_id: trigger.project_id ?? projectId,
+        conditions: resolvedConditions ?? undefined,
+        is_enabled: trigger.is_enabled !== false,
+        priority: trigger.priority ?? 0,
+        plugin_id: pluginId,
+      })
+      count++
     }
-
-    // Delete labels linked to this plugin
-    db.prepare('DELETE FROM labels WHERE plugin_id = ?').run(pluginId)
+    return count
   }
 }
 

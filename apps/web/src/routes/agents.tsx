@@ -93,7 +93,7 @@ export function Agents() {
       {
         onSuccess: (result) => {
           toast.success(
-            `Installed "${result.plugin_name}": ${result.agents_created} agents, ${result.labels_created} labels`
+            `Installed "${result.plugin_name}": ${result.agents_created} created, ${result.agents_updated} updated, ${result.labels_created} labels`
           );
         },
         onError: (err) => {

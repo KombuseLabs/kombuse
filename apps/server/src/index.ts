@@ -80,7 +80,7 @@ function seedPlugins() {
       project_id: '1',
     })
     console.log(
-      `[Server] Auto-installed plugin "${result.plugin_name}": ${result.agents_created} agents, ${result.labels_created} labels`
+      `[Server] Auto-installed plugin "${result.plugin_name}": ${result.agents_created} created, ${result.agents_updated} updated, ${result.labels_created} labels`
     )
   } catch (err) {
     console.warn('[Server] Failed to auto-install default plugin:', err)

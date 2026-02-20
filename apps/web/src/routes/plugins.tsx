@@ -40,18 +40,15 @@ function InstalledPlugins({ projectId }: { projectId: string }) {
   }
 
   const handleUninstall = (plugin: PluginType) => {
+    if (!window.confirm(`Uninstall "${plugin.name}"?`)) {
+      return
+    }
+
     const mode = window.confirm(
-      `Uninstall "${plugin.name}"?\n\nClick OK to remove all plugin entities (agents, triggers, labels).\nClick Cancel to keep entities but unlink them from the plugin.`
+      `Also delete all agents, triggers, and labels created by this plugin?\n\nClick OK to delete everything.\nClick Cancel to keep entities but unlink them from the plugin.`
     )
       ? 'delete'
       : 'orphan'
-
-    // Double-confirm for delete mode
-    if (mode === 'delete') {
-      if (!window.confirm(`Are you sure? This will permanently delete all agents, triggers, and labels from "${plugin.name}".`)) {
-        return
-      }
-    }
 
     uninstallPlugin.mutate(
       { id: plugin.id, mode },
@@ -141,7 +138,7 @@ function AvailablePluginsList({ projectId }: { projectId: string }) {
       {
         onSuccess: (result) => {
           toast.success(
-            `Installed "${result.plugin_name}": ${result.agents_created} agents, ${result.labels_created} labels created, ${result.labels_merged} labels merged`
+            `Installed "${result.plugin_name}": ${result.agents_created} created, ${result.agents_updated} updated, ${result.labels_created} labels created, ${result.labels_merged} labels merged`
           )
         },
         onError: (error) => {
