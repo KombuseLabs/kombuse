@@ -1277,42 +1277,15 @@ ORDER BY rank;
 
 ## Migration History
 
-Migrations are stored in `packages/persistence/src/database.ts` and tracked in the `migrations` table. Each migration has a unique name and SQL to execute.
+The schema is defined as a single flattened migration (`001_schema`) in `packages/persistence/src/database.ts`, tracked in the `migrations` table. This migration contains all `CREATE TABLE`, `CREATE INDEX`, `CREATE VIRTUAL TABLE`, and `CREATE TRIGGER` statements for the complete schema.
 
 To add a new migration:
 
-1. Add entry to the `migrations` array in `database.ts`
-2. Give it a sequential name like `025_add_feature`
+1. Add a new entry to the `migrations` array in `database.ts`
+2. Give it a sequential name like `002_add_feature`
 3. The migration runs automatically on database initialization
 
 Migrations are idempotent — running them multiple times is safe.
-
-| Migration | Description |
-|-----------|-------------|
-| `001_initial_schema` | Core schema (profiles, projects, tickets, comments, mentions, attachments, events, event_subscriptions, sessions, session_events, agents, agent_triggers, agent_invocations) |
-| `002_invocation_kombuse_session_id` | Adds `agent_invocations.kombuse_session_id` |
-| `003_session_ticket_id` | Adds `sessions.ticket_id` for ticket linkage |
-| `004_comment_kombuse_session_id` | Adds `comments.kombuse_session_id` |
-| `005_event_kombuse_session_id` | Adds `events.kombuse_session_id` |
-| `006_ticket_opened_closed_at` | Adds `tickets.opened_at` and `tickets.closed_at` timestamps |
-| `007_ticket_last_activity_at` | Adds `tickets.last_activity_at` for sorting by activity |
-| `008_fts_search` | Creates `tickets_fts` FTS5 virtual table with sync triggers |
-| `009_ticket_views` | Creates `ticket_views` table for per-profile view tracking |
-| `010_agent_permissions` | Adds `agents.permissions` JSON column for permission rules |
-| `011_cleanup_legacy_session_ids` | Removes legacy session ID columns |
-| `012_comments_fts_search` | Creates `comments_fts` FTS5 virtual table with sync triggers |
-| `013_comments_parent_set_null` | Changes `comments.parent_id` FK from CASCADE to SET NULL |
-| `014_session_agent_id` | Adds `sessions.agent_id` for agent-session linkage |
-| `015_milestones` | Creates `milestones` table and adds `tickets.milestone_id` |
-| `016_session_state_machine` | Recreates `sessions` with state-machine statuses + metadata |
-| `017_ticket_triggers_enabled` | Adds `tickets.triggers_enabled` per-ticket toggle |
-| `018_session_abort_diagnostics` | Adds `sessions.aborted_at` and terminal diagnostics backfill |
-| `019_session_invocation_project_scope` | Adds `sessions.project_id` and `agent_invocations.project_id` |
-| `020_ticket_loop_protection` | Adds `tickets.loop_protection_enabled` toggle |
-| `021_session_event_kombuse_session_id` | Adds `session_events.kombuse_session_id` |
-| `022_agent_slug_and_descriptions` | Adds `agents.slug` with unique index |
-| `023_plugins_table` | Creates `plugins` table, adds `plugin_id` FK to agents, agent_triggers, labels |
-| `024_trigger_allowed_invokers` | Adds `agent_triggers.allowed_invokers` JSON column |
 
 ## Database Configuration
 
