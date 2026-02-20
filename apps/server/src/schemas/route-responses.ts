@@ -487,6 +487,23 @@ registerSuccessSchema('GET', '/api/shell-updates/status', updateStatusSchema)
 registerSuccessSchema('POST', '/api/shell-updates/check', updateCheckResultSchema)
 registerSuccessSchema('POST', '/api/shell-updates/install', successFlagSchema)
 
+// Desktop window routes
+const desktopWindowSchema = z.object({
+  id: z.number().int().positive(),
+  title: z.string(),
+  url: z.string(),
+})
+
+const desktopScreenshotSchema = z.object({
+  data: z.string().min(1),
+  mimeType: z.string().min(1),
+})
+
+registerSuccessSchema('GET', '/api/desktop/windows', z.array(desktopWindowSchema))
+registerSuccessSchema('POST', '/api/desktop/windows', desktopWindowSchema)
+registerSuccessSchema('POST', '/api/desktop/windows/:id/navigate', desktopWindowSchema.pick({ id: true, url: true }))
+registerSuccessSchema('POST', '/api/desktop/windows/:id/screenshot', desktopScreenshotSchema)
+
 export function toRouteKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path}`
 }

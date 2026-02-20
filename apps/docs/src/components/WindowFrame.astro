@@ -1,0 +1,134 @@
+---
+interface Props {
+  title?: string
+  cursorX?: number
+  cursorY?: number
+}
+
+const { title = '', cursorX, cursorY } = Astro.props
+const showCursor = cursorX !== undefined && cursorY !== undefined
+---
+
+<div class="window-frame">
+  <div class="window-titlebar">
+    <div class="window-buttons">
+      <span class="window-button close"></span>
+      <span class="window-button minimize"></span>
+      <span class="window-button maximize"></span>
+    </div>
+    {title && <span class="window-title">{title}</span>}
+  </div>
+  <div class="window-content">
+    <slot />
+    {showCursor && (
+      <svg
+        class="cursor"
+        style={`left: ${cursorX}%; top: ${cursorY}%`}
+        width="20"
+        height="28"
+        viewBox="0 0 20 28"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M1 1L1 22.5L6.5 17.5L11 26L15 24.5L10.5 16H18L1 1Z"
+          fill="black"
+          stroke="white"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+        />
+      </svg>
+    )}
+  </div>
+</div>
+
+<style>
+  .window-frame {
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  :global([data-theme='dark']) .window-frame {
+    border-color: #374151;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .window-titlebar {
+    display: flex;
+    align-items: center;
+    height: 38px;
+    padding: 0 12px;
+    background: #f3f4f6;
+    border-bottom: 1px solid #d1d5db;
+    gap: 8px;
+  }
+
+  :global([data-theme='dark']) .window-titlebar {
+    background: #1f2937;
+    border-bottom-color: #374151;
+  }
+
+  .window-buttons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .window-button {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .window-button.close {
+    background: #ef4444;
+  }
+
+  .window-button.minimize {
+    background: #eab308;
+  }
+
+  .window-button.maximize {
+    background: #22c55e;
+  }
+
+  .window-title {
+    flex: 1;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-right: 54px; /* offset for buttons to keep title centered */
+  }
+
+  :global([data-theme='dark']) .window-title {
+    color: #9ca3af;
+  }
+
+  .window-content {
+    position: relative;
+    line-height: 0;
+  }
+
+  .window-content :global(img),
+  .window-content :global(picture) {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0;
+    padding: 0;
+  }
+
+  .window-content :global(p) {
+    margin: 0;
+    padding: 0;
+  }
+
+  .cursor {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+    filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.3));
+  }
+</style>

@@ -3,6 +3,10 @@ title: Getting Started
 description: Install and set up Kombuse.
 ---
 
+import { Image } from 'astro:assets'
+import WindowFrame from '../../../components/WindowFrame.astro'
+import ticketsEmpty from '../../../assets/tickets-empty.png'
+
 Welcome to Kombuse! This guide will help you get up and running.
 
 ## Installation
@@ -12,3 +16,11 @@ Download the latest release for your platform from the [releases page](https://g
 ## First Steps
 
 Once installed, launch the app and you're ready to go.
+
+## Tickets
+
+The tickets page is where you manage all your work items. Create tickets to track bugs, features, and tasks across your projects.
+
+<WindowFrame title="Kombuse" cursorX={88} cursorY={10}>
+  <Image src={ticketsEmpty} alt="The Kombuse tickets page" />
+</WindowFrame>
