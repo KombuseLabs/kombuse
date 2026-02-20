@@ -55,6 +55,7 @@ const noBodyResponseRouteKeys = new Set<string>([
   'DELETE /api/sessions/:id',
   'DELETE /api/tickets/:id',
   'DELETE /api/plugins/:id',
+  'DELETE /api/desktop/windows/:id',
 ])
 
 const successFlagSchema = z.object({

@@ -1,8 +1,17 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { registerDesktopTools, type InjectableServer } from '../index'
+
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return {
+    ...actual,
+    writeFileSync: vi.fn(),
+    mkdirSync: vi.fn(),
+  }
+})
 
 function createMockInjectable(
   response: { statusCode: number; body: string } = { statusCode: 200, body: '{"ok":true}' }
@@ -303,5 +312,175 @@ describe('take_screenshot', () => {
     await expect(
       client.callTool({ name: 'take_screenshot', arguments: { window_id: 1 } })
     ).rejects.toThrow()
+  })
+})
+
+describe('save_screenshot', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should save screenshot to file and return path and size', async () => {
+    const base64Data = Buffer.from('fake-png-data').toString('base64')
+    const screenshotData = { data: base64Data, mimeType: 'image/png' }
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify(screenshotData),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'save_screenshot',
+      arguments: { window_id: 1, file_path: '/tmp/screenshots/test.png' },
+    })
+    const data = parseContent(result) as { file_path: string; size: number }
+
+    expect(result.isError).toBeFalsy()
+    expect(data.file_path).toBe('/tmp/screenshots/test.png')
+    expect(data.size).toBe(Buffer.from(base64Data, 'base64').length)
+    expect(injectable.lastCall).toEqual({
+      method: 'POST',
+      url: '/api/desktop/windows/1/screenshot',
+    })
+
+    const { mkdirSync, writeFileSync } = await import('node:fs')
+    expect(mkdirSync).toHaveBeenCalledWith('/tmp/screenshots', { recursive: true })
+    expect(writeFileSync).toHaveBeenCalledWith(
+      '/tmp/screenshots/test.png',
+      Buffer.from(base64Data, 'base64'),
+    )
+  })
+
+  it('should return error response when server returns error status', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 404,
+      body: JSON.stringify({ error: 'Window not found' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'save_screenshot',
+      arguments: { window_id: 99, file_path: '/tmp/test.png' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('Failed to capture screenshot')
+  })
+
+  it('should return error response when file write fails', async () => {
+    const base64Data = Buffer.from('fake-png-data').toString('base64')
+    const screenshotData = { data: base64Data, mimeType: 'image/png' }
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify(screenshotData),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const { writeFileSync } = await import('node:fs')
+    vi.mocked(writeFileSync).mockImplementation(() => {
+      throw new Error('EACCES: permission denied')
+    })
+
+    const result = await client.callTool({
+      name: 'save_screenshot',
+      arguments: { window_id: 1, file_path: '/readonly/test.png' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('Failed to write file')
+    expect(data.error).toContain('EACCES')
+  })
+
+  it('should return error response when inject throws', async () => {
+    const injectable: InjectableServer = {
+      async inject() {
+        throw new Error('Connection refused')
+      },
+    }
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'save_screenshot',
+      arguments: { window_id: 1, file_path: '/tmp/test.png' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('Connection refused')
+  })
+})
+
+describe('close_window', () => {
+  it('should close window and return success', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ success: true }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'close_window',
+      arguments: { window_id: 1 },
+    })
+    const data = parseContent(result) as { success: boolean }
+
+    expect(result.isError).toBeFalsy()
+    expect(data.success).toBe(true)
+    expect(injectable.lastCall).toEqual({
+      method: 'DELETE',
+      url: '/api/desktop/windows/1',
+    })
+  })
+
+  it('should interpolate window_id into URL', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ success: true }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    await client.callTool({
+      name: 'close_window',
+      arguments: { window_id: 7 },
+    })
+
+    expect(injectable.lastCall?.url).toBe('/api/desktop/windows/7')
+  })
+
+  it('should return error response when window not found (404)', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 404,
+      body: JSON.stringify({ error: 'Window not found' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'close_window',
+      arguments: { window_id: 99 },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('Failed to close window')
+  })
+
+  it('should return error response when inject throws', async () => {
+    const injectable: InjectableServer = {
+      async inject() {
+        throw new Error('Network error')
+      },
+    }
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'close_window',
+      arguments: { window_id: 1 },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('Network error')
   })
 })

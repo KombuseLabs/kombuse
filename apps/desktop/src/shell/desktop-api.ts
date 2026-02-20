@@ -8,6 +8,7 @@ export interface DesktopApiOptions {
 interface RouteInstance {
   get(path: string, handler: () => Promise<unknown>): void;
   post(path: string, handler: (request: any, reply: any) => Promise<unknown>): void;
+  delete(path: string, handler: (request: any, reply: any) => Promise<unknown>): void;
 }
 
 export async function desktopApiPlugin(
@@ -85,6 +86,19 @@ export async function desktopApiPlugin(
         data: png.toString("base64"),
         mimeType: "image/png",
       };
+    },
+  );
+
+  fastify.delete(
+    "/desktop/windows/:id",
+    async (request: any, reply: any) => {
+      const id = Number(request.params.id);
+      const win = BrowserWindow.fromId(id);
+      if (!win) {
+        return reply.status(404).send({ error: "Window not found" });
+      }
+      win.close();
+      return { success: true };
     },
   );
 }

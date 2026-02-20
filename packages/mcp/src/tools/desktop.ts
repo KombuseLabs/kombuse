@@ -1,5 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { InjectableServer } from './api'
+import { writeFileSync, mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { z } from 'zod/v3'
 
 function errorResponse(message: string) {
@@ -179,6 +181,96 @@ export function registerDesktopTools(
         }
       } catch (err) {
         return errorResponse(`take_screenshot failed: ${(err as Error).message}`)
+      }
+    }
+  )
+
+  registerTool(
+    'save_screenshot',
+    {
+      description:
+        'Capture a screenshot of a Kombuse desktop window and save it as a PNG file to disk. Returns the written file path and size.',
+      inputSchema: {
+        window_id: z
+          .number()
+          .int()
+          .positive()
+          .describe('The window id to capture'),
+        file_path: z
+          .string()
+          .min(1)
+          .describe('Absolute file path to write the PNG to, e.g. "/path/to/screenshot.png"'),
+      },
+    },
+    async ({ window_id, file_path }) => {
+      try {
+        const response = await injectable.inject({
+          method: 'POST',
+          url: `/api/desktop/windows/${window_id}/screenshot`,
+        })
+
+        let body: unknown
+        try {
+          body = JSON.parse(response.body)
+        } catch {
+          body = response.body
+        }
+
+        if (response.statusCode >= 400) {
+          return errorResponse(`Failed to capture screenshot: ${JSON.stringify(body)}`)
+        }
+
+        const { data } = body as { data: string; mimeType: string }
+        const buffer = Buffer.from(data, 'base64')
+
+        try {
+          mkdirSync(dirname(file_path), { recursive: true })
+          writeFileSync(file_path, buffer)
+        } catch (fsErr) {
+          return errorResponse(`Failed to write file: ${(fsErr as Error).message}`)
+        }
+
+        return successResponse({ file_path, size: buffer.length })
+      } catch (err) {
+        return errorResponse(`save_screenshot failed: ${(err as Error).message}`)
+      }
+    }
+  )
+
+  registerTool(
+    'close_window',
+    {
+      description:
+        'Close a Kombuse desktop window. Requires the window id (from list_windows or open_window).',
+      inputSchema: {
+        window_id: z
+          .number()
+          .int()
+          .positive()
+          .describe('The window id to close'),
+      },
+    },
+    async ({ window_id }) => {
+      try {
+        const response = await injectable.inject({
+          method: 'DELETE',
+          url: `/api/desktop/windows/${window_id}`,
+        })
+
+        let body: unknown
+        try {
+          body = JSON.parse(response.body)
+        } catch {
+          body = response.body
+        }
+
+        if (response.statusCode >= 400) {
+          return errorResponse(`Failed to close window: ${JSON.stringify(body)}`)
+        }
+
+        return successResponse(body)
+      } catch (err) {
+        return errorResponse(`close_window failed: ${(err as Error).message}`)
       }
     }
   )
