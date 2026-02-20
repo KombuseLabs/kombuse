@@ -1,0 +1,52 @@
+---
+title: Packages
+description: Reference for all packages in the monorepo.
+---
+
+## @kombuse/core
+
+Framework-agnostic command registry and keybinding utilities.
+
+- `createCommandRegistry()` — Create a new command registry instance
+- Keybinding parser and matcher utilities
+
+## @kombuse/types
+
+Shared TypeScript types used across the monorepo.
+
+- `Command` — Command definition type
+- `CommandContext` — Context passed to command handlers
+- `CommandRegistry` — Registry interface
+
+## @kombuse/ui
+
+React component library built on shadcn/ui and Radix UI.
+
+### Base Components
+
+Primitives from shadcn/ui: `Button`, `Card`, `Dialog`, `Input`, and more.
+
+### Domain Components
+
+- `CommandPalette` — Searchable command palette (`⌘K`)
+- `Header` — App header
+- `ModeToggle` — Dark/light mode toggle
+
+### Hooks
+
+- `useCommand(id)` — Execute a specific command
+- `useCommands()` — Get all registered commands
+- `useCommandContext()` — Access the command registry
+
+### Providers
+
+- `CommandProvider` — Provides command registry and keybinding listener
+- `ThemeProvider` — Dark/light theme context
+
+## @kombuse/services
+
+Business logic services shared between apps.
+
+## @kombuse/persistence
+
+Database access layer with SQLite via Drizzle ORM.

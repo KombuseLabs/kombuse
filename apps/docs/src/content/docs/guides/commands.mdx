@@ -1,0 +1,44 @@
+---
+title: Command System
+description: How the command system works and how to register new commands.
+---
+
+All user actions go through the command system. This ensures actions are discoverable via the command palette (`⌘K`), keybindings work consistently, and there is no duplicate logic.
+
+## Registering Commands
+
+```typescript
+registry.register({
+  id: 'theme.toggle',
+  title: 'Toggle Dark Mode',
+  keybinding: 'mod+shift+d',
+  handler: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
+})
+```
+
+## Using Commands in Components
+
+Use the `useCommand` hook to execute commands from components:
+
+```typescript
+import { useCommand } from '@kombuse/ui/hooks'
+
+function ModeToggle() {
+  const { execute } = useCommand('theme.toggle')
+  return <button onClick={() => execute()}>Toggle</button>
+}
+```
+
+:::caution
+Do not bypass the command system by calling handlers directly. Always go through `useCommand` or the command registry.
+:::
+
+## Package Locations
+
+| What | Package |
+|------|---------|
+| Types | `@kombuse/types` |
+| Core registry | `@kombuse/core` |
+| React hooks | `@kombuse/ui/hooks` |
+| Providers | `@kombuse/ui/providers` |
+| Components | `@kombuse/ui/components` |

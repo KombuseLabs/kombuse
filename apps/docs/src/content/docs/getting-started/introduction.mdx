@@ -1,0 +1,31 @@
+---
+title: Introduction
+description: Welcome to Kombuse — an overview of the project and its architecture.
+---
+
+Kombuse is a TypeScript monorepo built with Turborepo and Bun.
+
+## Architecture
+
+The project is organized into apps and packages:
+
+### Apps
+
+- **web** — Vite + React Router web application
+- **docs** — This documentation site (Astro Starlight)
+- **server** — Fastify REST API server
+
+### Packages
+
+- **core** — Command registry and keybindings (framework-agnostic)
+- **ui** — React component library (shadcn/ui + Radix)
+- **types** — Shared TypeScript types
+- **services** — Business logic services
+
+## Tech Stack
+
+- **Runtime:** Bun, Node ≥18
+- **Framework:** Vite, React 19, React Router 7, Fastify 5
+- **Styling:** Tailwind CSS 4 with dark mode
+- **Components:** shadcn/ui + Radix UI primitives
+- **Language:** TypeScript 5.9 (strict mode)
