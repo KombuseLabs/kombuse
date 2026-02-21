@@ -5,6 +5,7 @@ import type { Agent, AgentTrigger, Permission, Profile } from '@kombuse/types'
 import { AgentPreviewCard } from '../agent-preview-card'
 import { useAgentWithProfile } from '../../../hooks/use-agents'
 import { useTriggers } from '../../../hooks/use-triggers'
+import { useCurrentProject } from '../../../hooks/use-app-context'
 
 vi.mock('../../../hooks/use-agents', () => ({
   useAgentWithProfile: vi.fn(),
@@ -15,7 +16,7 @@ vi.mock('../../../hooks/use-triggers', () => ({
 }))
 
 vi.mock('../../../hooks/use-app-context', () => ({
-  useCurrentProject: () => ({ currentProjectId: 'test-project' }),
+  useCurrentProject: vi.fn(() => ({ currentProjectId: 'test-project' })),
 }))
 
 function buildAgent(overrides: Partial<Agent> = {}): Agent {
@@ -78,6 +79,7 @@ describe('AgentPreviewCard', () => {
   beforeEach(() => {
     mockUseAgentWithProfile.mockReset()
     mockUseTriggers.mockReset()
+    vi.mocked(useCurrentProject).mockReturnValue({ currentProjectId: 'test-project', setCurrentProjectId: vi.fn() } as never)
   })
 
   it('renders a loading skeleton while fetching', () => {
@@ -159,6 +161,32 @@ describe('AgentPreviewCard', () => {
 
     const detailsLink = getByRole('link', { name: 'View full details' })
     expect(detailsLink.getAttribute('href')).toBe('/projects/test-project/agents/agent-1')
+  })
+
+  it('hides "View full details" link when no project context', () => {
+    vi.mocked(useCurrentProject).mockReturnValue({ currentProjectId: null, setCurrentProjectId: vi.fn() } as never)
+
+    mockUseAgentWithProfile.mockReturnValue({
+      data: {
+        agent: buildAgent(),
+        profile: buildProfile(),
+      },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useAgentWithProfile>)
+    mockUseTriggers.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useTriggers>)
+
+    const { queryByText } = render(
+      <MemoryRouter>
+        <AgentPreviewCard agentId="agent-1" />
+      </MemoryRouter>
+    )
+
+    expect(queryByText('View full details')).toBeNull()
   })
 
   it('renders nothing and notifies parent when loading fails', async () => {

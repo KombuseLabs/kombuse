@@ -164,14 +164,16 @@ function AgentPreviewCard({ agentId, enabled = true, onError }: AgentPreviewCard
         )}
       </div>
 
-      <div>
-        <Link
-          to={currentProjectId ? `/projects/${currentProjectId}/agents/${agentId}` : `/agents/${agentId}`}
-          className="text-xs text-primary no-underline hover:underline"
-        >
-          View full details
-        </Link>
-      </div>
+      {currentProjectId && (
+        <div>
+          <Link
+            to={`/projects/${currentProjectId}/agents/${agentId}`}
+            className="text-xs text-primary no-underline hover:underline"
+          >
+            View full details
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
