@@ -328,6 +328,9 @@ registerSuccessSchema('PATCH', '/api/labels/:id', labelSchema)
 registerSuccessSchema('POST', '/api/tickets/:ticketId/labels/:labelId', successFlagSchema)
 registerSuccessSchema('GET', '/api/tickets/:ticketId/labels', z.array(labelSchema))
 registerSuccessSchema('GET', '/api/labels/:labelId/triggers', z.array(agentTriggerSchema))
+registerSuccessSchema('GET', '/api/projects/:projectId/smart-label-ids', z.object({
+  label_ids: z.array(z.number().int().positive()),
+}))
 
 // Milestone routes
 registerSuccessSchema('GET', '/api/projects/:projectId/milestones', z.array(milestoneWithStatsSchema))
