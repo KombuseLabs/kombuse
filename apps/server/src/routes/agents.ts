@@ -106,6 +106,25 @@ export async function agentRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // Reset agent to plugin defaults
+  fastify.post<{
+    Params: { id: string }
+  }>('/agents/:id/reset-to-plugin-defaults', async (request, reply) => {
+    try {
+      const agent = agentService.resetAgentToPluginDefaults(request.params.id)
+      return enrichWithPreset(agent)
+    } catch (error) {
+      const message = (error as Error).message
+      if (message.includes('not found')) {
+        return reply.status(404).send({ error: message })
+      }
+      if (message.includes('no plugin defaults')) {
+        return reply.status(409).send({ error: message })
+      }
+      throw error
+    }
+  })
+
   // Delete agent
   fastify.delete<{
     Params: { id: string }

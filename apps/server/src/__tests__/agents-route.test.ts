@@ -62,3 +62,78 @@ describe('GET /agents/by-slug/:slug', () => {
     expect(response.json()).toEqual({ error: 'Agent not found' })
   })
 })
+
+describe('POST /agents/:id/reset-to-plugin-defaults', () => {
+  let app: FastifyInstance
+
+  beforeEach(async () => {
+    const db = initializeDatabase(':memory:')
+    setDatabase(db)
+
+    app = Fastify()
+    await app.register(agentRoutes, { prefix: '/api' })
+    await app.ready()
+  })
+
+  afterEach(async () => {
+    await app.close()
+    closeDatabase()
+  })
+
+  it('should reset agent to plugin defaults', async () => {
+    profilesRepository.create({
+      id: 'reset-agent',
+      type: 'agent',
+      name: 'Reset Agent',
+      description: 'For testing reset',
+    })
+    agentsRepository.create({
+      id: 'reset-agent',
+      name: 'Reset Agent',
+      description: 'For testing reset',
+      system_prompt: 'User changed this',
+      slug: 'reset-agent',
+      plugin_base: { system_prompt: 'Plugin original', permissions: [], config: {}, is_enabled: true },
+    })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/agents/reset-agent/reset-to-plugin-defaults',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json().system_prompt).toBe('Plugin original')
+  })
+
+  it('should return 404 for non-existent agent', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/agents/nonexistent/reset-to-plugin-defaults',
+    })
+
+    expect(response.statusCode).toBe(404)
+  })
+
+  it('should return 409 when agent has no plugin_base', async () => {
+    profilesRepository.create({
+      id: 'no-base',
+      type: 'agent',
+      name: 'No Base',
+      description: 'For testing',
+    })
+    agentsRepository.create({
+      id: 'no-base',
+      name: 'No Base',
+      description: 'For testing',
+      system_prompt: 'Test',
+      slug: 'no-base',
+    })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/agents/no-base/reset-to-plugin-defaults',
+    })
+
+    expect(response.statusCode).toBe(409)
+  })
+})

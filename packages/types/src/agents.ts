@@ -104,6 +104,17 @@ export interface AgentConfig {
 }
 
 /**
+ * Snapshot of plugin-provided agent field values at install time.
+ * Used to detect user customizations and enable selective overwrites on plugin update.
+ */
+export interface PluginBase {
+  system_prompt: string
+  permissions: Permission[]
+  config: AgentConfig
+  is_enabled: boolean
+}
+
+/**
  * Core agent entity (extends profile)
  */
 export interface Agent {
@@ -121,6 +132,8 @@ export interface Agent {
   is_enabled: boolean
   /** Plugin that installed this agent, if any */
   plugin_id: string | null
+  /** Snapshot of plugin-provided defaults, null for user-created agents */
+  plugin_base: PluginBase | null
   /** Resolved type preset, populated by the API (not stored in DB) */
   resolved_preset?: ResolvedPreset
   created_at: string
@@ -144,6 +157,7 @@ export interface CreateAgentInput {
   config?: AgentConfig
   is_enabled?: boolean
   plugin_id?: string | null
+  plugin_base?: PluginBase | null
 }
 
 /**
@@ -155,6 +169,7 @@ export interface UpdateAgentInput {
   config?: AgentConfig
   is_enabled?: boolean
   plugin_id?: string | null
+  plugin_base?: PluginBase | null
 }
 
 /**

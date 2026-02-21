@@ -1112,4 +1112,237 @@ describe('pluginImportService', () => {
       })
     })
   })
+
+  describe('plugin_base tracking', () => {
+    it('should set plugin_base when creating an agent', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          agents: [
+            {
+              filename: 'tracked-agent.md',
+              frontmatter: {
+                name: 'Tracked Agent',
+                slug: 'tracked-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'Tracked prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      const agent = agentsRepository.getBySlug('tracked-agent')
+      expect(agent).not.toBeNull()
+      expect(agent!.plugin_base).not.toBeNull()
+      expect(agent!.plugin_base!.system_prompt).toBe('Tracked prompt')
+      expect(agent!.plugin_base!.is_enabled).toBe(true)
+      expect(agent!.plugin_base!.permissions).toEqual([])
+    })
+
+    it('should preserve user-customized system_prompt on reinstall', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'custom-plugin' },
+          agents: [
+            {
+              filename: 'custom-agent.md',
+              frontmatter: {
+                name: 'Custom Agent',
+                slug: 'custom-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v1 prompt',
+            },
+          ],
+        })
+      )
+
+      // First install
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      // User customizes system_prompt
+      const agent = agentsRepository.getBySlug('custom-agent')
+      agentsRepository.update(agent!.id, { system_prompt: 'User custom prompt' })
+
+      // Create v2 plugin with new prompt
+      const pkg2 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'custom-plugin' },
+          agents: [
+            {
+              filename: 'custom-agent.md',
+              frontmatter: {
+                name: 'Custom Agent',
+                slug: 'custom-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v2 prompt',
+            },
+          ],
+        })
+      )
+
+      // Reinstall
+      pluginImportService.installPackage({
+        package_path: pkg2,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      // User's customized prompt should be preserved
+      const updated = agentsRepository.getBySlug('custom-agent')
+      expect(updated!.system_prompt).toBe('User custom prompt')
+      // plugin_base should reflect v2
+      expect(updated!.plugin_base!.system_prompt).toBe('v2 prompt')
+    })
+
+    it('should overwrite non-customized fields on reinstall', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'overwrite-plugin' },
+          agents: [
+            {
+              filename: 'ow-agent.md',
+              frontmatter: {
+                name: 'OW Agent',
+                slug: 'ow-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v1 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      // User does NOT customize anything
+
+      // v2 with updated prompt
+      const pkg2 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'overwrite-plugin' },
+          agents: [
+            {
+              filename: 'ow-agent.md',
+              frontmatter: {
+                name: 'OW Agent',
+                slug: 'ow-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v2 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg2,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      // Non-customized field should be overwritten to v2
+      const updated = agentsRepository.getBySlug('ow-agent')
+      expect(updated!.system_prompt).toBe('v2 prompt')
+      expect(updated!.plugin_base!.system_prompt).toBe('v2 prompt')
+    })
+
+    it('should update plugin_base to latest values even when fields are customized', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'base-update-plugin' },
+          agents: [
+            {
+              filename: 'base-agent.md',
+              frontmatter: {
+                name: 'Base Agent',
+                slug: 'base-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v1 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      // User customizes
+      const agent = agentsRepository.getBySlug('base-agent')
+      agentsRepository.update(agent!.id, { system_prompt: 'Custom' })
+
+      // v2
+      const pkg2 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'base-update-plugin' },
+          agents: [
+            {
+              filename: 'base-agent.md',
+              frontmatter: {
+                name: 'Base Agent',
+                slug: 'base-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v2 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg2,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      const updated = agentsRepository.getBySlug('base-agent')
+      // User's custom prompt preserved
+      expect(updated!.system_prompt).toBe('Custom')
+      // plugin_base always reflects latest plugin values
+      expect(updated!.plugin_base!.system_prompt).toBe('v2 prompt')
+    })
+  })
 })

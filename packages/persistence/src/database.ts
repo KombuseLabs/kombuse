@@ -514,6 +514,12 @@ const migrations: Array<{ name: string; sql: string }> = [
       UPDATE profiles SET slug = (SELECT slug FROM agents WHERE agents.id = profiles.id) WHERE type = 'agent';
     `,
   },
+  {
+    name: '003_agents_plugin_base',
+    sql: `
+      ALTER TABLE agents ADD COLUMN plugin_base TEXT DEFAULT NULL CHECK (plugin_base IS NULL OR json_valid(plugin_base));
+    `,
+  },
 ]
 
 /**

@@ -7,6 +7,8 @@ import type {
   PluginInstallInput,
   PluginInstallResult,
   AgentConfig,
+  PluginBase,
+  UpdateAgentInput,
 } from '@kombuse/types'
 import { SELF_PLACEHOLDER } from '@kombuse/types'
 import {
@@ -33,6 +35,13 @@ export class InvalidManifestError extends Error {
     super(message)
     this.name = 'InvalidManifestError'
   }
+}
+
+function isFieldCustomized(currentValue: unknown, oldBaseValue: unknown): boolean {
+  if (typeof currentValue === 'object' || typeof oldBaseValue === 'object') {
+    return JSON.stringify(currentValue) !== JSON.stringify(oldBaseValue)
+  }
+  return currentValue !== oldBaseValue
 }
 
 export interface IPluginImportService {
@@ -150,13 +159,35 @@ export class PluginImportService implements IPluginImportService {
             avatar_url: frontmatter.avatar ?? undefined,
           })
 
-          agentsRepository.update(agentId, {
+          // Build the new plugin base snapshot
+          const newPluginBase: PluginBase = {
             system_prompt: systemPrompt,
             permissions: frontmatter.permissions ?? [],
             config,
             is_enabled: frontmatter.is_enabled !== false,
+          }
+
+          // Field-level comparison: only overwrite fields the user hasn't customized
+          const oldBase = existingAgent.plugin_base
+          const updateFields: UpdateAgentInput = {
             plugin_id: pluginId,
-          })
+            plugin_base: newPluginBase,
+          }
+
+          if (!oldBase || !isFieldCustomized(existingAgent.system_prompt, oldBase.system_prompt)) {
+            updateFields.system_prompt = systemPrompt
+          }
+          if (!oldBase || !isFieldCustomized(existingAgent.permissions, oldBase.permissions)) {
+            updateFields.permissions = frontmatter.permissions ?? []
+          }
+          if (!oldBase || !isFieldCustomized(existingAgent.config, oldBase.config)) {
+            updateFields.config = config
+          }
+          if (!oldBase || !isFieldCustomized(existingAgent.is_enabled, oldBase.is_enabled)) {
+            updateFields.is_enabled = frontmatter.is_enabled !== false
+          }
+
+          agentsRepository.update(agentId, updateFields)
 
           // Replace triggers: delete old, create new
           const oldTriggers = agentTriggersRepository.listByAgent(agentId)
@@ -195,6 +226,13 @@ export class PluginImportService implements IPluginImportService {
             })
           }
 
+          const pluginBase: PluginBase = {
+            system_prompt: systemPrompt,
+            permissions: frontmatter.permissions ?? [],
+            config,
+            is_enabled: frontmatter.is_enabled !== false,
+          }
+
           agentsRepository.create({
             id: agentId,
             name: frontmatter.name,
@@ -205,6 +243,7 @@ export class PluginImportService implements IPluginImportService {
             config,
             is_enabled: frontmatter.is_enabled !== false,
             plugin_id: pluginId,
+            plugin_base: pluginBase,
           })
 
           triggersCreated += this.importAgentTriggers(

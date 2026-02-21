@@ -293,6 +293,111 @@ describe('agentsRepository', () => {
       expect(deleted).toBe(false)
     })
   })
+
+  describe('plugin_base', () => {
+    it('should create agent with plugin_base', () => {
+      const profileId = createAgentProfile()
+      const pluginBase = {
+        system_prompt: 'Original prompt',
+        permissions: [],
+        config: { model: 'claude-sonnet-4-20250514' },
+        is_enabled: true,
+      }
+      const agent = agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Original prompt',
+        plugin_base: pluginBase,
+      }))
+
+      expect(agent.plugin_base).toEqual(pluginBase)
+    })
+
+    it('should default plugin_base to null', () => {
+      const profileId = createAgentProfile()
+      const agent = agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Test',
+      }))
+
+      expect(agent.plugin_base).toBeNull()
+    })
+
+    it('should update plugin_base', () => {
+      const profileId = createAgentProfile()
+      agentsRepository.create(agentInput({ id: profileId, system_prompt: 'Test' }))
+
+      const pluginBase = {
+        system_prompt: 'Plugin prompt',
+        permissions: [],
+        config: {},
+        is_enabled: true,
+      }
+      const updated = agentsRepository.update(profileId, { plugin_base: pluginBase })
+
+      expect(updated?.plugin_base).toEqual(pluginBase)
+    })
+
+    it('should clear plugin_base when set to null', () => {
+      const profileId = createAgentProfile()
+      agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Test',
+        plugin_base: { system_prompt: 'X', permissions: [], config: {}, is_enabled: true },
+      }))
+
+      const updated = agentsRepository.update(profileId, { plugin_base: null })
+
+      expect(updated?.plugin_base).toBeNull()
+    })
+  })
+
+  describe('resetToPluginBase', () => {
+    it('should reset all fields to plugin base values', () => {
+      const profileId = createAgentProfile()
+      const pluginBase = {
+        system_prompt: 'Plugin prompt',
+        permissions: [{ type: 'resource' as const, resource: '*', actions: ['read' as const], scope: 'global' as const }],
+        config: { model: 'claude-sonnet-4-20250514' },
+        is_enabled: true,
+      }
+      agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Plugin prompt',
+        plugin_base: pluginBase,
+      }))
+
+      // User customizes
+      agentsRepository.update(profileId, {
+        system_prompt: 'User customized prompt',
+        is_enabled: false,
+      })
+
+      // Reset
+      const reset = agentsRepository.resetToPluginBase(profileId)
+
+      expect(reset).not.toBeNull()
+      expect(reset!.system_prompt).toBe('Plugin prompt')
+      expect(reset!.is_enabled).toBe(true)
+      expect(reset!.permissions).toEqual(pluginBase.permissions)
+      expect(reset!.config).toEqual(pluginBase.config)
+      expect(reset!.plugin_base).toEqual(pluginBase)
+    })
+
+    it('should return null when agent has no plugin_base', () => {
+      const profileId = createAgentProfile()
+      agentsRepository.create(agentInput({ id: profileId, system_prompt: 'Test' }))
+
+      const result = agentsRepository.resetToPluginBase(profileId)
+
+      expect(result).toBeNull()
+    })
+
+    it('should return null for non-existent agent', () => {
+      const result = agentsRepository.resetToPluginBase('non-existent')
+
+      expect(result).toBeNull()
+    })
+  })
 })
 
 describe('agentTriggersRepository', () => {

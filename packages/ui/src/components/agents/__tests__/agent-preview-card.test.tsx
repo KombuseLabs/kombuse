@@ -23,6 +23,7 @@ function buildAgent(overrides: Partial<Agent> = {}): Agent {
     config: {},
     is_enabled: true,
     plugin_id: null,
+    plugin_base: null,
     created_at: '2026-02-14T00:00:00.000Z',
     updated_at: '2026-02-14T00:00:00.000Z',
     ...overrides,

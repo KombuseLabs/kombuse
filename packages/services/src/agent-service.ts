@@ -43,6 +43,7 @@ export interface IAgentService {
   createAgent(input: CreateAgentInput): Agent
   updateAgent(id: string, input: UpdateAgentInput): Agent
   deleteAgent(id: string): void
+  resetAgentToPluginDefaults(agentId: string): Agent
 
   // Trigger CRUD
   listTriggers(agentId: string): AgentTrigger[]
@@ -243,6 +244,22 @@ export class AgentService implements IAgentService {
     if (!success) {
       throw new Error(`Agent ${id} not found`)
     }
+  }
+
+  resetAgentToPluginDefaults(agentId: string): Agent {
+    const agent = agentsRepository.get(agentId)
+    if (!agent) {
+      throw new Error(`Agent ${agentId} not found`)
+    }
+    if (!agent.plugin_base) {
+      throw new Error(`Agent ${agentId} has no plugin defaults to reset to`)
+    }
+
+    const reset = agentsRepository.resetToPluginBase(agentId)
+    if (!reset) {
+      throw new Error(`Failed to reset agent ${agentId}`)
+    }
+    return reset
   }
 
   // ============================================

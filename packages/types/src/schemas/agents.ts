@@ -56,6 +56,13 @@ export const agentConfigSchema = z.object({
   auto_approved_bash_commands_override: z.array(z.string()).optional(),
 }).catchall(z.unknown())
 
+export const pluginBaseSchema = z.object({
+  system_prompt: z.string().min(1),
+  permissions: z.array(permissionSchema),
+  config: agentConfigSchema,
+  is_enabled: z.boolean(),
+})
+
 export const agentSchema = z.object({
   id: z.string().min(1),
   slug: z.string().nullable(),
@@ -63,6 +70,7 @@ export const agentSchema = z.object({
   permissions: z.array(permissionSchema),
   config: agentConfigSchema,
   is_enabled: z.boolean(),
+  plugin_base: pluginBaseSchema.nullable(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
 })
@@ -76,6 +84,7 @@ export const createAgentInputSchema = z.object({
   permissions: z.array(permissionSchema).optional(),
   config: agentConfigSchema.optional(),
   is_enabled: z.boolean().optional(),
+  plugin_base: pluginBaseSchema.nullable().optional(),
 })
 
 export const updateAgentInputSchema = z.object({
@@ -83,6 +92,7 @@ export const updateAgentInputSchema = z.object({
   permissions: z.array(permissionSchema).optional(),
   config: agentConfigSchema.optional(),
   is_enabled: z.boolean().optional(),
+  plugin_base: pluginBaseSchema.nullable().optional(),
 })
 
 export const agentFiltersSchema = z.object({
