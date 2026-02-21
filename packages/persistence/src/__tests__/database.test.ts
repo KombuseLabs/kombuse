@@ -109,6 +109,7 @@ const EXPECTED_MIGRATIONS = [
   '002_profiles_slug',
   '003_agents_plugin_base',
   '004_plugin_scoped_slugs',
+  '005_trigger_slugs',
 ]
 
 describe('database', () => {

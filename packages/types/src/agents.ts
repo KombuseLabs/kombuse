@@ -197,6 +197,7 @@ export type AllowedInvoker =
  */
 export interface AgentTrigger {
   id: number
+  slug: string | null
   agent_id: string
   /** Event type: 'ticket.created', 'comment.added', etc. */
   event_type: string
@@ -221,6 +222,7 @@ export interface AgentTrigger {
 export interface CreateAgentTriggerInput {
   agent_id: string
   event_type: string
+  slug?: string
   project_id?: string
   conditions?: Record<string, unknown>
   is_enabled?: boolean
@@ -238,6 +240,7 @@ export interface UpdateAgentTriggerInput {
   conditions?: Record<string, unknown> | null
   is_enabled?: boolean
   priority?: number
+  plugin_id?: string | null
   allowed_invokers?: AllowedInvoker[] | null
 }
 

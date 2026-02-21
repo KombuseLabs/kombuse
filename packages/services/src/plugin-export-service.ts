@@ -244,6 +244,7 @@ export class PluginExportService implements IPluginExportService {
 
   private exportTrigger(trigger: AgentTrigger, agentId: string): ExportedTrigger {
     return {
+      slug: trigger.slug ?? undefined,
       event_type: trigger.event_type,
       conditions: this.applySelfPlaceholder(trigger.conditions, agentId),
       project_id: trigger.project_id,

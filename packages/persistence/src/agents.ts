@@ -245,6 +245,28 @@ export const agentTriggersRepository = {
     return row ? mapAgentTrigger(row) : null
   },
 
+  getBySlugAndAgent(slug: string, agentId: string, pluginId: string | null): AgentTrigger | null {
+    const db = getDatabase()
+    const row = pluginId
+      ? db
+          .prepare('SELECT * FROM agent_triggers WHERE slug = ? AND agent_id = ? AND plugin_id = ?')
+          .get(slug, agentId, pluginId) as RawAgentTrigger | undefined
+      : db
+          .prepare('SELECT * FROM agent_triggers WHERE slug = ? AND agent_id = ? AND plugin_id IS NULL')
+          .get(slug, agentId) as RawAgentTrigger | undefined
+    return row ? mapAgentTrigger(row) : null
+  },
+
+  listByAgentAndPlugin(agentId: string, pluginId: string): AgentTrigger[] {
+    const db = getDatabase()
+    const rows = db
+      .prepare(
+        'SELECT * FROM agent_triggers WHERE agent_id = ? AND plugin_id = ? ORDER BY priority DESC, created_at DESC'
+      )
+      .all(agentId, pluginId) as RawAgentTrigger[]
+    return rows.map(mapAgentTrigger)
+  },
+
   /**
    * Create a new trigger
    */
@@ -255,14 +277,15 @@ export const agentTriggersRepository = {
       .prepare(
         `
       INSERT INTO agent_triggers (
-        agent_id, event_type, project_id, conditions, is_enabled, priority, plugin_id, allowed_invokers
+        agent_id, event_type, slug, project_id, conditions, is_enabled, priority, plugin_id, allowed_invokers
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
         input.agent_id,
         input.event_type,
+        input.slug ?? null,
         input.project_id ?? null,
         input.conditions ? JSON.stringify(input.conditions) : null,
         input.is_enabled !== false ? 1 : 0,
@@ -302,6 +325,10 @@ export const agentTriggersRepository = {
     if (input.priority !== undefined) {
       fields.push('priority = ?')
       params.push(input.priority)
+    }
+    if (input.plugin_id !== undefined) {
+      fields.push('plugin_id = ?')
+      params.push(input.plugin_id)
     }
     if (input.allowed_invokers !== undefined) {
       fields.push('allowed_invokers = ?')
@@ -599,6 +626,7 @@ interface RawAgent {
 
 interface RawAgentTrigger {
   id: number
+  slug: string | null
   agent_id: string
   event_type: string
   project_id: string | null
@@ -650,6 +678,7 @@ function mapAgent(row: RawAgent): Agent {
 function mapAgentTrigger(row: RawAgentTrigger): AgentTrigger {
   return {
     id: row.id,
+    slug: row.slug,
     agent_id: row.agent_id,
     event_type: row.event_type,
     project_id: row.project_id,

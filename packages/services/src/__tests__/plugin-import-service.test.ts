@@ -432,7 +432,7 @@ describe('pluginImportService', () => {
       expect(profile!.description).toBe('Updated description')
     })
 
-    it('should replace triggers when updating existing agent', () => {
+    it('should sync triggers when updating existing agent (non-plugin triggers preserved)', () => {
       const existingId = crypto.randomUUID()
       profilesRepository.create({ id: existingId, type: 'agent', name: 'Existing' })
       agentsRepository.create({
@@ -442,7 +442,7 @@ describe('pluginImportService', () => {
         slug: 'trigger-agent',
         system_prompt: 'old prompt',
       })
-      // Create an old trigger
+      // Create a manually-added trigger (no plugin_id)
       agentTriggersRepository.create({
         agent_id: existingId,
         event_type: 'ticket.created',
@@ -480,10 +480,11 @@ describe('pluginImportService', () => {
       expect(result.agents_updated).toBe(1)
       expect(result.triggers_created).toBe(1)
 
-      // Old trigger should be gone, new one should exist
+      // Both triggers should exist: non-plugin trigger preserved, plugin trigger created
       const triggers = agentTriggersRepository.listByAgent(existingId)
-      expect(triggers).toHaveLength(1)
-      expect(triggers[0]!.event_type).toBe('comment.added')
+      expect(triggers).toHaveLength(2)
+      expect(triggers.some((t) => t.event_type === 'comment.added')).toBe(true)
+      expect(triggers.some((t) => t.event_type === 'ticket.created')).toBe(true)
     })
 
     it('should create new agents that do not match existing slugs', () => {
@@ -1474,6 +1475,319 @@ describe('pluginImportService', () => {
       expect(updated!.system_prompt).toBe('Custom')
       // plugin_base always reflects latest plugin values
       expect(updated!.plugin_base!.system_prompt).toBe('v2 prompt')
+    })
+  })
+
+  describe('trigger slug-based sync', () => {
+    it('should preserve trigger IDs on plugin reinstall', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'trigger-sync-plugin' },
+          agents: [
+            {
+              filename: 'sync-agent.md',
+              frontmatter: {
+                name: 'Sync Agent',
+                slug: 'sync-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { event_type: 'ticket.created', conditions: null, is_enabled: true, priority: 5 },
+                ],
+              },
+              body: 'Sync agent prompt',
+            },
+          ],
+        })
+      )
+
+      const first = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      const agent = agentsRepository.getBySlug('sync-agent')!
+      const triggersAfterFirst = agentTriggersRepository.listByAgent(agent.id)
+      expect(triggersAfterFirst).toHaveLength(1)
+      const originalTriggerId = triggersAfterFirst[0]!.id
+
+      // Reinstall with overwrite
+      const second = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      expect(second.triggers_updated).toBe(1)
+      expect(second.triggers_created).toBe(0)
+
+      const triggersAfterSecond = agentTriggersRepository.listByAgent(agent.id)
+      expect(triggersAfterSecond).toHaveLength(1)
+      expect(triggersAfterSecond[0]!.id, 'Trigger ID should be stable across reinstalls').toBe(originalTriggerId)
+    })
+
+    it('should preserve is_enabled customization on reinstall', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'trigger-enabled-plugin' },
+          agents: [
+            {
+              filename: 'enabled-agent.md',
+              frontmatter: {
+                name: 'Enabled Agent',
+                slug: 'enabled-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { event_type: 'ticket.created', conditions: null, is_enabled: true, priority: 0 },
+                ],
+              },
+              body: 'Enabled agent prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      const agent = agentsRepository.getBySlug('enabled-agent')!
+      const triggers = agentTriggersRepository.listByAgent(agent.id)
+      // User disables the trigger
+      agentTriggersRepository.update(triggers[0]!.id, { is_enabled: false })
+
+      // Reinstall
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      const updatedTriggers = agentTriggersRepository.listByAgent(agent.id)
+      expect(updatedTriggers[0]!.is_enabled, 'User is_enabled customization should be preserved').toBe(false)
+    })
+
+    it('should preserve allowed_invokers customization on reinstall', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'trigger-invokers-plugin' },
+          agents: [
+            {
+              filename: 'invokers-agent.md',
+              frontmatter: {
+                name: 'Invokers Agent',
+                slug: 'invokers-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { event_type: 'ticket.created', conditions: null, is_enabled: true, priority: 0 },
+                ],
+              },
+              body: 'Invokers agent prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      const agent = agentsRepository.getBySlug('invokers-agent')!
+      const triggers = agentTriggersRepository.listByAgent(agent.id)
+      // User customizes allowed_invokers
+      agentTriggersRepository.update(triggers[0]!.id, {
+        allowed_invokers: [{ type: 'user' }],
+      })
+
+      // Reinstall
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      const updatedTriggers = agentTriggersRepository.listByAgent(agent.id)
+      expect(updatedTriggers[0]!.allowed_invokers, 'User allowed_invokers customization should be preserved').toEqual([{ type: 'user' }])
+    })
+
+    it('should update plugin-controlled fields on reinstall', () => {
+      const pkg1 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'trigger-update-plugin' },
+          agents: [
+            {
+              filename: 'update-agent.md',
+              frontmatter: {
+                name: 'Update Agent',
+                slug: 'update-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { event_type: 'ticket.created', conditions: { status: 'open' }, is_enabled: true, priority: 1 },
+                ],
+              },
+              body: 'v1 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg1,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      // v2 changes conditions and priority
+      const pkg2 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'trigger-update-plugin' },
+          agents: [
+            {
+              filename: 'update-agent.md',
+              frontmatter: {
+                name: 'Update Agent',
+                slug: 'update-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { event_type: 'ticket.created', conditions: { status: 'closed' }, is_enabled: true, priority: 10 },
+                ],
+              },
+              body: 'v2 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg2,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      const agent = agentsRepository.getBySlug('update-agent')!
+      const triggers = agentTriggersRepository.listByAgent(agent.id)
+      expect(triggers[0]!.conditions).toEqual({ status: 'closed' })
+      expect(triggers[0]!.priority).toBe(10)
+    })
+
+    it('should create new triggers added in v2 and delete removed triggers', () => {
+      const pkg1 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'trigger-add-remove-plugin' },
+          agents: [
+            {
+              filename: 'add-remove-agent.md',
+              frontmatter: {
+                name: 'Add Remove Agent',
+                slug: 'add-remove-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { slug: 'old-trigger', event_type: 'ticket.created', conditions: null, is_enabled: true, priority: 0 },
+                ],
+              },
+              body: 'v1 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg1,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      const agent = agentsRepository.getBySlug('add-remove-agent')!
+      const triggersV1 = agentTriggersRepository.listByAgent(agent.id)
+      expect(triggersV1).toHaveLength(1)
+      expect(triggersV1[0]!.slug).toBe('old-trigger')
+
+      // v2: remove old trigger, add new one
+      const pkg2 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'trigger-add-remove-plugin' },
+          agents: [
+            {
+              filename: 'add-remove-agent.md',
+              frontmatter: {
+                name: 'Add Remove Agent',
+                slug: 'add-remove-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { slug: 'new-trigger', event_type: 'comment.added', conditions: null, is_enabled: true, priority: 0 },
+                ],
+              },
+              body: 'v2 prompt',
+            },
+          ],
+        })
+      )
+
+      const result = pluginImportService.installPackage({
+        package_path: pkg2,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      expect(result.triggers_created).toBe(1)
+
+      const triggersV2 = agentTriggersRepository.listByAgent(agent.id)
+      expect(triggersV2).toHaveLength(1)
+      expect(triggersV2[0]!.slug).toBe('new-trigger')
+      expect(triggersV2[0]!.event_type).toBe('comment.added')
+    })
+
+    it('should derive slug from event_type when not specified', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'trigger-derive-plugin' },
+          agents: [
+            {
+              filename: 'derive-agent.md',
+              frontmatter: {
+                name: 'Derive Agent',
+                slug: 'derive-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [
+                  { event_type: 'ticket.created', conditions: null, is_enabled: true, priority: 0 },
+                ],
+              },
+              body: 'Derive agent prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      const agent = agentsRepository.getBySlug('derive-agent')!
+      const triggers = agentTriggersRepository.listByAgent(agent.id)
+      expect(triggers[0]!.slug).toBe('ticket-created')
     })
   })
 })

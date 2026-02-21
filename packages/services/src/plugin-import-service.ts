@@ -95,6 +95,7 @@ export class PluginImportService implements IPluginImportService {
     let agentsCreated = 0
     let agentsUpdated = 0
     let triggersCreated = 0
+    let triggersUpdated = 0
     const importedAgentIds = new Set<string>()
 
     // Step 4: Import labels
@@ -214,15 +215,12 @@ export class PluginImportService implements IPluginImportService {
 
           agentsRepository.update(agentId, updateFields)
 
-          // Replace triggers: delete old, create new
-          const oldTriggers = agentTriggersRepository.listByAgent(agentId)
-          for (const t of oldTriggers) {
-            agentTriggersRepository.delete(t.id)
-          }
-
-          triggersCreated += this.importAgentTriggers(
+          // Sync triggers: match by slug, preserve user customizations
+          const triggerSync = this.syncAgentTriggers(
             agentId, frontmatter.triggers, pluginId, project_id, labelNameToId
           )
+          triggersCreated += triggerSync.created
+          triggersUpdated += triggerSync.updated
 
           importedAgentIds.add(agentId)
           agentsUpdated++
@@ -299,6 +297,7 @@ export class PluginImportService implements IPluginImportService {
       labels_created: labelsCreated,
       labels_merged: labelsMerged,
       triggers_created: triggersCreated,
+      triggers_updated: triggersUpdated,
       warnings,
     }
   }
@@ -394,13 +393,20 @@ export class PluginImportService implements IPluginImportService {
   ): number {
     if (!triggers) return 0
     let count = 0
+    const slugCounts = new Map<string, number>()
     for (const trigger of triggers) {
+      const baseSlug = trigger.slug ?? toSlug(trigger.event_type)
+      const slugCount = (slugCounts.get(baseSlug) ?? 0) + 1
+      slugCounts.set(baseSlug, slugCount)
+      const slug = slugCount === 1 ? baseSlug : `${baseSlug}-${slugCount}`
+
       const conditions = this.resolveLabelNames(trigger.conditions, labelNameToId)
       const resolvedConditions = this.resolveSelfPlaceholder(conditions, agentId)
 
       agentTriggersRepository.create({
         agent_id: agentId,
         event_type: trigger.event_type,
+        slug,
         project_id: trigger.project_id ?? projectId,
         conditions: resolvedConditions ?? undefined,
         is_enabled: trigger.is_enabled !== false,
@@ -410,6 +416,79 @@ export class PluginImportService implements IPluginImportService {
       count++
     }
     return count
+  }
+
+  private syncAgentTriggers(
+    agentId: string,
+    triggers: AgentExportFrontmatter['triggers'],
+    pluginId: string,
+    projectId: string,
+    labelNameToId: Map<string, number>
+  ): { created: number; updated: number } {
+    if (!triggers || triggers.length === 0) {
+      // Delete all plugin triggers and orphaned triggers for this agent
+      const allTriggers = agentTriggersRepository.listByAgent(agentId)
+      for (const t of allTriggers) {
+        if (t.plugin_id === pluginId || (t.plugin_id === null && t.slug)) {
+          agentTriggersRepository.delete(t.id)
+        }
+      }
+      return { created: 0, updated: 0 }
+    }
+
+    let created = 0
+    let updated = 0
+    const processedSlugs = new Set<string>()
+    const slugCounts = new Map<string, number>()
+
+    for (const trigger of triggers) {
+      const baseSlug = trigger.slug ?? toSlug(trigger.event_type)
+      const slugCount = (slugCounts.get(baseSlug) ?? 0) + 1
+      slugCounts.set(baseSlug, slugCount)
+      const slug = slugCount === 1 ? baseSlug : `${baseSlug}-${slugCount}`
+
+      const conditions = this.resolveLabelNames(trigger.conditions, labelNameToId)
+      const resolvedConditions = this.resolveSelfPlaceholder(conditions, agentId)
+
+      // Try plugin-scoped match first, then fallback to orphaned trigger (NULL plugin_id from overwrite)
+      const existing = agentTriggersRepository.getBySlugAndAgent(slug, agentId, pluginId)
+        ?? agentTriggersRepository.getBySlugAndAgent(slug, agentId, null)
+
+      if (existing) {
+        agentTriggersRepository.update(existing.id, {
+          event_type: trigger.event_type,
+          conditions: resolvedConditions ?? null,
+          priority: trigger.priority ?? 0,
+          project_id: trigger.project_id ?? projectId,
+          plugin_id: pluginId,
+        })
+        updated++
+      } else {
+        agentTriggersRepository.create({
+          agent_id: agentId,
+          event_type: trigger.event_type,
+          slug,
+          project_id: trigger.project_id ?? projectId,
+          conditions: resolvedConditions ?? undefined,
+          is_enabled: trigger.is_enabled !== false,
+          priority: trigger.priority ?? 0,
+          plugin_id: pluginId,
+        })
+        created++
+      }
+      processedSlugs.add(slug)
+    }
+
+    // Delete triggers from old plugin version that are no longer in manifest
+    // Also clean up orphaned triggers (NULL plugin_id from overwrite delete)
+    const allAgentTriggers = agentTriggersRepository.listByAgent(agentId)
+    for (const t of allAgentTriggers) {
+      if ((t.plugin_id === pluginId || t.plugin_id === null) && t.slug && !processedSlugs.has(t.slug)) {
+        agentTriggersRepository.delete(t.id)
+      }
+    }
+
+    return { created, updated }
   }
 }
 

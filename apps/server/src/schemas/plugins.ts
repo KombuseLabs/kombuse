@@ -48,6 +48,7 @@ export const pluginInstallResultSchema = z.object({
   labels_created: z.number().int().nonnegative(),
   labels_merged: z.number().int().nonnegative(),
   triggers_created: z.number().int().nonnegative(),
+  triggers_updated: z.number().int().nonnegative(),
   warnings: z.array(z.string()),
 })
 

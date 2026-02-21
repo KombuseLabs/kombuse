@@ -35,6 +35,7 @@ export const agentFiltersSchema = z.object({
 // Trigger schemas
 export const createTriggerSchema = z.object({
   event_type: z.string().min(1),
+  slug: z.string().regex(SLUG_REGEX, 'Must be a valid kebab-case slug').optional(),
   project_id: z.string().optional(),
   conditions: z.record(z.string(), z.unknown()).optional(),
   is_enabled: z.boolean().optional(),

@@ -56,6 +56,7 @@ function buildProfile(overrides: Partial<Profile> = {}): Profile {
 function buildTrigger(overrides: Partial<AgentTrigger> = {}): AgentTrigger {
   return {
     id: 1,
+    slug: null,
     agent_id: 'agent-1',
     event_type: 'comment.added',
     project_id: null,

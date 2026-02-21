@@ -607,6 +607,46 @@ const migrations: Migration[] = [
       db.pragma('foreign_keys = ON')
     },
   },
+  {
+    name: '005_trigger_slugs',
+    run: (db: DatabaseType) => {
+      // 1. Add slug column to agent_triggers
+      db.exec(`ALTER TABLE agent_triggers ADD COLUMN slug TEXT`)
+
+      // 2. Backfill: derive slug from event_type, dedup within same agent
+      const triggers = db.prepare(
+        'SELECT id, agent_id, event_type FROM agent_triggers ORDER BY agent_id, id'
+      ).all() as { id: number; agent_id: string; event_type: string }[]
+
+      const slugCountByAgent = new Map<string, Map<string, number>>()
+      const updateSlug = db.prepare('UPDATE agent_triggers SET slug = ? WHERE id = ?')
+
+      for (const trigger of triggers) {
+        let agentSlugs = slugCountByAgent.get(trigger.agent_id)
+        if (!agentSlugs) {
+          agentSlugs = new Map()
+          slugCountByAgent.set(trigger.agent_id, agentSlugs)
+        }
+
+        const baseSlug = toSlug(trigger.event_type)
+        const count = (agentSlugs.get(baseSlug) ?? 0) + 1
+        agentSlugs.set(baseSlug, count)
+
+        const finalSlug = count === 1 ? baseSlug : `${baseSlug}-${count}`
+        updateSlug.run(finalSlug, trigger.id)
+      }
+
+      // 3. Create composite unique indexes (dual-index pattern for NULL plugin_id)
+      db.exec(`
+        CREATE UNIQUE INDEX idx_agent_triggers_slug_plugin
+          ON agent_triggers(slug, agent_id, plugin_id)
+          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+        CREATE UNIQUE INDEX idx_agent_triggers_slug_global
+          ON agent_triggers(slug, agent_id)
+          WHERE slug IS NOT NULL AND plugin_id IS NULL;
+      `)
+    },
+  },
 ]
 
 /**

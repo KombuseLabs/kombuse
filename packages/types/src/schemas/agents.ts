@@ -115,6 +115,7 @@ export const allowedInvokerSchema = z.discriminatedUnion('type', [
 
 export const agentTriggerSchema = z.object({
   id: z.number().int().positive(),
+  slug: z.string().nullable(),
   agent_id: z.string().min(1),
   event_type: z.string().min(1),
   project_id: z.string().nullable(),
@@ -129,6 +130,7 @@ export const agentTriggerSchema = z.object({
 export const createTriggerInputSchema = z.object({
   agent_id: z.string().min(1),
   event_type: z.string().min(1),
+  slug: z.string().optional(),
   project_id: z.string().optional(),
   conditions: z.record(z.string(), z.unknown()).optional(),
   is_enabled: z.boolean().optional(),

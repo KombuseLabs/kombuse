@@ -305,7 +305,8 @@ export class AgentService implements IAgentService {
       )
     }
 
-    return agentTriggersRepository.create(input)
+    const slug = input.slug ?? toSlug(input.event_type)
+    return agentTriggersRepository.create({ ...input, slug })
   }
 
   updateTrigger(id: number, input: UpdateAgentTriggerInput): AgentTrigger {

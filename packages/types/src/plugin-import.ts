@@ -12,6 +12,7 @@ export interface PluginInstallResult {
   labels_created: number
   labels_merged: number
   triggers_created: number
+  triggers_updated: number
   warnings: string[]
 }
 

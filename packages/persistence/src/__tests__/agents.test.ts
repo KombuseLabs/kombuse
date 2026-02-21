@@ -816,6 +816,203 @@ describe('agentTriggersRepository', () => {
       expect(agentTriggersRepository.get(trigger.id)).toBeNull()
     })
   })
+
+  describe('slug', () => {
+    it('should create trigger with slug', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+      })
+
+      expect(trigger.slug).toBe('ticket-created')
+    })
+
+    it('should default slug to null when not provided', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+      })
+
+      expect(trigger.slug).toBeNull()
+    })
+  })
+
+  describe('getBySlugAndAgent', () => {
+    it('should return trigger matching slug, agent, and plugin', () => {
+      const pluginId = crypto.randomUUID()
+      pluginsRepository.create({
+        id: pluginId,
+        project_id: TEST_PROJECT_ID,
+        name: 'test-plugin',
+        version: '1.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+        plugin_id: pluginId,
+      })
+
+      const found = agentTriggersRepository.getBySlugAndAgent('ticket-created', agentId, pluginId)
+      expect(found).not.toBeNull()
+      expect(found!.id).toBe(trigger.id)
+    })
+
+    it('should return null for wrong agent', () => {
+      const pluginId = crypto.randomUUID()
+      pluginsRepository.create({
+        id: pluginId,
+        project_id: TEST_PROJECT_ID,
+        name: 'test-plugin',
+        version: '1.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+        plugin_id: pluginId,
+      })
+
+      const found = agentTriggersRepository.getBySlugAndAgent('ticket-created', 'other-agent', pluginId)
+      expect(found).toBeNull()
+    })
+
+    it('should return null for wrong plugin', () => {
+      const pluginId = crypto.randomUUID()
+      pluginsRepository.create({
+        id: pluginId,
+        project_id: TEST_PROJECT_ID,
+        name: 'test-plugin',
+        version: '1.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+        plugin_id: pluginId,
+      })
+
+      const found = agentTriggersRepository.getBySlugAndAgent('ticket-created', agentId, 'other-plugin')
+      expect(found).toBeNull()
+    })
+  })
+
+  describe('listByAgentAndPlugin', () => {
+    it('should filter triggers by agent and plugin', () => {
+      const pluginId = crypto.randomUUID()
+      pluginsRepository.create({
+        id: pluginId,
+        project_id: TEST_PROJECT_ID,
+        name: 'test-plugin',
+        version: '1.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+        plugin_id: pluginId,
+      })
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'comment.added',
+        slug: 'comment-added',
+      })
+
+      const pluginTriggers = agentTriggersRepository.listByAgentAndPlugin(agentId, pluginId)
+      expect(pluginTriggers).toHaveLength(1)
+      expect(pluginTriggers[0]!.slug).toBe('ticket-created')
+    })
+  })
+
+  describe('composite uniqueness', () => {
+    it('should reject duplicate (slug, agent_id, plugin_id)', () => {
+      const pluginId = crypto.randomUUID()
+      pluginsRepository.create({
+        id: pluginId,
+        project_id: TEST_PROJECT_ID,
+        name: 'test-plugin',
+        version: '1.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+        plugin_id: pluginId,
+      })
+
+      expect(() =>
+        agentTriggersRepository.create({
+          agent_id: agentId,
+          event_type: 'ticket.created',
+          slug: 'ticket-created',
+          plugin_id: pluginId,
+        })
+      ).toThrow()
+    })
+
+    it('should allow same slug on different agents within same plugin', () => {
+      const pluginId = crypto.randomUUID()
+      pluginsRepository.create({
+        id: pluginId,
+        project_id: TEST_PROJECT_ID,
+        name: 'test-plugin',
+        version: '1.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+
+      const agentId2 = createAgentProfile()
+      agentsRepository.create(agentInput({ id: agentId2, system_prompt: 'Second agent' }))
+
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+        plugin_id: pluginId,
+      })
+
+      const trigger2 = agentTriggersRepository.create({
+        agent_id: agentId2,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+        plugin_id: pluginId,
+      })
+
+      expect(trigger2.slug).toBe('ticket-created')
+    })
+
+    it('should reject duplicate (slug, agent_id) for non-plugin triggers', () => {
+      agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        slug: 'ticket-created',
+      })
+
+      expect(() =>
+        agentTriggersRepository.create({
+          agent_id: agentId,
+          event_type: 'ticket.created',
+          slug: 'ticket-created',
+        })
+      ).toThrow()
+    })
+  })
 })
 
 describe('agentInvocationsRepository', () => {

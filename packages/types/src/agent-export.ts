@@ -31,6 +31,7 @@ export interface AgentExportFrontmatter {
  * Strips database-internal fields (id, agent_id, created_at, updated_at).
  */
 export interface ExportedTrigger {
+  slug?: string
   event_type: string
   conditions: Record<string, unknown> | null
   project_id: string | null
