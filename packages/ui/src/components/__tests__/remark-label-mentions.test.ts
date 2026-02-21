@@ -101,4 +101,34 @@ describe('remarkLabelMentions', () => {
     expect(paragraph.children).toHaveLength(1)
     expect((paragraph.children[0] as Text).value).toBe('~[](5)')
   })
+
+  it('should encode slug in label:// URL when present', () => {
+    const tree = runPlugin('~[Bug](5:bug)')
+    const paragraph = getFirstParagraph(tree)
+
+    expect(paragraph.children).toHaveLength(1)
+    const link = paragraph.children[0] as Link
+    expect(link.type).toBe('link')
+    expect(link.url).toBe('label://5/bug')
+    expect((link.children[0] as Text).value).toBe('Bug')
+  })
+
+  it('should handle slugs with hyphens', () => {
+    const tree = runPlugin('~[Feature Request](42:feature-request)')
+    const paragraph = getFirstParagraph(tree)
+
+    const link = paragraph.children[0] as Link
+    expect(link.url).toBe('label://42/feature-request')
+    expect((link.children[0] as Text).value).toBe('Feature Request')
+  })
+
+  it('should handle mixed slug and no-slug mentions', () => {
+    const tree = runPlugin('~[Bug](1:bug) and ~[Feature](2)')
+    const paragraph = getFirstParagraph(tree)
+
+    const links = paragraph.children.filter((c) => c.type === 'link') as Link[]
+    expect(links).toHaveLength(2)
+    expect(links[0]!.url).toBe('label://1/bug')
+    expect(links[1]!.url).toBe('label://2')
+  })
 })

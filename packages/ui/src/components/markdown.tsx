@@ -22,7 +22,7 @@ interface MarkdownProps {
 }
 
 const TICKET_LINK_REGEX = /\/projects\/[^/]+\/tickets\/(\d+)$/
-const LABEL_PROTOCOL_REGEX = /^label:\/\/(\d+)$/
+const LABEL_PROTOCOL_REGEX = /^label:\/\/(\d+)(?:\/([a-z0-9_-]+))?$/
 const COMMENT_PROTOCOL_REGEX = /^comment:\/\/(\d+)\/(\d+)$/
 
 export function Markdown({ children, className, projectId }: MarkdownProps) {
@@ -71,7 +71,7 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
             : Array.isArray(linkChildren)
               ? linkChildren.join('')
               : String(linkChildren ?? '')
-          return <LabelMentionChip labelId={Number(labelMatch[1])} labelName={labelName} projectId={projectId} />
+          return <LabelMentionChip labelId={Number(labelMatch[1])} labelName={labelName} labelSlug={labelMatch[2]} projectId={projectId} />
         }
       }
       if (href?.startsWith('comment://') && projectId) {
