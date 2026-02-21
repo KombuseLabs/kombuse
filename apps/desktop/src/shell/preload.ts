@@ -35,4 +35,24 @@ contextBridge.exposeInMainWorld("electron", {
   shellUpdate: {
     quitAndInstall: () => ipcRenderer.invoke("shell:update:quit-and-install"),
   },
+
+  /**
+   * Find in page controls (Cmd+F / Ctrl+F).
+   */
+  findInPage: {
+    find: (text: string) => ipcRenderer.invoke("find:find", text),
+    findNext: (text: string) => ipcRenderer.invoke("find:next", text),
+    findPrev: (text: string) => ipcRenderer.invoke("find:prev", text),
+    stop: () => ipcRenderer.invoke("find:stop"),
+    onToggle: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on("find:toggle", handler);
+      return () => { ipcRenderer.removeListener("find:toggle", handler); };
+    },
+    onResult: (callback: (result: { activeMatchOrdinal: number; matches: number; finalUpdate: boolean }) => void) => {
+      const handler = (_: unknown, result: { activeMatchOrdinal: number; matches: number; finalUpdate: boolean }) => callback(result);
+      ipcRenderer.on("find:result", handler);
+      return () => { ipcRenderer.removeListener("find:result", handler); };
+    },
+  },
 });

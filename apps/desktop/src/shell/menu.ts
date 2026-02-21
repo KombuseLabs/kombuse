@@ -99,6 +99,17 @@ export function buildAppMenu(
       { role: "copy" },
       { role: "paste" },
       { role: "selectAll" },
+      { type: "separator" },
+      {
+        label: "Find",
+        accelerator: "CmdOrCtrl+F",
+        click: () => {
+          const win = BrowserWindow.getFocusedWindow();
+          if (win) {
+            win.webContents.send("find:toggle");
+          }
+        },
+      },
     ],
   };
 

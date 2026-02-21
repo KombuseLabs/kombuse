@@ -132,6 +132,14 @@ function createWindow(path?: string): BrowserWindow {
     return { action: "deny" };
   });
 
+  mainWindow.webContents.on("found-in-page", (_, result) => {
+    mainWindow.webContents.send("find:result", {
+      activeMatchOrdinal: result.activeMatchOrdinal,
+      matches: result.matches,
+      finalUpdate: result.finalUpdate,
+    });
+  });
+
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
@@ -160,6 +168,23 @@ ipcMain.handle("app:restart", () => {
 ipcMain.handle("shell:update:quit-and-install", () => {
   console.log("[Main] Shell update: quit and install requested");
   shellUpdater.quitAndInstall();
+});
+
+// Find in page IPC handlers
+ipcMain.handle("find:find", (event, text: string) => {
+  event.sender.findInPage(text);
+});
+
+ipcMain.handle("find:next", (event, text: string) => {
+  event.sender.findInPage(text, { forward: true, findNext: true });
+});
+
+ipcMain.handle("find:prev", (event, text: string) => {
+  event.sender.findInPage(text, { forward: false, findNext: true });
+});
+
+ipcMain.handle("find:stop", (event) => {
+  event.sender.stopFindInPage("clearSelection");
 });
 
 // IPC handler for opening a native directory picker

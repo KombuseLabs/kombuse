@@ -26,6 +26,7 @@ src/
 │   ├── prompt-editor/    - System prompt editor with template variables
 │   ├── sidebar/          - Sidebar navigation (panel + icon rail variants) + backend status indicator
 │   ├── backend-status-banner.tsx - Warning banner for missing CLI backends
+│   ├── find-bar.tsx              - Find-in-page bar for Electron desktop app
 │   ├── no-backend-screen.tsx     - Full-page blocking screen when no backends found
 │   ├── permissions/      - Permission decision log components
 │   ├── sessions/         - Session list components
@@ -479,6 +480,21 @@ import { TicketList, TicketDetail } from '@kombuse/ui/components'
 import { LabelBadge, LabelPicker, LabelSelector, LabelForm } from '@kombuse/ui/components'
 import { Sidebar, SidebarItem } from '@kombuse/ui/components'
 ```
+
+### FindBar
+
+```typescript
+import { FindBar } from '@kombuse/ui/components'
+
+// Renders a find-in-page bar in Electron desktop app (auto-hides in browser)
+<FindBar />
+```
+
+- Only renders when `window.electron.findInPage` is available (Electron desktop app)
+- Toggled via Cmd+F (macOS) / Ctrl+F (Windows/Linux) from the Edit menu
+- Uses `webContents.findInPage()` for native Chromium text search with match highlighting
+- Supports previous/next navigation (Enter/Shift+Enter), match count display, and Escape to close
+- In the regular web app, returns `null` and browser-native find works as usual
 
 ### Sidebar Components
 

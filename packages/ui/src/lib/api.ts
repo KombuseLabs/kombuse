@@ -75,6 +75,14 @@ declare global {
       shellUpdate?: {
         quitAndInstall: () => Promise<void>
       }
+      findInPage?: {
+        find: (text: string) => Promise<void>
+        findNext: (text: string) => Promise<void>
+        findPrev: (text: string) => Promise<void>
+        stop: () => Promise<void>
+        onToggle: (callback: () => void) => () => void
+        onResult: (callback: (result: { activeMatchOrdinal: number; matches: number; finalUpdate: boolean }) => void) => () => void
+      }
     }
   }
 }
