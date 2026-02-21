@@ -46,6 +46,7 @@ interface RawCommentWithAuthor extends RawComment {
   author_avatar_url: string | null
   author_external_source: string | null
   author_external_id: string | null
+  author_plugin_id: string | null
   author_is_active: number
   author_created_at: string
   author_updated_at: string
@@ -62,6 +63,7 @@ const COMMENT_WITH_AUTHOR_SELECT = `
     p.type AS author_type, p.name AS author_name, p.slug AS author_slug, p.email AS author_email,
     p.description AS author_description, p.avatar_url AS author_avatar_url,
     p.external_source AS author_external_source, p.external_id AS author_external_id,
+    p.plugin_id AS author_plugin_id,
     p.is_active AS author_is_active, p.created_at AS author_created_at,
     p.updated_at AS author_updated_at
   ${COMMENT_WITH_AUTHOR_FROM}
@@ -147,6 +149,7 @@ function mapCommentWithAuthor(row: RawCommentWithAuthor): CommentWithAuthor {
       avatar_url: row.author_avatar_url,
       external_source: row.author_external_source,
       external_id: row.author_external_id,
+      plugin_id: row.author_plugin_id,
       is_active: row.author_is_active === 1,
       created_at: row.author_created_at,
       updated_at: row.author_updated_at,

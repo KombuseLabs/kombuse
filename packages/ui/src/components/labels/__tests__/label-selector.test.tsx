@@ -34,6 +34,7 @@ vi.mock('../../../base/command', () => ({
 const buildLabel = (overrides: Partial<Label> = {}): Label => ({
   id: 1,
   name: 'Bug',
+  slug: 'bug',
   color: '#d73a4a',
   description: null,
   plugin_id: null,

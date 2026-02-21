@@ -10,7 +10,7 @@ import type {
   PluginBase,
   UpdateAgentInput,
 } from '@kombuse/types'
-import { SELF_PLACEHOLDER } from '@kombuse/types'
+import { SELF_PLACEHOLDER, toSlug } from '@kombuse/types'
 import {
   pluginsRepository,
   agentsRepository,
@@ -104,19 +104,20 @@ export class PluginImportService implements IPluginImportService {
 
     if (manifest.kombuse?.labels) {
       for (const exportedLabel of manifest.kombuse.labels) {
-        const existingLabel = existingLabels.find(
-          (l) => l.name === exportedLabel.name
-        )
+        const slug = toSlug(exportedLabel.name)
+        const existingLabel = labelsRepository.getBySlugAndPlugin(slug, project_id, pluginId)
+          ?? existingLabels.find((l) => l.name === exportedLabel.name)
 
         if (existingLabel) {
-          // Merge: link existing label to this plugin
-          labelsRepository.update(existingLabel.id, { plugin_id: pluginId })
+          // Merge: link existing label to this plugin and ensure slug is set
+          labelsRepository.update(existingLabel.id, { plugin_id: pluginId, slug })
           labelsMerged++
         } else {
           // Create new label
           const label = labelsRepository.create({
             project_id,
             name: exportedLabel.name,
+            slug,
             color: exportedLabel.color,
             description: exportedLabel.description ?? undefined,
             plugin_id: pluginId,
@@ -147,7 +148,8 @@ export class PluginImportService implements IPluginImportService {
           enabled_for_chat: frontmatter.enabled_for_chat ?? false,
         }
 
-        const existingAgent = agentsRepository.getBySlug(slug)
+        const existingAgent = agentsRepository.getBySlugAndPlugin(slug, pluginId)
+          ?? agentsRepository.getBySlug(slug)
 
         if (existingAgent) {
           // Update existing agent in place
@@ -212,6 +214,7 @@ export class PluginImportService implements IPluginImportService {
               name: frontmatter.name,
               description: frontmatter.description ?? undefined,
               avatar_url: frontmatter.avatar ?? undefined,
+              plugin_id: pluginId,
               is_active: true,
             })
           } else {
@@ -223,6 +226,7 @@ export class PluginImportService implements IPluginImportService {
               name: frontmatter.name,
               description: frontmatter.description ?? undefined,
               avatar_url: frontmatter.avatar ?? undefined,
+              plugin_id: pluginId,
             })
           }
 

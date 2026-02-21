@@ -40,6 +40,7 @@ export interface IAgentService {
   listAgents(filters?: AgentFilters): Agent[]
   getAgent(id: string): Agent | null
   getAgentBySlug(slug: string): Agent | null
+  getAgentBySlugAndPlugin(slug: string, pluginId: string): Agent | null
   createAgent(input: CreateAgentInput): Agent
   updateAgent(id: string, input: UpdateAgentInput): Agent
   deleteAgent(id: string): void
@@ -194,6 +195,10 @@ export class AgentService implements IAgentService {
     return agentsRepository.getBySlug(slug)
   }
 
+  getAgentBySlugAndPlugin(slug: string, pluginId: string): Agent | null {
+    return agentsRepository.getBySlugAndPlugin(slug, pluginId)
+  }
+
   createAgent(input: CreateAgentInput): Agent {
     // Generate UUID if id not provided; reject non-UUID id
     const id = input.id ?? crypto.randomUUID()
@@ -203,9 +208,13 @@ export class AgentService implements IAgentService {
 
     // Derive slug from name if not provided
     const slug = input.slug ?? toSlug(input.name)
-    const existingBySlug = agentsRepository.getBySlug(slug)
-    if (existingBySlug) {
-      throw new Error(`Agent with slug '${slug}' already exists`)
+    // Plugin-scoped agents rely on the DB composite unique index.
+    // Manual agents (no plugin_id) enforce global slug uniqueness.
+    if (!input.plugin_id) {
+      const existingBySlug = agentsRepository.getBySlug(slug)
+      if (existingBySlug) {
+        throw new Error(`Agent with slug '${slug}' already exists`)
+      }
     }
 
     // Auto-create agent profile if missing

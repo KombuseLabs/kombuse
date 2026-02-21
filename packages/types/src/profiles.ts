@@ -16,6 +16,7 @@ export interface Profile {
   avatar_url: string | null
   external_source: string | null
   external_id: string | null
+  plugin_id: string | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -34,6 +35,7 @@ export interface CreateProfileInput {
   avatar_url?: string
   external_source?: string
   external_id?: string
+  plugin_id?: string | null
 }
 
 /**
@@ -44,6 +46,7 @@ export interface UpdateProfileInput {
   email?: string
   description?: string
   avatar_url?: string
+  plugin_id?: string | null
   is_active?: boolean
 }
 

@@ -84,8 +84,8 @@ describe('renderTemplate', () => {
         closed_at: null,
         last_activity_at: '2024-01-01',
         labels: [
-          { id: 1, project_id: 'proj-abc', name: 'bug', color: 'red', description: null, plugin_id: null, is_enabled: true, created_at: '2024-01-01' },
-          { id: 2, project_id: 'proj-abc', name: 'urgent', color: 'orange', description: null, plugin_id: null, is_enabled: true, created_at: '2024-01-01' },
+          { id: 1, project_id: 'proj-abc', name: 'bug', slug: 'bug', color: 'red', description: null, plugin_id: null, is_enabled: true, created_at: '2024-01-01' },
+          { id: 2, project_id: 'proj-abc', name: 'urgent', slug: 'urgent', color: 'orange', description: null, plugin_id: null, is_enabled: true, created_at: '2024-01-01' },
         ],
       },
     }
@@ -137,6 +137,7 @@ describe('renderTemplate', () => {
           avatar_url: null,
           external_source: null,
           external_id: null,
+          plugin_id: null,
           is_active: true,
           created_at: '2024-01-01',
           updated_at: '2024-01-01',
@@ -151,6 +152,7 @@ describe('renderTemplate', () => {
           avatar_url: null,
           external_source: null,
           external_id: null,
+          plugin_id: null,
           is_active: true,
           created_at: '2024-01-01',
           updated_at: '2024-01-01',

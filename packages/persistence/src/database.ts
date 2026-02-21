@@ -3,6 +3,7 @@ import type { Database as DatabaseType } from 'better-sqlite3'
 import { join, resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config'
+import { toSlug, ANONYMOUS_AGENT_ID } from '@kombuse/types'
 
 export type { Database as DatabaseType } from 'better-sqlite3'
 
@@ -90,13 +91,21 @@ export function runMigrations(db: DatabaseType): void {
 
   for (const migration of migrations) {
     if (!appliedSet.has(migration.name)) {
-      db.exec(migration.sql)
+      if ('sql' in migration) {
+        db.exec(migration.sql)
+      } else {
+        migration.run(db)
+      }
       db.prepare('INSERT INTO migrations (name) VALUES (?)').run(migration.name)
     }
   }
 }
 
-const migrations: Array<{ name: string; sql: string }> = [
+type Migration =
+  | { name: string; sql: string }
+  | { name: string; run: (db: DatabaseType) => void }
+
+const migrations: Migration[] = [
   {
     name: '001_schema',
     sql: `
@@ -519,6 +528,84 @@ const migrations: Array<{ name: string; sql: string }> = [
     sql: `
       ALTER TABLE agents ADD COLUMN plugin_base TEXT DEFAULT NULL CHECK (plugin_base IS NULL OR json_valid(plugin_base));
     `,
+  },
+  {
+    name: '004_plugin_scoped_slugs',
+    run: (db: DatabaseType) => {
+      // Temporarily disable FK checks for bulk reassignment
+      db.pragma('foreign_keys = OFF')
+
+      // 2a. Merge orphaned agent profiles into their active counterparts.
+      // Orphans are agent-type profiles with no corresponding agents row.
+      const orphans = db.prepare(`
+        SELECT p.id AS orphan_id, p.name,
+          (SELECT p2.id FROM profiles p2
+           JOIN agents a ON a.id = p2.id
+           WHERE p2.name = p.name AND p2.type = 'agent'
+           LIMIT 1) AS target_id
+        FROM profiles p
+        WHERE p.type = 'agent'
+          AND p.id != ?
+          AND NOT EXISTS (SELECT 1 FROM agents WHERE agents.id = p.id)
+      `).all(ANONYMOUS_AGENT_ID) as { orphan_id: string; name: string; target_id: string | null }[]
+
+      for (const { orphan_id, target_id } of orphans) {
+        if (!target_id) continue
+        db.prepare('UPDATE comments SET author_id = ? WHERE author_id = ?').run(target_id, orphan_id)
+        db.prepare('UPDATE events SET actor_id = ? WHERE actor_id = ?').run(target_id, orphan_id)
+        db.prepare('UPDATE ticket_labels SET added_by_id = ? WHERE added_by_id = ?').run(target_id, orphan_id)
+        db.prepare('UPDATE mentions SET mentioned_profile_id = ? WHERE mentioned_profile_id = ?').run(target_id, orphan_id)
+        db.prepare('UPDATE tickets SET author_id = ? WHERE author_id = ?').run(target_id, orphan_id)
+        db.prepare('UPDATE tickets SET assignee_id = ? WHERE assignee_id = ?').run(target_id, orphan_id)
+        db.prepare('UPDATE tickets SET claimed_by_id = ? WHERE claimed_by_id = ?').run(target_id, orphan_id)
+        db.prepare('DELETE FROM profiles WHERE id = ?').run(orphan_id)
+      }
+
+      // 2b. Add plugin_id to profiles and backfill from agents table.
+      db.exec(`ALTER TABLE profiles ADD COLUMN plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL`)
+      db.exec(`
+        UPDATE profiles SET plugin_id = (
+          SELECT plugin_id FROM agents WHERE agents.id = profiles.id
+        ) WHERE type = 'agent' AND EXISTS (
+          SELECT 1 FROM agents WHERE agents.id = profiles.id
+        )
+      `)
+
+      // 2c. Replace global slug indexes with composite (slug, plugin_id) indexes.
+      // Two indexes per table: one for plugin-scoped, one for non-plugin (global).
+      db.exec(`
+        DROP INDEX IF EXISTS idx_agents_slug;
+        CREATE UNIQUE INDEX idx_agents_slug_plugin ON agents(slug, plugin_id)
+          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+        CREATE UNIQUE INDEX idx_agents_slug_global ON agents(slug)
+          WHERE slug IS NOT NULL AND plugin_id IS NULL;
+
+        DROP INDEX IF EXISTS idx_profiles_slug;
+        CREATE UNIQUE INDEX idx_profiles_slug_plugin ON profiles(slug, plugin_id)
+          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+        CREATE UNIQUE INDEX idx_profiles_slug_global ON profiles(slug)
+          WHERE slug IS NOT NULL AND plugin_id IS NULL;
+      `)
+
+      // 2d. Add slug column to labels and backfill from name.
+      db.exec(`ALTER TABLE labels ADD COLUMN slug TEXT`)
+
+      const labels = db.prepare('SELECT id, name FROM labels').all() as { id: number; name: string }[]
+      const updateSlug = db.prepare('UPDATE labels SET slug = ? WHERE id = ?')
+      for (const label of labels) {
+        updateSlug.run(toSlug(label.name), label.id)
+      }
+
+      db.exec(`
+        CREATE UNIQUE INDEX idx_labels_slug_plugin ON labels(slug, plugin_id, project_id)
+          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+        CREATE UNIQUE INDEX idx_labels_slug_global ON labels(slug, project_id)
+          WHERE slug IS NOT NULL AND plugin_id IS NULL;
+      `)
+
+      // Re-enable FK checks
+      db.pragma('foreign_keys = ON')
+    },
   },
 ]
 

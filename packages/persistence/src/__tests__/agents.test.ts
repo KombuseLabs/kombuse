@@ -22,6 +22,7 @@ import {
 import { sessionsRepository } from '../sessions'
 import { profilesRepository } from '../profiles'
 import { eventsRepository } from '../events'
+import { pluginsRepository } from '../plugins'
 
 // Helper to create unique agent profiles
 let agentCounter = 0
@@ -161,6 +162,94 @@ describe('agentsRepository', () => {
 
       const agent = agentsRepository.getBySlug(profileId)
       expect(agent, 'Should not match agent ID as slug').toBeNull()
+    })
+  })
+
+  describe('getBySlugAndPlugin', () => {
+    function createPlugin(name: string) {
+      return pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name,
+        version: '1.0.0',
+        description: `Plugin ${name}`,
+        directory: `/tmp/${name}`,
+        manifest: JSON.stringify({ name }),
+      })
+    }
+
+    it('should return agent scoped to specific plugin', () => {
+      const plugin = createPlugin('plugin-a')
+      const profileId = createAgentProfile()
+      agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Test prompt.',
+        slug: 'scoped-agent',
+        plugin_id: plugin.id,
+      }))
+
+      const found = agentsRepository.getBySlugAndPlugin('scoped-agent', plugin.id)
+      expect(found, 'Should find agent by slug+plugin').not.toBeNull()
+      expect(found?.id).toBe(profileId)
+    })
+
+    it('should not return agent from different plugin', () => {
+      const pluginA = createPlugin('plugin-a2')
+      const pluginB = createPlugin('plugin-b2')
+      const profileId = createAgentProfile()
+      agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Test prompt.',
+        slug: 'cross-plugin-agent',
+        plugin_id: pluginA.id,
+      }))
+
+      const found = agentsRepository.getBySlugAndPlugin('cross-plugin-agent', pluginB.id)
+      expect(found, 'Should not find agent from different plugin').toBeNull()
+    })
+
+    it('should allow same slug across different plugins', () => {
+      const pluginA = createPlugin('plugin-a3')
+      const pluginB = createPlugin('plugin-b3')
+      const profileA = createAgentProfile()
+      const profileB = createAgentProfile()
+
+      agentsRepository.create(agentInput({
+        id: profileA,
+        system_prompt: 'Plugin A agent',
+        slug: 'shared-slug',
+        plugin_id: pluginA.id,
+      }))
+      agentsRepository.create(agentInput({
+        id: profileB,
+        system_prompt: 'Plugin B agent',
+        slug: 'shared-slug',
+        plugin_id: pluginB.id,
+      }))
+
+      const foundA = agentsRepository.getBySlugAndPlugin('shared-slug', pluginA.id)
+      const foundB = agentsRepository.getBySlugAndPlugin('shared-slug', pluginB.id)
+      expect(foundA?.id).toBe(profileA)
+      expect(foundB?.id).toBe(profileB)
+    })
+
+    it('should reject same slug within same plugin', () => {
+      const plugin = createPlugin('plugin-dup')
+      const profileA = createAgentProfile()
+      const profileB = createAgentProfile()
+
+      agentsRepository.create(agentInput({
+        id: profileA,
+        system_prompt: 'Agent A',
+        slug: 'dup-slug',
+        plugin_id: plugin.id,
+      }))
+
+      expect(() => agentsRepository.create(agentInput({
+        id: profileB,
+        system_prompt: 'Agent B',
+        slug: 'dup-slug',
+        plugin_id: plugin.id,
+      }))).toThrow()
     })
   })
 

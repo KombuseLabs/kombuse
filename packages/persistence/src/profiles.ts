@@ -120,9 +120,9 @@ export const profilesRepository = {
       `
       INSERT INTO profiles (
         id, type, name, slug, email, description, avatar_url,
-        external_source, external_id, is_active
+        external_source, external_id, plugin_id, is_active
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `
     ).run(
       id,
@@ -133,7 +133,8 @@ export const profilesRepository = {
       input.description ?? null,
       input.avatar_url ?? null,
       input.external_source ?? null,
-      input.external_id ?? null
+      input.external_id ?? null,
+      input.plugin_id ?? null
     )
 
     return this.get(id) as Profile
@@ -163,6 +164,10 @@ export const profilesRepository = {
     if (input.avatar_url !== undefined) {
       fields.push('avatar_url = ?')
       params.push(input.avatar_url)
+    }
+    if (input.plugin_id !== undefined) {
+      fields.push('plugin_id = ?')
+      params.push(input.plugin_id)
     }
     if (input.is_active !== undefined) {
       fields.push('is_active = ?')
@@ -227,6 +232,7 @@ interface RawProfile {
   avatar_url: string | null
   external_source: string | null
   external_id: string | null
+  plugin_id: string | null
   is_active: number
   created_at: string
   updated_at: string

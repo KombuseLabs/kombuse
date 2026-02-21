@@ -42,11 +42,15 @@ export async function agentRoutes(fastify: FastifyInstance) {
     return agents.map(enrichWithPreset)
   })
 
-  // Get agent by slug
+  // Get agent by slug (optionally scoped to a plugin)
   fastify.get<{
     Params: { slug: string }
+    Querystring: { plugin_id?: string }
   }>('/agents/by-slug/:slug', async (request, reply) => {
-    const agent = agentService.getAgentBySlug(request.params.slug)
+    const { plugin_id } = request.query as { plugin_id?: string }
+    const agent = plugin_id
+      ? agentService.getAgentBySlugAndPlugin(request.params.slug, plugin_id)
+      : agentService.getAgentBySlug(request.params.slug)
     if (!agent) {
       return reply.status(404).send({ error: 'Agent not found' })
     }

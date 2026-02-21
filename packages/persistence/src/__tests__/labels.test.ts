@@ -21,6 +21,7 @@ import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../te
 import { labelsRepository } from '../labels'
 import { ticketsRepository } from '../tickets'
 import { eventsRepository } from '../events'
+import { pluginsRepository } from '../plugins'
 
 const NON_EXISTENT_ID = 999999
 
@@ -839,6 +840,109 @@ describe('labelsRepository', () => {
       expect(events).toHaveLength(1)
       expect(events[0]?.actor_type, 'Label removed without actor should have actor_type "system"').toBe('system')
       expect(events[0]?.actor_id).toBeNull()
+    })
+  })
+
+  /*
+   * SLUG TESTS
+   */
+  describe('slug', () => {
+    it('should auto-generate slug from name on create', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Cook it',
+      })
+
+      expect(label.slug).toBe('cook-it')
+    })
+
+    it('should use explicit slug when provided', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'My Label',
+        slug: 'custom-slug',
+      })
+
+      expect(label.slug).toBe('custom-slug')
+    })
+  })
+
+  /*
+   * PLUGIN-SCOPED SLUG TESTS
+   */
+  describe('getBySlugAndPlugin', () => {
+    function createPlugin(name: string) {
+      return pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name,
+        version: '1.0.0',
+        description: `Plugin ${name}`,
+        directory: `/tmp/${name}`,
+        manifest: JSON.stringify({ name }),
+      })
+    }
+
+    it('should find label by slug+project+plugin', () => {
+      const plugin = createPlugin('label-plugin-a')
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug',
+        plugin_id: plugin.id,
+      })
+
+      const found = labelsRepository.getBySlugAndPlugin('bug', TEST_PROJECT_ID, plugin.id)
+      expect(found).not.toBeNull()
+      expect(found?.id).toBe(label.id)
+    })
+
+    it('should not return label from different plugin', () => {
+      const pluginA = createPlugin('label-plugin-b')
+      const pluginB = createPlugin('label-plugin-c')
+      labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug',
+        plugin_id: pluginA.id,
+      })
+
+      const found = labelsRepository.getBySlugAndPlugin('bug', TEST_PROJECT_ID, pluginB.id)
+      expect(found).toBeNull()
+    })
+
+    it('should allow same slug across different plugins in same project', () => {
+      const pluginA = createPlugin('label-plugin-d')
+      const pluginB = createPlugin('label-plugin-e')
+
+      const labelA = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug',
+        plugin_id: pluginA.id,
+      })
+      const labelB = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug',
+        plugin_id: pluginB.id,
+      })
+
+      expect(labelA.id).not.toBe(labelB.id)
+      const foundA = labelsRepository.getBySlugAndPlugin('bug', TEST_PROJECT_ID, pluginA.id)
+      const foundB = labelsRepository.getBySlugAndPlugin('bug', TEST_PROJECT_ID, pluginB.id)
+      expect(foundA?.id).toBe(labelA.id)
+      expect(foundB?.id).toBe(labelB.id)
+    })
+
+    it('should reject same slug within same plugin and project', () => {
+      const plugin = createPlugin('label-plugin-dup')
+      labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug',
+        plugin_id: plugin.id,
+      })
+
+      expect(() => labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug',
+        plugin_id: plugin.id,
+      })).toThrow()
     })
   })
 })

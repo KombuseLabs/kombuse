@@ -22,6 +22,7 @@ interface RawEventWithActor {
   actor_avatar_url: string | null
   actor_external_source: string | null
   actor_external_id: string | null
+  actor_plugin_id: string | null
   actor_is_active: number | null
   actor_created_at: string | null
   actor_updated_at: string | null
@@ -32,6 +33,7 @@ const EVENT_WITH_ACTOR_SELECT = `
     p.type AS actor_profile_type, p.name AS actor_name, p.slug AS actor_slug, p.email AS actor_email,
     p.description AS actor_description, p.avatar_url AS actor_avatar_url,
     p.external_source AS actor_external_source, p.external_id AS actor_external_id,
+    p.plugin_id AS actor_plugin_id,
     p.is_active AS actor_is_active, p.created_at AS actor_created_at,
     p.updated_at AS actor_updated_at
   FROM events e
@@ -60,6 +62,7 @@ function mapEventWithActor(row: RawEventWithActor): EventWithActor {
       avatar_url: row.actor_avatar_url,
       external_source: row.actor_external_source,
       external_id: row.actor_external_id,
+      plugin_id: row.actor_plugin_id,
       is_active: row.actor_is_active === 1,
       created_at: row.actor_created_at!,
       updated_at: row.actor_updated_at!,

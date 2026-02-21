@@ -13,6 +13,7 @@ function makeProfile(id: string, name: string): Profile {
     avatar_url: null,
     external_source: null,
     external_id: null,
+    plugin_id: null,
     is_active: true,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',

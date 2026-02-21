@@ -5,7 +5,7 @@ import type {
   CreateLabelInput,
   UpdateLabelInput,
 } from '@kombuse/types'
-import { EVENT_TYPES } from '@kombuse/types'
+import { EVENT_TYPES, toSlug } from '@kombuse/types'
 import { getDatabase } from './database'
 import { eventsRepository } from './events'
 import { profilesRepository } from './profiles'
@@ -92,17 +92,19 @@ export const labelsRepository = {
    */
   create(input: CreateLabelInput): Label {
     const db = getDatabase()
+    const slug = input.slug ?? toSlug(input.name)
 
     const result = db
       .prepare(
         `
-      INSERT INTO labels (project_id, name, color, description, plugin_id)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO labels (project_id, name, slug, color, description, plugin_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `
       )
       .run(
         input.project_id,
         input.name,
+        slug,
         input.color ?? '#808080',
         input.description ?? null,
         input.plugin_id ?? null
@@ -114,6 +116,17 @@ export const labelsRepository = {
   /**
    * Update an existing label
    */
+  /**
+   * Get a label by slug scoped to a specific plugin and project
+   */
+  getBySlugAndPlugin(slug: string, projectId: string, pluginId: string): Label | null {
+    const db = getDatabase()
+    const label = db
+      .prepare('SELECT * FROM labels WHERE slug = ? AND project_id = ? AND plugin_id = ?')
+      .get(slug, projectId, pluginId) as Label | undefined
+    return label ?? null
+  },
+
   update(id: number, input: UpdateLabelInput): Label | null {
     const db = getDatabase()
 
@@ -123,6 +136,10 @@ export const labelsRepository = {
     if (input.name !== undefined) {
       fields.push('name = ?')
       params.push(input.name)
+    }
+    if (input.slug !== undefined) {
+      fields.push('slug = ?')
+      params.push(input.slug)
     }
     if (input.color !== undefined) {
       fields.push('color = ?')

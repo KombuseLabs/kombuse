@@ -74,6 +74,7 @@ interface RawTicketWithProfiles {
   author_avatar_url: string | null
   author_external_source: string | null
   author_external_id: string | null
+  author_plugin_id: string | null
   author_is_active: number
   author_created_at: string
   author_updated_at: string
@@ -85,6 +86,7 @@ interface RawTicketWithProfiles {
   assignee_avatar_url: string | null
   assignee_external_source: string | null
   assignee_external_id: string | null
+  assignee_plugin_id: string | null
   assignee_is_active: number | null
   assignee_created_at: string | null
   assignee_updated_at: string | null
@@ -95,11 +97,13 @@ const TICKET_WITH_PROFILES_SELECT = `
     ap.type AS author_type, ap.name AS author_name, ap.slug AS author_slug, ap.email AS author_email,
     ap.description AS author_description, ap.avatar_url AS author_avatar_url,
     ap.external_source AS author_external_source, ap.external_id AS author_external_id,
+    ap.plugin_id AS author_plugin_id,
     ap.is_active AS author_is_active, ap.created_at AS author_created_at,
     ap.updated_at AS author_updated_at,
     asp.type AS assignee_type, asp.name AS assignee_name, asp.slug AS assignee_slug, asp.email AS assignee_email,
     asp.description AS assignee_description, asp.avatar_url AS assignee_avatar_url,
     asp.external_source AS assignee_external_source, asp.external_id AS assignee_external_id,
+    asp.plugin_id AS assignee_plugin_id,
     asp.is_active AS assignee_is_active, asp.created_at AS assignee_created_at,
     asp.updated_at AS assignee_updated_at
   FROM tickets t
@@ -142,6 +146,7 @@ function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelat
       avatar_url: row.author_avatar_url,
       external_source: row.author_external_source,
       external_id: row.author_external_id,
+      plugin_id: row.author_plugin_id,
       is_active: row.author_is_active === 1,
       created_at: row.author_created_at,
       updated_at: row.author_updated_at,
@@ -156,6 +161,7 @@ function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelat
       avatar_url: row.assignee_avatar_url ?? null,
       external_source: row.assignee_external_source ?? null,
       external_id: row.assignee_external_id ?? null,
+      plugin_id: row.assignee_plugin_id ?? null,
       is_active: row.assignee_is_active === 1,
       created_at: row.assignee_created_at!,
       updated_at: row.assignee_updated_at!,

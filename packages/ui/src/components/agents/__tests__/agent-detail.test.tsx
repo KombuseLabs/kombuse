@@ -60,6 +60,7 @@ function buildProfile(overrides: Partial<Profile> = {}): Profile {
     avatar_url: 'bot',
     external_source: null,
     external_id: null,
+    plugin_id: null,
     is_active: true,
     created_at: '2026-02-13T00:00:00.000Z',
     updated_at: '2026-02-13T00:00:00.000Z',

@@ -5,6 +5,7 @@ export interface Label {
   id: number
   project_id: string
   name: string
+  slug: string | null
   color: string
   description: string | null
   plugin_id: string | null
@@ -22,6 +23,7 @@ export type LabelUsageScope = 'open'
 export interface CreateLabelInput {
   project_id: string
   name: string
+  slug?: string
   color?: string
   description?: string
   plugin_id?: string | null
@@ -32,6 +34,7 @@ export interface CreateLabelInput {
  */
 export interface UpdateLabelInput {
   name?: string
+  slug?: string
   color?: string
   description?: string
   plugin_id?: string | null

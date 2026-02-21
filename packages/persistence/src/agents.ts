@@ -67,13 +67,24 @@ export const agentsRepository = {
   },
 
   /**
-   * Get a single agent by slug
+   * Get a single agent by slug (returns first match)
    */
   getBySlug(slug: string): Agent | null {
     const db = getDatabase()
     const row = db
       .prepare('SELECT * FROM agents WHERE slug = ?')
       .get(slug) as RawAgent | undefined
+    return row ? mapAgent(row) : null
+  },
+
+  /**
+   * Get an agent by slug scoped to a specific plugin
+   */
+  getBySlugAndPlugin(slug: string, pluginId: string): Agent | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM agents WHERE slug = ? AND plugin_id = ?')
+      .get(slug, pluginId) as RawAgent | undefined
     return row ? mapAgent(row) : null
   },
 
