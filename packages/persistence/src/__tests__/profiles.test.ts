@@ -351,6 +351,35 @@ describe('profilesRepository', () => {
       const page2Ids = page2.map((p) => p.id)
       expect(page1Ids.filter((id) => page2Ids.includes(id))).toHaveLength(0)
     })
+
+    it('should filter by has_agent to return only profiles with agents records', () => {
+      // Create an agent profile WITH a corresponding agents record
+      const withAgent = profilesRepository.create({
+        type: 'agent',
+        name: uniqueName('Agent With Record'),
+      })
+      db.prepare(`
+        INSERT INTO agents (id, system_prompt) VALUES (?, 'test prompt')
+      `).run(withAgent.id)
+
+      // Create an agent profile WITHOUT a corresponding agents record (orphan)
+      const orphan = profilesRepository.create({
+        type: 'agent',
+        name: uniqueName('Orphan Agent'),
+      })
+
+      // With has_agent: true, only the profile with an agents record is returned
+      const filtered = profilesRepository.list({ type: 'agent', has_agent: true })
+      const filteredIds = filtered.map((p) => p.id)
+      expect(filteredIds, 'Should include profile with agents record').toContain(withAgent.id)
+      expect(filteredIds, 'Should exclude orphan profile').not.toContain(orphan.id)
+
+      // Without has_agent, both are returned
+      const unfiltered = profilesRepository.list({ type: 'agent' })
+      const unfilteredIds = unfiltered.map((p) => p.id)
+      expect(unfilteredIds, 'Should include both when has_agent not set').toContain(withAgent.id)
+      expect(unfilteredIds, 'Should include both when has_agent not set').toContain(orphan.id)
+    })
   })
 
   /*

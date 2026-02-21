@@ -24,6 +24,7 @@ export function useProfileSearch(query: string, options?: { enabled?: boolean })
         ...(debouncedQuery ? { search: debouncedQuery } : {}),
         type: 'agent',
         is_active: true,
+        has_agent: true,
         limit: 10,
       }),
     enabled,

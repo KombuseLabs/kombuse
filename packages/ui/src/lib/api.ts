@@ -412,6 +412,8 @@ export const profilesApi = {
     if (filters?.search) params.set('search', filters.search)
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
+    if (filters?.has_agent !== undefined)
+      params.set('has_agent', String(filters.has_agent))
 
     const url = `${API_BASE}/profiles${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)

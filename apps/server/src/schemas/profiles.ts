@@ -23,6 +23,7 @@ export const profileFiltersSchema = z.object({
   type: z.enum(['user', 'agent']).optional(),
   is_active: z.coerce.boolean().optional(),
   search: z.string().optional(),
+  has_agent: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 })

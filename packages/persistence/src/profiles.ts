@@ -41,10 +41,14 @@ export const profilesRepository = {
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
 
+    const fromClause = filters?.has_agent
+      ? 'profiles INNER JOIN agents ON agents.id = profiles.id'
+      : 'profiles'
+
     const stmt = db.prepare(`
-      SELECT * FROM profiles
+      SELECT profiles.* FROM ${fromClause}
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY profiles.created_at DESC
       LIMIT ? OFFSET ?
     `)
 

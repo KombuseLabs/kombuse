@@ -57,6 +57,7 @@ export interface ProfileFilters {
   type?: ProfileType
   is_active?: boolean
   search?: string
+  has_agent?: boolean
   limit?: number
   offset?: number
 }
