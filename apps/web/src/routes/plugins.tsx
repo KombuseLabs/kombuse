@@ -44,17 +44,11 @@ function InstalledPlugins({ projectId }: { projectId: string }) {
       return
     }
 
-    const mode = window.confirm(
-      `Also delete all agents, triggers, and labels created by this plugin?\n\nClick OK to delete everything.\nClick Cancel to keep entities but unlink them from the plugin.`
-    )
-      ? 'delete'
-      : 'orphan'
-
     uninstallPlugin.mutate(
-      { id: plugin.id, mode },
+      { id: plugin.id, mode: 'orphan' },
       {
         onSuccess: () => {
-          toast.success(`Plugin "${plugin.name}" uninstalled (${mode})`)
+          toast.success(`Plugin "${plugin.name}" uninstalled`)
         },
         onError: (error) => {
           toast.error(error.message ?? 'Failed to uninstall plugin')

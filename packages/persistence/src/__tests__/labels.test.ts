@@ -945,4 +945,97 @@ describe('labelsRepository', () => {
       })).toThrow()
     })
   })
+
+  describe('remapTicketLabels', () => {
+    it('should remap ticket-labels from old to new label ID', () => {
+      const oldLabel = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'OldBug',
+      })
+      const newLabel = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'NewBug',
+      })
+      const ticket1 = ticketsRepository.create({
+        title: 'Ticket 1',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const ticket2 = ticketsRepository.create({
+        title: 'Ticket 2',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      labelsRepository.addToTicket(ticket1.id, oldLabel.id)
+      labelsRepository.addToTicket(ticket2.id, oldLabel.id)
+
+      const remapped = labelsRepository.remapTicketLabels(oldLabel.id, newLabel.id)
+
+      expect(remapped).toBe(2)
+      expect(labelsRepository.getTicketLabels(ticket1.id).map((l) => l.id)).toContain(newLabel.id)
+      expect(labelsRepository.getTicketLabels(ticket2.id).map((l) => l.id)).toContain(newLabel.id)
+    })
+
+    it('should skip tickets that already have the new label', () => {
+      const oldLabel = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'OldFeature',
+      })
+      const newLabel = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'NewFeature',
+      })
+      const ticket = ticketsRepository.create({
+        title: 'Ticket with both',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      // Ticket already has both labels
+      labelsRepository.addToTicket(ticket.id, oldLabel.id)
+      labelsRepository.addToTicket(ticket.id, newLabel.id)
+
+      const remapped = labelsRepository.remapTicketLabels(oldLabel.id, newLabel.id)
+
+      expect(remapped).toBe(0)
+      // Ticket should still have exactly the new label, old association cleaned up
+      const ticketLabels = labelsRepository.getTicketLabels(ticket.id)
+      expect(ticketLabels).toHaveLength(1)
+      expect(ticketLabels[0]!.id).toBe(newLabel.id)
+    })
+
+    it('should clean up remaining old-label associations after remap', () => {
+      const oldLabel = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'OldUrgent',
+      })
+      const newLabel = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'NewUrgent',
+      })
+      const ticket1 = ticketsRepository.create({
+        title: 'Only old label',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const ticket2 = ticketsRepository.create({
+        title: 'Has both labels',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      labelsRepository.addToTicket(ticket1.id, oldLabel.id)
+      labelsRepository.addToTicket(ticket2.id, oldLabel.id)
+      labelsRepository.addToTicket(ticket2.id, newLabel.id)
+
+      labelsRepository.remapTicketLabels(oldLabel.id, newLabel.id)
+
+      // No remaining associations with old label
+      expect(labelsRepository.getTicketIds(oldLabel.id)).toHaveLength(0)
+      // ticket1 remapped, ticket2 kept existing
+      expect(labelsRepository.getTicketLabels(ticket1.id).map((l) => l.id)).toContain(newLabel.id)
+      expect(labelsRepository.getTicketLabels(ticket2.id)).toHaveLength(1)
+    })
+  })
 })

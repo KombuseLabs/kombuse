@@ -303,6 +303,29 @@ export const labelsRepository = {
   },
 
   /**
+   * Remap ticket-label associations from one label to another.
+   * Transfers ticket_labels rows from oldLabelId to newLabelId,
+   * skipping tickets that already have the new label to avoid duplicates.
+   * Returns the number of rows remapped.
+   */
+  remapTicketLabels(oldLabelId: number, newLabelId: number): number {
+    const db = getDatabase()
+    // Step A: Remap rows that won't create a duplicate
+    const remapped = db
+      .prepare(
+        `UPDATE ticket_labels SET label_id = ?
+         WHERE label_id = ?
+         AND ticket_id NOT IN (SELECT ticket_id FROM ticket_labels WHERE label_id = ?)`
+      )
+      .run(newLabelId, oldLabelId, newLabelId)
+
+    // Step B: Clean up remaining rows (tickets that already had the new label)
+    db.prepare('DELETE FROM ticket_labels WHERE label_id = ?').run(oldLabelId)
+
+    return remapped.changes
+  },
+
+  /**
    * Get all tickets with a specific label
    */
   getTicketIds(labelId: number): number[] {

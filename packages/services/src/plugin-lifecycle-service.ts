@@ -75,8 +75,8 @@ export class PluginLifecycleService implements IPluginLifecycleService {
         profilesRepository.delete(id)
       }
 
-      // Delete labels
-      db.prepare('DELETE FROM labels WHERE plugin_id = ?').run(pluginId)
+      // Orphan labels (preserve ticket-label associations)
+      db.prepare('UPDATE labels SET plugin_id = NULL WHERE plugin_id = ?').run(pluginId)
     } else {
       // Orphan: null out plugin_id on all entities
       db.prepare("UPDATE agents SET plugin_id = NULL, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)

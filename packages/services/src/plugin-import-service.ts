@@ -61,6 +61,7 @@ export class PluginImportService implements IPluginImportService {
       throw new PluginAlreadyInstalledError(manifest.name)
     }
     let oldPluginAgentIds = new Set<string>()
+    let oldLabelsBySlug = new Map<string, number>()
     if (existing && overwrite) {
       const db = getDatabase()
       // Collect agent IDs BEFORE plugin delete (FK cascade nulls plugin_id)
@@ -68,8 +69,11 @@ export class PluginImportService implements IPluginImportService {
         .prepare('SELECT id FROM agents WHERE plugin_id = ?')
         .all(existing.id) as { id: string }[]
       oldPluginAgentIds = new Set(oldAgents.map((a) => a.id))
-      // Delete only labels (agents are handled by the import loop below)
-      db.prepare('DELETE FROM labels WHERE plugin_id = ?').run(existing.id)
+      // Collect old labels for remap (labels survive plugin delete via ON DELETE SET NULL)
+      const oldLabels = db
+        .prepare('SELECT id, slug FROM labels WHERE plugin_id = ?')
+        .all(existing.id) as { id: number; slug: string }[]
+      oldLabelsBySlug = new Map(oldLabels.map((l) => [l.slug, l.id]))
       pluginsRepository.delete(existing.id)
     }
 
@@ -124,6 +128,25 @@ export class PluginImportService implements IPluginImportService {
           })
           labelNameToId.set(label.name, label.id)
           labelsCreated++
+        }
+      }
+    }
+
+    // Step 4b: Remap ticket-label associations from old labels to newly imported ones
+    if (oldLabelsBySlug.size > 0) {
+      const newLabelsBySlug = new Map<string, number>()
+      const currentLabels = labelsRepository.getByProject(project_id, true)
+      for (const label of currentLabels) {
+        if (label.plugin_id === pluginId && label.slug) {
+          newLabelsBySlug.set(label.slug, label.id)
+        }
+      }
+
+      for (const [slug, oldLabelId] of oldLabelsBySlug) {
+        const newLabelId = newLabelsBySlug.get(slug)
+        if (newLabelId && newLabelId !== oldLabelId) {
+          labelsRepository.remapTicketLabels(oldLabelId, newLabelId)
+          labelsRepository.delete(oldLabelId)
         }
       }
     }

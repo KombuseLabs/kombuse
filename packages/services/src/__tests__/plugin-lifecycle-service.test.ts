@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import {
   setupTestDb,
   TEST_PROJECT_ID,
+  TEST_USER_ID,
 } from '@kombuse/persistence/test-utils'
 import {
   agentsRepository,
@@ -276,12 +277,40 @@ describe('pluginLifecycleService', () => {
       expect(profile).not.toBeNull()
       expect(profile!.is_active).toBe(false)
 
-      // Label deleted
-      expect(labelsRepository.get(labelId)).toBeNull()
+      // Label orphaned (not deleted) — preserves ticket-label associations
+      const label = labelsRepository.get(labelId)
+      expect(label).not.toBeNull()
+      expect(label!.plugin_id).toBeNull()
 
       // Triggers cascade-deleted with agent
       const triggers = agentTriggersRepository.listByAgent(agentId)
       expect(triggers).toHaveLength(0)
+    })
+
+    it('should preserve ticket-label associations when deleting plugin', () => {
+      const pluginId = createTestPlugin()
+      const labelId = createLinkedLabel(pluginId)
+
+      // Create a ticket and apply the label
+      const db = getDatabase()
+      db.prepare(
+        "INSERT INTO tickets (project_id, title, author_id) VALUES (?, 'Test', ?)"
+      ).run(TEST_PROJECT_ID, TEST_USER_ID)
+      const ticket = db
+        .prepare('SELECT id FROM tickets WHERE project_id = ? ORDER BY id DESC LIMIT 1')
+        .get(TEST_PROJECT_ID) as { id: number }
+      labelsRepository.addToTicket(ticket.id, labelId)
+
+      pluginLifecycleService.uninstallPlugin(pluginId, 'delete')
+
+      // Label should be orphaned with ticket association intact
+      const label = labelsRepository.get(labelId)
+      expect(label).not.toBeNull()
+      expect(label!.plugin_id).toBeNull()
+
+      const ticketLabels = labelsRepository.getTicketLabels(ticket.id)
+      expect(ticketLabels).toHaveLength(1)
+      expect(ticketLabels[0]!.id).toBe(labelId)
     })
   })
 

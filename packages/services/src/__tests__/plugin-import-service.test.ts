@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import {
   setupTestDb,
   TEST_PROJECT_ID,
+  TEST_USER_ID,
 } from '@kombuse/persistence/test-utils'
 import {
   agentsRepository,
@@ -842,6 +843,136 @@ describe('pluginImportService', () => {
 
       // remove-agent should be gone
       expect(agentsRepository.getBySlug('remove-agent')).toBeNull()
+    })
+
+    it('should preserve ticket-label associations when labels have matching slugs', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: {
+            name: 'label-preserve-plugin',
+            kombuse: {
+              plugin_system_version: 'kombuse-plugin-v1',
+              project_id: TEST_PROJECT_ID,
+              exported_at: new Date().toISOString(),
+              labels: [
+                { name: 'Bug', color: '#d73a4a', description: null },
+                { name: 'Feature', color: '#00ff00', description: null },
+              ],
+            },
+          },
+        })
+      )
+
+      // First install
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      // Get the created labels and apply them to tickets
+      const labels = labelsRepository.getByProject(TEST_PROJECT_ID)
+      const bugLabel = labels.find((l) => l.name === 'Bug')!
+      const featureLabel = labels.find((l) => l.name === 'Feature')!
+
+      // Create tickets and apply labels
+      const db = getDatabase()
+      db.prepare(
+        "INSERT INTO tickets (project_id, title, author_id) VALUES (?, 'T1', ?)"
+      ).run(TEST_PROJECT_ID, TEST_USER_ID)
+      db.prepare(
+        "INSERT INTO tickets (project_id, title, author_id) VALUES (?, 'T2', ?)"
+      ).run(TEST_PROJECT_ID, TEST_USER_ID)
+      const tickets = db
+        .prepare('SELECT id FROM tickets WHERE project_id = ? ORDER BY id')
+        .all(TEST_PROJECT_ID) as { id: number }[]
+
+      labelsRepository.addToTicket(tickets[0]!.id, bugLabel.id)
+      labelsRepository.addToTicket(tickets[1]!.id, bugLabel.id)
+      labelsRepository.addToTicket(tickets[1]!.id, featureLabel.id)
+
+      // Overwrite reinstall
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      // Tickets should still have labels with matching names
+      const t1Labels = labelsRepository.getTicketLabels(tickets[0]!.id)
+      expect(t1Labels).toHaveLength(1)
+      expect(t1Labels[0]!.name).toBe('Bug')
+
+      const t2Labels = labelsRepository.getTicketLabels(tickets[1]!.id)
+      expect(t2Labels).toHaveLength(2)
+      expect(t2Labels.map((l) => l.name).sort()).toEqual(['Bug', 'Feature'])
+    })
+
+    it('should orphan labels removed from new manifest with ticket associations intact', () => {
+      const pkg1 = trackDir(
+        createPluginPackage({
+          manifest: {
+            name: 'shrinking-label-plugin',
+            kombuse: {
+              plugin_system_version: 'kombuse-plugin-v1',
+              project_id: TEST_PROJECT_ID,
+              exported_at: new Date().toISOString(),
+              labels: [
+                { name: 'Bug', color: '#d73a4a', description: null },
+                { name: 'Removed', color: '#ff0000', description: null },
+              ],
+            },
+          },
+        })
+      )
+
+      // First install
+      pluginImportService.installPackage({
+        package_path: pkg1,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      // Apply the "Removed" label to a ticket
+      const removedLabel = labelsRepository.getByProject(TEST_PROJECT_ID).find((l) => l.name === 'Removed')!
+      const db = getDatabase()
+      db.prepare(
+        "INSERT INTO tickets (project_id, title, author_id) VALUES (?, 'T1', ?)"
+      ).run(TEST_PROJECT_ID, TEST_USER_ID)
+      const ticket = db
+        .prepare('SELECT id FROM tickets WHERE project_id = ? ORDER BY id DESC LIMIT 1')
+        .get(TEST_PROJECT_ID) as { id: number }
+      labelsRepository.addToTicket(ticket.id, removedLabel.id)
+
+      // Second install only has "Bug" (Removed is dropped from manifest)
+      const pkg2 = trackDir(
+        createPluginPackage({
+          manifest: {
+            name: 'shrinking-label-plugin',
+            kombuse: {
+              plugin_system_version: 'kombuse-plugin-v1',
+              project_id: TEST_PROJECT_ID,
+              exported_at: new Date().toISOString(),
+              labels: [
+                { name: 'Bug', color: '#d73a4a', description: null },
+              ],
+            },
+          },
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg2,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      // "Removed" label should still exist as orphan with ticket association intact
+      const allLabels = labelsRepository.getByProject(TEST_PROJECT_ID, true)
+      const orphanedLabel = allLabels.find((l) => l.name === 'Removed')
+      expect(orphanedLabel, 'Removed label should still exist').toBeDefined()
+      expect(orphanedLabel!.plugin_id, 'Removed label should be orphaned').toBeNull()
+
+      const ticketLabels = labelsRepository.getTicketLabels(ticket.id)
+      expect(ticketLabels.map((l) => l.name), 'Ticket should still have Removed label').toContain('Removed')
     })
   })
 
