@@ -641,7 +641,7 @@ describe('pluginImportService', () => {
       const agent = agentsRepository.getBySlug('label-agent')
       const triggers = agentTriggersRepository.listByAgent(agent!.id)
       expect(triggers).toHaveLength(1)
-      expect(triggers[0]!.conditions).toEqual({ label_id: label.id })
+      expect(triggers[0]!.conditions).toEqual({ label_id: label.id, label_slug: 'bug' })
     })
 
     it('should keep label_name if label cannot be resolved', () => {
@@ -729,7 +729,7 @@ describe('pluginImportService', () => {
       const triggers = agentTriggersRepository.listByAgent(agent!.id)
       const newLabel = labelsRepository.getByProject(TEST_PROJECT_ID).find((l) => l.name === 'NewLabel')
       expect(newLabel).toBeDefined()
-      expect(triggers[0]!.conditions).toEqual({ label_id: newLabel!.id })
+      expect(triggers[0]!.conditions).toEqual({ label_id: newLabel!.id, label_slug: 'newlabel' })
     })
   })
 

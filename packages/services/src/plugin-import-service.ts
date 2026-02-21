@@ -100,11 +100,13 @@ export class PluginImportService implements IPluginImportService {
 
     // Step 4: Import labels
     const labelNameToId = new Map<string, number>()
+    const labelNameToSlug = new Map<string, string | null>()
 
     // Preload existing project labels
     const existingLabels = labelsRepository.getByProject(project_id)
     for (const label of existingLabels) {
       labelNameToId.set(label.name, label.id)
+      labelNameToSlug.set(label.name, label.slug)
     }
 
     if (manifest.kombuse?.labels) {
@@ -128,6 +130,7 @@ export class PluginImportService implements IPluginImportService {
             plugin_id: pluginId,
           })
           labelNameToId.set(label.name, label.id)
+          labelNameToSlug.set(label.name, label.slug)
           labelsCreated++
         }
       }
@@ -217,7 +220,7 @@ export class PluginImportService implements IPluginImportService {
 
           // Sync triggers: match by slug, preserve user customizations
           const triggerSync = this.syncAgentTriggers(
-            agentId, frontmatter.triggers, pluginId, project_id, labelNameToId
+            agentId, frontmatter.triggers, pluginId, project_id, labelNameToId, labelNameToSlug
           )
           triggersCreated += triggerSync.created
           triggersUpdated += triggerSync.updated
@@ -272,7 +275,7 @@ export class PluginImportService implements IPluginImportService {
           })
 
           triggersCreated += this.importAgentTriggers(
-            agentId, frontmatter.triggers, pluginId, project_id, labelNameToId
+            agentId, frontmatter.triggers, pluginId, project_id, labelNameToId, labelNameToSlug
           )
 
           importedAgentIds.add(agentId)
@@ -350,7 +353,8 @@ export class PluginImportService implements IPluginImportService {
 
   private resolveLabelNames(
     conditions: Record<string, unknown> | null,
-    labelNameToId: Map<string, number>
+    labelNameToId: Map<string, number>,
+    labelNameToSlug: Map<string, string | null>
   ): Record<string, unknown> | null {
     if (!conditions) return null
 
@@ -360,6 +364,10 @@ export class PluginImportService implements IPluginImportService {
         const labelId = labelNameToId.get(value)
         if (labelId !== undefined) {
           result['label_id'] = labelId
+          const slug = labelNameToSlug.get(value)
+          if (slug) {
+            result['label_slug'] = slug
+          }
         } else {
           // Keep the label_name if we can't resolve it
           result[key] = value
@@ -389,7 +397,8 @@ export class PluginImportService implements IPluginImportService {
     triggers: AgentExportFrontmatter['triggers'],
     pluginId: string,
     projectId: string,
-    labelNameToId: Map<string, number>
+    labelNameToId: Map<string, number>,
+    labelNameToSlug: Map<string, string | null>
   ): number {
     if (!triggers) return 0
     let count = 0
@@ -400,7 +409,7 @@ export class PluginImportService implements IPluginImportService {
       slugCounts.set(baseSlug, slugCount)
       const slug = slugCount === 1 ? baseSlug : `${baseSlug}-${slugCount}`
 
-      const conditions = this.resolveLabelNames(trigger.conditions, labelNameToId)
+      const conditions = this.resolveLabelNames(trigger.conditions, labelNameToId, labelNameToSlug)
       const resolvedConditions = this.resolveSelfPlaceholder(conditions, agentId)
 
       agentTriggersRepository.create({
@@ -423,7 +432,8 @@ export class PluginImportService implements IPluginImportService {
     triggers: AgentExportFrontmatter['triggers'],
     pluginId: string,
     projectId: string,
-    labelNameToId: Map<string, number>
+    labelNameToId: Map<string, number>,
+    labelNameToSlug: Map<string, string | null>
   ): { created: number; updated: number } {
     if (!triggers || triggers.length === 0) {
       // Delete all plugin triggers and orphaned triggers for this agent
@@ -447,7 +457,7 @@ export class PluginImportService implements IPluginImportService {
       slugCounts.set(baseSlug, slugCount)
       const slug = slugCount === 1 ? baseSlug : `${baseSlug}-${slugCount}`
 
-      const conditions = this.resolveLabelNames(trigger.conditions, labelNameToId)
+      const conditions = this.resolveLabelNames(trigger.conditions, labelNameToId, labelNameToSlug)
       const resolvedConditions = this.resolveSelfPlaceholder(conditions, agentId)
 
       // Try plugin-scoped match first, then fallback to orphaned trigger (NULL plugin_id from overwrite)

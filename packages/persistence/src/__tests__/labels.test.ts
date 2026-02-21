@@ -1038,4 +1038,149 @@ describe('labelsRepository', () => {
       expect(labelsRepository.getTicketLabels(ticket2.id)).toHaveLength(1)
     })
   })
+
+  describe('enriched event payloads', () => {
+    it('should include label_slug and label_plugin_id in addToTicket event', () => {
+      const plugin = pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'test-plugin-1',
+        version: '1.0.0',
+        description: 'Test plugin',
+        directory: '/tmp/test-plugin-1',
+        manifest: JSON.stringify({ name: 'test-plugin-1' }),
+      })
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug Report',
+        plugin_id: plugin.id,
+      })
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.addToTicket(ticket.id, label.id, TEST_USER_ID)
+
+      const events = eventsRepository.list({ event_type: 'label.added' })
+      expect(events).toHaveLength(1)
+      const payload = typeof events[0]!.payload === 'string'
+        ? JSON.parse(events[0]!.payload)
+        : events[0]!.payload
+      expect(payload.label_id).toBe(label.id)
+      expect(payload.label_name).toBe('Bug Report')
+      expect(payload.label_slug).toBe('bug-report')
+      expect(payload.label_plugin_id).toBe(plugin.id)
+    })
+
+    it('should include label_slug and label_plugin_id in removeFromTicket event', () => {
+      const plugin = pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'test-plugin-2',
+        version: '1.0.0',
+        description: 'Test plugin',
+        directory: '/tmp/test-plugin-2',
+        manifest: JSON.stringify({ name: 'test-plugin-2' }),
+      })
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Feature Request',
+        plugin_id: plugin.id,
+      })
+      labelsRepository.addToTicket(ticket.id, label.id, TEST_USER_ID)
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.removeFromTicket(ticket.id, label.id, TEST_USER_ID)
+
+      const events = eventsRepository.list({ event_type: 'label.removed' })
+      expect(events).toHaveLength(1)
+      const payload = typeof events[0]!.payload === 'string'
+        ? JSON.parse(events[0]!.payload)
+        : events[0]!.payload
+      expect(payload.label_id).toBe(label.id)
+      expect(payload.label_name).toBe('Feature Request')
+      expect(payload.label_slug).toBe('feature-request')
+      expect(payload.label_plugin_id).toBe(plugin.id)
+    })
+
+    it('should handle null plugin_id for user-created labels', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Manual Label',
+      })
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.addToTicket(ticket.id, label.id)
+
+      const events = eventsRepository.list({ event_type: 'label.added' })
+      const payload = typeof events[0]!.payload === 'string'
+        ? JSON.parse(events[0]!.payload)
+        : events[0]!.payload
+      expect(payload.label_slug).toBe('manual-label')
+      expect(payload.label_plugin_id).toBeNull()
+    })
+  })
+
+  describe('getBySlugAndProject', () => {
+    it('should find label by slug and project without plugin filter', () => {
+      const plugin = pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'slug-test-plugin',
+        version: '1.0.0',
+        description: 'Test plugin',
+        directory: '/tmp/slug-test-plugin',
+        manifest: JSON.stringify({ name: 'slug-test-plugin' }),
+      })
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug',
+        plugin_id: plugin.id,
+      })
+
+      const found = labelsRepository.getBySlugAndProject('bug', TEST_PROJECT_ID)
+      expect(found).not.toBeNull()
+      expect(found?.id).toBe(label.id)
+    })
+
+    it('should return null for non-existent slug', () => {
+      const found = labelsRepository.getBySlugAndProject('nonexistent', TEST_PROJECT_ID)
+      expect(found).toBeNull()
+    })
+
+    it('should not return disabled labels', () => {
+      labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Disabled Label',
+      })
+      db.prepare("UPDATE labels SET is_enabled = 0 WHERE slug = 'disabled-label'").run()
+
+      const found = labelsRepository.getBySlugAndProject('disabled-label', TEST_PROJECT_ID)
+      expect(found).toBeNull()
+    })
+
+    it('should not return labels from different projects', () => {
+      db.prepare(
+        "INSERT INTO projects (id, name, owner_id) VALUES ('other-project', 'Other', ?)"
+      ).run(TEST_USER_ID)
+
+      labelsRepository.create({
+        project_id: 'other-project',
+        name: 'Bug',
+      })
+
+      const found = labelsRepository.getBySlugAndProject('bug', TEST_PROJECT_ID)
+      expect(found).toBeNull()
+    })
+  })
 })

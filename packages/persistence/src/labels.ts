@@ -127,6 +127,14 @@ export const labelsRepository = {
     return label ?? null
   },
 
+  getBySlugAndProject(slug: string, projectId: string): Label | null {
+    const db = getDatabase()
+    const label = db
+      .prepare('SELECT * FROM labels WHERE slug = ? AND project_id = ? AND is_enabled = 1')
+      .get(slug, projectId) as Label | undefined
+    return label ?? null
+  },
+
   update(id: number, input: UpdateLabelInput): Label | null {
     const db = getDatabase()
 
@@ -210,7 +218,7 @@ export const labelsRepository = {
         ticket_id: ticketId,
         actor_id: addedById,
         actor_type: adderActorType,
-        payload: { label_id: labelId, label_name: label?.name },
+        payload: { label_id: labelId, label_name: label?.name, label_slug: label?.slug, label_plugin_id: label?.plugin_id },
       })
     }
   },
@@ -244,7 +252,7 @@ export const labelsRepository = {
         ticket_id: ticketId,
         actor_id: removedById,
         actor_type: removerActorType,
-        payload: { label_id: labelId, label_name: label?.name },
+        payload: { label_id: labelId, label_name: label?.name, label_slug: label?.slug, label_plugin_id: label?.plugin_id },
       })
     }
 
