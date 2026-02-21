@@ -14,6 +14,10 @@ vi.mock('../../../hooks/use-triggers', () => ({
   useTriggers: vi.fn(),
 }))
 
+vi.mock('../../../hooks/use-app-context', () => ({
+  useCurrentProject: () => ({ currentProjectId: 'test-project' }),
+}))
+
 function buildAgent(overrides: Partial<Agent> = {}): Agent {
   return {
     id: 'agent-1',
@@ -152,7 +156,7 @@ describe('AgentPreviewCard', () => {
     expect(getByText('1 tool permission')).toBeDefined()
 
     const detailsLink = getByRole('link', { name: 'View full details' })
-    expect(detailsLink.getAttribute('href')).toBe('/agents/agent-1')
+    expect(detailsLink.getAttribute('href')).toBe('/projects/test-project/agents/agent-1')
   })
 
   it('renders nothing and notifies parent when loading fails', async () => {

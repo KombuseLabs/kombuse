@@ -92,7 +92,7 @@ describe("useHistoryNavigation", () => {
     rerender();
 
     // Navigate to a new path — should truncate /chats from forward stack
-    setLocation("/agents");
+    setLocation("/settings");
     rerender();
 
     expect(result.current.canGoBack).toBe(true);

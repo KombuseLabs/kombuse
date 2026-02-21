@@ -1085,6 +1085,7 @@ Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users ca
 - `agentId`: target agent ID
 - `enabled`: optional lazy-load flag (defaults to true)
 - `onError`: optional callback when data loading fails
+- "View full details" link reads `currentProjectId` from `useCurrentProject()` context to build project-scoped URLs (`/projects/:projectId/agents/:agentId`)
 
 ### Prompt Editor
 

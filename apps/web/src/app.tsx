@@ -110,10 +110,6 @@ function AppContent() {
                 <Route path="analytics" element={<Analytics />} />
               </Route>
 
-              {/* Global agents (outside project context) */}
-              <Route path="/agents" element={<Agents />} />
-              <Route path="/agents/:agentId" element={<Agents />} />
-
               {/* Claude Code session viewer */}
               <Route path="/claude-code" element={<ClaudeCodeSessionViewer />} />
               <Route path="/claude-code/:projectPath" element={<ClaudeCodeSessionViewer />} />

@@ -5,6 +5,7 @@ import { Badge } from '../../base/badge'
 import { cn } from '../../lib/utils'
 import { useAgentWithProfile } from '../../hooks/use-agents'
 import { useTriggers } from '../../hooks/use-triggers'
+import { useCurrentProject } from '../../hooks/use-app-context'
 import { getAvatarIcon } from './avatar-picker'
 
 interface AgentPreviewCardProps {
@@ -62,6 +63,7 @@ function AgentPreviewSkeleton() {
 }
 
 function AgentPreviewCard({ agentId, enabled = true, onError }: AgentPreviewCardProps) {
+  const { currentProjectId } = useCurrentProject()
   const queryAgentId = enabled ? agentId : ''
   const { data: agentData, isLoading: isLoadingAgent, isError: isAgentError } = useAgentWithProfile(queryAgentId)
   const { data: triggers = [], isLoading: isLoadingTriggers, isError: isTriggersError } = useTriggers(queryAgentId)
@@ -164,7 +166,7 @@ function AgentPreviewCard({ agentId, enabled = true, onError }: AgentPreviewCard
 
       <div>
         <Link
-          to={`/agents/${agentId}`}
+          to={currentProjectId ? `/projects/${currentProjectId}/agents/${agentId}` : `/agents/${agentId}`}
           className="text-xs text-primary no-underline hover:underline"
         >
           View full details

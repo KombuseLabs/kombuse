@@ -18,7 +18,6 @@ import {
   ResizableCardPanel,
   ResizablePanelGroup,
   ResizablePanel,
-  ResizableHandle,
   toast,
 } from "@kombuse/ui/base";
 import {
@@ -47,17 +46,17 @@ import {
   useUpdatePlugin,
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
-import { Plus, Bot, X, Save, Package, Puzzle, ChevronDown } from "lucide-react";
+import { Plus, X, Save, Package, Puzzle, ChevronDown } from "lucide-react";
 import type { Agent, AgentConfig, Permission, Plugin, Profile } from "@kombuse/types";
 
 const AGENTS_PANEL_LAYOUT_KEY = "agents-panel-layout";
 
 export function Agents() {
-  const { projectId, agentId } = useParams<{ projectId?: string; agentId?: string }>();
+  const { projectId: pid, agentId } = useParams<{ projectId: string; agentId?: string }>();
+  const projectId = pid!;
   const navigate = useNavigate();
   const isCreating = agentId === "new";
-  const isProjectContext = Boolean(projectId);
-  const basePath = isProjectContext ? `/projects/${projectId}/agents` : "/agents";
+  const basePath = `/projects/${projectId}/agents`;
 
   const { data: agents, isLoading, error } = useAgents();
   const { data: profiles } = useAgentProfiles();
@@ -80,12 +79,11 @@ export function Agents() {
   const toggleTriggerMutation = useToggleTrigger();
 
   // Plugin hooks for onboarding and grouping
-  const { data: availablePlugins } = useAvailablePlugins(projectId ?? "");
-  const { data: installedPlugins } = useInstalledPlugins(projectId ?? "");
+  const { data: availablePlugins } = useAvailablePlugins(projectId);
+  const { data: installedPlugins } = useInstalledPlugins(projectId);
   const installPlugin = useInstallPlugin();
   const updatePlugin = useUpdatePlugin();
   const [dismissed, setDismissed] = useState(() => {
-    if (!projectId) return false;
     return localStorage.getItem(`plugin-onboarding-dismissed-${projectId}`) === "true";
   });
 
@@ -147,7 +145,6 @@ export function Agents() {
   }, [SECTIONS_STORAGE_KEY]);
 
   const handleInstallPlugin = (directory: string) => {
-    if (!projectId) return;
     installPlugin.mutate(
       { package_path: directory, project_id: projectId },
       {
@@ -164,9 +161,7 @@ export function Agents() {
   };
 
   const handleDismissOnboarding = () => {
-    if (projectId) {
-      localStorage.setItem(`plugin-onboarding-dismissed-${projectId}`, "true");
-    }
+    localStorage.setItem(`plugin-onboarding-dismissed-${projectId}`, "true");
     setDismissed(true);
   };
 
@@ -281,8 +276,6 @@ export function Agents() {
 
   const showDetailPanel = agentId !== undefined;
 
-  const Container = isProjectContext ? "div" : "main";
-
   const agentListContent = (
     <>
       {isLoading && (
@@ -298,19 +291,14 @@ export function Agents() {
       )}
 
       {!isLoading && !error && agents && (
-        <div className={isProjectContext
-          ? "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm"
-          : "rounded-lg border divide-y"}
-        >
-          {isProjectContext && (
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
-              <h1 className="text-2xl font-bold">Agents</h1>
-              <Button onClick={handleStartCreate} disabled={isCreating}>
-                <Plus className="size-4" />
-                Create Agent
-              </Button>
-            </div>
-          )}
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
+            <h1 className="text-2xl font-bold">Agents</h1>
+            <Button onClick={handleStartCreate} disabled={isCreating}>
+              <Plus className="size-4" />
+              Create Agent
+            </Button>
+          </div>
           {agents.length === 0 && !isCreating ? (
             showOnboarding ? (
               <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 text-center">
@@ -346,8 +334,7 @@ export function Agents() {
               </div>
             )
           ) : (
-            isProjectContext ? (
-              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
                 <div className="space-y-1">
                   {agentSections.map((section) => {
                     const sectionKey = section.pluginId ?? "custom";
@@ -410,26 +397,6 @@ export function Agents() {
                   })}
                 </div>
               </div>
-            ) : (
-              agents.map((agent) => {
-                const profile = profileMap.get(agent.id);
-                if (!profile) return null;
-                return (
-                  <AgentCard
-                    key={agent.id}
-                    agent={agent}
-                    profile={profile}
-                    variant="default"
-                    isSelected={agent.id === agentId}
-                    onClick={() => handleAgentClick(agent)}
-                    onToggle={(enabled) =>
-                      toggleAgent.mutate({ id: agent.id, is_enabled: enabled })
-                    }
-                    isToggling={toggleAgent.isPending}
-                  />
-                );
-              })
-            )
           )}
         </div>
       )}
@@ -549,20 +516,7 @@ export function Agents() {
   );
 
   return (
-    <Container className={isProjectContext ? "flex h-full min-h-0" : "flex flex-col h-full"}>
-      {!isProjectContext && (
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center gap-4">
-            <Bot className="size-6" />
-            <h1 className="text-2xl font-bold">Agents</h1>
-          </div>
-          <Button onClick={handleStartCreate} disabled={isCreating}>
-            <Plus className="size-4" />
-            Create Agent
-          </Button>
-        </div>
-      )}
-
+    <div className="flex h-full min-h-0">
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {showDetailPanel ? (
           <ResizablePanelGroup
@@ -571,35 +525,25 @@ export function Agents() {
             onLayoutChanged={handleLayoutChanged}
           >
             <ResizablePanel id="list" defaultSize={50} minSize={25}>
-              {isProjectContext ? (
-                <ResizableCardPanel side="list">
-                  {agentListContent}
-                </ResizableCardPanel>
-              ) : (
-                <div className="h-full overflow-y-auto p-6">
-                  {agentListContent}
-                </div>
-              )}
+              <ResizableCardPanel side="list">
+                {agentListContent}
+              </ResizableCardPanel>
             </ResizablePanel>
 
-            {isProjectContext ? <ResizableCardHandle /> : <ResizableHandle withHandle />}
+            <ResizableCardHandle />
 
             <ResizablePanel id="detail" defaultSize={50} minSize={25}>
-              {isProjectContext ? (
-                <ResizableCardPanel side="detail">
-                  {agentDetailContent}
-                </ResizableCardPanel>
-              ) : (
-                agentDetailContent
-              )}
+              <ResizableCardPanel side="detail">
+                {agentDetailContent}
+              </ResizableCardPanel>
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
-          <div className={isProjectContext ? "w-full h-full min-h-0 pt-3 px-6 pb-6" : "w-full overflow-y-auto p-6"}>
+          <div className="w-full h-full min-h-0 pt-3 px-6 pb-6">
             {agentListContent}
           </div>
         )}
       </div>
-    </Container>
+    </div>
   );
 }
