@@ -41,7 +41,7 @@ export function Labels() {
   const isCreating = labelId === "new";
   const basePath = `/projects/${projectId}/labels`;
 
-  const { data: labels, isLoading, error } = useProjectLabels(projectId ?? "");
+  const { data: labels, isLoading, error } = useProjectLabels(projectId ?? "", { is_enabled: false });
   const createLabel = useCreateLabel(projectId ?? "");
   const updateLabel = useUpdateLabel(projectId ?? "");
   const deleteLabel = useDeleteLabel(projectId ?? "");
@@ -90,30 +90,35 @@ export function Labels() {
   }, [labels, searchQuery]);
 
   const labelSections = useMemo(() => {
-    if (!filteredLabels.length) return [];
-    const groups = new Map<string | null, Label[]>();
+    const labelsByPlugin = new Map<string | null, Label[]>();
     for (const label of filteredLabels) {
       const key = label.plugin_id ?? null;
-      const group = groups.get(key);
-      if (group) group.push(label);
-      else groups.set(key, [label]);
+      if (!labelsByPlugin.has(key)) labelsByPlugin.set(key, []);
+      labelsByPlugin.get(key)!.push(label);
     }
+
     const sections: { pluginId: string | null; plugin: Plugin | null; labels: Label[] }[] = [];
-    const pluginEntries = [...groups.entries()].filter(([key]) => key !== null) as [string, Label[]][];
-    pluginEntries.sort((a, b) => {
-      const pa = pluginMap.get(a[0]);
-      const pb = pluginMap.get(b[0]);
-      return (pa?.installed_at ?? "").localeCompare(pb?.installed_at ?? "");
-    });
-    for (const [pluginId, labelList] of pluginEntries) {
-      sections.push({ pluginId, plugin: pluginMap.get(pluginId) ?? null, labels: labelList });
+
+    if (installedPlugins) {
+      const sorted = [...installedPlugins].sort((a, b) =>
+        (a.installed_at ?? "").localeCompare(b.installed_at ?? "")
+      );
+      for (const plugin of sorted) {
+        sections.push({
+          pluginId: plugin.id,
+          plugin,
+          labels: labelsByPlugin.get(plugin.id) ?? [],
+        });
+      }
     }
-    const custom = groups.get(null);
+
+    const custom = labelsByPlugin.get(null);
     if (custom?.length) {
       sections.push({ pluginId: null, plugin: null, labels: custom });
     }
+
     return sections;
-  }, [filteredLabels, pluginMap]);
+  }, [filteredLabels, installedPlugins]);
 
   const LABEL_SECTIONS_STORAGE_KEY = `label-plugin-sections-${projectId}`;
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
@@ -217,7 +222,7 @@ export function Labels() {
               </Button>
             </div>
           </div>
-          {filteredLabels.length === 0 && !isCreating ? (
+          {labelSections.length === 0 && !isCreating ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchQuery
                 ? "No labels match your search."

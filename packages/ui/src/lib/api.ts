@@ -228,11 +228,12 @@ export const commentsApi = {
 }
 
 export const labelsApi = {
-  async listByProject(projectId: string, filters?: Pick<LabelFilters, 'search' | 'sort' | 'usage_scope'>): Promise<Label[]> {
+  async listByProject(projectId: string, filters?: Pick<LabelFilters, 'search' | 'sort' | 'usage_scope' | 'is_enabled'>): Promise<Label[]> {
     const params = new URLSearchParams()
     if (filters?.search) params.set('search', filters.search)
     if (filters?.sort) params.set('sort', filters.sort)
     if (filters?.usage_scope) params.set('usage_scope', filters.usage_scope)
+    if (filters?.is_enabled !== undefined) params.set('is_enabled', String(filters.is_enabled))
 
     const url = `${API_BASE}/projects/${projectId}/labels${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
