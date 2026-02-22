@@ -71,6 +71,7 @@ export const agentSchema = z.object({
   config: agentConfigSchema,
   is_enabled: z.boolean(),
   plugin_id: z.string().nullable(),
+  project_id: z.string().nullable(),
   plugin_base: pluginBaseSchema.nullable(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
@@ -86,6 +87,7 @@ export const createAgentInputSchema = z.object({
   config: agentConfigSchema.optional(),
   is_enabled: z.boolean().optional(),
   plugin_base: pluginBaseSchema.nullable().optional(),
+  project_id: z.string().nullable().optional(),
 })
 
 export const updateAgentInputSchema = z.object({
@@ -99,6 +101,7 @@ export const updateAgentInputSchema = z.object({
 export const agentFiltersSchema = z.object({
   is_enabled: z.coerce.boolean().optional(),
   enabled_for_chat: z.coerce.boolean().optional(),
+  project_id: z.string().optional(),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 })

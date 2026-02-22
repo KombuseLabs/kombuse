@@ -51,6 +51,7 @@ export function useCreateAgent() {
       avatar_url?: string
       system_prompt: string
       is_enabled?: boolean
+      project_id?: string
     }) => {
       // Service auto-creates profile with name + description
       const agent = await agentsApi.create({
@@ -58,6 +59,7 @@ export function useCreateAgent() {
         description: input.description,
         system_prompt: input.system_prompt,
         is_enabled: input.is_enabled,
+        project_id: input.project_id,
       })
       // Avatar is a profile-only field; update separately if provided
       if (input.avatar_url) {

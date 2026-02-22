@@ -34,6 +34,7 @@ function buildAgent(overrides: Partial<Agent> = {}): Agent {
     },
     is_enabled: true,
     plugin_id: null,
+    project_id: null,
     plugin_base: null,
     created_at: '2026-02-13T00:00:00.000Z',
     updated_at: '2026-02-13T00:00:00.000Z',

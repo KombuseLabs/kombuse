@@ -132,6 +132,8 @@ export interface Agent {
   is_enabled: boolean
   /** Plugin that installed this agent, if any */
   plugin_id: string | null
+  /** Project that owns this agent; null = global (visible in all projects) */
+  project_id: string | null
   /** Snapshot of plugin-provided defaults, null for user-created agents */
   plugin_base: PluginBase | null
   /** Resolved type preset, populated by the API (not stored in DB) */
@@ -157,6 +159,7 @@ export interface CreateAgentInput {
   config?: AgentConfig
   is_enabled?: boolean
   plugin_id?: string | null
+  project_id?: string | null
   plugin_base?: PluginBase | null
 }
 
@@ -178,6 +181,7 @@ export interface UpdateAgentInput {
 export interface AgentFilters {
   is_enabled?: boolean
   enabled_for_chat?: boolean
+  project_id?: string
   limit?: number
   offset?: number
 }

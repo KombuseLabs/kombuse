@@ -16,6 +16,7 @@ export const createAgentSchema = z.object({
   permissions: z.array(permissionSchema).optional(),
   config: agentConfigSchema.optional(),
   is_enabled: z.boolean().optional(),
+  project_id: z.string().optional(),
 })
 
 export const updateAgentSchema = z.object({
@@ -28,6 +29,7 @@ export const updateAgentSchema = z.object({
 export const agentFiltersSchema = z.object({
   is_enabled: z.coerce.boolean().optional(),
   enabled_for_chat: z.coerce.boolean().optional(),
+  project_id: z.string().optional(),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 })

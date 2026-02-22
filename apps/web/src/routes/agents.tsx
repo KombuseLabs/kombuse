@@ -58,7 +58,7 @@ export function Agents() {
   const isCreating = agentId === "new";
   const basePath = `/projects/${projectId}/agents`;
 
-  const { data: agents, isLoading, error } = useAgents();
+  const { data: agents, isLoading, error } = useAgents({ project_id: projectId });
   const { data: profiles } = useAgentProfiles();
   const {
     data: selectedAgentData,
@@ -217,6 +217,7 @@ export function Agents() {
         avatar_url: newAgentAvatar,
         system_prompt: newAgentPrompt,
         is_enabled: true,
+        project_id: projectId,
       },
       {
         onSuccess: (agent) => {

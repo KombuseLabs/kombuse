@@ -29,6 +29,7 @@ export interface AllowedInvokersEditorProps {
   value: AllowedInvoker[] | null
   onChange: (value: AllowedInvoker[] | null) => void
   disabled?: boolean
+  projectId?: string
 }
 
 const INVOKER_TYPE_OPTIONS = [
@@ -38,10 +39,10 @@ const INVOKER_TYPE_OPTIONS = [
   { value: 'system', label: 'System' },
 ] as const
 
-function AllowedInvokersEditor({ value, onChange, disabled }: AllowedInvokersEditorProps) {
+function AllowedInvokersEditor({ value, onChange, disabled, projectId }: AllowedInvokersEditorProps) {
   const isRestricted = value !== null
 
-  const { data: agents } = useAgents({ is_enabled: true })
+  const { data: agents } = useAgents({ is_enabled: true, project_id: projectId })
   const { data: profiles } = useAgentProfiles()
 
   const profileMap = useMemo(() => {

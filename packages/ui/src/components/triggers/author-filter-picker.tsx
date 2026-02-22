@@ -32,6 +32,7 @@ export interface AuthorFilterPickerProps {
   value: AuthorFilterValue
   onValueChange: (value: AuthorFilterValue) => void
   disabled?: boolean
+  projectId?: string
 }
 
 const ANY_AUTHOR_SENTINEL = '__any__'
@@ -57,10 +58,10 @@ export function getAuthorFilterLabel(authorType: string, agentNames?: string[]):
   return authorType
 }
 
-function AuthorFilterPicker({ value, onValueChange, disabled }: AuthorFilterPickerProps) {
+function AuthorFilterPicker({ value, onValueChange, disabled, projectId }: AuthorFilterPickerProps) {
   const [open, setOpen] = useState(false)
 
-  const { data: agents } = useAgents({ is_enabled: true })
+  const { data: agents } = useAgents({ is_enabled: true, project_id: projectId })
   const { data: profiles } = useAgentProfiles()
 
   const profileMap = useMemo(() => {

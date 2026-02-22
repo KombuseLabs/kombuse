@@ -192,6 +192,7 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
                 setSelectedAuthorIds(authorIds)
               }}
               disabled={isLoading}
+              projectId={currentProjectId ?? undefined}
             />
             <ConditionEditor
               conditions={conditions}
@@ -228,6 +229,7 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
         value={allowedInvokers}
         onChange={setAllowedInvokers}
         disabled={isLoading}
+        projectId={currentProjectId ?? undefined}
       />
 
       <div className="flex items-center justify-between">

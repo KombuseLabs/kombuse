@@ -56,6 +56,10 @@ export function registerAgentTools(server: McpServer): void {
           .boolean()
           .optional()
           .describe('Filter by enabled/disabled status'),
+        project_id: z
+          .string()
+          .optional()
+          .describe('Scope to a specific project (also includes global agents)'),
         limit: z
           .number()
           .int()
@@ -71,9 +75,10 @@ export function registerAgentTools(server: McpServer): void {
           .describe('Number of agents to skip for pagination (default: 0)'),
       },
     },
-    async ({ is_enabled, limit, offset }) => {
+    async ({ is_enabled, project_id, limit, offset }) => {
       const agents = agentsRepository.list({
         is_enabled,
+        project_id,
         limit: limit ?? 50,
         offset: offset ?? 0,
       })
@@ -137,13 +142,17 @@ export function registerAgentTools(server: McpServer): void {
           .boolean()
           .optional()
           .describe('Whether the agent is enabled (default: true)'),
+        project_id: z
+          .string()
+          .optional()
+          .describe('Project to scope this agent to (omit for global)'),
         kombuse_session_id: z
           .string()
           .optional()
           .describe('Optional session ID for permission enforcement'),
       },
     },
-    async ({ id, name, description, slug, system_prompt, permissions, config, is_enabled, kombuse_session_id }) => {
+    async ({ id, name, description, slug, system_prompt, permissions, config, is_enabled, project_id, kombuse_session_id }) => {
       const sharedParse = safeParseShared(createAgentInputSchema, {
         id,
         name,
@@ -153,6 +162,7 @@ export function registerAgentTools(server: McpServer): void {
         permissions,
         config,
         is_enabled,
+        project_id,
       })
       if (!sharedParse.success) {
         return validationErrorResponse(sharedParse.error?.issues ?? 'Invalid input')

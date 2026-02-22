@@ -271,6 +271,7 @@ export class PluginImportService implements IPluginImportService {
             config,
             is_enabled: frontmatter.is_enabled !== false,
             plugin_id: pluginId,
+            project_id,
             plugin_base: pluginBase,
           })
 

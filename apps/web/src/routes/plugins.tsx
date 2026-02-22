@@ -198,7 +198,7 @@ function AvailablePluginsList({ projectId }: { projectId: string }) {
 }
 
 function ExportSection({ projectId }: { projectId: string }) {
-  const { data: agents = [], isLoading: isLoadingAgents } = useAgents()
+  const { data: agents = [], isLoading: isLoadingAgents } = useAgents({ project_id: projectId })
   const { data: profiles = [] } = useAgentProfiles()
   const { data: labels = [] } = useProjectLabels(projectId)
   const exportPlugin = useExportPlugin()

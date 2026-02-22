@@ -677,6 +677,7 @@ Props for `AuthorFilterPicker`:
 - `value`: `{ authorType: ActorType | null; authorIds: string[] }` — current selection
 - `onValueChange`: `(value: { authorType: ActorType | null; authorIds: string[] }) => void` — selection callback
 - `disabled`: Optional boolean
+- `projectId`: Optional string — scopes agent list to a specific project (+ global agents)
 - When `authorType` is `'agent'`, shows a multi-select dropdown of enabled agents
 - Leaving agent selection empty means "any agent"
 
@@ -701,6 +702,7 @@ Props for `AllowedInvokersEditor`:
 - `value`: `AllowedInvoker[] | null` — current invoker rules (null = allow all)
 - `onChange`: `(value: AllowedInvoker[] | null) => void` — called when rules change
 - `disabled`: Optional boolean
+- `projectId`: Optional string — scopes agent list to a specific project (+ global agents)
 
 `summarizeInvokers` accepts an optional second parameter `profileMap: Map<string, Profile>` for resolving agent UUIDs to display names. When omitted, falls back to truncated UUID display.
 
@@ -949,18 +951,20 @@ import { PermissionRulesTab } from '@kombuse/ui/components'
 
 `PermissionRulesTab` props:
 - `className`: Optional class name
+- `projectId`: Optional string — scopes agent list to a specific project (+ global agents)
 
 ```typescript
 import { AutoApprovedToolsTab } from '@kombuse/ui/components'
 
 // Editable view of per-agent auto-approved tools and bash commands
-<AutoApprovedToolsTab />
+<AutoApprovedToolsTab projectId="my-project" />
 ```
 
 `AutoApprovedToolsTab` is a self-fetching component that uses `useAgents()`, `useAgentProfiles()`, and `useUpdateAgent()` internally. It displays all agents with their auto-approved tool lists and allows editing per-agent overrides (stored in the agent's `config` JSON column). Supports toggling individual tools, adding custom tools, managing bash command prefixes, and resetting to type preset defaults.
 
 `AutoApprovedToolsTab` props:
 - `className`: Optional class name
+- `projectId`: Optional string — scopes agent list to a specific project (+ global agents)
 
 ### Permission Editor Components
 
@@ -1043,6 +1047,7 @@ Props:
 - `onChange`: `(agentId: string | null) => void` — called when selection changes
 - `disabled`: Optional boolean — disables the picker (use for existing sessions)
 - `className`: Optional class name
+- `projectId`: Optional `string | null` — scopes agent list to a specific project (+ global agents)
 
 Features:
 - Popover with searchable agent list (only shows enabled agents with `enabled_for_chat` config)

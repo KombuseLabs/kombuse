@@ -94,7 +94,7 @@ export function Permissions() {
           hidden={activeTab !== 'permission-rules'}
           className="flex-1 overflow-y-auto p-6 data-[state=inactive]:hidden"
         >
-          <PermissionRulesTab />
+          <PermissionRulesTab projectId={projectId} />
         </TabsContent>
 
         <TabsContent
@@ -103,7 +103,7 @@ export function Permissions() {
           hidden={activeTab !== 'auto-approved-tools'}
           className="flex-1 overflow-y-auto p-6 data-[state=inactive]:hidden"
         >
-          <AutoApprovedToolsTab />
+          <AutoApprovedToolsTab projectId={projectId} />
         </TabsContent>
       </Tabs>
     </main>

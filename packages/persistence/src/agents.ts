@@ -28,6 +28,11 @@ export const agentsRepository = {
     const conditions: string[] = []
     const params: unknown[] = []
 
+    if (filters?.project_id) {
+      conditions.push('(project_id = ? OR project_id IS NULL)')
+      params.push(filters.project_id)
+    }
+
     if (filters?.is_enabled !== undefined) {
       conditions.push('is_enabled = ?')
       params.push(filters.is_enabled ? 1 : 0)
@@ -89,6 +94,17 @@ export const agentsRepository = {
   },
 
   /**
+   * Get an agent by slug scoped to a specific project (excludes global agents)
+   */
+  getBySlugAndProject(slug: string, projectId: string): Agent | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM agents WHERE slug = ? AND project_id = ?')
+      .get(slug, projectId) as RawAgent | undefined
+    return row ? mapAgent(row) : null
+  },
+
+  /**
    * Create a new agent
    */
   create(input: CreateAgentInput): Agent {
@@ -97,9 +113,9 @@ export const agentsRepository = {
     db.prepare(
       `
       INSERT INTO agents (
-        id, slug, system_prompt, permissions, config, is_enabled, plugin_id, plugin_base
+        id, slug, system_prompt, permissions, config, is_enabled, plugin_id, project_id, plugin_base
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
     ).run(
       input.id,
@@ -109,6 +125,7 @@ export const agentsRepository = {
       JSON.stringify(input.config ?? {}),
       input.is_enabled !== false ? 1 : 0,
       input.plugin_id ?? null,
+      input.project_id ?? null,
       input.plugin_base ? JSON.stringify(input.plugin_base) : null
     )
 
@@ -619,6 +636,7 @@ interface RawAgent {
   config: string
   is_enabled: number
   plugin_id: string | null
+  project_id: string | null
   plugin_base: string | null
   created_at: string
   updated_at: string
@@ -669,6 +687,7 @@ function mapAgent(row: RawAgent): Agent {
     config: JSON.parse(row.config) as AgentConfig,
     is_enabled: row.is_enabled === 1,
     plugin_id: row.plugin_id,
+    project_id: row.project_id,
     plugin_base: row.plugin_base ? JSON.parse(row.plugin_base) as PluginBase : null,
     created_at: row.created_at,
     updated_at: row.updated_at,

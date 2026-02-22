@@ -647,6 +647,41 @@ const migrations: Migration[] = [
       `)
     },
   },
+  {
+    name: '006_agents_project_id',
+    run: (db: DatabaseType) => {
+      // 1. Add nullable project_id column with FK to projects
+      db.exec(`
+        ALTER TABLE agents ADD COLUMN project_id TEXT
+          REFERENCES projects(id) ON DELETE CASCADE
+      `)
+
+      // 2. Backfill: set project_id from the linked plugin's project_id
+      db.exec(`
+        UPDATE agents SET project_id = (
+          SELECT p.project_id FROM plugins p WHERE p.id = agents.plugin_id
+        ) WHERE plugin_id IS NOT NULL
+      `)
+
+      // 3. Replace slug uniqueness indexes with project-scoped variants
+      db.exec(`
+        DROP INDEX IF EXISTS idx_agents_slug_plugin;
+        DROP INDEX IF EXISTS idx_agents_slug_global;
+        CREATE UNIQUE INDEX idx_agents_slug_plugin ON agents(slug, plugin_id, project_id)
+          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+        CREATE UNIQUE INDEX idx_agents_slug_project ON agents(slug, project_id)
+          WHERE slug IS NOT NULL AND plugin_id IS NULL AND project_id IS NOT NULL;
+        CREATE UNIQUE INDEX idx_agents_slug_global ON agents(slug)
+          WHERE slug IS NOT NULL AND plugin_id IS NULL AND project_id IS NULL;
+      `)
+
+      // 4. Index for project-scoped listing
+      db.exec(`
+        CREATE INDEX idx_agents_project ON agents(project_id)
+          WHERE project_id IS NOT NULL
+      `)
+    },
+  },
 ]
 
 /**

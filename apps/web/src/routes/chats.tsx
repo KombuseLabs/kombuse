@@ -231,6 +231,7 @@ export function Chats() {
                 onChange={setSelectedAgentId}
                 disabled={!isDraft}
                 className="h-8 w-[180px] max-w-full"
+                projectId={projectId}
               />
             </>
           }

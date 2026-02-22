@@ -209,9 +209,11 @@ export class AgentService implements IAgentService {
     // Derive slug from name if not provided
     const slug = input.slug ?? toSlug(input.name)
     // Plugin-scoped agents rely on the DB composite unique index.
-    // Manual agents (no plugin_id) enforce global slug uniqueness.
+    // Manual agents (no plugin_id) enforce project-scoped or global slug uniqueness.
     if (!input.plugin_id) {
-      const existingBySlug = agentsRepository.getBySlug(slug)
+      const existingBySlug = input.project_id
+        ? agentsRepository.getBySlugAndProject(slug, input.project_id)
+        : agentsRepository.getBySlug(slug)
       if (existingBySlug) {
         throw new Error(`Agent with slug '${slug}' already exists`)
       }

@@ -232,7 +232,7 @@ describe('agentsRepository', () => {
       expect(foundB?.id).toBe(profileB)
     })
 
-    it('should reject same slug within same plugin', () => {
+    it('should reject same slug within same plugin and project', () => {
       const plugin = createPlugin('plugin-dup')
       const profileA = createAgentProfile()
       const profileB = createAgentProfile()
@@ -242,6 +242,7 @@ describe('agentsRepository', () => {
         system_prompt: 'Agent A',
         slug: 'dup-slug',
         plugin_id: plugin.id,
+        project_id: TEST_PROJECT_ID,
       }))
 
       expect(() => agentsRepository.create(agentInput({
@@ -249,6 +250,7 @@ describe('agentsRepository', () => {
         system_prompt: 'Agent B',
         slug: 'dup-slug',
         plugin_id: plugin.id,
+        project_id: TEST_PROJECT_ID,
       }))).toThrow()
     })
   })
@@ -312,6 +314,118 @@ describe('agentsRepository', () => {
       expect(chatAgents.some((a) => a.id === chatEnabledId)).toBe(true)
       expect(chatAgents.some((a) => a.id === chatDisabledId)).toBe(false)
       expect(chatAgents.some((a) => a.id === noConfigId)).toBe(false)
+    })
+
+    it('should filter agents by project_id (returns project-scoped + global)', () => {
+      db.prepare("INSERT OR IGNORE INTO projects (id, name, owner_id) VALUES ('other-project', 'Other Project', ?)").run(TEST_USER_ID)
+      const projectAgentId = createAgentProfile()
+      const otherProjectAgentId = createAgentProfile()
+      const globalAgentId = createAgentProfile()
+
+      agentsRepository.create(agentInput({
+        id: projectAgentId,
+        system_prompt: 'Project agent',
+        project_id: TEST_PROJECT_ID,
+      }))
+      agentsRepository.create(agentInput({
+        id: otherProjectAgentId,
+        system_prompt: 'Other project agent',
+        project_id: 'other-project',
+      }))
+      agentsRepository.create(agentInput({
+        id: globalAgentId,
+        system_prompt: 'Global agent',
+        project_id: null,
+      }))
+
+      const projectAgents = agentsRepository.list({ project_id: TEST_PROJECT_ID })
+
+      expect(projectAgents.some((a) => a.id === projectAgentId), 'should include project-scoped agent').toBe(true)
+      expect(projectAgents.some((a) => a.id === globalAgentId), 'should include global agent').toBe(true)
+      expect(projectAgents.some((a) => a.id === otherProjectAgentId), 'should exclude other project agent').toBe(false)
+    })
+
+    it('should return all agents when no project_id filter', () => {
+      const projectAgentId = createAgentProfile()
+      const globalAgentId = createAgentProfile()
+
+      agentsRepository.create(agentInput({
+        id: projectAgentId,
+        system_prompt: 'Project agent',
+        project_id: TEST_PROJECT_ID,
+      }))
+      agentsRepository.create(agentInput({
+        id: globalAgentId,
+        system_prompt: 'Global agent',
+        project_id: null,
+      }))
+
+      const allAgents = agentsRepository.list()
+
+      expect(allAgents.some((a) => a.id === projectAgentId)).toBe(true)
+      expect(allAgents.some((a) => a.id === globalAgentId)).toBe(true)
+    })
+  })
+
+  describe('project_id', () => {
+    it('should store and return project_id on create', () => {
+      const profileId = createAgentProfile()
+      const agent = agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Project-scoped',
+        project_id: TEST_PROJECT_ID,
+      }))
+
+      expect(agent.project_id).toBe(TEST_PROJECT_ID)
+    })
+
+    it('should default project_id to null', () => {
+      const profileId = createAgentProfile()
+      const agent = agentsRepository.create(agentInput({
+        id: profileId,
+        system_prompt: 'Global agent',
+      }))
+
+      expect(agent.project_id).toBeNull()
+    })
+
+    it('should allow same slug in different projects', () => {
+      db.prepare("INSERT OR IGNORE INTO projects (id, name, owner_id) VALUES ('other-project', 'Other Project', ?)").run(TEST_USER_ID)
+      const id1 = createAgentProfile()
+      const id2 = createAgentProfile()
+
+      agentsRepository.create(agentInput({
+        id: id1,
+        slug: 'shared-slug',
+        system_prompt: 'Agent 1',
+        project_id: TEST_PROJECT_ID,
+      }))
+
+      expect(() => {
+        agentsRepository.create(agentInput({
+          id: id2,
+          slug: 'shared-slug',
+          system_prompt: 'Agent 2',
+          project_id: 'other-project',
+        }))
+      }).not.toThrow()
+    })
+
+    it('should find agent by slug and project', () => {
+      const id1 = createAgentProfile()
+      agentsRepository.create(agentInput({
+        id: id1,
+        slug: 'scoped-agent',
+        system_prompt: 'Scoped',
+        project_id: TEST_PROJECT_ID,
+      }))
+
+      const found = agentsRepository.getBySlugAndProject('scoped-agent', TEST_PROJECT_ID)
+      expect(found).not.toBeNull()
+      expect(found!.id).toBe(id1)
+
+      const notFound = agentsRepository.getBySlugAndProject('scoped-agent', 'other-project')
+      expect(notFound).toBeNull()
     })
   })
 

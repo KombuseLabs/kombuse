@@ -22,13 +22,14 @@ interface AgentPickerProps {
   onChange: (agentId: string | null) => void
   disabled?: boolean
   className?: string
+  projectId?: string | null
 }
 
-function AgentPicker({ value, onChange, disabled, className }: AgentPickerProps) {
+function AgentPicker({ value, onChange, disabled, className, projectId }: AgentPickerProps) {
   const [open, setOpen] = useState(false)
 
   const { registry } = useCommandContext()
-  const { data: agents } = useAgents({ is_enabled: true, enabled_for_chat: true })
+  const { data: agents } = useAgents({ is_enabled: true, enabled_for_chat: true, project_id: projectId ?? undefined })
   const { data: profiles } = useAgentProfiles()
 
   const profileMap = useMemo(() => {

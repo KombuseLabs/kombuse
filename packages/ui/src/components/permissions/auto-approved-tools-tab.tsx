@@ -13,6 +13,7 @@ import type { Agent, AgentConfig } from '@kombuse/types'
 
 interface AutoApprovedToolsTabProps {
   className?: string
+  projectId?: string
 }
 
 /** Concrete tools for checkbox display (exclude wildcard patterns) */
@@ -25,8 +26,8 @@ function hasOverrides(agent: Agent): boolean {
   )
 }
 
-function AutoApprovedToolsTab({ className }: AutoApprovedToolsTabProps) {
-  const { data: agents, isLoading: agentsLoading, error: agentsError } = useAgents()
+function AutoApprovedToolsTab({ className, projectId }: AutoApprovedToolsTabProps) {
+  const { data: agents, isLoading: agentsLoading, error: agentsError } = useAgents(projectId ? { project_id: projectId } : undefined)
   const { data: profiles, isLoading: profilesLoading } = useAgentProfiles()
   const updateAgent = useUpdateAgent()
 

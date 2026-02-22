@@ -363,6 +363,8 @@ export const agentsApi = {
       params.set('is_enabled', String(filters.is_enabled))
     if (filters?.enabled_for_chat !== undefined)
       params.set('enabled_for_chat', String(filters.enabled_for_chat))
+    if (filters?.project_id)
+      params.set('project_id', filters.project_id)
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 

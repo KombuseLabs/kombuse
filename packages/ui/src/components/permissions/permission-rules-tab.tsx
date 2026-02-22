@@ -9,10 +9,11 @@ import { getToolLabel } from '../permission-editor/permission-constants'
 
 interface PermissionRulesTabProps {
   className?: string
+  projectId?: string
 }
 
-function PermissionRulesTab({ className }: PermissionRulesTabProps) {
-  const { data: agents, isLoading: agentsLoading, error: agentsError } = useAgents()
+function PermissionRulesTab({ className, projectId }: PermissionRulesTabProps) {
+  const { data: agents, isLoading: agentsLoading, error: agentsError } = useAgents(projectId ? { project_id: projectId } : undefined)
   const { data: profiles, isLoading: profilesLoading } = useAgentProfiles()
 
   const isLoading = agentsLoading || profilesLoading
