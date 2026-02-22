@@ -3,6 +3,7 @@ import type { RawData, WebSocket } from 'ws'
 import type { ClientMessage, ServerMessage } from '@kombuse/types'
 import { wsHub } from './hub'
 import { serializeAgentStreamEvent } from './serialize-agent-event'
+import { resolveTicketId } from '@kombuse/persistence'
 import { respondToPermission, startAgentChatSession, stopAgentSession } from '../services/agent-execution-service'
 
 /**
@@ -116,7 +117,7 @@ function handleAgentInvoke(
         const msg: ServerMessage = {
           type: 'agent.started',
           kombuseSessionId: event.kombuseSessionId,
-          ticketId: event.ticketId,
+          ticketNumber: event.ticketNumber,
           ticketTitle: event.ticketTitle,
           projectId: event.projectId,
           agentName: event.agentName,
@@ -146,7 +147,7 @@ function handleAgentInvoke(
           type: 'agent.complete',
           kombuseSessionId: event.kombuseSessionId,
           backendSessionId: event.backendSessionId,
-          ticketId: event.ticketId,
+          ticketNumber: event.ticketNumber,
           projectId: event.projectId,
           status: event.status,
           reason: event.reason,
@@ -164,6 +165,8 @@ function handleAgentInvoke(
         break
     }
   }, undefined, {
-    ticketId: message.ticketId,
+    ticketId: message.ticketNumber && message.projectId
+      ? resolveTicketId(message.projectId, message.ticketNumber)
+      : undefined,
   })
 }

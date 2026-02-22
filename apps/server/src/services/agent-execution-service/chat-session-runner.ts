@@ -330,13 +330,13 @@ function handlePermissionRequest(options: {
   event: Extract<AgentEvent, { type: 'permission_request' }>
   backend: AgentBackend
   sessionId: KombuseSessionId
-  ticketId: number | undefined
+  ticketNumber: number | undefined
   projectId: string | undefined
   preset: AgentTypePreset
   logger: SessionLogger
   emit: (event: AgentExecutionEvent) => void
 }): boolean {
-  const { event, backend, sessionId, ticketId, projectId, preset, logger, emit } = options
+  const { event, backend, sessionId, ticketNumber, projectId, preset, logger, emit } = options
   if (
     shouldAutoApprove(event.toolName, event.input, preset) &&
     backend.respondToPermission
@@ -359,7 +359,7 @@ function handlePermissionRequest(options: {
     return true
   }
 
-  broadcastPermissionPending(sessionId, event, ticketId, projectId)
+  broadcastPermissionPending(sessionId, event, ticketNumber, projectId)
   return false
 }
 
@@ -371,6 +371,7 @@ function handleRuntimeRunFailure(options: {
   persistentSessionId: string
   appSessionId: KombuseSessionId
   ticketId: number | undefined
+  ticketNumber: number | undefined
   projectId: string | undefined
   continuationInvocationId: number | null
   messageText: string
@@ -383,6 +384,7 @@ function handleRuntimeRunFailure(options: {
     persistentSessionId,
     appSessionId,
     ticketId,
+    ticketNumber,
     projectId,
     continuationInvocationId,
     messageText,
@@ -413,7 +415,7 @@ function handleRuntimeRunFailure(options: {
   emit({
     type: 'complete',
     kombuseSessionId: appSessionId,
-    ticketId,
+    ticketNumber,
     projectId,
     status: 'failed',
     reason: failureReason,
@@ -432,6 +434,7 @@ function handleRuntimeRunStopped(options: {
   persistentSessionId: string
   appSessionId: KombuseSessionId
   ticketId: number | undefined
+  ticketNumber: number | undefined
   projectId: string | undefined
   continuationInvocationId: number | null
   reason: string
@@ -444,6 +447,7 @@ function handleRuntimeRunStopped(options: {
     persistentSessionId,
     appSessionId,
     ticketId,
+    ticketNumber,
     projectId,
     continuationInvocationId,
     reason,
@@ -471,7 +475,7 @@ function handleRuntimeRunStopped(options: {
     type: 'complete',
     kombuseSessionId: appSessionId,
     backendSessionId: backend.getBackendSessionId(),
-    ticketId,
+    ticketNumber,
     projectId,
     status: 'aborted',
     reason,
@@ -626,6 +630,7 @@ export function startAgentChatSession(
     ? ticketsRepository._getInternal(ticketId) ?? undefined
     : undefined
   const ticketTitle = ticketRecord?.title
+  const ticketNumber = ticketRecord?.ticket_number ?? undefined
   const resumeSessionId =
     typeof existingSession?.backend_session_id === 'string' &&
     existingSession.backend_session_id.trim().length > 0
@@ -733,7 +738,7 @@ export function startAgentChatSession(
     emit({
       type: 'started',
       kombuseSessionId: appSessionId,
-      ticketId,
+      ticketNumber,
       ticketTitle,
       projectId: effectiveProjectId,
       agentName,
@@ -780,7 +785,7 @@ export function startAgentChatSession(
             event,
             backend: existingBackend,
             sessionId: appSessionId,
-            ticketId,
+            ticketNumber,
             projectId: effectiveProjectId,
             preset,
             logger: reusedLogger,
@@ -815,7 +820,7 @@ export function startAgentChatSession(
           type: 'complete',
           kombuseSessionId: appSessionId,
           backendSessionId: context.backendSessionId,
-          ticketId,
+          ticketNumber,
           projectId: effectiveProjectId,
           status: 'completed',
           reason: 'result',
@@ -830,6 +835,7 @@ export function startAgentChatSession(
           persistentSessionId,
           appSessionId,
           ticketId,
+          ticketNumber,
           projectId: effectiveProjectId,
           continuationInvocationId,
           reason,
@@ -844,6 +850,7 @@ export function startAgentChatSession(
           persistentSessionId,
           appSessionId,
           ticketId,
+          ticketNumber,
           projectId: effectiveProjectId,
           continuationInvocationId,
           messageText: error.message,
@@ -873,7 +880,7 @@ export function startAgentChatSession(
   emit({
     type: 'started',
     kombuseSessionId: appSessionId,
-    ticketId,
+    ticketNumber,
     ticketTitle,
     projectId: effectiveProjectId,
     agentName,
@@ -1035,7 +1042,7 @@ export function startAgentChatSession(
           event,
           backend,
           sessionId: appSessionId,
-          ticketId,
+          ticketNumber,
           projectId: effectiveProjectId,
           preset,
           logger,
@@ -1083,7 +1090,7 @@ export function startAgentChatSession(
         type: 'complete',
         kombuseSessionId: appSessionId,
         backendSessionId: context.backendSessionId,
-        ticketId,
+        ticketNumber,
         projectId: effectiveProjectId,
         status: 'completed',
         reason: 'result',
@@ -1098,6 +1105,7 @@ export function startAgentChatSession(
         persistentSessionId,
         appSessionId,
         ticketId,
+        ticketNumber,
         projectId: effectiveProjectId,
         continuationInvocationId,
         reason,
@@ -1166,7 +1174,7 @@ export function startAgentChatSession(
               event,
               backend: retryBackend,
               sessionId: appSessionId,
-              ticketId,
+              ticketNumber,
               projectId: effectiveProjectId,
               preset,
               logger,
@@ -1205,7 +1213,7 @@ export function startAgentChatSession(
             type: 'complete',
             kombuseSessionId: appSessionId,
             backendSessionId: context.backendSessionId,
-            ticketId,
+            ticketNumber,
             projectId: effectiveProjectId,
             status: 'completed',
             reason: 'result',
@@ -1220,6 +1228,7 @@ export function startAgentChatSession(
             persistentSessionId,
             appSessionId,
             ticketId,
+            ticketNumber,
             projectId: effectiveProjectId,
             continuationInvocationId,
             reason,
@@ -1234,6 +1243,7 @@ export function startAgentChatSession(
             persistentSessionId,
             appSessionId,
             ticketId,
+            ticketNumber,
             projectId: effectiveProjectId,
             continuationInvocationId,
             messageText: error.message,
@@ -1256,7 +1266,7 @@ export function startAgentChatSession(
         emit({
           type: 'complete',
           kombuseSessionId: appSessionId,
-          ticketId,
+          ticketNumber,
           projectId: effectiveProjectId,
           status: 'failed',
           reason: failureReason,
@@ -1274,6 +1284,7 @@ export function startAgentChatSession(
         persistentSessionId,
         appSessionId,
         ticketId,
+        ticketNumber,
         projectId: effectiveProjectId,
         continuationInvocationId,
         messageText: error.message,
@@ -1303,7 +1314,7 @@ export function startAgentChatSession(
     emit({
       type: 'complete',
       kombuseSessionId: appSessionId,
-      ticketId,
+      ticketNumber,
       projectId: effectiveProjectId,
       status: 'failed',
       reason: failureReason,

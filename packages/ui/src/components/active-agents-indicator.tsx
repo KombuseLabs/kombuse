@@ -63,8 +63,8 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
   const count = sessions.length
 
   const getNavigationPath = (session: ActiveSessionInfo) => {
-    if (session.ticketId && currentProjectId) {
-      return `/projects/${currentProjectId}/tickets/${session.ticketId}?session=${session.kombuseSessionId}`
+    if (session.ticketNumber && currentProjectId) {
+      return `/projects/${currentProjectId}/tickets/${session.ticketNumber}?session=${session.kombuseSessionId}`
     }
     if (currentProjectId) {
       return `/projects/${currentProjectId}/chats/${session.kombuseSessionId}`
@@ -114,9 +114,9 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
                 </div>
                 <div className="mt-1 flex items-center gap-2 pl-3.5">
                   <div className="min-w-0 flex-1 text-xs text-muted-foreground">
-                    {session.ticketId ? (
+                    {session.ticketNumber ? (
                       <span className="flex min-w-0 items-center gap-1">
-                        <span className="shrink-0">{`#${session.ticketId}`}</span>
+                        <span className="shrink-0">{`#${session.ticketNumber}`}</span>
                         {session.ticketTitle ? (
                           <span className="truncate">{session.ticketTitle}</span>
                         ) : null}

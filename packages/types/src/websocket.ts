@@ -40,7 +40,7 @@ export type ClientMessage =
       images?: ImageAttachment[]
       kombuseSessionId?: string
       projectId?: string
-      ticketId?: number
+      ticketNumber?: number
       backendType?: BackendType
       /** Optional per-session model preference override for first invocation. */
       modelPreference?: string
@@ -74,7 +74,7 @@ export type ServerMessage =
   | {
       type: 'agent.started'
       kombuseSessionId: string
-      ticketId?: number
+      ticketNumber?: number
       ticketTitle?: string
       projectId?: string
       agentName?: string
@@ -87,7 +87,7 @@ export type ServerMessage =
       type: 'agent.complete'
       kombuseSessionId: string
       backendSessionId?: string
-      ticketId?: number
+      ticketNumber?: number
       projectId?: string
       status?: 'completed' | 'failed' | 'aborted' | 'stopped'
       reason?: string
@@ -102,8 +102,8 @@ export type ServerMessage =
       input: Record<string, unknown>
       /** Human-readable description of what this permission request will do */
       description?: string
-      /** Ticket ID if this permission is for a ticket-triggered session */
-      ticketId?: number
+      /** Ticket number if this permission is for a ticket-triggered session */
+      ticketNumber?: number
       /** Project ID for project-scoped filtering */
       projectId?: string
     }
@@ -115,7 +115,8 @@ export type ServerMessage =
     }
   | {
       type: 'ticket.agent_status'
-      ticketId: number
+      ticketNumber: number
+      projectId: string
       status: AgentActivityStatus
       sessionCount: number
     }

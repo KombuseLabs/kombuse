@@ -82,7 +82,8 @@ export const sessionsRepository = {
         (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
          FROM session_events se
          WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
-        ) AS prompt_preview
+        ) AS prompt_preview,
+        (SELECT t.ticket_number FROM tickets t WHERE t.id = s.ticket_id) AS ticket_number
       FROM sessions s
       ${whereClause}
       ORDER BY s.${sortColumn} DESC
@@ -276,7 +277,8 @@ export const sessionsRepository = {
         (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
          FROM session_events se
          WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
-        ) AS prompt_preview
+        ) AS prompt_preview,
+        (SELECT t.ticket_number FROM tickets t WHERE t.id = s.ticket_id) AS ticket_number
       FROM sessions s
       WHERE ${conditions.join(' AND ')}
       ORDER BY s.${sortColumn} DESC

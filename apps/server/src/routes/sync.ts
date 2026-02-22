@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { sessionsRepository } from '@kombuse/persistence'
+import { sessionsRepository, ticketsRepository } from '@kombuse/persistence'
 import { getPendingPermissions, computeTicketAgentStatus, getActiveSessions } from '../services/agent-execution-service'
 
 export async function syncRoutes(fastify: FastifyInstance) {
@@ -26,14 +26,22 @@ export async function syncRoutes(fastify: FastifyInstance) {
 
     // Compute aggregated status per ticket
     const ticketAgentStatuses: Array<{
-      ticketId: number
+      ticketNumber: number
+      projectId: string
       status: string
       sessionCount: number
     }> = []
 
     for (const ticketId of ticketIds) {
+      const ticketRecord = ticketsRepository._getInternal(ticketId)
+      if (!ticketRecord) continue
       const { status, sessionCount } = computeTicketAgentStatus(ticketId)
-      ticketAgentStatuses.push({ ticketId, status, sessionCount })
+      ticketAgentStatuses.push({
+        ticketNumber: ticketRecord.ticket_number,
+        projectId: ticketRecord.project_id,
+        status,
+        sessionCount,
+      })
     }
 
     const activeSessions = getActiveSessions()

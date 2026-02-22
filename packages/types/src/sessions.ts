@@ -66,6 +66,8 @@ export interface Session {
   model_preference?: string | null
   /** API convenience field, derived from metadata (not stored column). */
   applied_model?: string | null
+  /** API convenience field, resolved from tickets table (not stored column). */
+  ticket_number?: number | null
 }
 
 /**

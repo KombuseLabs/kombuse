@@ -96,8 +96,8 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
   }
 
   const getNavigationPath = (permission: PendingPermission) => {
-    if (permission.ticketId && currentProjectId) {
-      return `/projects/${currentProjectId}/tickets/${permission.ticketId}?session=${permission.sessionId}`
+    if (permission.ticketNumber && currentProjectId) {
+      return `/projects/${currentProjectId}/tickets/${permission.ticketNumber}?session=${permission.sessionId}`
     }
     if (currentProjectId) {
       return `/projects/${currentProjectId}/chats/${permission.sessionId}`

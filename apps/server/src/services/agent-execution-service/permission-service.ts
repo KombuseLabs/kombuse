@@ -226,7 +226,7 @@ export function getPendingPermissions(): ServerPendingPermission[] {
 export function broadcastPermissionPending(
   sessionId: string,
   event: Extract<AgentEvent, { type: 'permission_request' }>,
-  ticketId?: number,
+  ticketNumber?: number,
   projectId?: string
 ): void {
   const permissionKey = createPermissionKey(sessionId, event.requestId)
@@ -239,7 +239,7 @@ export function broadcastPermissionPending(
     toolName: event.toolName,
     input: event.input,
     description,
-    ticketId,
+    ticketNumber,
     projectId,
   })
   const msg: ServerMessage = {
@@ -250,7 +250,7 @@ export function broadcastPermissionPending(
     toolName: event.toolName,
     input: event.input,
     description,
-    ticketId,
+    ticketNumber,
     projectId,
   }
   wsHub.broadcastToTopic('*', msg)

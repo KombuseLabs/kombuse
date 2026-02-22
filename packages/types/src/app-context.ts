@@ -24,8 +24,8 @@ export interface PendingPermission {
   input: Record<string, unknown>
   /** Human-readable description of what this permission request will do */
   description?: string
-  /** Ticket ID if this permission is for a ticket-triggered session */
-  ticketId?: number
+  /** Ticket number if this permission is for a ticket-triggered session */
+  ticketNumber?: number
   /** Project ID for project-scoped filtering */
   projectId?: string
 }
@@ -49,7 +49,7 @@ export interface TicketAgentStatus {
 export interface ActiveSessionInfo {
   kombuseSessionId: string
   agentName: string
-  ticketId?: number
+  ticketNumber?: number
   ticketTitle?: string
   projectId?: string
   effectiveBackend?: BackendType
@@ -73,7 +73,7 @@ export interface AppState {
   currentSession: AppSession | null
   /** Map of permissionKey -> pending permission details */
   pendingPermissions: Map<string, PendingPermission>
-  /** Map of ticketId -> agent activity status */
+  /** Map of ticketNumber -> agent activity status */
   ticketAgentStatus: Map<number, TicketAgentStatus>
   /** Map of kombuseSessionId -> active session info */
   activeSessions: Map<string, ActiveSessionInfo>
@@ -96,9 +96,9 @@ export interface AppActions {
   removePendingPermission: (permissionKey: string) => void
   clearPendingPermissionsForSession: (sessionId: string) => void
   /** Update agent activity status for a ticket */
-  updateTicketAgentStatus: (ticketId: number, status: TicketAgentStatus) => void
+  updateTicketAgentStatus: (ticketNumber: number, status: TicketAgentStatus) => void
   /** Get agent activity status for a ticket */
-  getTicketAgentStatus: (ticketId: number) => TicketAgentStatus | undefined
+  getTicketAgentStatus: (ticketNumber: number) => TicketAgentStatus | undefined
   /** Add an active agent session */
   addActiveSession: (session: ActiveSessionInfo) => void
   /** Remove an active agent session */

@@ -164,9 +164,9 @@ function SessionItem({
             )}>
               {statusText}
             </span>
-            {session.ticket_id && (
+            {session.ticket_number && (
               <span className="text-xs text-muted-foreground font-mono">
-                #{session.ticket_id}
+                #{session.ticket_number}
               </span>
             )}
             <span className="text-xs text-muted-foreground">

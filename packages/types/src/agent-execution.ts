@@ -8,7 +8,7 @@ export type AgentExecutionEvent =
   | {
       type: 'started'
       kombuseSessionId: string
-      ticketId?: number
+      ticketNumber?: number
       ticketTitle?: string
       projectId?: string
       agentName?: string
@@ -21,7 +21,7 @@ export type AgentExecutionEvent =
       type: 'complete'
       kombuseSessionId: string
       backendSessionId?: string
-      ticketId?: number
+      ticketNumber?: number
       projectId?: string
       status?: 'completed' | 'failed' | 'aborted' | 'stopped'
       reason?: string

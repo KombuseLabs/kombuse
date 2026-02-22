@@ -9,20 +9,20 @@ import { useAppContext } from './use-app-context'
  * Combines the server-pushed ticketAgentStatus with local pendingPermissions.
  * Returns 'pending' if any permission request is waiting for this ticket.
  */
-export function useTicketAgentStatus(ticketId: number | null | undefined): AgentActivityStatus {
+export function useTicketAgentStatus(ticketNumber: number | null | undefined): AgentActivityStatus {
   const { ticketAgentStatus, pendingPermissions } = useAppContext()
 
   return useMemo(() => {
-    if (!ticketId) return 'idle'
+    if (!ticketNumber) return 'idle'
 
     // Check if any pending permission is for this ticket (highest priority)
     const hasPending = [...pendingPermissions.values()].some(
-      (p) => p.ticketId === ticketId
+      (p) => p.ticketNumber === ticketNumber
     )
     if (hasPending) return 'pending'
 
     // Get server-pushed status
-    const status = ticketAgentStatus.get(ticketId)
+    const status = ticketAgentStatus.get(ticketNumber)
     return status?.status ?? 'idle'
-  }, [ticketId, ticketAgentStatus, pendingPermissions])
+  }, [ticketNumber, ticketAgentStatus, pendingPermissions])
 }

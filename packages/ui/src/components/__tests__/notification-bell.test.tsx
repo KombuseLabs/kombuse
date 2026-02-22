@@ -207,7 +207,7 @@ describe('NotificationBell permission key handling', () => {
               ],
             },
             description: 'Needs user input',
-            ticketId: 42,
+            ticketNumber: 42,
           }),
         ]}
       >

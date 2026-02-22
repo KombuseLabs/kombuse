@@ -127,10 +127,14 @@ export function resetBackendIdleTimeout(sessionId: string): void {
     }
     backendIdleTimeouts.delete(sessionId)
 
+    const ticketRecord = typeof session?.ticket_id === 'number'
+      ? ticketsRepository._getInternal(session.ticket_id) ?? undefined
+      : undefined
     const completeMsg: ServerMessage = {
       type: 'agent.complete',
       kombuseSessionId: sessionId,
-      ticketId: session?.ticket_id ?? undefined,
+      ticketNumber: ticketRecord?.ticket_number ?? undefined,
+      projectId: session?.project_id ?? undefined,
       status: 'stopped',
       reason: 'idle_timeout',
       errorMessage: 'Session stopped after inactivity timeout',
@@ -289,10 +293,13 @@ export function computeTicketAgentStatus(ticketId: number): {
  * Broadcast aggregated agent status for a ticket to all connected clients.
  */
 export function broadcastTicketAgentStatus(ticketId: number): void {
+  const ticketRecord = ticketsRepository._getInternal(ticketId)
+  if (!ticketRecord) return
   const { status, sessionCount } = computeTicketAgentStatus(ticketId)
   wsHub.broadcastToTopic('*', {
     type: 'ticket.agent_status',
-    ticketId,
+    ticketNumber: ticketRecord.ticket_number,
+    projectId: ticketRecord.project_id,
     status,
     sessionCount,
   })
@@ -321,15 +328,15 @@ export function getActiveSessions(): ActiveSessionInfo[] {
       ?? session.applied_model
       ?? undefined
     const ticketId = session.ticket_id ?? undefined
-    const ticketTitle =
-      typeof ticketId === 'number'
-        ? ticketsRepository._getInternal(ticketId)?.title ?? undefined
-        : undefined
+    const ticket = typeof ticketId === 'number'
+      ? ticketsRepository._getInternal(ticketId) ?? undefined
+      : undefined
+    const ticketTitle = ticket?.title ?? undefined
     const projectId = session.project_id ?? undefined
     results.push({
       kombuseSessionId: session.kombuse_session_id,
       agentName: session.agent_name ?? 'Agent',
-      ticketId,
+      ticketNumber: ticket?.ticket_number ?? undefined,
       ticketTitle,
       projectId,
       effectiveBackend,
@@ -498,10 +505,14 @@ export function cleanupOrphanedSessions(
     abortSessionWithDiagnostics(session, resolvedDependencies, source, reason)
 
     if (session.kombuse_session_id) {
+      const abortTicket = typeof session.ticket_id === 'number'
+        ? ticketsRepository._getInternal(session.ticket_id) ?? undefined
+        : undefined
       const completeMsg: ServerMessage = {
         type: 'agent.complete',
         kombuseSessionId: session.kombuse_session_id,
-        ticketId: session.ticket_id ?? undefined,
+        ticketNumber: abortTicket?.ticket_number ?? undefined,
+        projectId: session.project_id ?? undefined,
         status: 'aborted',
         reason,
         errorMessage: reason,

@@ -122,7 +122,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
   } = useMilestoneOperations()
 
   const { currentProjectId } = useCurrentProject()
-  const agentStatus = useTicketAgentStatus(currentTicket?.id)
+  const agentStatus = useTicketAgentStatus(currentTicket?.ticket_number)
   const { data: ticketAttachments } = useTicketAttachments(currentTicket?.project_id ?? '', currentTicket?.ticket_number ?? 0)
   const uploadTicketAttachment = useUploadTicketAttachment()
   const {

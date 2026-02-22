@@ -58,7 +58,7 @@ describe('GET /sync/state', () => {
     expect(response.statusCode).toBe(200)
     const body = response.json()
     const ticketStatus = body.ticketAgentStatuses.find(
-      (s: { ticketId: number }) => s.ticketId === ticket.id
+      (s: { ticketNumber: number }) => s.ticketNumber === ticket.ticket_number
     )
     expect(ticketStatus).toBeDefined()
     expect(ticketStatus.status).toBe('idle')

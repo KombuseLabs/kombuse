@@ -59,7 +59,7 @@ export interface ServerPendingPermission {
   toolName: string
   input: Record<string, unknown>
   description: string
-  ticketId?: number
+  ticketNumber?: number
   projectId?: string
 }
 

@@ -75,7 +75,7 @@ function getTicketDateLabel(ticket: TicketWithLabels, sortBy: TicketSortBy) {
 }
 
 function TicketItem({ ticket, isSelected, onTicketClick, sortBy }: TicketItemProps) {
-  const agentStatus = useTicketAgentStatus(ticket.id)
+  const agentStatus = useTicketAgentStatus(ticket.ticket_number)
   const hasUnread = ticket.has_unread === 1
 
   return (

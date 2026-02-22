@@ -747,14 +747,15 @@ export const attachmentsApi = {
 export interface SyncState {
   pendingPermissions: PendingPermission[]
   ticketAgentStatuses: Array<{
-    ticketId: number
+    ticketNumber: number
+    projectId: string
     status: AgentActivityStatus
     sessionCount: number
   }>
   activeSessions: Array<{
     kombuseSessionId: string
     agentName: string
-    ticketId?: number
+    ticketNumber?: number
     ticketTitle?: string
     projectId?: string
     effectiveBackend?: BackendType

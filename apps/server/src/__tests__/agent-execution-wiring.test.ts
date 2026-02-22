@@ -202,6 +202,7 @@ describe('ticket title propagation for active sessions', () => {
 
     vi.mocked(ticketsRepository._getInternal).mockReturnValue({
       id: 42,
+      ticket_number: 42,
       title: 'Improve active agent context row',
     } as any)
 
@@ -224,7 +225,7 @@ describe('ticket title propagation for active sessions', () => {
     expect(started).toBeDefined()
     expect(started).toMatchObject({
       kombuseSessionId: 'chat-ticket-title-id',
-      ticketId: 42,
+      ticketNumber: 42,
       ticketTitle: 'Improve active agent context row',
       effectiveBackend: BACKEND_TYPES.CODEX,
       appliedModel: 'gpt-5-mini',
@@ -235,6 +236,11 @@ describe('ticket title propagation for active sessions', () => {
     const backend = createPassiveBackend()
     const deps = createDeps(backend)
     const emittedEvents: AgentExecutionEvent[] = []
+
+    vi.mocked(ticketsRepository._getInternal).mockReturnValue({
+      id: 42,
+      ticket_number: 42,
+    } as any)
 
     startAgentChatSession(
       {
@@ -251,7 +257,7 @@ describe('ticket title propagation for active sessions', () => {
     )
 
     expect(started).toBeDefined()
-    expect(started?.ticketId).toBe(42)
+    expect(started?.ticketNumber).toBe(42)
     expect(started?.ticketTitle).toBeUndefined()
     expect(started?.effectiveBackend).toBe(BACKEND_TYPES.CLAUDE_CODE)
     expect(started?.appliedModel).toBeUndefined()
@@ -297,6 +303,7 @@ describe('ticket title propagation for active sessions', () => {
       if (ticketId === 42) {
         return {
           id: 42,
+          ticket_number: 42,
           title: 'Show ticket title in active agents',
         } as any
       }
@@ -308,21 +315,21 @@ describe('ticket title propagation for active sessions', () => {
     expect(sessions).toEqual([
       expect.objectContaining({
         kombuseSessionId: 'running-session-1',
-        ticketId: 42,
+        ticketNumber: 42,
         ticketTitle: 'Show ticket title in active agents',
         effectiveBackend: BACKEND_TYPES.CODEX,
         appliedModel: 'gpt-5-mini',
       }),
       expect.objectContaining({
         kombuseSessionId: 'running-session-2',
-        ticketId: 43,
+        ticketNumber: undefined,
         ticketTitle: undefined,
         effectiveBackend: BACKEND_TYPES.CLAUDE_CODE,
         appliedModel: undefined,
       }),
       expect.objectContaining({
         kombuseSessionId: 'running-session-3',
-        ticketId: undefined,
+        ticketNumber: undefined,
         ticketTitle: undefined,
         effectiveBackend: BACKEND_TYPES.MOCK,
         appliedModel: undefined,
@@ -3117,6 +3124,11 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
       .mockReturnValueOnce(orphanedSessions)
       .mockReturnValueOnce([])
 
+    vi.mocked(ticketsRepository._getInternal).mockImplementation((ticketId: number) => {
+      if (ticketId === 42) return { ticket_number: 42, project_id: '1' } as any
+      return null
+    })
+
     const deps = {
       sessionPersistence: {
         persistEvent: vi.fn(),
@@ -3137,14 +3149,14 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
       expect.objectContaining({
         type: 'agent.complete',
         kombuseSessionId: 'orphan-session-aaa',
-        ticketId: 42,
+        ticketNumber: 42,
       })
     )
     expect(wsHub.broadcastToTopic).toHaveBeenCalledWith('*',
       expect.objectContaining({
         type: 'agent.complete',
         kombuseSessionId: 'orphan-session-aaa',
-        ticketId: 42,
+        ticketNumber: 42,
       })
     )
     expect(wsHub.broadcastAgentMessage).toHaveBeenCalledWith(
@@ -3892,6 +3904,8 @@ describe('backend idle timeout broadcasts agent.complete', () => {
     vi.mocked((sessionsRepository as any).get as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
     // Idle timeout callback looks up session by kombuse ID
     vi.mocked((sessionsRepository as any).getByKombuseSessionId as ReturnType<typeof vi.fn>).mockReturnValue(mockSession)
+    // Idle timeout resolves ticket_number from ticket record
+    vi.mocked(ticketsRepository._getInternal).mockReturnValue({ ticket_number: 42, project_id: '1' } as any)
 
     const mockBackend: AgentBackend = {
       name: 'claude-code' as const,
@@ -3912,7 +3926,7 @@ describe('backend idle timeout broadcasts agent.complete', () => {
       expect.objectContaining({
         type: 'agent.complete',
         kombuseSessionId: 'test-session',
-        ticketId: 42,
+        ticketNumber: 42,
         status: 'stopped',
         reason: 'idle_timeout',
       })
@@ -3922,7 +3936,7 @@ describe('backend idle timeout broadcasts agent.complete', () => {
       expect.objectContaining({
         type: 'agent.complete',
         kombuseSessionId: 'test-session',
-        ticketId: 42,
+        ticketNumber: 42,
         status: 'stopped',
         reason: 'idle_timeout',
       })

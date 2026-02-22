@@ -82,7 +82,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
       {
         kombuseSessionId: 'session-1',
         agentName: 'Coding Agent',
-        ticketId: 288,
+        ticketNumber: 288,
         ticketTitle: 'Show title snippet in Active Agents indicator',
         effectiveBackend: 'claude-code',
         appliedModel: 'claude-sonnet-4-5',
@@ -103,7 +103,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
       {
         kombuseSessionId: 'session-2',
         agentName: 'Coding Agent',
-        ticketId: 289,
+        ticketNumber: 289,
         effectiveBackend: 'codex',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
@@ -151,7 +151,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
       {
         kombuseSessionId: 'session-4',
         agentName: 'Coding Agent',
-        ticketId: 290,
+        ticketNumber: 290,
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ], onNavigate)

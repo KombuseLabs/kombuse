@@ -141,7 +141,7 @@ describe('AppProvider active session metadata handling', () => {
       mockWebSocketHandler?.({
         type: 'agent.started',
         kombuseSessionId: 'chat-ticket-title',
-        ticketId: 42,
+        ticketNumber: 42,
         ticketTitle: 'Render title snippet beside ticket id',
         agentName: 'Coding Agent',
         effectiveBackend: 'codex',
@@ -164,7 +164,7 @@ describe('AppProvider active session metadata handling', () => {
       activeSessions: [{
         kombuseSessionId: 'sync-ticket-title',
         agentName: 'Planning Agent',
-        ticketId: 288,
+        ticketNumber: 288,
         ticketTitle: 'In active agent component next to ticket id show a bit of the title for better context',
         effectiveBackend: 'claude-code',
         startedAt: '2026-02-14T10:05:00.000Z',
@@ -195,7 +195,7 @@ describe('AppProvider active session metadata handling', () => {
       mockWebSocketHandler?.({
         type: 'agent.started',
         kombuseSessionId: 'chat-upsert',
-        ticketId: 42,
+        ticketNumber: 42,
         ticketTitle: 'Initial title',
         agentName: 'Coding Agent',
         effectiveBackend: 'codex',
@@ -208,7 +208,7 @@ describe('AppProvider active session metadata handling', () => {
       mockWebSocketHandler?.({
         type: 'agent.started',
         kombuseSessionId: 'chat-upsert',
-        ticketId: 42,
+        ticketNumber: 42,
         ticketTitle: 'Updated title',
         agentName: 'Coding Agent',
         effectiveBackend: 'claude-code',
@@ -245,7 +245,7 @@ describe('AppProvider ticketAgentStatus pruning', () => {
         return Promise.resolve({
           pendingPermissions: [],
           ticketAgentStatuses: [
-            { ticketId: 42, status: 'error', sessionCount: 0 },
+            { ticketNumber: 42, projectId: '1', status: 'error', sessionCount: 0 },
           ],
           activeSessions: [],
         })
@@ -279,8 +279,8 @@ describe('AppProvider ticketAgentStatus pruning', () => {
     mockGetState.mockResolvedValue({
       pendingPermissions: [],
       ticketAgentStatuses: [
-        { ticketId: 42, status: 'error', sessionCount: 0 },
-        { ticketId: 99, status: 'idle', sessionCount: 0 },
+        { ticketNumber: 42, projectId: '1', status: 'error', sessionCount: 0 },
+        { ticketNumber: 99, projectId: '1', status: 'idle', sessionCount: 0 },
       ],
       activeSessions: [],
     })
@@ -300,7 +300,7 @@ describe('AppProvider ticketAgentStatus pruning', () => {
     mockGetState.mockResolvedValue({
       pendingPermissions: [],
       ticketAgentStatuses: [
-        { ticketId: 42, status: 'running', sessionCount: 1 },
+        { ticketNumber: 42, projectId: '1', status: 'running', sessionCount: 1 },
       ],
       activeSessions: [],
     })
@@ -317,7 +317,8 @@ describe('AppProvider ticketAgentStatus pruning', () => {
     act(() => {
       mockWebSocketHandler?.({
         type: 'ticket.agent_status',
-        ticketId: 42,
+        ticketNumber: 42,
+        projectId: '1',
         status: 'idle',
         sessionCount: 0,
       })

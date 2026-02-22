@@ -107,10 +107,10 @@ export function AppProvider({
   }, [])
 
   const updateTicketAgentStatus = useCallback(
-    (ticketId: number, status: TicketAgentStatus) => {
+    (ticketNumber: number, status: TicketAgentStatus) => {
       setTicketAgentStatus((prev) => {
         const next = new Map(prev)
-        next.set(ticketId, status)
+        next.set(ticketNumber, status)
         return next
       })
     },
@@ -118,8 +118,8 @@ export function AppProvider({
   )
 
   const getTicketAgentStatus = useCallback(
-    (ticketId: number): TicketAgentStatus | undefined => {
-      return ticketAgentStatus.get(ticketId)
+    (ticketNumber: number): TicketAgentStatus | undefined => {
+      return ticketAgentStatus.get(ticketNumber)
     },
     [ticketAgentStatus]
   )
@@ -153,7 +153,7 @@ export function AppProvider({
 
       if (
         existing.agentName === merged.agentName
-        && existing.ticketId === merged.ticketId
+        && existing.ticketNumber === merged.ticketNumber
         && existing.ticketTitle === merged.ticketTitle
         && existing.projectId === merged.projectId
         && existing.effectiveBackend === merged.effectiveBackend
@@ -199,7 +199,7 @@ export function AppProvider({
           addActiveSession({
             kombuseSessionId: message.kombuseSessionId,
             agentName: message.agentName ?? 'Agent',
-            ticketId: message.ticketId,
+            ticketNumber: message.ticketNumber,
             ticketTitle: message.ticketTitle,
             projectId: message.projectId,
             effectiveBackend: message.effectiveBackend,
@@ -218,7 +218,7 @@ export function AppProvider({
             toolName: message.toolName,
             input: message.input,
             description: message.description,
-            ticketId: message.ticketId,
+            ticketNumber: message.ticketNumber,
             projectId: message.projectId,
           })
           break
@@ -236,13 +236,13 @@ export function AppProvider({
         case 'ticket.agent_status': {
           if (message.status === 'idle') {
             setTicketAgentStatus((prev) => {
-              if (!prev.has(message.ticketId)) return prev
+              if (!prev.has(message.ticketNumber)) return prev
               const next = new Map(prev)
-              next.delete(message.ticketId)
+              next.delete(message.ticketNumber)
               return next
             })
           } else {
-            updateTicketAgentStatus(message.ticketId, {
+            updateTicketAgentStatus(message.ticketNumber, {
               status: message.status,
               sessionCount: message.sessionCount,
             })
@@ -266,7 +266,7 @@ export function AppProvider({
       }
       for (const tas of state.ticketAgentStatuses) {
         if (tas.status !== 'idle') {
-          updateTicketAgentStatus(tas.ticketId, {
+          updateTicketAgentStatus(tas.ticketNumber, {
             status: tas.status,
             sessionCount: tas.sessionCount,
           })
@@ -312,7 +312,7 @@ export function AppProvider({
           const next = new Map<number, TicketAgentStatus>()
           for (const tas of state.ticketAgentStatuses) {
             if (tas.status !== 'idle') {
-              next.set(tas.ticketId, { status: tas.status, sessionCount: tas.sessionCount })
+              next.set(tas.ticketNumber, { status: tas.status, sessionCount: tas.sessionCount })
             }
           }
           if (next.size === prev.size) {

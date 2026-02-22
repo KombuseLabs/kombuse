@@ -334,7 +334,7 @@ export async function processEventAndRunAgents(
           const msg: ServerMessage = {
             type: 'agent.started',
             kombuseSessionId: evt.kombuseSessionId,
-            ticketId: evt.ticketId,
+            ticketNumber: evt.ticketNumber,
             ticketTitle: evt.ticketTitle,
             projectId: evt.projectId,
             agentName: evt.agentName,
@@ -344,8 +344,8 @@ export async function processEventAndRunAgents(
           }
           wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           wsHub.broadcastToTopic('*', msg)
-          if (evt.ticketId) {
-            broadcastTicketAgentStatus(evt.ticketId)
+          if (ticketIdFromContext) {
+            broadcastTicketAgentStatus(ticketIdFromContext)
           }
         } else if (evt.type === 'event') {
           const serialized = serializeAgentStreamEvent(evt.event)
@@ -365,7 +365,7 @@ export async function processEventAndRunAgents(
             type: 'agent.complete',
             kombuseSessionId: evt.kombuseSessionId,
             backendSessionId: evt.backendSessionId,
-            ticketId: evt.ticketId,
+            ticketNumber: evt.ticketNumber,
             projectId: evt.projectId,
             status: evt.status,
             reason: evt.reason,
@@ -373,8 +373,8 @@ export async function processEventAndRunAgents(
           }
           wsHub.broadcastAgentMessage(evt.kombuseSessionId, msg)
           wsHub.broadcastToTopic('*', msg)
-          if (evt.ticketId) {
-            broadcastTicketAgentStatus(evt.ticketId)
+          if (ticketIdFromContext) {
+            broadcastTicketAgentStatus(ticketIdFromContext)
           }
         }
       },
