@@ -12,7 +12,6 @@ export { useCommand } from './use-command'
 export { useCommands } from './use-commands'
 export {
   useTickets,
-  // useTicket, // COMMENTED OUT — ticket #555: use useTicketByNumber instead
   useTicketByNumber,
   useTicketStatusCounts,
   useCreateTicket,

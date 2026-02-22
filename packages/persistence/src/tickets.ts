@@ -402,26 +402,6 @@ export const ticketsRepository = {
     }))
   },
 
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // get(id: number): Ticket | null {
-  //   const db = getDatabase()
-  //   const ticket = db
-  //     .prepare('SELECT * FROM tickets WHERE id = ?')
-  //     .get(id) as RawTicketRow | undefined
-  //   return ticket ? mapTicketRow(ticket) : null
-  // },
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // getWithRelations(id: number): TicketWithRelations | null {
-  //   const db = getDatabase()
-  //   const row = db
-  //     .prepare(`${TICKET_WITH_PROFILES_SELECT} WHERE t.id = ?`)
-  //     .get(id) as RawTicketWithProfiles | undefined
-  //   if (!row) return null
-  //   const labels = labelsRepository.getTicketLabels(id)
-  //   return { ...mapTicketWithProfiles(row), labels }
-  // },
-
   _getInternal(id: number): Ticket | null {
     const db = getDatabase()
     const ticket = db

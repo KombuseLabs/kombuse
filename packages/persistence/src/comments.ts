@@ -415,13 +415,6 @@ export const commentsRepository = {
             .get(ticket.project_id, mentionedNumber) as { id: number; project_id: string; ticket_number: number } | undefined
         }
 
-        // COMMENTED OUT — ticket #555: no global ID fallback
-        // if (!mentionedTicket) {
-        //   mentionedTicket = db
-        //     .prepare('SELECT id, project_id FROM tickets WHERE id = ?')
-        //     .get(mentionedNumber) as { id: number; project_id: string } | undefined
-        // }
-
         if (!mentionedTicket) {
           continue
         }

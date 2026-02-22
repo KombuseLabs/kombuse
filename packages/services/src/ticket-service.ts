@@ -20,9 +20,6 @@ export interface ITicketService {
   list(filters?: TicketFilters): Ticket[]
   listWithLabels(filters?: TicketFilters): TicketWithLabels[]
   listWithRelations(filters?: TicketFilters): TicketWithRelations[]
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // get(id: number): Ticket | null
-  // getWithRelations(id: number): TicketWithRelations | null
   getByNumber(projectId: string, ticketNumber: number): Ticket | null
   getByNumberWithRelations(projectId: string, ticketNumber: number): TicketWithRelations | null
   create(input: CreateTicketInput): Ticket
@@ -51,26 +48,9 @@ export class TicketService implements ITicketService {
     return ticketsRepository.listWithRelations(filters)
   }
 
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // get(id: number): Ticket | null {
-  //   return ticketsRepository.get(id)
-  // }
-
   getByNumber(projectId: string, ticketNumber: number): Ticket | null {
     return ticketsRepository.getByNumber(projectId, ticketNumber)
   }
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // getWithRelations(id: number): TicketWithRelations | null {
-  //   const ticket = ticketsRepository.getWithRelations(id)
-  //   if (!ticket) return null
-  //   if (ticket.loop_protection_enabled) {
-  //     const maxDepth = readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
-  //     const recentCount = agentInvocationsRepository.countRecentByTicketId(ticket.id)
-  //     ticket.loop_protection_tripped = recentCount >= maxDepth
-  //   }
-  //   return ticket
-  // }
 
   getByNumberWithRelations(projectId: string, ticketNumber: number): TicketWithRelations | null {
     const ticket = ticketsRepository.getByNumberWithRelations(projectId, ticketNumber)

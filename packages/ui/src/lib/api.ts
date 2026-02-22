@@ -145,12 +145,6 @@ export const ticketsApi = {
     return handleResponse<TicketWithLabels[]>(response)
   },
 
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // async get(id: number): Promise<TicketWithRelations> {
-  //   const response = await fetch(`${API_BASE}/tickets/${id}`)
-  //   return handleResponse<TicketWithRelations>(response)
-  // },
-
   async getByNumber(projectId: string, ticketNumber: number): Promise<TicketWithRelations> {
     const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}`)
     return handleResponse<TicketWithRelations>(response)
