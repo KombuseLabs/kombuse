@@ -505,13 +505,10 @@ export function cleanupOrphanedSessions(
     abortSessionWithDiagnostics(session, resolvedDependencies, source, reason)
 
     if (session.kombuse_session_id) {
-      const abortTicket = typeof session.ticket_id === 'number'
-        ? ticketsRepository._getInternal(session.ticket_id) ?? undefined
-        : undefined
       const completeMsg: ServerMessage = {
         type: 'agent.complete',
         kombuseSessionId: session.kombuse_session_id,
-        ticketNumber: abortTicket?.ticket_number ?? undefined,
+        ticketNumber: session.ticket_number ?? undefined,
         projectId: session.project_id ?? undefined,
         status: 'aborted',
         reason,

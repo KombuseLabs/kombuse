@@ -166,7 +166,7 @@ function handleAgentInvoke(
     }
   }, undefined, {
     ticketId: message.ticketNumber && message.projectId
-      ? resolveTicketId(message.projectId, message.ticketNumber)
+      ? (() => { try { return resolveTicketId(message.projectId!, message.ticketNumber!) } catch { return undefined } })()
       : undefined,
   })
 }

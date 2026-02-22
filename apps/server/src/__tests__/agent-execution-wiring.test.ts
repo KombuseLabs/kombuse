@@ -3110,6 +3110,8 @@ describe('cleanupOrphanedSessions broadcasts agent.complete', () => {
         id: 'session-1',
         kombuse_session_id: 'orphan-session-aaa',
         ticket_id: 42,
+        ticket_number: 42,
+        project_id: '1',
         status: 'running',
       },
       {

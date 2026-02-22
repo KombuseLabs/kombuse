@@ -212,11 +212,13 @@ const pendingPermissionSchema = z.object({
   toolName: z.string().min(1),
   input: z.record(z.string(), z.unknown()),
   description: z.string().min(1),
-  ticketId: z.number().int().positive().optional(),
+  ticketNumber: z.number().int().positive().optional(),
+  projectId: z.string().min(1).optional(),
 })
 
 const syncTicketAgentStatusSchema = z.object({
-  ticketId: z.number().int().positive(),
+  ticketNumber: z.number().int().positive(),
+  projectId: z.string().min(1),
   status: z.enum(['idle', 'running', 'pending', 'error']),
   sessionCount: z.number().int().nonnegative(),
 })
@@ -224,7 +226,8 @@ const syncTicketAgentStatusSchema = z.object({
 const syncActiveSessionSchema = z.object({
   kombuseSessionId: z.string().min(1),
   agentName: z.string().min(1),
-  ticketId: z.number().int().positive().optional(),
+  ticketNumber: z.number().int().positive().optional(),
+  projectId: z.string().min(1).optional(),
   ticketTitle: z.string().optional(),
   effectiveBackend: backendTypeSchema.optional(),
   appliedModel: z.string().optional(),
