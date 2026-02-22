@@ -87,11 +87,12 @@ function PermissionItem({ entry, projectId, className }: PermissionItemProps) {
   const ToolIcon = toolIconMap[entry.tool_name] || Shield
   const detail = extractPermissionDetail(entry.tool_name, entry.input, entry.description)
 
+  const ticketProjectId = entry.project_id ?? projectId
   const ticketUrl =
-    projectId && entry.ticket_id
+    ticketProjectId && entry.ticket_number
       ? entry.kombuse_session_id
-        ? `/projects/${projectId}/tickets/${entry.ticket_id}?session=${entry.kombuse_session_id}`
-        : `/projects/${projectId}/tickets/${entry.ticket_id}`
+        ? `/projects/${ticketProjectId}/tickets/${entry.ticket_number}?session=${entry.kombuse_session_id}`
+        : `/projects/${ticketProjectId}/tickets/${entry.ticket_number}`
       : null
 
   const sessionUrl =
@@ -155,7 +156,7 @@ function PermissionItem({ entry, projectId, className }: PermissionItemProps) {
             >
               <Ticket className="size-3" />
               <span className="truncate max-w-[200px]">
-                #{entry.ticket_id}{entry.ticket_title ? ` ${entry.ticket_title}` : ''}
+                #{entry.ticket_number}{entry.ticket_title ? ` ${entry.ticket_title}` : ''}
               </span>
             </Link>
           )}

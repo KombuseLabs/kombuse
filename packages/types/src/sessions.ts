@@ -163,7 +163,8 @@ export interface PermissionLogEntry {
   id: number
   session_id: string
   kombuse_session_id: string | null
-  ticket_id: number | null
+  project_id: string | null
+  ticket_number: number | null
   ticket_title: string | null
   requested_at: string
   request_id: string

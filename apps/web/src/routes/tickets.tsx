@@ -59,9 +59,9 @@ import { sessionsApi } from "@kombuse/ui/lib/api";
 const TICKETS_PANEL_LAYOUT_KEY = "tickets-panel-layout";
 
 export function Tickets() {
-  const { projectId, ticketId } = useParams<{
+  const { projectId, ticketNumber: ticketNumberParam } = useParams<{
     projectId: string;
-    ticketId?: string;
+    ticketNumber?: string;
   }>();
   const navigate = useNavigate();
 
@@ -160,7 +160,7 @@ export function Tickets() {
     viewer_id: "user-1", // TODO: Get from auth context
   });
 
-  const ticketNumber = ticketId && ticketId !== 'new' ? Number(ticketId) : 0;
+  const ticketNumber = ticketNumberParam && ticketNumberParam !== 'new' ? Number(ticketNumberParam) : 0;
   const {
     data: selectedTicket,
     isLoading: isLoadingTicket,
@@ -170,7 +170,7 @@ export function Tickets() {
   // Real-time updates via WebSocket
   useRealtimeUpdates({
     projectId,
-    ticketId: selectedTicketDbId || undefined,
+    ticketNumber: ticketNumber || undefined,
   });
 
   const createTicket = useCreateTicket();
@@ -281,21 +281,21 @@ export function Tickets() {
         if (!agentReplySessionId || message.kombuseSessionId === agentReplySessionId) {
           setAgentReplySessionId(null);
           // Safety-net invalidation in case the realtime event was missed
-          if (selectedTicketDbId > 0) {
-            queryClient.invalidateQueries({ queryKey: ["ticket-timeline", selectedTicketDbId] });
-            queryClient.invalidateQueries({ queryKey: ["comments", selectedTicketDbId], exact: false });
+          if (projectId && ticketNumber) {
+            queryClient.invalidateQueries({ queryKey: ["ticket-timeline", projectId, ticketNumber] });
+            queryClient.invalidateQueries({ queryKey: ["comments", projectId, ticketNumber], exact: false });
           }
         }
       }
     },
-    [agentReplySessionId, selectedTicketDbId, queryClient]
+    [agentReplySessionId, projectId, ticketNumber, queryClient]
   );
 
   // WebSocket for sending agent.invoke messages and receiving completions
   const { send: wsSend } = useWebSocket({ topics: wsTopics, onMessage: handleAgentMessage });
 
   // Determine if we're in create mode
-  const isCreating = ticketId === "new";
+  const isCreating = ticketNumberParam === "new";
 
   // Resizable panel layout persistence
   const [defaultLayout] = useState<Record<string, number> | undefined>(() => {
@@ -387,7 +387,7 @@ export function Tickets() {
       if (secondRafId !== undefined) window.cancelAnimationFrame(secondRafId);
       resizeObserver.disconnect();
     };
-  }, [selectedLabelIds.length, usageSortedLabels, ticketId]);
+  }, [selectedLabelIds.length, usageSortedLabels, ticketNumberParam]);
 
   useEffect(() => {
     if (!overflowLabelsOpen) {
@@ -402,16 +402,16 @@ export function Tickets() {
   // Track last-viewed ticket to avoid redundant markViewed calls on reference changes
   const lastViewedTicketIdRef = useRef<number | null>(null);
   // Track ticket route changes so we only reset UI state when switching tickets.
-  const lastRouteTicketIdRef = useRef<string | undefined>(ticketId);
+  const lastRouteTicketNumberRef = useRef<string | undefined>(ticketNumberParam);
 
   // Reset per-ticket local UI state only when the route ticket actually changes.
   useEffect(() => {
-    if (lastRouteTicketIdRef.current !== ticketId) {
+    if (lastRouteTicketNumberRef.current !== ticketNumberParam) {
       setReplyTarget(null);
       setAgentReplySessionId(null);
-      lastRouteTicketIdRef.current = ticketId;
+      lastRouteTicketNumberRef.current = ticketNumberParam;
     }
-  }, [ticketId]);
+  }, [ticketNumberParam]);
 
   // Sync selected ticket to context and mark as viewed
   useEffect(() => {
@@ -466,7 +466,7 @@ export function Tickets() {
         type: "agent.invoke",
         agentId,
         message: originalPrompt,
-        ticketId: selectedTicket?.id,
+        ticketNumber: selectedTicket?.ticket_number,
         projectId: selectedTicket?.project_id,
       });
     } catch {
@@ -869,7 +869,7 @@ export function Tickets() {
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
-        {ticketId ? (
+        {ticketNumberParam ? (
           <ResizablePanelGroup
             orientation="horizontal"
             defaultLayout={defaultLayout}

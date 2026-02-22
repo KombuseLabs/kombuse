@@ -67,7 +67,7 @@ class WebSocketHub {
    * Broadcast an event to all clients subscribed to relevant topics.
    * An event is sent to:
    * - `project:{project_id}` subscribers
-   * - `ticket:{ticket_id}` subscribers
+   * - `ticket:{project_id}:{ticket_number}` subscribers
    * - `*` (wildcard) subscribers
    *
    * Each client receives the event at most once, even if subscribed to multiple matching topics.
@@ -155,7 +155,7 @@ class WebSocketHub {
   private getTopicsForEvent(event: WebSocketEvent): string[] {
     const topics: string[] = []
     if (event.project_id) topics.push(`project:${event.project_id}`)
-    if (event.ticket_id) topics.push(`ticket:${event.ticket_id}`)
+    if (event.project_id && event.ticket_number) topics.push(`ticket:${event.project_id}:${event.ticket_number}`)
     return topics
   }
 

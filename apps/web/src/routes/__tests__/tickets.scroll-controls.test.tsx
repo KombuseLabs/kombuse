@@ -225,7 +225,7 @@ function ticketsRouteElement(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route
-          path="/projects/:projectId/tickets/:ticketId"
+          path="/projects/:projectId/tickets/:ticketNumber"
           element={
             <>
               {onLocationChange ? <LocationProbe onChange={onLocationChange} /> : null}

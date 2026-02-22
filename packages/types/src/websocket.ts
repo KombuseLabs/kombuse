@@ -18,6 +18,7 @@ export interface WebSocketEvent {
   event_type: string
   project_id: string | null
   ticket_id: number | null
+  ticket_number: number | null
   comment_id: number | null
   actor_id: string | null
   actor_type: ActorType
@@ -124,8 +125,8 @@ export type ServerMessage =
 /**
  * Topic format examples:
  * - `project:{id}` - All events for a project
- * - `ticket:{id}` - All events for a specific ticket
+ * - `ticket:{projectId}:{ticketNumber}` - All events for a specific ticket
  * - `session:{kombuseSessionId}` - All events for a specific session
  * - `*` - All events (admin/debug use)
  */
-export type TopicPattern = `project:${string}` | `ticket:${number}` | `session:${string}` | '*'
+export type TopicPattern = `project:${string}` | `ticket:${string}:${number}` | `session:${string}` | '*'

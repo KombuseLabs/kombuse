@@ -103,7 +103,8 @@ function buildPermissionEntry(overrides: Partial<PermissionLogEntry> = {}): Perm
     id: 1,
     session_id: 'db-session-1',
     kombuse_session_id: 'trigger-session-3',
-    ticket_id: 88,
+    project_id: '1',
+    ticket_number: 88,
     ticket_title: 'Review permissions',
     requested_at: '2026-02-14T00:00:00.000Z',
     request_id: 'req-1',
@@ -173,12 +174,12 @@ describe('Session-aware navigation links', () => {
     expect(screen.queryByRole('link', { name: 'Session' })).toBeNull()
   })
 
-  it('uses chat link for permission items when ticket id is missing', () => {
+  it('uses chat link for permission items when ticket number is missing', () => {
     render(
       <MemoryRouter>
         <PermissionItem
           entry={buildPermissionEntry({
-            ticket_id: null,
+            ticket_number: null,
             ticket_title: null,
             kombuse_session_id: 'trigger-session-4',
           })}

@@ -68,7 +68,7 @@ export function App() {
 
 ### Query cache refresh for domain events
 
-Use `useRealtimeUpdates({ projectId })` or `useRealtimeUpdates({ ticketId })` to subscribe and invalidate relevant React Query caches.
+Use `useRealtimeUpdates({ projectId })` or `useRealtimeUpdates({ projectId, ticketNumber })` to subscribe and invalidate relevant React Query caches.
 
 ### Lifecycle + permission state in app context
 

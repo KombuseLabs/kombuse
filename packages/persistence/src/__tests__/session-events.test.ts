@@ -657,7 +657,7 @@ describe('listPermissions', () => {
     expect(results[0]!.deny_message).toBeNull()
     expect(results[0]!.resolved_at).toBeDefined()
     expect(results[0]!.kombuse_session_id).toBeDefined()
-    expect(results[0]!.ticket_id).toBeDefined()
+    expect(results[0]!.ticket_number).toBeDefined()
     expect(results[0]!.ticket_title).toBe('Permissions test ticket')
     expect(results[0]!.input).toEqual({})
   })

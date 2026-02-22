@@ -6,7 +6,7 @@ import { useWebSocket } from './use-websocket'
 
 interface UseRealtimeUpdatesOptions {
   projectId?: string
-  ticketId?: number
+  ticketNumber?: number
 }
 
 interface UseRealtimeUpdatesReturn {
@@ -20,7 +20,7 @@ interface UseRealtimeUpdatesReturn {
  * Requires WebSocketProvider to be in the component tree.
  *
  * @param options.projectId - Subscribe to all events for this project
- * @param options.ticketId - Subscribe to all events for this ticket
+ * @param options.ticketNumber - Subscribe to all events for this ticket
  *
  * @example
  * // In a ticket list view
@@ -28,11 +28,11 @@ interface UseRealtimeUpdatesReturn {
  *
  * @example
  * // In a ticket detail view
- * const { isConnected } = useRealtimeUpdates({ ticketId: 123 })
+ * const { isConnected } = useRealtimeUpdates({ projectId: 'proj-1', ticketNumber: 123 })
  */
 export function useRealtimeUpdates({
   projectId,
-  ticketId,
+  ticketNumber,
 }: UseRealtimeUpdatesOptions = {}): UseRealtimeUpdatesReturn {
   const queryClient = useQueryClient()
 
@@ -53,12 +53,12 @@ export function useRealtimeUpdates({
             exact: false,
           })
           // Invalidate specific ticket query and its timeline
-          if (event.ticket_id) {
+          if (event.project_id && event.ticket_number) {
             queryClient.invalidateQueries({
-              queryKey: ['tickets', event.ticket_id],
+              queryKey: ['tickets', 'by-number', event.project_id, event.ticket_number],
             })
             queryClient.invalidateQueries({
-              queryKey: ['ticket-timeline', event.ticket_id],
+              queryKey: ['ticket-timeline', event.project_id, event.ticket_number],
             })
           }
           break
@@ -67,13 +67,13 @@ export function useRealtimeUpdates({
         case EVENT_TYPES.COMMENT_EDITED:
         case EVENT_TYPES.COMMENT_DELETED:
           // Invalidate comments and timeline for the ticket
-          if (event.ticket_id) {
+          if (event.project_id && event.ticket_number) {
             queryClient.invalidateQueries({
-              queryKey: ['comments', event.ticket_id],
+              queryKey: ['comments', event.project_id, event.ticket_number],
               exact: false,
             })
             queryClient.invalidateQueries({
-              queryKey: ['ticket-timeline', event.ticket_id],
+              queryKey: ['ticket-timeline', event.project_id, event.ticket_number],
             })
           }
           break
@@ -81,9 +81,9 @@ export function useRealtimeUpdates({
         case EVENT_TYPES.LABEL_ADDED:
         case EVENT_TYPES.LABEL_REMOVED:
           // Invalidate ticket labels
-          if (event.ticket_id) {
+          if (event.project_id && event.ticket_number) {
             queryClient.invalidateQueries({
-              queryKey: ['labels', 'ticket', event.ticket_id],
+              queryKey: ['labels', 'ticket', event.project_id, event.ticket_number],
             })
             // Invalidate ticket list queries (with any filters) so label badges refresh
             queryClient.invalidateQueries({
@@ -92,10 +92,10 @@ export function useRealtimeUpdates({
             })
             // Also refresh the ticket itself and timeline since labels might be shown inline
             queryClient.invalidateQueries({
-              queryKey: ['tickets', event.ticket_id],
+              queryKey: ['tickets', 'by-number', event.project_id, event.ticket_number],
             })
             queryClient.invalidateQueries({
-              queryKey: ['ticket-timeline', event.ticket_id],
+              queryKey: ['ticket-timeline', event.project_id, event.ticket_number],
             })
           }
           break
@@ -111,14 +111,14 @@ export function useRealtimeUpdates({
   // Build topics based on current view
   const topics = useMemo(() => {
     const result: string[] = []
-    if (ticketId) {
-      result.push(`ticket:${ticketId}`)
+    if (projectId && ticketNumber) {
+      result.push(`ticket:${projectId}:${ticketNumber}`)
     }
     if (projectId) {
       result.push(`project:${projectId}`)
     }
     return result
-  }, [projectId, ticketId])
+  }, [projectId, ticketNumber])
 
   const handleMessage = useCallback(
     (message: ServerMessage) => {

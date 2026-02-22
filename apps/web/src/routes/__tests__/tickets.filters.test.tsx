@@ -377,7 +377,7 @@ describe('Tickets label filters', () => {
     }
   })
 
-  it('recalculates label visibility when ticketId changes (layout transition)', async () => {
+  it('recalculates label visibility when ticketNumber changes (layout transition)', async () => {
     let containerWidth = 196
 
     const clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function clientWidth() {
@@ -416,7 +416,7 @@ describe('Tickets label filters', () => {
         <MemoryRouter initialEntries={['/projects/1/tickets']}>
           <Routes>
             <Route
-              path="/projects/:projectId/tickets/:ticketId?"
+              path="/projects/:projectId/tickets/:ticketNumber?"
               element={
                 <>
                   <NavigateCapture />

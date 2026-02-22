@@ -55,12 +55,12 @@ The canonical union is `ServerMessage` in `packages/types/src/websocket.ts`.
 | `pong` | none | request socket |
 | `error` | `{ message }` | request socket |
 | `update:status` | desktop update status | app-specific |
-| `agent.started` | `{ kombuseSessionId, ticketId?, agentName?, startedAt? }` | `session:{id}` + origin socket + `*` |
+| `agent.started` | `{ kombuseSessionId, ticketNumber?, agentName?, startedAt? }` | `session:{id}` + origin socket + `*` |
 | `agent.event` | `{ kombuseSessionId, event }` | `session:{id}` + origin socket |
-| `agent.complete` | `{ kombuseSessionId, backendSessionId?, ticketId?, status?, reason?, errorMessage? }` | `session:{id}` + origin socket + `*` |
-| `agent.permission_pending` | `{ sessionId, requestId, toolName, input, description?, ticketId? }` | `session:{id}` + `*` |
+| `agent.complete` | `{ kombuseSessionId, backendSessionId?, ticketNumber?, status?, reason?, errorMessage? }` | `session:{id}` + origin socket + `*` |
+| `agent.permission_pending` | `{ sessionId, requestId, toolName, input, description?, ticketNumber? }` | `session:{id}` + `*` |
 | `agent.permission_resolved` | `{ sessionId, requestId }` | `session:{id}` + `*` |
-| `ticket.agent_status` | `{ ticketId, status, sessionCount }` derived status snapshot | `*` |
+| `ticket.agent_status` | `{ ticketNumber, projectId, status, sessionCount }` derived status snapshot | `*` |
 
 ## Lifecycle Stream Rules
 
@@ -98,7 +98,7 @@ Primary files:
 Behavior summary:
 - Domain events (`type: 'event'`) are broadcast based on event fields:
   - `project:{project_id}` if present
-  - `ticket:{ticket_id}` if present
+  - `ticket:{project_id}:{ticket_number}` if present
   - plus wildcard subscribers (`*`)
 - Agent lifecycle messages use `broadcastAgentMessage(...)`:
   - always to `session:{kombuseSessionId}`

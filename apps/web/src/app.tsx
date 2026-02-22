@@ -97,7 +97,7 @@ function AppContent() {
               <Route path="/projects/:projectId" element={<ProjectLayout />}>
                 <Route index element={<ProjectPage />} />
                 <Route path="tickets" element={<Tickets />} />
-                <Route path="tickets/:ticketId" element={<Tickets />} />
+                <Route path="tickets/:ticketNumber" element={<Tickets />} />
                 <Route path="chats" element={<Chats />} />
                 <Route path="chats/:sessionId" element={<Chats />} />
                 <Route path="agents" element={<Agents />} />

@@ -27,7 +27,8 @@ interface RawPermissionLogEntry {
   id: number
   session_id: string
   kombuse_session_id: string | null
-  ticket_id: number | null
+  project_id: string | null
+  ticket_number: number | null
   ticket_title: string | null
   requested_at: string
   request_id: string
@@ -57,7 +58,8 @@ function mapPermissionLogEntry(row: RawPermissionLogEntry): PermissionLogEntry {
     id: row.id,
     session_id: row.session_id,
     kombuse_session_id: row.kombuse_session_id,
-    ticket_id: row.ticket_id,
+    project_id: row.project_id,
+    ticket_number: row.ticket_number,
     ticket_title: row.ticket_title,
     requested_at: row.requested_at,
     request_id: row.request_id,
@@ -322,7 +324,8 @@ export const sessionEventsRepository = {
           req.id,
           req.session_id,
           req.kombuse_session_id,
-          s.ticket_id,
+          t.project_id,
+          t.ticket_number,
           t.title as ticket_title,
           req.created_at as requested_at,
           json_extract(req.payload, '$.requestId') as request_id,

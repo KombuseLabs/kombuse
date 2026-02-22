@@ -1,4 +1,4 @@
-import { agentInvocationsRepository, agentsRepository, eventsRepository } from '@kombuse/persistence'
+import { agentInvocationsRepository, agentsRepository, eventsRepository, ticketsRepository } from '@kombuse/persistence'
 import type { Agent, AgentInvocation, PermissionCheckRequest, PermissionCheckResult, PermissionContext, Event } from '@kombuse/types'
 import { agentService, readMcpAnonymousWriteAccess } from '@kombuse/services'
 
@@ -54,7 +54,7 @@ export function resolvePermissionEvent(invocation: AgentInvocation): Event | und
         : 'agent.invocation',
     project_id: contextProjectId ?? null,
     ticket_id: contextTicketId,
-    ticket_number: null,
+    ticket_number: contextTicketId !== null ? (ticketsRepository._getInternal(contextTicketId)?.ticket_number ?? null) : null,
     comment_id: contextCommentId,
     actor_id: null,
     actor_type: 'agent',

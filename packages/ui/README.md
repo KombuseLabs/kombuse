@@ -286,7 +286,7 @@ import { useSessionByKombuseId } from '@kombuse/ui/hooks'
 
 // Resolve a kombuse session ID (e.g. "trigger-abc123") to its Session object
 // Session-aware components should prefer ticket URLs when ticket_id exists:
-// /projects/:projectId/tickets/:ticketId?session=:sessionId
+// /projects/:projectId/tickets/:ticketNumber?session=:sessionId
 // Fallback to /projects/:projectId/chats/:sessionId only when no ticket context exists.
 const { data: session } = useSessionByKombuseId(kombuseSessionId)
 ```

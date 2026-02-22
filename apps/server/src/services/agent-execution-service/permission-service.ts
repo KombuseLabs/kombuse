@@ -180,7 +180,9 @@ export function generatePermissionDescription(
   const baseDescription = TOOL_DESCRIPTIONS[toolName]
   const contextParts: string[] = []
 
-  if (typeof input.ticket_id === 'number') {
+  if (typeof input.ticket_number === 'number') {
+    contextParts.push(`ticket #${input.ticket_number}`)
+  } else if (typeof input.ticket_id === 'number') {
     contextParts.push(`ticket #${input.ticket_id}`)
   }
 
