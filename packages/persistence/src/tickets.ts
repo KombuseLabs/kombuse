@@ -402,10 +402,27 @@ export const ticketsRepository = {
     }))
   },
 
-  /**
-   * Get a single ticket by ID
-   */
-  get(id: number): Ticket | null {
+  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+  // get(id: number): Ticket | null {
+  //   const db = getDatabase()
+  //   const ticket = db
+  //     .prepare('SELECT * FROM tickets WHERE id = ?')
+  //     .get(id) as RawTicketRow | undefined
+  //   return ticket ? mapTicketRow(ticket) : null
+  // },
+
+  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+  // getWithRelations(id: number): TicketWithRelations | null {
+  //   const db = getDatabase()
+  //   const row = db
+  //     .prepare(`${TICKET_WITH_PROFILES_SELECT} WHERE t.id = ?`)
+  //     .get(id) as RawTicketWithProfiles | undefined
+  //   if (!row) return null
+  //   const labels = labelsRepository.getTicketLabels(id)
+  //   return { ...mapTicketWithProfiles(row), labels }
+  // },
+
+  _getInternal(id: number): Ticket | null {
     const db = getDatabase()
     const ticket = db
       .prepare('SELECT * FROM tickets WHERE id = ?')
@@ -413,16 +430,12 @@ export const ticketsRepository = {
     return ticket ? mapTicketRow(ticket) : null
   },
 
-  /**
-   * Get a single ticket by ID with resolved author, assignee, and labels
-   */
-  getWithRelations(id: number): TicketWithRelations | null {
+  _getInternalWithRelations(id: number): TicketWithRelations | null {
     const db = getDatabase()
     const row = db
       .prepare(`${TICKET_WITH_PROFILES_SELECT} WHERE t.id = ?`)
       .get(id) as RawTicketWithProfiles | undefined
     if (!row) return null
-
     const labels = labelsRepository.getTicketLabels(id)
     return { ...mapTicketWithProfiles(row), labels }
   },
@@ -531,7 +544,7 @@ export const ticketsRepository = {
     })
 
     const ticketId = createTicket(input)
-    const ticket = this.get(ticketId) as Ticket
+    const ticket = this._getInternal(ticketId) as Ticket
 
     if (ticket.triggers_enabled) {
       // Emit ticket.created event
@@ -557,7 +570,7 @@ export const ticketsRepository = {
     const db = getDatabase()
 
     // Get current ticket to detect status changes
-    const currentTicket = this.get(id)
+    const currentTicket = this._getInternal(id)
     if (!currentTicket) return null
 
     const fields: string[] = []
@@ -648,7 +661,7 @@ export const ticketsRepository = {
         })
       }
 
-      const updatedTicket = this.get(id)
+      const updatedTicket = this._getInternal(id)
 
       // Emit appropriate event based on status change
       let eventType: string = EVENT_TYPES.TICKET_UPDATED
@@ -728,7 +741,7 @@ export const ticketsRepository = {
     )
 
     if (result.changes > 0) {
-      const claimedTicket = this.get(input.ticket_id)
+      const claimedTicket = this._getInternal(input.ticket_id)
 
       // Emit ticket.claimed event
       const claimerProfile = claimerId ? profilesRepository.get(claimerId) : null
@@ -745,7 +758,7 @@ export const ticketsRepository = {
       return { success: true, ticket: claimedTicket }
     }
 
-    const ticket = this.get(input.ticket_id)
+    const ticket = this._getInternal(input.ticket_id)
     if (!ticket) {
       return { success: false, ticket: null, reason: 'Ticket not found' }
     }
@@ -775,7 +788,7 @@ export const ticketsRepository = {
    */
   unclaim(ticketId: number, requesterId?: string, force = false): ClaimResult {
     const db = getDatabase()
-    const ticket = this.get(ticketId)
+    const ticket = this._getInternal(ticketId)
 
     if (!ticket) {
       return { success: false, ticket: null, reason: 'Ticket not found' }
@@ -808,7 +821,7 @@ export const ticketsRepository = {
 
     stmt.run(ticketId)
 
-    const unclaimedTicket = this.get(ticketId)
+    const unclaimedTicket = this._getInternal(ticketId)
 
     // Emit ticket.unclaimed event
     const requesterProfile = requesterId ? profilesRepository.get(requesterId) : null
@@ -830,7 +843,7 @@ export const ticketsRepository = {
    */
   extendClaim(ticketId: number, additionalMinutes: number): ClaimResult {
     const db = getDatabase()
-    const ticket = this.get(ticketId)
+    const ticket = this._getInternal(ticketId)
 
     if (!ticket) {
       return { success: false, ticket: null, reason: 'Ticket not found' }
@@ -850,7 +863,7 @@ export const ticketsRepository = {
 
     stmt.run(`+${additionalMinutes} minutes`, ticketId)
 
-    return { success: true, ticket: this.get(ticketId) }
+    return { success: true, ticket: this._getInternal(ticketId) }
   },
 
   /**

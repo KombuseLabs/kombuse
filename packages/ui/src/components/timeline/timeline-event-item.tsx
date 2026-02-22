@@ -89,25 +89,27 @@ function TimelineEventItem({ event, projectId, ticketNumber, onSessionClick, isR
   if (event.event_type === 'mention.created') {
     try {
       const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
-      if (payload?.mention_type === 'ticket_cross_reference' && payload?.source_ticket_id) {
+      if (payload?.mention_type === 'ticket_cross_reference' && payload?.source_ticket_project_id && payload?.source_ticket_number) {
         eventLabel = 'mentioned this ticket in'
         eventSuffix = (
           <>
             {' '}
             <TicketMentionChip
               variant="inline"
-              ticketId={Number(payload.source_ticket_id)}
+              projectId={String(payload.source_ticket_project_id)}
+              ticketNumber={Number(payload.source_ticket_number)}
             />
           </>
         )
-      } else if (payload?.mention_type === 'ticket' && payload?.mentioned_ticket_id) {
+      } else if (payload?.mention_type === 'ticket' && payload?.mentioned_ticket_project_id && payload?.mentioned_ticket_number) {
         eventLabel = 'mentioned'
         eventSuffix = (
           <>
             {' '}
             <TicketMentionChip
               variant="inline"
-              ticketId={Number(payload.mentioned_ticket_id)}
+              projectId={String(payload.mentioned_ticket_project_id)}
+              ticketNumber={Number(payload.mentioned_ticket_number)}
             />
           </>
         )

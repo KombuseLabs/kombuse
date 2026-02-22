@@ -16,15 +16,16 @@ import {
  */
 export function useCommentOperations(filters?: CommentFilters) {
   const { currentTicket } = useAppContext()
-  const ticketId = currentTicket?.id ?? 0
+  const projectId = currentTicket?.project_id ?? ''
+  const ticketNumber = currentTicket?.ticket_number ?? 0
 
   // Query
-  const { data: comments, isLoading } = useComments(ticketId, filters)
+  const { data: comments, isLoading } = useComments(projectId, ticketNumber, filters)
 
   // Mutations
-  const createMutation = useCreateComment(ticketId)
-  const updateMutation = useUpdateComment(ticketId)
-  const deleteMutation = useDeleteComment(ticketId)
+  const createMutation = useCreateComment(projectId, ticketNumber)
+  const updateMutation = useUpdateComment(projectId, ticketNumber)
+  const deleteMutation = useDeleteComment(projectId, ticketNumber)
 
   // Wrapped operations
   const createComment = useCallback(

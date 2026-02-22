@@ -86,6 +86,7 @@ function buildEvent(overrides: Partial<EventWithActor> = {}): EventWithActor {
     event_type: 'comment.added',
     project_id: '1',
     ticket_id: 777,
+    ticket_number: null,
     comment_id: null,
     actor_id: 'user-1',
     actor_type: 'user',

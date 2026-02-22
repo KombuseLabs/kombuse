@@ -54,6 +54,7 @@ export function resolvePermissionEvent(invocation: AgentInvocation): Event | und
         : 'agent.invocation',
     project_id: contextProjectId ?? null,
     ticket_id: contextTicketId,
+    ticket_number: null,
     comment_id: contextCommentId,
     actor_id: null,
     actor_type: 'agent',

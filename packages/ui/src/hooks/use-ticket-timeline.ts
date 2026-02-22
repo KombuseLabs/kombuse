@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { timelineApi } from '../lib/api'
 
-export function useTicketTimeline(ticketId: number) {
+export function useTicketTimeline(projectId: string, ticketNumber: number) {
   return useQuery({
-    queryKey: ['ticket-timeline', ticketId],
-    queryFn: () => timelineApi.getTicketTimeline(ticketId),
-    enabled: ticketId > 0,
+    queryKey: ['ticket-timeline', projectId, ticketNumber],
+    queryFn: () => timelineApi.getTicketTimeline(projectId, ticketNumber),
+    enabled: !!projectId && ticketNumber > 0,
   })
 }

@@ -157,7 +157,7 @@ export async function processEventAndRunAgents(
   }
 
   if (typeof event.ticket_id === 'number') {
-    const ticket = ticketsRepository.get(event.ticket_id)
+    const ticket = ticketsRepository._getInternal(event.ticket_id)
     if (ticket && !ticket.triggers_enabled) {
       console.log(
         `[Server] Skipping event #${event.id} — triggers disabled on ticket #${event.ticket_id}`
@@ -185,7 +185,7 @@ export async function processEventAndRunAgents(
 
     const ticketId = invocation.context.ticket_id as number | undefined
     if (ticketId) {
-      const ticket = ticketsRepository.get(ticketId)
+      const ticket = ticketsRepository._getInternal(ticketId)
       if (ticket?.loop_protection_enabled !== false) {
         const maxDepth = agent.config?.max_chain_depth ?? readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
         const recentCount = agentInvocationsRepository.countRecentByTicketId(ticketId)

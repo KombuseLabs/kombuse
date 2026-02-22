@@ -20,18 +20,19 @@ export interface ITicketService {
   list(filters?: TicketFilters): Ticket[]
   listWithLabels(filters?: TicketFilters): TicketWithLabels[]
   listWithRelations(filters?: TicketFilters): TicketWithRelations[]
-  get(id: number): Ticket | null
+  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+  // get(id: number): Ticket | null
+  // getWithRelations(id: number): TicketWithRelations | null
   getByNumber(projectId: string, ticketNumber: number): Ticket | null
-  getWithRelations(id: number): TicketWithRelations | null
   getByNumberWithRelations(projectId: string, ticketNumber: number): TicketWithRelations | null
   create(input: CreateTicketInput): Ticket
-  update(id: number, input: UpdateTicketInput, updatedById?: string): Ticket
-  delete(id: number): void
-  claim(input: ClaimTicketInput): ClaimResult
-  unclaim(ticketId: number, requesterId?: string, force?: boolean): ClaimResult
-  extendClaim(ticketId: number, additionalMinutes: number): ClaimResult
+  update(projectId: string, ticketNumber: number, input: UpdateTicketInput, updatedById?: string): Ticket
+  delete(projectId: string, ticketNumber: number): void
+  claim(projectId: string, ticketNumber: number, input: Omit<ClaimTicketInput, 'ticket_id'>): ClaimResult
+  unclaim(projectId: string, ticketNumber: number, requesterId?: string, force?: boolean): ClaimResult
+  extendClaim(projectId: string, ticketNumber: number, additionalMinutes: number): ClaimResult
   countByStatus(projectId: string): TicketStatusCounts
-  markViewed(ticketId: number, profileId: string): TicketView
+  markViewed(projectId: string, ticketNumber: number, profileId: string): TicketView
 }
 
 /**
@@ -50,26 +51,26 @@ export class TicketService implements ITicketService {
     return ticketsRepository.listWithRelations(filters)
   }
 
-  get(id: number): Ticket | null {
-    return ticketsRepository.get(id)
-  }
+  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+  // get(id: number): Ticket | null {
+  //   return ticketsRepository.get(id)
+  // }
 
   getByNumber(projectId: string, ticketNumber: number): Ticket | null {
     return ticketsRepository.getByNumber(projectId, ticketNumber)
   }
 
-  getWithRelations(id: number): TicketWithRelations | null {
-    const ticket = ticketsRepository.getWithRelations(id)
-    if (!ticket) return null
-
-    if (ticket.loop_protection_enabled) {
-      const maxDepth = readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
-      const recentCount = agentInvocationsRepository.countRecentByTicketId(ticket.id)
-      ticket.loop_protection_tripped = recentCount >= maxDepth
-    }
-
-    return ticket
-  }
+  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+  // getWithRelations(id: number): TicketWithRelations | null {
+  //   const ticket = ticketsRepository.getWithRelations(id)
+  //   if (!ticket) return null
+  //   if (ticket.loop_protection_enabled) {
+  //     const maxDepth = readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
+  //     const recentCount = agentInvocationsRepository.countRecentByTicketId(ticket.id)
+  //     ticket.loop_protection_tripped = recentCount >= maxDepth
+  //   }
+  //   return ticket
+  // }
 
   getByNumberWithRelations(projectId: string, ticketNumber: number): TicketWithRelations | null {
     const ticket = ticketsRepository.getByNumberWithRelations(projectId, ticketNumber)
@@ -86,51 +87,69 @@ export class TicketService implements ITicketService {
 
   create(input: CreateTicketInput): Ticket {
     const ticket = ticketsRepository.create(input)
-    // Note: Event logging is handled separately via eventsRepository
     return ticket
   }
 
-  update(id: number, input: UpdateTicketInput, updatedById?: string): Ticket {
-    const existing = ticketsRepository.get(id)
+  update(projectId: string, ticketNumber: number, input: UpdateTicketInput, updatedById?: string): Ticket {
+    const existing = ticketsRepository.getByNumber(projectId, ticketNumber)
     if (!existing) {
-      throw new Error(`Ticket ${id} not found`)
+      throw new Error(`Ticket #${ticketNumber} not found in project ${projectId}`)
     }
 
-    const updated = ticketsRepository.update(id, input, updatedById)
+    const updated = ticketsRepository.update(existing.id, input, updatedById)
     if (!updated) {
-      throw new Error(`Failed to update ticket ${id}`)
+      throw new Error(`Failed to update ticket #${ticketNumber}`)
     }
 
-    // Note: Event logging for status changes is handled via eventsRepository
     return updated
   }
 
-  delete(id: number): void {
-    const success = ticketsRepository.delete(id)
+  delete(projectId: string, ticketNumber: number): void {
+    const existing = ticketsRepository.getByNumber(projectId, ticketNumber)
+    if (!existing) {
+      throw new Error(`Ticket #${ticketNumber} not found in project ${projectId}`)
+    }
+    const success = ticketsRepository.delete(existing.id)
     if (!success) {
-      throw new Error(`Ticket ${id} not found`)
+      throw new Error(`Ticket #${ticketNumber} not found`)
     }
   }
 
-  claim(input: ClaimTicketInput): ClaimResult {
-    return ticketsRepository.claim(input)
+  claim(projectId: string, ticketNumber: number, input: Omit<ClaimTicketInput, 'ticket_id'>): ClaimResult {
+    const existing = ticketsRepository.getByNumber(projectId, ticketNumber)
+    if (!existing) {
+      return { success: false, ticket: null, reason: 'Ticket not found' }
+    }
+    return ticketsRepository.claim({ ticket_id: existing.id, ...input })
   }
 
-  unclaim(ticketId: number, requesterId?: string, force?: boolean): ClaimResult {
-    return ticketsRepository.unclaim(ticketId, requesterId, force)
+  unclaim(projectId: string, ticketNumber: number, requesterId?: string, force?: boolean): ClaimResult {
+    const existing = ticketsRepository.getByNumber(projectId, ticketNumber)
+    if (!existing) {
+      return { success: false, ticket: null, reason: 'Ticket not found' }
+    }
+    return ticketsRepository.unclaim(existing.id, requesterId, force)
   }
 
-  extendClaim(ticketId: number, additionalMinutes: number): ClaimResult {
-    return ticketsRepository.extendClaim(ticketId, additionalMinutes)
+  extendClaim(projectId: string, ticketNumber: number, additionalMinutes: number): ClaimResult {
+    const existing = ticketsRepository.getByNumber(projectId, ticketNumber)
+    if (!existing) {
+      return { success: false, ticket: null, reason: 'Ticket not found' }
+    }
+    return ticketsRepository.extendClaim(existing.id, additionalMinutes)
   }
 
   countByStatus(projectId: string): TicketStatusCounts {
     return ticketsRepository.countByStatus(projectId)
   }
 
-  markViewed(ticketId: number, profileId: string): TicketView {
+  markViewed(projectId: string, ticketNumber: number, profileId: string): TicketView {
+    const existing = ticketsRepository.getByNumber(projectId, ticketNumber)
+    if (!existing) {
+      throw new Error(`Ticket #${ticketNumber} not found in project ${projectId}`)
+    }
     return ticketViewsRepository.upsert({
-      ticket_id: ticketId,
+      ticket_id: existing.id,
       profile_id: profileId,
     })
   }

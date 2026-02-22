@@ -123,7 +123,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
 
   const { currentProjectId } = useCurrentProject()
   const agentStatus = useTicketAgentStatus(currentTicket?.id)
-  const { data: ticketAttachments } = useTicketAttachments(currentTicket?.id ?? 0)
+  const { data: ticketAttachments } = useTicketAttachments(currentTicket?.project_id ?? '', currentTicket?.ticket_number ?? 0)
   const uploadTicketAttachment = useUploadTicketAttachment()
   const {
     stagedFiles, previewUrls, isDragOver, hasFiles,
@@ -182,7 +182,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
       for (const file of stagedFiles) {
         try {
           await uploadTicketAttachment.mutateAsync({
-            ticketId: ticket.id, file, uploadedById: 'user-1',
+            projectId: ticket.project_id, ticketNumber: ticket.ticket_number, file, uploadedById: 'user-1',
           })
         } catch {
           // Individual upload failures don't block remaining uploads

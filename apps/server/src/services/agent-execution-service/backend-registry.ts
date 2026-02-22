@@ -323,7 +323,7 @@ export function getActiveSessions(): ActiveSessionInfo[] {
     const ticketId = session.ticket_id ?? undefined
     const ticketTitle =
       typeof ticketId === 'number'
-        ? ticketsRepository.get(ticketId)?.title ?? undefined
+        ? ticketsRepository._getInternal(ticketId)?.title ?? undefined
         : undefined
     const projectId = session.project_id ?? undefined
     results.push({

@@ -85,7 +85,7 @@ describe('get_ticket', () => {
       author_id: TEST_USER_ID,
     })
 
-    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: ticket.id } })
+    const result = await client.callTool({ name: 'get_ticket', arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number } })
     const data = parseContent(result) as any
 
     expect(data.ticket.id).toBe(ticket.id)
@@ -102,7 +102,7 @@ describe('get_ticket', () => {
   })
 
   it('should return error for non-existent ticket', async () => {
-    const result = await client.callTool({ name: 'get_ticket', arguments: { ticket_id: 9999 } })
+    const result = await client.callTool({ name: 'get_ticket', arguments: { project_id: TEST_PROJECT_ID, ticket_number: 9999 } })
 
     expect(result.isError).toBe(true)
     const data = parseContent(result) as { error: string }
@@ -129,7 +129,7 @@ describe('get_ticket', () => {
 
     const result = await client.callTool({
       name: 'get_ticket',
-      arguments: { ticket_id: ticket.id, config: { images: true } },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, config: { images: true } },
     })
     const data = parseContent(result) as any
 
@@ -166,7 +166,7 @@ describe('get_ticket', () => {
 
     const result = await client.callTool({
       name: 'get_ticket',
-      arguments: { ticket_id: ticket.id, config: { images: true, comments: true } },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, config: { images: true, comments: true } },
     })
     const data = parseContent(result) as any
 
@@ -211,7 +211,7 @@ describe('get_ticket', () => {
 
     const result = await client.callTool({
       name: 'get_ticket',
-      arguments: { ticket_id: ticket.id },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number },
     })
     const data = parseContent(result) as any
 
@@ -244,7 +244,8 @@ describe('get_ticket', () => {
     const result = await client.callTool({
       name: 'get_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         config: {
           overview: false,
           comments: true,
@@ -301,7 +302,8 @@ describe('get_ticket', () => {
     const result = await client.callTool({
       name: 'get_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         kombuse_session_id: kombuseSessionId,
       },
     })
@@ -337,7 +339,8 @@ describe('get_ticket', () => {
     const page1 = await client.callTool({
       name: 'get_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         config: {
           overview: false,
           comments: true,
@@ -356,7 +359,8 @@ describe('get_ticket', () => {
     const page2 = await client.callTool({
       name: 'get_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         config: {
           overview: false,
           comments: true,
@@ -390,7 +394,8 @@ describe('get_ticket', () => {
     const result = await client.callTool({
       name: 'get_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         config: {
           comments: true,
           overview: true,
@@ -422,7 +427,8 @@ describe('get_ticket', () => {
     const result = await client.callTool({
       name: 'get_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         config: {
           comments: true,
           overview: false,
@@ -478,7 +484,7 @@ describe('get_ticket', () => {
 
     const result = await client.callTool({
       name: 'get_ticket',
-      arguments: { ticket_id: ticket.id, config: { images: false, comments: true } },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, config: { images: false, comments: true } },
     })
     const data = parseContent(result) as any
 
@@ -523,7 +529,7 @@ describe('get_ticket', () => {
 
     const result = await client.callTool({
       name: 'get_ticket',
-      arguments: { ticket_id: ticket.id, config: { images: true, comments: false } },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, config: { images: true, comments: false } },
     })
     const data = parseContent(result) as any
 
@@ -565,7 +571,7 @@ describe('get_ticket', () => {
 
     const result = await client.callTool({
       name: 'get_ticket',
-      arguments: { ticket_id: ticket.id, config: { images: true, comments: false } },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, config: { images: true, comments: false } },
     })
     const data = parseContent(result) as any
 
@@ -593,7 +599,7 @@ describe('get_ticket', () => {
 
     const result = await client.callTool({
       name: 'get_ticket',
-      arguments: { ticket_id: ticket.id, config: { images: true } },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, config: { images: true } },
     })
     const data = parseContent(result) as any
 
@@ -961,7 +967,7 @@ describe('update_ticket', () => {
   it('should return error for non-existent ticket', async () => {
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: 9999, status: 'closed' },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: 9999, status: 'closed' },
     })
 
     expect(result.isError).toBe(true)
@@ -978,7 +984,7 @@ describe('update_ticket', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, status: 'in_progress' },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, status: 'in_progress' },
     })
     const data = parseContent(result) as { ticket: { id: number; status: string }; labels: unknown[] }
 
@@ -996,7 +1002,7 @@ describe('update_ticket', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, add_label_ids: [label.id] },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, add_label_ids: [label.id] },
     })
     const data = parseContent(result) as { ticket: { id: number }; labels: { id: number; name: string }[] }
 
@@ -1015,7 +1021,7 @@ describe('update_ticket', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, remove_label_ids: [label.id] },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, remove_label_ids: [label.id] },
     })
     const data = parseContent(result) as { ticket: { id: number }; labels: unknown[] }
 
@@ -1035,7 +1041,8 @@ describe('update_ticket', () => {
     const result = await client.callTool({
       name: 'update_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         title: 'Updated title',
         status: 'closed',
         add_label_ids: [labelFeature.id],
@@ -1064,7 +1071,7 @@ describe('update_ticket', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, add_label_ids: [label.id] },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, add_label_ids: [label.id] },
     })
     const data = parseContent(result) as { labels: { name: string }[] }
 
@@ -1082,7 +1089,7 @@ describe('update_ticket', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, priority: 3 },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, priority: 3 },
     })
     const data = parseContent(result) as { ticket: { priority: number } }
 
@@ -1099,7 +1106,7 @@ describe('update_ticket', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, assignee_id: null },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, assignee_id: null },
     })
     const data = parseContent(result) as { ticket: { assignee_id: string | null } }
 
@@ -1148,7 +1155,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, status: 'closed' },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, status: 'closed' },
     })
 
     expect(result.isError).toBeFalsy()
@@ -1166,7 +1173,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, title: 'New title', kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, title: 'New title', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBe(true)
@@ -1187,7 +1194,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, title: 'Scoped update', kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, title: 'Scoped update', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBeFalsy()
@@ -1213,7 +1220,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: otherTicket.id, title: 'Should fail', kombuse_session_id: sessionId },
+      arguments: { project_id: otherProject.id, ticket_number: otherTicket.ticket_number, title: 'Should fail', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBe(true)
@@ -1233,7 +1240,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, status: 'closed', kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, status: 'closed', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBeFalsy()
@@ -1253,7 +1260,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, status: 'closed', kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, status: 'closed', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBe(true)
@@ -1275,7 +1282,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, remove_label_ids: [label.id], kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, remove_label_ids: [label.id], kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBeFalsy()
@@ -1297,7 +1304,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, remove_label_ids: [label.id], kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, remove_label_ids: [label.id], kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBe(true)
@@ -1318,7 +1325,8 @@ describe('permission enforcement', () => {
     const result = await client.callTool({
       name: 'update_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         title: 'New title',
         status: 'closed',
         kombuse_session_id: sessionId,
@@ -1329,7 +1337,7 @@ describe('permission enforcement', () => {
     const data = parseContent(result) as { error: string }
     expect(data.error).toContain('Permission denied')
     // Verify no partial mutation occurred
-    const unchanged = ticketsRepository.get(ticket.id)!
+    const unchanged = ticketsRepository._getInternal(ticket.id)!
     expect(unchanged.title).toBe('Test ticket')
     expect(unchanged.status).toBe('open')
   })
@@ -1350,7 +1358,8 @@ describe('permission enforcement', () => {
     const result = await client.callTool({
       name: 'update_ticket',
       arguments: {
-        ticket_id: ticket.id,
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
         title: 'Updated',
         status: 'closed',
         add_label_ids: [label.id],
@@ -1377,7 +1386,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'add_comment',
-      arguments: { ticket_id: ticket.id, body: 'Hello', kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, body: 'Hello', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBe(true)
@@ -1397,7 +1406,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'add_comment',
-      arguments: { ticket_id: ticket.id, body: 'Review complete', kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, body: 'Review complete', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBeFalsy()
@@ -1628,7 +1637,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, status: 'closed' },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, status: 'closed' },
     })
 
     expect(result.isError).toBe(true)
@@ -1675,7 +1684,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'add_comment',
-      arguments: { ticket_id: ticket.id, body: 'Should fail' },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, body: 'Should fail' },
     })
 
     expect(result.isError).toBe(true)
@@ -1732,7 +1741,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, status: 'closed' },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, status: 'closed' },
     })
 
     expect(result.isError).toBeFalsy()
@@ -1762,7 +1771,7 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_ticket',
-      arguments: { ticket_id: ticket.id, status: 'closed', kombuse_session_id: sessionId },
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, status: 'closed', kombuse_session_id: sessionId },
     })
 
     expect(result.isError).toBeFalsy()

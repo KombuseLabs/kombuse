@@ -45,7 +45,7 @@ const noBodyResponseRouteKeys = new Set<string>([
   'DELETE /api/triggers/:id',
   'DELETE /api/subscriptions/:id',
   'DELETE /api/labels/:id',
-  'DELETE /api/tickets/:ticketId/labels/:labelId',
+  'DELETE /api/projects/:projectId/tickets/by-number/:number/labels/:labelId',
   'DELETE /api/milestones/:id',
   'DELETE /api/comments/:id',
   'DELETE /api/attachments/:id',
@@ -53,7 +53,7 @@ const noBodyResponseRouteKeys = new Set<string>([
   'DELETE /api/profiles/:id',
   'DELETE /api/projects/:id',
   'DELETE /api/sessions/:id',
-  'DELETE /api/tickets/:id',
+  'DELETE /api/projects/:projectId/tickets/by-number/:number',
   'DELETE /api/plugins/:id',
   'DELETE /api/desktop/windows/:id',
 ])
@@ -273,10 +273,10 @@ registerSuccessSchema('GET', '/api/backend-status', z.array(backendStatusSchema)
 registerSuccessSchema('POST', '/api/backend-status/refresh', z.array(backendStatusSchema))
 
 // Attachment routes
-registerSuccessSchema('POST', '/api/tickets/:ticketId/attachments', attachmentSchema)
+registerSuccessSchema('POST', '/api/projects/:projectId/tickets/by-number/:number/attachments', attachmentSchema)
 registerSuccessSchema('POST', '/api/comments/:commentId/attachments', attachmentSchema)
 registerSuccessSchema('GET', '/api/attachments/:id', attachmentSchema)
-registerSuccessSchema('GET', '/api/tickets/:ticketId/attachments', z.array(attachmentSchema))
+registerSuccessSchema('GET', '/api/projects/:projectId/tickets/by-number/:number/attachments', z.array(attachmentSchema))
 registerSuccessSchema('GET', '/api/comments/:commentId/attachments', z.array(attachmentSchema))
 
 // Claude Code routes
@@ -301,9 +301,9 @@ registerSuccessSchema('PUT', '/api/claude-code/mcp', codexMcpUpdateResponseSchem
 registerSuccessSchema('GET', '/api/models', modelCatalogResponseSchema)
 
 // Comment routes
-registerSuccessSchema('GET', '/api/tickets/:ticketId/comments', z.array(commentWithAuthorSchema))
+registerSuccessSchema('GET', '/api/projects/:projectId/tickets/by-number/:number/comments', z.array(commentWithAuthorSchema))
 registerSuccessSchema('GET', '/api/comments/:id', commentWithAuthorSchema)
-registerSuccessSchema('POST', '/api/tickets/:ticketId/comments', commentWithAuthorSchema)
+registerSuccessSchema('POST', '/api/projects/:projectId/tickets/by-number/:number/comments', commentWithAuthorSchema)
 registerSuccessSchema('PATCH', '/api/comments/:id', commentWithAuthorSchema)
 registerSuccessSchema('GET', '/api/comments/:id/mentions', z.array(mentionSchema))
 
@@ -313,7 +313,7 @@ registerSuccessSchema('POST', '/api/database/query', databaseQueryResponseSchema
 
 // Event routes
 registerSuccessSchema('GET', '/api/events', z.array(eventWithActorSchema))
-registerSuccessSchema('GET', '/api/tickets/:ticketId/events', z.array(eventWithActorSchema))
+registerSuccessSchema('GET', '/api/projects/:projectId/tickets/by-number/:number/events', z.array(eventWithActorSchema))
 registerSuccessSchema('POST', '/api/events', eventWithActorSchema)
 registerSuccessSchema('GET', '/api/subscriptions', z.array(eventSubscriptionSchema))
 registerSuccessSchema('POST', '/api/subscriptions', eventSubscriptionSchema)
@@ -325,8 +325,8 @@ registerSuccessSchema('GET', '/api/projects/:projectId/labels', z.array(labelSch
 registerSuccessSchema('GET', '/api/labels/:id', labelSchema)
 registerSuccessSchema('POST', '/api/projects/:projectId/labels', labelSchema)
 registerSuccessSchema('PATCH', '/api/labels/:id', labelSchema)
-registerSuccessSchema('POST', '/api/tickets/:ticketId/labels/:labelId', successFlagSchema)
-registerSuccessSchema('GET', '/api/tickets/:ticketId/labels', z.array(labelSchema))
+registerSuccessSchema('POST', '/api/projects/:projectId/tickets/by-number/:number/labels/:labelId', successFlagSchema)
+registerSuccessSchema('GET', '/api/projects/:projectId/tickets/by-number/:number/labels', z.array(labelSchema))
 registerSuccessSchema('GET', '/api/labels/:labelId/triggers', z.array(agentTriggerSchema))
 registerSuccessSchema('GET', '/api/projects/:projectId/smart-label-ids', z.object({
   label_ids: z.array(z.number().int().positive()),
@@ -472,15 +472,14 @@ registerSuccessSchema('GET', '/api/sync/state', syncStateSchema)
 // Ticket routes
 registerSuccessSchema('GET', '/api/tickets', z.array(ticketWithRelationsSchema))
 registerSuccessSchema('GET', '/api/tickets/counts', ticketStatusCountsSchema)
-registerSuccessSchema('GET', '/api/tickets/:id', ticketWithRelationsSchema)
 registerSuccessSchema('GET', '/api/projects/:projectId/tickets/by-number/:number', ticketWithRelationsSchema)
 registerSuccessSchema('POST', '/api/tickets', ticketSchema)
-registerSuccessSchema('PATCH', '/api/tickets/:id', ticketSchema)
-registerSuccessSchema('POST', '/api/tickets/:id/claim', ticketSchema)
-registerSuccessSchema('POST', '/api/tickets/:id/unclaim', ticketSchema)
-registerSuccessSchema('POST', '/api/tickets/:id/claim/extend', ticketSchema)
-registerSuccessSchema('POST', '/api/tickets/:id/view', ticketViewSchema)
-registerSuccessSchema('GET', '/api/tickets/:id/timeline', ticketTimelineResponseSchema)
+registerSuccessSchema('PATCH', '/api/projects/:projectId/tickets/by-number/:number', ticketSchema)
+registerSuccessSchema('POST', '/api/projects/:projectId/tickets/by-number/:number/claim', ticketSchema)
+registerSuccessSchema('POST', '/api/projects/:projectId/tickets/by-number/:number/unclaim', ticketSchema)
+registerSuccessSchema('POST', '/api/projects/:projectId/tickets/by-number/:number/claim/extend', ticketSchema)
+registerSuccessSchema('POST', '/api/projects/:projectId/tickets/by-number/:number/view', ticketViewSchema)
+registerSuccessSchema('GET', '/api/projects/:projectId/tickets/by-number/:number/timeline', ticketTimelineResponseSchema)
 
 // Update routes
 registerSuccessSchema('GET', '/api/updates/status', updateStatusSchema)

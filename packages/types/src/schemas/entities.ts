@@ -191,6 +191,7 @@ export const eventSchema = z.object({
   event_type: z.string().min(1),
   project_id: z.string().nullable(),
   ticket_id: z.number().int().positive().nullable(),
+  ticket_number: z.number().int().positive().nullable(),
   comment_id: z.number().int().positive().nullable(),
   actor_id: z.string().nullable(),
   actor_type: actorTypeSchema,

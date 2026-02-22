@@ -9,13 +9,14 @@ export function useTickets(filters?: TicketFilters) {
   })
 }
 
-export function useTicket(id: number) {
-  return useQuery({
-    queryKey: ['tickets', id],
-    queryFn: () => ticketsApi.get(id),
-    enabled: id > 0,
-  })
-}
+// COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+// export function useTicket(id: number) {
+//   return useQuery({
+//     queryKey: ['tickets', id],
+//     queryFn: () => ticketsApi.get(id),
+//     enabled: id > 0,
+//   })
+// }
 
 export function useTicketByNumber(projectId: string | undefined, ticketNumber: number) {
   return useQuery({
@@ -38,8 +39,8 @@ export function useCreateTicket() {
 export function useUpdateTicket() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, input }: { id: number; input: UpdateTicketInput }) =>
-      ticketsApi.update(id, input),
+    mutationFn: ({ projectId, ticketNumber, input }: { projectId: string; ticketNumber: number; input: UpdateTicketInput }) =>
+      ticketsApi.update(projectId, ticketNumber, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
@@ -49,7 +50,8 @@ export function useUpdateTicket() {
 export function useDeleteTicket() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => ticketsApi.delete(id),
+    mutationFn: ({ projectId, ticketNumber }: { projectId: string; ticketNumber: number }) =>
+      ticketsApi.delete(projectId, ticketNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
@@ -59,12 +61,12 @@ export function useDeleteTicket() {
 export function useMarkTicketViewed() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, profileId }: { id: number; profileId: string }) =>
-      ticketsApi.markViewed(id, profileId),
-    onMutate: ({ id }) => {
+    mutationFn: ({ projectId, ticketNumber, profileId }: { projectId: string; ticketNumber: number; profileId: string }) =>
+      ticketsApi.markViewed(projectId, ticketNumber, profileId),
+    onMutate: ({ projectId, ticketNumber }) => {
       queryClient.setQueriesData<TicketWithLabels[]>(
         { queryKey: ['tickets'] },
-        (old) => Array.isArray(old) ? old.map((t) => t.id === id ? { ...t, has_unread: 0 } : t) : old,
+        (old) => Array.isArray(old) ? old.map((t) => t.project_id === projectId && t.ticket_number === ticketNumber ? { ...t, has_unread: 0 } : t) : old,
       )
     },
   })

@@ -188,7 +188,7 @@ export function Tickets() {
   } = useCommentOperations();
 
   // Unified timeline of comments + events
-  const { data: timeline, isFetched: isTimelineFetched } = useTicketTimeline(selectedTicketDbId);
+  const { data: timeline, isFetched: isTimelineFetched } = useTicketTimeline(projectId ?? '', ticketNumber);
 
   // Fetch attachments for all comments in the timeline
   const commentIds = useMemo(
@@ -419,7 +419,7 @@ export function Tickets() {
 
     if (selectedTicket && selectedTicket.id > 0 && selectedTicket.id !== lastViewedTicketIdRef.current) {
       lastViewedTicketIdRef.current = selectedTicket.id;
-      markViewedMutate({ id: selectedTicket.id, profileId: "user-1" }); // TODO: Get from auth context
+      markViewedMutate({ projectId: selectedTicket.project_id, ticketNumber: selectedTicket.ticket_number, profileId: "user-1" }); // TODO: Get from auth context
     }
   }, [selectedTicket, setCurrentTicket, markViewedMutate]);
 
@@ -559,7 +559,7 @@ export function Tickets() {
             for (const file of createStagedFiles) {
               try {
                 await uploadTicketAttachment.mutateAsync({
-                  ticketId: newTicket.id, file, uploadedById: "user-1",
+                  projectId: newTicket.project_id, ticketNumber: newTicket.ticket_number, file, uploadedById: "user-1",
                 });
               } catch {
                 // Individual upload failures don't block remaining uploads

@@ -58,24 +58,25 @@ export function useDeleteAttachment() {
   })
 }
 
-export function useTicketAttachments(ticketId: number) {
+export function useTicketAttachments(projectId: string, ticketNumber: number) {
   return useQuery({
-    queryKey: ['ticket-attachments', ticketId],
-    queryFn: () => attachmentsApi.listByTicket(ticketId),
-    enabled: ticketId > 0,
+    queryKey: ['ticket-attachments', projectId, ticketNumber],
+    queryFn: () => attachmentsApi.listByTicket(projectId, ticketNumber),
+    enabled: !!projectId && ticketNumber > 0,
   })
 }
 
 export function useUploadTicketAttachment() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ ticketId, file, uploadedById }: {
-      ticketId: number
+    mutationFn: ({ projectId, ticketNumber, file, uploadedById }: {
+      projectId: string
+      ticketNumber: number
       file: File
       uploadedById: string
-    }) => attachmentsApi.uploadToTicket(ticketId, file, uploadedById),
+    }) => attachmentsApi.uploadToTicket(projectId, ticketNumber, file, uploadedById),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['ticket-attachments', variables.ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['ticket-attachments', variables.projectId, variables.ticketNumber] })
     },
   })
 }

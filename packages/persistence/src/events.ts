@@ -7,6 +7,7 @@ interface RawEventWithActor {
   event_type: string
   project_id: string | null
   ticket_id: number | null
+  ticket_number: number | null
   comment_id: number | null
   actor_id: string | null
   actor_type: string
@@ -30,6 +31,7 @@ interface RawEventWithActor {
 
 const EVENT_WITH_ACTOR_SELECT = `
   SELECT e.*,
+    t.ticket_number AS ticket_number,
     p.type AS actor_profile_type, p.name AS actor_name, p.slug AS actor_slug, p.email AS actor_email,
     p.description AS actor_description, p.avatar_url AS actor_avatar_url,
     p.external_source AS actor_external_source, p.external_id AS actor_external_id,
@@ -37,6 +39,7 @@ const EVENT_WITH_ACTOR_SELECT = `
     p.is_active AS actor_is_active, p.created_at AS actor_created_at,
     p.updated_at AS actor_updated_at
   FROM events e
+  LEFT JOIN tickets t ON t.id = e.ticket_id
   LEFT JOIN profiles p ON p.id = e.actor_id
 `
 
@@ -46,6 +49,7 @@ function mapEventWithActor(row: RawEventWithActor): EventWithActor {
     event_type: row.event_type,
     project_id: row.project_id,
     ticket_id: row.ticket_id,
+    ticket_number: row.ticket_number,
     comment_id: row.comment_id,
     actor_id: row.actor_id,
     actor_type: row.actor_type as ActorType,

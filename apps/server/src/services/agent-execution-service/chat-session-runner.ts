@@ -624,7 +624,7 @@ export function startAgentChatSession(
   const ticketId = options?.ticketId ?? existingSession?.ticket_id ?? undefined
   const ticketTitle =
     typeof ticketId === 'number'
-      ? ticketsRepository.get(ticketId)?.title ?? undefined
+      ? ticketsRepository._getInternal(ticketId)?.title ?? undefined
       : undefined
   const resumeSessionId =
     typeof existingSession?.backend_session_id === 'string' &&

@@ -38,7 +38,7 @@ export function buildTemplateContext(event: Event): TemplateContext {
 
   // Fetch enriched entities
   if (event.ticket_id != null) {
-    const ticket = ticketsRepository.get(event.ticket_id)
+    const ticket = ticketsRepository._getInternal(event.ticket_id)
     if (ticket) {
       context.ticket = {
         ...ticket,

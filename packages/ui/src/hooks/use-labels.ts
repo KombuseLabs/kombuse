@@ -17,35 +17,33 @@ export function useProjectLabels(projectId: string, options?: ProjectLabelListOp
   })
 }
 
-export function useTicketLabels(ticketId: number) {
+export function useTicketLabels(projectId: string, ticketNumber: number) {
   return useQuery({
-    queryKey: ['labels', 'ticket', ticketId],
-    queryFn: () => labelsApi.getTicketLabels(ticketId),
-    enabled: ticketId > 0,
+    queryKey: ['labels', 'ticket', projectId, ticketNumber],
+    queryFn: () => labelsApi.getTicketLabels(projectId, ticketNumber),
+    enabled: !!projectId && ticketNumber > 0,
   })
 }
 
-export function useAddLabelToTicket(ticketId: number) {
+export function useAddLabelToTicket(projectId: string, ticketNumber: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ labelId, addedById }: { labelId: number; addedById?: string }) =>
-      labelsApi.addToTicket(ticketId, labelId, addedById),
+      labelsApi.addToTicket(projectId, ticketNumber, labelId, addedById),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['labels', 'ticket', ticketId] })
-      queryClient.invalidateQueries({ queryKey: ['tickets', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['labels', 'ticket', projectId, ticketNumber] })
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
   })
 }
 
-export function useRemoveLabelFromTicket(ticketId: number) {
+export function useRemoveLabelFromTicket(projectId: string, ticketNumber: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ labelId, removedById }: { labelId: number; removedById?: string }) =>
-      labelsApi.removeFromTicket(ticketId, labelId, removedById),
+      labelsApi.removeFromTicket(projectId, ticketNumber, labelId, removedById),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['labels', 'ticket', ticketId] })
-      queryClient.invalidateQueries({ queryKey: ['tickets', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['labels', 'ticket', projectId, ticketNumber] })
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
   })

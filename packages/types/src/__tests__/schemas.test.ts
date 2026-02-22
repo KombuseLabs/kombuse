@@ -241,6 +241,7 @@ describe('shared API schemas', () => {
             event_type: 'comment.added',
             project_id: 'proj-1',
             ticket_id: 135,
+            ticket_number: 1,
             comment_id: 1,
             actor_id: 'user-1',
             actor_type: 'user',

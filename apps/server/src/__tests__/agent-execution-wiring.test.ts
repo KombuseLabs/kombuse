@@ -77,7 +77,7 @@ vi.mock('@kombuse/persistence', () => ({
     listByTicket: vi.fn(() => []),
   },
   ticketsRepository: {
-    get: vi.fn(() => null),
+    _getInternal: vi.fn(() => null),
   },
   profilesRepository: {
     list: vi.fn(() => []),
@@ -191,7 +191,7 @@ describe('ticket title propagation for active sessions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(ticketsRepository.get).mockReturnValue(null)
+    vi.mocked(ticketsRepository._getInternal).mockReturnValue(null)
     vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
   })
 
@@ -200,7 +200,7 @@ describe('ticket title propagation for active sessions', () => {
     const deps = createDeps(backend)
     const emittedEvents: AgentExecutionEvent[] = []
 
-    vi.mocked(ticketsRepository.get).mockReturnValue({
+    vi.mocked(ticketsRepository._getInternal).mockReturnValue({
       id: 42,
       title: 'Improve active agent context row',
     } as any)
@@ -293,7 +293,7 @@ describe('ticket title propagation for active sessions', () => {
         },
       ])
 
-    vi.mocked(ticketsRepository.get).mockImplementation((ticketId: number) => {
+    vi.mocked(ticketsRepository._getInternal).mockImplementation((ticketId: number) => {
       if (ticketId === 42) {
         return {
           id: 42,
@@ -344,7 +344,7 @@ describe('ticket title propagation for active sessions', () => {
       ])
       .mockReturnValueOnce([])
 
-    vi.mocked(ticketsRepository.get).mockReturnValue(null)
+    vi.mocked(ticketsRepository._getInternal).mockReturnValue(null)
 
     const sessions = getActiveSessions()
 
@@ -423,7 +423,7 @@ describe('processEventAndRunAgents ticket trigger suppression', () => {
   })
 
   it('skips processing when triggers are disabled on the ticket', async () => {
-    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue({
+    ;(ticketsRepository._getInternal as ReturnType<typeof vi.fn>).mockReturnValue({
       id: 42,
       triggers_enabled: false,
     })
@@ -435,6 +435,7 @@ describe('processEventAndRunAgents ticket trigger suppression', () => {
         event_type: 'ticket.updated',
         project_id: '1',
         ticket_id: 42,
+        ticket_number: null,
         comment_id: null,
         actor_id: 'user-1',
         actor_type: 'user',
@@ -450,7 +451,7 @@ describe('processEventAndRunAgents ticket trigger suppression', () => {
   })
 
   it('continues processing when triggers are enabled on the ticket', async () => {
-    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue({
+    ;(ticketsRepository._getInternal as ReturnType<typeof vi.fn>).mockReturnValue({
       id: 42,
       triggers_enabled: true,
     })
@@ -461,6 +462,7 @@ describe('processEventAndRunAgents ticket trigger suppression', () => {
       event_type: 'ticket.updated',
       project_id: '1',
       ticket_id: 42,
+      ticket_number: null,
       comment_id: null,
       actor_id: 'user-1',
       actor_type: 'user' as const,
@@ -508,6 +510,7 @@ describe('processEventAndRunAgents lifecycle session isolation', () => {
       event_type: 'agent.completed',
       project_id: '1',
       ticket_id: 42,
+      ticket_number: null,
       comment_id: null,
       actor_id: actorId,
       actor_type: 'agent' as const,
@@ -571,7 +574,7 @@ describe('processEventAndRunAgents lifecycle session isolation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(agentInvocationsRepository.countRecentByTicketId as ReturnType<typeof vi.fn>).mockReturnValue(0)
-    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue(null)
+    ;(ticketsRepository._getInternal as ReturnType<typeof vi.fn>).mockReturnValue(null)
   })
 
   it('uses a fresh trigger session for cross-agent lifecycle handoff', async () => {
@@ -610,7 +613,7 @@ describe('processEventAndRunAgents lifecycle session isolation', () => {
   })
 
   it('should skip loop guard when loop_protection_enabled is false on ticket', async () => {
-    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue({
+    ;(ticketsRepository._getInternal as ReturnType<typeof vi.fn>).mockReturnValue({
       id: 42,
       triggers_enabled: true,
       loop_protection_enabled: false,
@@ -633,7 +636,7 @@ describe('processEventAndRunAgents lifecycle session isolation', () => {
   })
 
   it('should enforce loop guard when loop_protection_enabled is true on ticket', async () => {
-    ;(ticketsRepository.get as ReturnType<typeof vi.fn>).mockReturnValue({
+    ;(ticketsRepository._getInternal as ReturnType<typeof vi.fn>).mockReturnValue({
       id: 42,
       triggers_enabled: true,
       loop_protection_enabled: true,
@@ -4263,7 +4266,7 @@ describe('AGENTS.md system prompt injection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(existsSync).mockReturnValue(false)
-    vi.mocked(ticketsRepository.get).mockReturnValue(null)
+    vi.mocked(ticketsRepository._getInternal).mockReturnValue(null)
     vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
   })
 

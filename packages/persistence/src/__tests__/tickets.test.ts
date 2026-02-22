@@ -141,7 +141,7 @@ describe('ticketsRepository', () => {
    */
   describe('get', () => {
     it('should return null for non-existent ticket ID', () => {
-      const ticket = ticketsRepository.get(NON_EXISTENT_ID)
+      const ticket = ticketsRepository._getInternal(NON_EXISTENT_ID)
 
       expect(ticket, `ID ${NON_EXISTENT_ID} should not exist`).toBeNull()
     })
@@ -149,7 +149,7 @@ describe('ticketsRepository', () => {
     it('should return ticket by ID', () => {
       const created = ticketsRepository.create(TEST_TICKET)
 
-      const ticket = ticketsRepository.get(created.id)
+      const ticket = ticketsRepository._getInternal(created.id)
 
       expect(ticket).not.toBeNull()
       expect(ticket?.id).toBe(created.id)
@@ -817,7 +817,7 @@ describe('ticketsRepository', () => {
 
       expect(deleted, 'Delete should return true for existing ticket').toBe(true)
       expect(
-        ticketsRepository.get(ticket.id),
+        ticketsRepository._getInternal(ticket.id),
         'Ticket should not exist after delete'
       ).toBeNull()
     })
@@ -1192,7 +1192,7 @@ describe('ticketsRepository', () => {
         ticket_id: ticket.id,
         claimer_id: TEST_USER_ID,
       })
-      const claimedTicket = ticketsRepository.get(ticket.id)!
+      const claimedTicket = ticketsRepository._getInternal(ticket.id)!
       const activityAfterClaim = claimedTicket.last_activity_at
 
       const result = ticketsRepository.unclaim(ticket.id, TEST_USER_ID)
@@ -1211,7 +1211,7 @@ describe('ticketsRepository', () => {
         body: 'A comment',
       })
 
-      const updatedTicket = ticketsRepository.get(ticket.id)!
+      const updatedTicket = ticketsRepository._getInternal(ticket.id)!
       expect(updatedTicket.last_activity_at >= originalActivityAt).toBe(true)
     })
 
@@ -1251,13 +1251,13 @@ describe('ticketsRepository', () => {
 
   describe('getWithRelations', () => {
     it('should return null for non-existent ticket', () => {
-      const ticket = ticketsRepository.getWithRelations(NON_EXISTENT_ID)
+      const ticket = ticketsRepository._getInternalWithRelations(NON_EXISTENT_ID)
       expect(ticket).toBeNull()
     })
 
     it('should return ticket with resolved author profile', () => {
       const created = ticketsRepository.create(TEST_TICKET)
-      const ticket = ticketsRepository.getWithRelations(created.id)
+      const ticket = ticketsRepository._getInternalWithRelations(created.id)
 
       expect(ticket).not.toBeNull()
       expect(ticket!.author).toBeDefined()
@@ -1269,7 +1269,7 @@ describe('ticketsRepository', () => {
 
     it('should return null assignee when ticket has no assignee', () => {
       const created = ticketsRepository.create(TEST_TICKET)
-      const ticket = ticketsRepository.getWithRelations(created.id)
+      const ticket = ticketsRepository._getInternalWithRelations(created.id)
 
       expect(ticket!.assignee).toBeNull()
     })
@@ -1279,7 +1279,7 @@ describe('ticketsRepository', () => {
         ...TEST_TICKET,
         assignee_id: TEST_AGENT_ID,
       })
-      const ticket = ticketsRepository.getWithRelations(created.id)
+      const ticket = ticketsRepository._getInternalWithRelations(created.id)
 
       expect(ticket!.assignee).not.toBeNull()
       expect(ticket!.assignee!.id).toBe(TEST_AGENT_ID)
@@ -1295,7 +1295,7 @@ describe('ticketsRepository', () => {
       const created = ticketsRepository.create(TEST_TICKET)
       labelsRepository.addToTicket(created.id, label.id)
 
-      const ticket = ticketsRepository.getWithRelations(created.id)
+      const ticket = ticketsRepository._getInternalWithRelations(created.id)
 
       expect(ticket!.labels).toHaveLength(1)
       expect(ticket!.labels[0]!.name).toBe('bug')
@@ -1495,7 +1495,7 @@ describe('ticketsRepository', () => {
         'Should throw on FK constraint violation for non-existent updatedById'
       ).toThrow()
 
-      const afterAttempt = ticketsRepository.get(ticket.id)
+      const afterAttempt = ticketsRepository._getInternal(ticket.id)
       expect(afterAttempt?.title, 'Title should remain unchanged after rollback').toBe('Original title')
     })
   })
@@ -1600,13 +1600,13 @@ describe('ticketsRepository', () => {
 
     it('should include ticket_number in get()', () => {
       const created = ticketsRepository.create(TEST_TICKET)
-      const fetched = ticketsRepository.get(created.id)
+      const fetched = ticketsRepository._getInternal(created.id)
       expect(fetched?.ticket_number).toBe(1)
     })
 
     it('should include ticket_number in getWithRelations()', () => {
       const created = ticketsRepository.create(TEST_TICKET)
-      const fetched = ticketsRepository.getWithRelations(created.id)
+      const fetched = ticketsRepository._getInternalWithRelations(created.id)
       expect(fetched?.ticket_number).toBe(1)
     })
 

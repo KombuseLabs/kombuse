@@ -19,18 +19,18 @@ import {
 export function useLabelOperations() {
   const { currentTicket, currentProjectId } = useAppContext()
 
-  const ticketId = currentTicket?.id ?? 0
   const projectId = currentProjectId ?? ''
+  const ticketNumber = currentTicket?.ticket_number ?? 0
 
   // Queries
   const { data: projectLabels, isLoading: isLoadingProject } =
     useProjectLabels(projectId)
   const { data: ticketLabels, isLoading: isLoadingTicket } =
-    useTicketLabels(ticketId)
+    useTicketLabels(projectId, ticketNumber)
 
   // Mutations
-  const addMutation = useAddLabelToTicket(ticketId)
-  const removeMutation = useRemoveLabelFromTicket(ticketId)
+  const addMutation = useAddLabelToTicket(projectId, ticketNumber)
+  const removeMutation = useRemoveLabelFromTicket(projectId, ticketNumber)
   const createMutation = useCreateLabel(projectId)
   const updateMutation = useUpdateLabel(projectId)
   const deleteMutation = useDeleteLabel(projectId)

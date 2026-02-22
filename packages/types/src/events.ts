@@ -13,6 +13,7 @@ export interface Event {
   event_type: string
   project_id: string | null
   ticket_id: number | null
+  ticket_number: number | null
   comment_id: number | null
   actor_id: string | null
   actor_type: ActorType

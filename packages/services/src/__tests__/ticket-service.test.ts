@@ -49,7 +49,7 @@ describe('ticketService', () => {
     cleanup()
   })
 
-  describe('getWithRelations - loop_protection_tripped', () => {
+  describe('getByNumberWithRelations - loop_protection_tripped', () => {
     it('should set loop_protection_tripped to false when no invocations exist', () => {
       const ticket = ticketsRepository.create({
         project_id: TEST_PROJECT_ID,
@@ -57,7 +57,7 @@ describe('ticketService', () => {
         title: 'Test ticket',
       })
 
-      const result = ticketService.getWithRelations(ticket.id)
+      const result = ticketService.getByNumberWithRelations(TEST_PROJECT_ID, ticket.ticket_number)
       expect(result).not.toBeNull()
       expect(result!.loop_protection_tripped).toBe(false)
     })
@@ -77,7 +77,7 @@ describe('ticketService', () => {
         })
       }
 
-      const result = ticketService.getWithRelations(ticket.id)
+      const result = ticketService.getByNumberWithRelations(TEST_PROJECT_ID, ticket.ticket_number)
       expect(result!.loop_protection_tripped).toBe(false)
     })
 
@@ -96,7 +96,7 @@ describe('ticketService', () => {
         })
       }
 
-      const result = ticketService.getWithRelations(ticket.id)
+      const result = ticketService.getByNumberWithRelations(TEST_PROJECT_ID, ticket.ticket_number)
       expect(result!.loop_protection_tripped).toBe(true)
     })
 
@@ -116,7 +116,7 @@ describe('ticketService', () => {
         })
       }
 
-      const result = ticketService.getWithRelations(ticket.id)
+      const result = ticketService.getByNumberWithRelations(TEST_PROJECT_ID, ticket.ticket_number)
       expect(result!.loop_protection_tripped).toBeUndefined()
     })
   })

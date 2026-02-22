@@ -286,8 +286,8 @@ export const commentsRepository = {
 
     // Get project_id from ticket for event logging
     const ticket = db
-      .prepare('SELECT project_id FROM tickets WHERE id = ?')
-      .get(input.ticket_id) as { project_id: string } | undefined
+      .prepare('SELECT project_id, ticket_number FROM tickets WHERE id = ?')
+      .get(input.ticket_id) as { project_id: string; ticket_number: number } | undefined
 
     const createComment = db.transaction((payload: CreateCommentInput) => {
       // 1. Insert the comment
@@ -404,23 +404,23 @@ export const commentsRepository = {
       }
 
       // 4. Resolve ticket mentions
-      // Try project-scoped ticket_number first, then fall back to global ID
+      // Resolve by ticket_number within the parent ticket's project only (#555)
       for (const mentionedNumber of mentions.ticketIds) {
-        let mentionedTicket: { id: number; project_id: string } | undefined
+        let mentionedTicket: { id: number; project_id: string; ticket_number: number } | undefined
 
-        // First: try matching by ticket_number within the parent ticket's project
+        // Resolve by ticket_number within the parent ticket's project
         if (ticket?.project_id) {
           mentionedTicket = db
-            .prepare('SELECT id, project_id FROM tickets WHERE project_id = ? AND ticket_number = ?')
-            .get(ticket.project_id, mentionedNumber) as { id: number; project_id: string } | undefined
+            .prepare('SELECT id, project_id, ticket_number FROM tickets WHERE project_id = ? AND ticket_number = ?')
+            .get(ticket.project_id, mentionedNumber) as { id: number; project_id: string; ticket_number: number } | undefined
         }
 
-        // Fallback: match by global ticket ID (backward compatibility)
-        if (!mentionedTicket) {
-          mentionedTicket = db
-            .prepare('SELECT id, project_id FROM tickets WHERE id = ?')
-            .get(mentionedNumber) as { id: number; project_id: string } | undefined
-        }
+        // COMMENTED OUT — ticket #555: no global ID fallback
+        // if (!mentionedTicket) {
+        //   mentionedTicket = db
+        //     .prepare('SELECT id, project_id FROM tickets WHERE id = ?')
+        //     .get(mentionedNumber) as { id: number; project_id: string } | undefined
+        // }
 
         if (!mentionedTicket) {
           continue
@@ -446,7 +446,9 @@ export const commentsRepository = {
           payload: {
             mention_type: 'ticket',
             mentioned_ticket_id: mentionedTicketId,
-            mention_text: `#${mentionedTicketId}`,
+            mentioned_ticket_project_id: mentionedTicket.project_id,
+            mentioned_ticket_number: mentionedTicket.ticket_number,
+            mention_text: `#${mentionedTicket.ticket_number}`,
             comment_body: payload.body,
           },
         })
@@ -476,8 +478,10 @@ export const commentsRepository = {
               payload: {
                 mention_type: 'ticket_cross_reference',
                 source_ticket_id: payload.ticket_id,
+                source_ticket_project_id: ticket?.project_id,
+                source_ticket_number: ticket?.ticket_number,
                 source_comment_id: commentId,
-                mention_text: `#${payload.ticket_id}`,
+                mention_text: `#${ticket?.ticket_number ?? payload.ticket_id}`,
               },
             })
           }
@@ -570,8 +574,8 @@ export const commentsRepository = {
           .get(id) as { ticket_id: number } | undefined
         const ticket = comment
           ? (db
-              .prepare('SELECT project_id FROM tickets WHERE id = ?')
-              .get(comment.ticket_id) as { project_id: string } | undefined)
+              .prepare('SELECT project_id, ticket_number FROM tickets WHERE id = ?')
+              .get(comment.ticket_id) as { project_id: string; ticket_number: number } | undefined)
           : undefined
 
         // Create new mention records (new format, by ID, with slug fallback)
@@ -641,8 +645,8 @@ export const commentsRepository = {
             if (mentionedTicketId === comment.ticket_id) continue
 
             const mentionedTicketInfo = db
-              .prepare('SELECT id, project_id FROM tickets WHERE id = ?')
-              .get(mentionedTicketId) as { id: number; project_id: string } | undefined
+              .prepare('SELECT id, project_id, ticket_number FROM tickets WHERE id = ?')
+              .get(mentionedTicketId) as { id: number; project_id: string; ticket_number: number } | undefined
 
             if (!mentionedTicketInfo) continue
 
@@ -670,8 +674,10 @@ export const commentsRepository = {
               payload: {
                 mention_type: 'ticket_cross_reference',
                 source_ticket_id: comment.ticket_id,
+                source_ticket_project_id: ticket?.project_id,
+                source_ticket_number: ticket?.ticket_number,
                 source_comment_id: id,
-                mention_text: `#${comment.ticket_id}`,
+                mention_text: `#${ticket?.ticket_number ?? comment.ticket_id}`,
               },
             })
           }

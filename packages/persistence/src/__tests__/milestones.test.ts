@@ -335,7 +335,7 @@ describe('milestonesRepository', () => {
       })
 
       // Verify ticket has milestone
-      const beforeDelete = ticketsRepository.get(ticket.id)
+      const beforeDelete = ticketsRepository._getInternal(ticket.id)
       expect(
         beforeDelete?.milestone_id,
         'Ticket should have milestone_id before delete'
@@ -343,7 +343,7 @@ describe('milestonesRepository', () => {
 
       milestonesRepository.delete(milestone.id)
 
-      const afterDelete = ticketsRepository.get(ticket.id)
+      const afterDelete = ticketsRepository._getInternal(ticket.id)
       expect(
         afterDelete,
         'Ticket should still exist'

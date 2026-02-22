@@ -145,18 +145,19 @@ export const ticketsApi = {
     return handleResponse<TicketWithLabels[]>(response)
   },
 
-  async get(id: number): Promise<TicketWithRelations> {
-    const response = await fetch(`${API_BASE}/tickets/${id}`)
-    return handleResponse<TicketWithRelations>(response)
-  },
+  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+  // async get(id: number): Promise<TicketWithRelations> {
+  //   const response = await fetch(`${API_BASE}/tickets/${id}`)
+  //   return handleResponse<TicketWithRelations>(response)
+  // },
 
   async getByNumber(projectId: string, ticketNumber: number): Promise<TicketWithRelations> {
     const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}`)
     return handleResponse<TicketWithRelations>(response)
   },
 
-  async markViewed(id: number, profileId: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/tickets/${id}/view`, {
+  async markViewed(projectId: string, ticketNumber: number, profileId: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/view`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profile_id: profileId }),
@@ -173,8 +174,8 @@ export const ticketsApi = {
     return handleResponse<Ticket>(response)
   },
 
-  async update(id: number, input: UpdateTicketInput): Promise<Ticket> {
-    const response = await fetch(`${API_BASE}/tickets/${id}`, {
+  async update(projectId: string, ticketNumber: number, input: UpdateTicketInput): Promise<Ticket> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -182,8 +183,8 @@ export const ticketsApi = {
     return handleResponse<Ticket>(response)
   },
 
-  async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/tickets/${id}`, {
+  async delete(projectId: string, ticketNumber: number): Promise<void> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
@@ -201,21 +202,22 @@ export const commentsApi = {
     return handleResponse<CommentWithAuthor>(response)
   },
 
-  async list(ticketId: number, filters?: CommentFilters): Promise<CommentWithAuthor[]> {
+  async list(projectId: string, ticketNumber: number, filters?: CommentFilters): Promise<CommentWithAuthor[]> {
     const params = new URLSearchParams()
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
-    const url = `${API_BASE}/tickets/${ticketId}/comments${params.toString() ? `?${params}` : ''}`
+    const url = `${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/comments${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<CommentWithAuthor[]>(response)
   },
 
   async create(
-    ticketId: number,
+    projectId: string,
+    ticketNumber: number,
     input: Omit<CreateCommentInput, 'ticket_id'>
   ): Promise<CommentWithAuthor> {
-    const response = await fetch(`${API_BASE}/tickets/${ticketId}/comments`, {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -253,18 +255,19 @@ export const labelsApi = {
     return handleResponse<Label[]>(response)
   },
 
-  async getTicketLabels(ticketId: number): Promise<Label[]> {
-    const response = await fetch(`${API_BASE}/tickets/${ticketId}/labels`)
+  async getTicketLabels(projectId: string, ticketNumber: number): Promise<Label[]> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels`)
     return handleResponse<Label[]>(response)
   },
 
   async addToTicket(
-    ticketId: number,
+    projectId: string,
+    ticketNumber: number,
     labelId: number,
     addedById?: string
   ): Promise<void> {
     const response = await fetch(
-      `${API_BASE}/tickets/${ticketId}/labels/${labelId}`,
+      `${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels/${labelId}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -274,9 +277,9 @@ export const labelsApi = {
     await handleEmptyResponse(response)
   },
 
-  async removeFromTicket(ticketId: number, labelId: number, removedById?: string): Promise<void> {
+  async removeFromTicket(projectId: string, ticketNumber: number, labelId: number, removedById?: string): Promise<void> {
     const response = await fetch(
-      `${API_BASE}/tickets/${ticketId}/labels/${labelId}`,
+      `${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels/${labelId}`,
       {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -601,8 +604,8 @@ export const databaseApi = {
 }
 
 export const timelineApi = {
-  async getTicketTimeline(ticketId: number): Promise<TicketTimeline> {
-    const response = await fetch(`${API_BASE}/tickets/${ticketId}/timeline`)
+  async getTicketTimeline(projectId: string, ticketNumber: number): Promise<TicketTimeline> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/timeline`)
     return handleResponse<TicketTimeline>(response)
   },
 }
@@ -713,16 +716,16 @@ export const attachmentsApi = {
     return handleResponse<Attachment>(response)
   },
 
-  async listByTicket(ticketId: number): Promise<Attachment[]> {
-    const response = await fetch(`${API_BASE}/tickets/${ticketId}/attachments`)
+  async listByTicket(projectId: string, ticketNumber: number): Promise<Attachment[]> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/attachments`)
     return handleResponse<Attachment[]>(response)
   },
 
-  async uploadToTicket(ticketId: number, file: File, uploadedById: string): Promise<Attachment> {
+  async uploadToTicket(projectId: string, ticketNumber: number, file: File, uploadedById: string): Promise<Attachment> {
     const formData = new FormData()
     formData.append('uploaded_by_id', uploadedById)
     formData.append('file', file)
-    const response = await fetch(`${API_BASE}/tickets/${ticketId}/attachments`, {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/attachments`, {
       method: 'POST',
       body: formData,
     })

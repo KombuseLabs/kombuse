@@ -10,45 +10,45 @@ export function useComment(id: number) {
   })
 }
 
-export function useComments(ticketId: number, filters?: CommentFilters) {
+export function useComments(projectId: string, ticketNumber: number, filters?: CommentFilters) {
   return useQuery({
-    queryKey: ['comments', ticketId, filters],
-    queryFn: () => commentsApi.list(ticketId, filters),
-    enabled: ticketId > 0,
+    queryKey: ['comments', projectId, ticketNumber, filters],
+    queryFn: () => commentsApi.list(projectId, ticketNumber, filters),
+    enabled: !!projectId && ticketNumber > 0,
   })
 }
 
-export function useCreateComment(ticketId: number) {
+export function useCreateComment(projectId: string, ticketNumber: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: Omit<CreateCommentInput, 'ticket_id'>) =>
-      commentsApi.create(ticketId, input),
+      commentsApi.create(projectId, ticketNumber, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', ticketId] })
-      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['comments', projectId, ticketNumber] })
+      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', projectId, ticketNumber] })
     },
   })
 }
 
-export function useUpdateComment(ticketId: number) {
+export function useUpdateComment(projectId: string, ticketNumber: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, input }: { id: number; input: UpdateCommentInput }) =>
       commentsApi.update(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', ticketId] })
-      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['comments', projectId, ticketNumber] })
+      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', projectId, ticketNumber] })
     },
   })
 }
 
-export function useDeleteComment(ticketId: number) {
+export function useDeleteComment(projectId: string, ticketNumber: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => commentsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', ticketId] })
-      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['comments', projectId, ticketNumber] })
+      queryClient.invalidateQueries({ queryKey: ['ticket-timeline', projectId, ticketNumber] })
     },
   })
 }

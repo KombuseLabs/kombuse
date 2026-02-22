@@ -200,7 +200,7 @@ function toAttachmentMetaWithPath(attachment: Attachment) {
 }
 
 function buildTicketSummary(
-  ticket: NonNullable<ReturnType<typeof ticketsRepository.getWithRelations>>,
+  ticket: NonNullable<ReturnType<typeof ticketsRepository._getInternalWithRelations>>,
   bodyPreviewChars: number,
   includeFullBody: boolean
 ) {
@@ -438,11 +438,15 @@ export function registerTicketTools(server: McpServer): void {
       description:
         'Get a ticket by ID with a hard byte cap (25,000 UTF-8 bytes). Supports overview, filtered comments, and image attachment metadata (file paths only).',
       inputSchema: {
-        ticket_id: z
+        project_id: z
+          .string()
+          .min(1)
+          .describe('The project ID'),
+        ticket_number: z
           .number()
           .int()
           .positive()
-          .describe('The ID of the ticket to retrieve'),
+          .describe('The per-project ticket number'),
         kombuse_session_id: z
           .string()
           .optional()
@@ -451,7 +455,7 @@ export function registerTicketTools(server: McpServer): void {
           .describe('Optional sections and comment filters'),
       },
     },
-    async ({ ticket_id, kombuse_session_id, config }) => {
+    async ({ project_id, ticket_number, kombuse_session_id, config }) => {
       const agentContext = resolveAgentContext(kombuse_session_id)
       const callerAgentType = typeof agentContext?.agent.config?.type === 'string'
         ? agentContext.agent.config.type
@@ -467,14 +471,14 @@ export function registerTicketTools(server: McpServer): void {
       const ticketBodyPreviewChars = config?.ticket_body_preview_chars ?? DEFAULT_TICKET_BODY_PREVIEW_CHARS
       const parsedFilters = parseGetTicketCommentFilters(config)
 
-      const ticket = ticketsRepository.getWithRelations(ticket_id)
+      const ticket = ticketsRepository.getByNumberWithRelations(project_id, ticket_number)
 
       if (!ticket) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify({ error: `Ticket ${ticket_id} not found` }),
+              text: JSON.stringify({ error: `Ticket #${ticket_number} not found in project ${project_id}` }),
             },
           ],
           isError: true,
@@ -486,7 +490,7 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       const allOverviewComments = includeOverview
-        ? commentsRepository.getByTicket(ticket_id).slice().reverse()
+        ? commentsRepository.getByTicket(ticket.id).slice().reverse()
         : []
       const agentTypeCache = new Map<string, string | null>()
 
@@ -556,7 +560,7 @@ export function registerTicketTools(server: McpServer): void {
 
       const commentsRequested = includeComments || includeImages
       const commentFilterBase: CommentFilters = {
-        ticket_id,
+        ticket_id: ticket.id,
         author_ids: parsedFilters.authorIds ? [...parsedFilters.authorIds] : undefined,
         actor_types: parsedFilters.actorTypes ? [...parsedFilters.actorTypes] : undefined,
         agent_types: parsedFilters.agentTypes ? [...parsedFilters.agentTypes] : undefined,
@@ -605,8 +609,8 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       if (includeImages) {
-        const ticketAttachments = attachmentsRepository.getByTicket(ticket_id)
-        const attachmentsByComment = attachmentsRepository.getByTicketComments(ticket_id)
+        const ticketAttachments = attachmentsRepository.getByTicket(ticket.id)
+        const attachmentsByComment = attachmentsRepository.getByTicketComments(ticket.id)
 
         response.ticket_attachments = ticketAttachments
           .filter(isImageAttachment)
@@ -770,11 +774,15 @@ export function registerTicketTools(server: McpServer): void {
       description:
         'Add a comment to a ticket. The comment body supports @profile and #ticket mentions which are automatically parsed. Returns the created comment.',
       inputSchema: {
-        ticket_id: z
+        project_id: z
+          .string()
+          .min(1)
+          .describe('The project ID'),
+        ticket_number: z
           .number()
           .int()
           .positive()
-          .describe('The ID of the ticket to comment on'),
+          .describe('The per-project ticket number'),
         body: z
           .string()
           .min(1)
@@ -791,15 +799,15 @@ export function registerTicketTools(server: McpServer): void {
           .describe('Optional session ID linking this comment to the agent session that created it'),
       },
     },
-    async ({ ticket_id, body, parent_id, kombuse_session_id }) => {
+    async ({ project_id, ticket_number, body, parent_id, kombuse_session_id }) => {
       // Verify ticket exists first
-      const ticket = ticketsRepository.get(ticket_id)
+      const ticket = ticketsRepository.getByNumber(project_id, ticket_number)
       if (!ticket) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify({ error: `Ticket ${ticket_id} not found` }),
+              text: JSON.stringify({ error: `Ticket #${ticket_number} not found in project ${project_id}` }),
             },
           ],
           isError: true,
@@ -822,7 +830,7 @@ export function registerTicketTools(server: McpServer): void {
           type: 'resource',
           resource: 'comment',
           action: 'create',
-          resourceId: ticket_id,
+          resourceId: ticket.id,
           projectId: ticket.project_id,
         })
         if (!result.allowed) {
@@ -836,7 +844,7 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       const comment = commentsRepository.create({
-        ticket_id,
+        ticket_id: ticket.id,
         author_id: authorId,
         body,
         parent_id,
@@ -925,7 +933,7 @@ export function registerTicketTools(server: McpServer): void {
         loop_protection_enabled: loop_protection_enabled ?? true,
       })
 
-      const ticketWithRelations = ticketsRepository.getWithRelations(ticket.id)
+      const ticketWithRelations = ticketsRepository._getInternalWithRelations(ticket.id)
 
       return {
         content: [
@@ -971,7 +979,7 @@ export function registerTicketTools(server: McpServer): void {
         }
       }
 
-      const ticket = ticketsRepository.get(existing.ticket_id)
+      const ticket = ticketsRepository._getInternal(existing.ticket_id)
 
       // Enforce permissions for agent callers
       const agentContext = resolveAgentContext(kombuse_session_id)
@@ -1234,11 +1242,15 @@ export function registerTicketTools(server: McpServer): void {
       description:
         'Update a ticket. Can change title, body, status, priority, assignee, and add/remove labels — all in a single call. Returns the updated ticket with its current labels.',
       inputSchema: {
-        ticket_id: z
+        project_id: z
+          .string()
+          .min(1)
+          .describe('The project ID'),
+        ticket_number: z
           .number()
           .int()
           .positive()
-          .describe('The ID of the ticket to update'),
+          .describe('The per-project ticket number'),
         title: z
           .string()
           .min(1)
@@ -1278,14 +1290,14 @@ export function registerTicketTools(server: McpServer): void {
           .describe('Optional session ID for actor resolution'),
       },
     },
-    async ({ ticket_id, title, body, status, priority, assignee_id, add_label_ids, remove_label_ids, kombuse_session_id }) => {
-      const ticket = ticketsRepository.get(ticket_id)
+    async ({ project_id, ticket_number, title, body, status, priority, assignee_id, add_label_ids, remove_label_ids, kombuse_session_id }) => {
+      const ticket = ticketsRepository.getByNumber(project_id, ticket_number)
       if (!ticket) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify({ error: `Ticket ${ticket_id} not found` }),
+              text: JSON.stringify({ error: `Ticket #${ticket_number} not found in project ${project_id}` }),
             },
           ],
           isError: true,
@@ -1308,7 +1320,7 @@ export function registerTicketTools(server: McpServer): void {
             type: 'resource',
             resource: 'ticket.status',
             action: 'update',
-            resourceId: ticket_id,
+            resourceId: ticket.id,
             projectId: ticket.project_id,
           })
           if (!result.allowed) {
@@ -1321,7 +1333,7 @@ export function registerTicketTools(server: McpServer): void {
             type: 'resource',
             resource: 'ticket.labels',
             action: 'delete',
-            resourceId: ticket_id,
+            resourceId: ticket.id,
             projectId: ticket.project_id,
           })
           if (!result.allowed) {
@@ -1334,7 +1346,7 @@ export function registerTicketTools(server: McpServer): void {
             type: 'resource',
             resource: 'ticket.labels',
             action: 'update',
-            resourceId: ticket_id,
+            resourceId: ticket.id,
             projectId: ticket.project_id,
           })
           if (!result.allowed) {
@@ -1347,7 +1359,7 @@ export function registerTicketTools(server: McpServer): void {
             type: 'resource',
             resource: 'ticket',
             action: 'update',
-            resourceId: ticket_id,
+            resourceId: ticket.id,
             projectId: ticket.project_id,
           })
           if (!result.allowed) {
@@ -1370,25 +1382,25 @@ export function registerTicketTools(server: McpServer): void {
       if (assignee_id !== undefined) updateInput.assignee_id = assignee_id
 
       if (Object.keys(updateInput).length > 0) {
-        ticketsRepository.update(ticket_id, updateInput, actorId)
+        ticketsRepository.update(ticket.id, updateInput, actorId)
       }
 
       // Add labels
       if (add_label_ids) {
         for (const labelId of add_label_ids) {
-          labelsRepository.addToTicket(ticket_id, labelId, actorId)
+          labelsRepository.addToTicket(ticket.id, labelId, actorId)
         }
       }
 
       // Remove labels
       if (remove_label_ids) {
         for (const labelId of remove_label_ids) {
-          labelsRepository.removeFromTicket(ticket_id, labelId, actorId)
+          labelsRepository.removeFromTicket(ticket.id, labelId, actorId)
         }
       }
 
       // Return updated state
-      const updatedTicket = ticketsRepository.getWithRelations(ticket_id)!
+      const updatedTicket = ticketsRepository._getInternalWithRelations(ticket.id)!
 
       return {
         content: [

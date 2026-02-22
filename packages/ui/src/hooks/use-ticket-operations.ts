@@ -17,7 +17,7 @@ export function useTicketOperations() {
 
   const deleteCurrentTicket = useCallback(async () => {
     if (!currentTicket) return
-    await deleteMutation.mutateAsync(currentTicket.id)
+    await deleteMutation.mutateAsync({ projectId: currentTicket.project_id, ticketNumber: currentTicket.ticket_number })
     setCurrentTicket(null)
   }, [currentTicket, deleteMutation, setCurrentTicket])
 
@@ -25,7 +25,8 @@ export function useTicketOperations() {
     async (input: UpdateTicketInput) => {
       if (!currentTicket) return
       const updated = await updateMutation.mutateAsync({
-        id: currentTicket.id,
+        projectId: currentTicket.project_id,
+        ticketNumber: currentTicket.ticket_number,
         input: { ...input, updated_by_id: 'user-1' },
       })
       setCurrentTicket(updated)

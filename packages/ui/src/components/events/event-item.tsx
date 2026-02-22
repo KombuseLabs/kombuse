@@ -170,10 +170,11 @@ function EventItem({ event, className }: EventItemProps) {
             )}
           </Badge>
 
-          {event.ticket_id && (
+          {event.ticket_id && event.project_id && event.ticket_number && (
             <TicketMentionChip
               variant="inline"
-              ticketId={event.ticket_id}
+              projectId={event.project_id}
+              ticketNumber={event.ticket_number}
             />
           )}
 

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { commentService } from '@kombuse/services'
+import { commentService, ticketService } from '@kombuse/services'
 import {
   createCommentSchema,
   updateCommentSchema,
@@ -7,13 +7,18 @@ import {
 } from '../schemas/comments'
 
 export async function commentRoutes(fastify: FastifyInstance) {
-  // List comments for a ticket
+  // List comments for a ticket by project-scoped number
   fastify.get<{
-    Params: { ticketId: string }
-  }>('/tickets/:ticketId/comments', async (request, reply) => {
-    const ticketId = parseInt(request.params.ticketId, 10)
-    if (isNaN(ticketId)) {
-      return reply.status(400).send({ error: 'Invalid ticket ID' })
+    Params: { projectId: string; number: string }
+  }>('/projects/:projectId/tickets/by-number/:number/comments', async (request, reply) => {
+    const ticketNumber = parseInt(request.params.number, 10)
+    if (isNaN(ticketNumber) || ticketNumber < 1) {
+      return reply.status(400).send({ error: 'Invalid ticket number' })
+    }
+
+    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
+    if (!ticket) {
+      return reply.status(404).send({ error: 'Ticket not found' })
     }
 
     const parseResult = commentFiltersSchema.safeParse(request.query)
@@ -22,10 +27,25 @@ export async function commentRoutes(fastify: FastifyInstance) {
     }
 
     return commentService.list({
-      ticket_id: ticketId,
+      ticket_id: ticket.id,
       ...parseResult.data,
     })
   })
+
+  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+  // fastify.get<{
+  //   Params: { ticketId: string }
+  // }>('/tickets/:ticketId/comments', async (request, reply) => {
+  //   const ticketId = parseInt(request.params.ticketId, 10)
+  //   if (isNaN(ticketId)) {
+  //     return reply.status(400).send({ error: 'Invalid ticket ID' })
+  //   }
+  //   const parseResult = commentFiltersSchema.safeParse(request.query)
+  //   if (!parseResult.success) {
+  //     return reply.status(400).send({ error: parseResult.error.issues })
+  //   }
+  //   return commentService.list({ ticket_id: ticketId, ...parseResult.data })
+  // })
 
   // Get single comment
   fastify.get<{
@@ -43,13 +63,18 @@ export async function commentRoutes(fastify: FastifyInstance) {
     return comment
   })
 
-  // Create comment on a ticket
+  // Create comment on a ticket by project-scoped number
   fastify.post<{
-    Params: { ticketId: string }
-  }>('/tickets/:ticketId/comments', async (request, reply) => {
-    const ticketId = parseInt(request.params.ticketId, 10)
-    if (isNaN(ticketId)) {
-      return reply.status(400).send({ error: 'Invalid ticket ID' })
+    Params: { projectId: string; number: string }
+  }>('/projects/:projectId/tickets/by-number/:number/comments', async (request, reply) => {
+    const ticketNumber = parseInt(request.params.number, 10)
+    if (isNaN(ticketNumber) || ticketNumber < 1) {
+      return reply.status(400).send({ error: 'Invalid ticket number' })
+    }
+
+    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
+    if (!ticket) {
+      return reply.status(404).send({ error: 'Ticket not found' })
     }
 
     const parseResult = createCommentSchema.safeParse(request.body)
@@ -58,11 +83,27 @@ export async function commentRoutes(fastify: FastifyInstance) {
     }
 
     const comment = commentService.create({
-      ticket_id: ticketId,
+      ticket_id: ticket.id,
       ...parseResult.data,
     })
     return reply.status(201).send(comment)
   })
+
+  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
+  // fastify.post<{
+  //   Params: { ticketId: string }
+  // }>('/tickets/:ticketId/comments', async (request, reply) => {
+  //   const ticketId = parseInt(request.params.ticketId, 10)
+  //   if (isNaN(ticketId)) {
+  //     return reply.status(400).send({ error: 'Invalid ticket ID' })
+  //   }
+  //   const parseResult = createCommentSchema.safeParse(request.body)
+  //   if (!parseResult.success) {
+  //     return reply.status(400).send({ error: parseResult.error.issues })
+  //   }
+  //   const comment = commentService.create({ ticket_id: ticketId, ...parseResult.data })
+  //   return reply.status(201).send(comment)
+  // })
 
   // Update comment
   fastify.patch<{
