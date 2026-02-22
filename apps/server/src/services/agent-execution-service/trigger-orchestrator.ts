@@ -47,7 +47,7 @@ function buildTriggerPrompt(
 
   lines.push(
     `Event: ${event.event_type}`,
-    `Ticket: #${event.ticket_id ?? 'N/A'}`,
+    `Ticket: #${event.ticket_number ?? event.ticket_id ?? 'N/A'}`,
     `Project: ${event.project_id ?? 'N/A'}`,
     '',
     'Payload:',

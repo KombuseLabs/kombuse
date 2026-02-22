@@ -29,6 +29,7 @@ export function buildTemplateContext(event: Event): TemplateContext {
   const context: TemplateContext = {
     event_type: event.event_type,
     ticket_id: event.ticket_id,
+    ticket_number: event.ticket_number,
     project_id: event.project_id,
     comment_id: event.comment_id,
     actor_id: event.actor_id,

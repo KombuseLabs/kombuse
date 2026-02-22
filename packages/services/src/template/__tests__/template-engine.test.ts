@@ -6,6 +6,7 @@ describe('renderTemplate', () => {
   const baseContext: TemplateContext = {
     event_type: 'ticket.created',
     ticket_id: 123,
+    ticket_number: 5,
     project_id: 'proj-abc',
     comment_id: null,
     actor_id: 'user-alice',
@@ -17,6 +18,12 @@ describe('renderTemplate', () => {
     const template = 'Ticket #{{ ticket_id }} was created'
     const result = renderTemplate(template, baseContext)
     expect(result).toBe('Ticket #123 was created')
+  })
+
+  it('should render ticket_number variable', () => {
+    const template = 'You are working on ticket #{{ ticket_number }} in project {{ project_id }}.'
+    const result = renderTemplate(template, baseContext)
+    expect(result).toBe('You are working on ticket #5 in project proj-abc.')
   })
 
   it('should render nested payload access', () => {

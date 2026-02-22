@@ -622,10 +622,10 @@ export function startAgentChatSession(
   }
 
   const ticketId = options?.ticketId ?? existingSession?.ticket_id ?? undefined
-  const ticketTitle =
-    typeof ticketId === 'number'
-      ? ticketsRepository._getInternal(ticketId)?.title ?? undefined
-      : undefined
+  const ticketRecord = typeof ticketId === 'number'
+    ? ticketsRepository._getInternal(ticketId) ?? undefined
+    : undefined
+  const ticketTitle = ticketRecord?.title
   const resumeSessionId =
     typeof existingSession?.backend_session_id === 'string' &&
     existingSession.backend_session_id.trim().length > 0
@@ -914,6 +914,7 @@ export function startAgentChatSession(
     const preambleContext = {
       event_type: '',
       ticket_id: ticketId ?? null,
+      ticket_number: ticketRecord?.ticket_number ?? null,
       project_id: effectiveProjectId ?? null,
       comment_id: null,
       actor_id: null,

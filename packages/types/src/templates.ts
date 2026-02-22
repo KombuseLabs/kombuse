@@ -14,6 +14,8 @@ export interface TemplateContext {
   event_type: string
   /** Ticket ID if available */
   ticket_id: number | null
+  /** Per-project ticket number (user-facing) */
+  ticket_number: number | null
   /** Project ID if available */
   project_id: string | null
   /** Comment ID if available */

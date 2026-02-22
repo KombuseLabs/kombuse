@@ -41,7 +41,7 @@ const READ_TOOLS: string[] = ['Grep', 'Glob', 'Read']
  * Shared preamble section for ticket-aware agents (kombuse tools, communication model, ticket context).
  * Composed into type-specific preamble templates below.
  */
-const SHARED_PREAMBLE_SECTION = `You are working on ticket #{{ ticket_id }}{% if ticket %}: "{{ ticket.title }}"{% endif %}.
+const SHARED_PREAMBLE_SECTION = `You are working on ticket #{{ ticket_number }}{% if ticket %}: "{{ ticket.title }}"{% endif %} in project {{ project_id }}.
 
 ## Tool Usage
 - Use Glob (not \`find\`) for file pattern matching
@@ -69,7 +69,7 @@ You have these MCP tools for ticket communication:
 
 ## Communication
 - Tickets are the primary coordination channel. Read the ticket and all comments before acting.
-- Post your results as a comment on #{{ ticket_id }} using add_comment.
+- Post your results as a comment on #{{ ticket_number }} using add_comment.
 - If you discover unrelated issues, use create_ticket rather than scope-creeping.
 - If the ticket cross-references other tickets (#NNN), read them for context.
 
@@ -90,7 +90,7 @@ You have these MCP tools for ticket communication:
 - CRITICAL: The @[Name](id) syntax is a system trigger — it WILL invoke that agent. 
   - NEVER use @[Name](id) syntax to refer to an agent unless you intend to trigger it and starting agents is EXPLICITLY part of your assigned workflow and task for the ticket. 
   - Instead write their name as plain text (e.g. "the Ticket Analyzer" or "Ticket Analyzer"). 
-- To reference a ticket: #123 (uses global ticket ID; per-project numbers are shown in the UI)
+- To reference a ticket: #123 (per-project ticket number)
 - The legacy @single-word format also works but only for single-word profile IDs
 - IMPORTANT: Avoid #N in numbered lists or non-ticket contexts — the system parses #NNN as a ticket link. Use "item 6" or "step 6" instead of "#6".
 {% if agents and agents.length > 0 %}
