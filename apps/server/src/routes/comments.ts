@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
-import { commentService, ticketService } from '@kombuse/services'
+import { commentService } from '@kombuse/services'
+import { resolveTicketId } from '@kombuse/persistence'
 import {
   createCommentSchema,
   updateCommentSchema,
@@ -16,36 +17,24 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket number' })
     }
 
-    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
-    if (!ticket) {
-      return reply.status(404).send({ error: 'Ticket not found' })
-    }
-
     const parseResult = commentFiltersSchema.safeParse(request.query)
     if (!parseResult.success) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return commentService.list({
-      ticket_id: ticket.id,
-      ...parseResult.data,
-    })
+    try {
+      const ticketId = resolveTicketId(request.params.projectId, ticketNumber)
+      return commentService.list({
+        ticket_id: ticketId,
+        ...parseResult.data,
+      })
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Ticket not found' })
+      }
+      throw error
+    }
   })
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // fastify.get<{
-  //   Params: { ticketId: string }
-  // }>('/tickets/:ticketId/comments', async (request, reply) => {
-  //   const ticketId = parseInt(request.params.ticketId, 10)
-  //   if (isNaN(ticketId)) {
-  //     return reply.status(400).send({ error: 'Invalid ticket ID' })
-  //   }
-  //   const parseResult = commentFiltersSchema.safeParse(request.query)
-  //   if (!parseResult.success) {
-  //     return reply.status(400).send({ error: parseResult.error.issues })
-  //   }
-  //   return commentService.list({ ticket_id: ticketId, ...parseResult.data })
-  // })
 
   // Get single comment
   fastify.get<{
@@ -72,38 +61,25 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket number' })
     }
 
-    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
-    if (!ticket) {
-      return reply.status(404).send({ error: 'Ticket not found' })
-    }
-
     const parseResult = createCommentSchema.safeParse(request.body)
     if (!parseResult.success) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    const comment = commentService.create({
-      ticket_id: ticket.id,
-      ...parseResult.data,
-    })
-    return reply.status(201).send(comment)
+    try {
+      const ticketId = resolveTicketId(request.params.projectId, ticketNumber)
+      const comment = commentService.create({
+        ticket_id: ticketId,
+        ...parseResult.data,
+      })
+      return reply.status(201).send(comment)
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Ticket not found' })
+      }
+      throw error
+    }
   })
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // fastify.post<{
-  //   Params: { ticketId: string }
-  // }>('/tickets/:ticketId/comments', async (request, reply) => {
-  //   const ticketId = parseInt(request.params.ticketId, 10)
-  //   if (isNaN(ticketId)) {
-  //     return reply.status(400).send({ error: 'Invalid ticket ID' })
-  //   }
-  //   const parseResult = createCommentSchema.safeParse(request.body)
-  //   if (!parseResult.success) {
-  //     return reply.status(400).send({ error: parseResult.error.issues })
-  //   }
-  //   const comment = commentService.create({ ticket_id: ticketId, ...parseResult.data })
-  //   return reply.status(201).send(comment)
-  // })
 
   // Update comment
   fastify.patch<{

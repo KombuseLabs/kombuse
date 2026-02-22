@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { labelService, agentService, ticketService } from '@kombuse/services'
+import { labelService, agentService } from '@kombuse/services'
 import {
   createLabelSchema,
   updateLabelSchema,
@@ -110,30 +110,17 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket number or label ID' })
     }
 
-    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
-    if (!ticket) {
-      return reply.status(404).send({ error: 'Ticket not found' })
-    }
-
     const addedById = (request.body as { added_by_id?: string })?.added_by_id
-    labelService.addToTicket(ticket.id, labelId, addedById)
-    return reply.status(201).send({ success: true })
+    try {
+      labelService.addToTicket(request.params.projectId, ticketNumber, labelId, addedById)
+      return reply.status(201).send({ success: true })
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Ticket not found' })
+      }
+      throw error
+    }
   })
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // fastify.post<{
-  //   Params: { ticketId: string; labelId: string }
-  //   Body: { added_by_id?: string }
-  // }>('/tickets/:ticketId/labels/:labelId', async (request, reply) => {
-  //   const ticketId = parseInt(request.params.ticketId, 10)
-  //   const labelId = parseInt(request.params.labelId, 10)
-  //   if (isNaN(ticketId) || isNaN(labelId)) {
-  //     return reply.status(400).send({ error: 'Invalid ticket or label ID' })
-  //   }
-  //   const addedById = (request.body as { added_by_id?: string })?.added_by_id
-  //   labelService.addToTicket(ticketId, labelId, addedById)
-  //   return reply.status(201).send({ success: true })
-  // })
 
   // Remove label from ticket by project-scoped number
   fastify.delete<{
@@ -146,44 +133,20 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket number or label ID' })
     }
 
-    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
-    if (!ticket) {
-      return reply.status(404).send({ error: 'Ticket not found' })
-    }
-
     const removedById = (request.body as { removed_by_id?: string })?.removed_by_id
     try {
-      labelService.removeFromTicket(ticket.id, labelId, removedById)
+      labelService.removeFromTicket(request.params.projectId, ticketNumber, labelId, removedById)
       return reply.status(204).send()
     } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Ticket not found' })
+      }
       if (error instanceof Error && error.message.includes('not attached')) {
         return reply.status(404).send({ error: 'Label not attached to ticket' })
       }
       throw error
     }
   })
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // fastify.delete<{
-  //   Params: { ticketId: string; labelId: string }
-  //   Body: { removed_by_id?: string }
-  // }>('/tickets/:ticketId/labels/:labelId', async (request, reply) => {
-  //   const ticketId = parseInt(request.params.ticketId, 10)
-  //   const labelId = parseInt(request.params.labelId, 10)
-  //   if (isNaN(ticketId) || isNaN(labelId)) {
-  //     return reply.status(400).send({ error: 'Invalid ticket or label ID' })
-  //   }
-  //   const removedById = (request.body as { removed_by_id?: string })?.removed_by_id
-  //   try {
-  //     labelService.removeFromTicket(ticketId, labelId, removedById)
-  //     return reply.status(204).send()
-  //   } catch (error) {
-  //     if (error instanceof Error && error.message.includes('not attached')) {
-  //       return reply.status(404).send({ error: 'Label not attached to ticket' })
-  //     }
-  //     throw error
-  //   }
-  // })
 
   // Get labels for a ticket by project-scoped number
   fastify.get<{
@@ -194,24 +157,15 @@ export async function labelRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket number' })
     }
 
-    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
-    if (!ticket) {
-      return reply.status(404).send({ error: 'Ticket not found' })
+    try {
+      return labelService.getTicketLabels(request.params.projectId, ticketNumber)
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Ticket not found' })
+      }
+      throw error
     }
-
-    return labelService.getTicketLabels(ticket.id)
   })
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // fastify.get<{
-  //   Params: { ticketId: string }
-  // }>('/tickets/:ticketId/labels', async (request, reply) => {
-  //   const ticketId = parseInt(request.params.ticketId, 10)
-  //   if (isNaN(ticketId)) {
-  //     return reply.status(400).send({ error: 'Invalid ticket ID' })
-  //   }
-  //   return labelService.getTicketLabels(ticketId)
-  // })
 
   // Get triggers that reference a label
   fastify.get<{

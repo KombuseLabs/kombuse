@@ -19,7 +19,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
 import { labelsRepository } from '../labels'
-import { ticketsRepository } from '../tickets'
+import { ticketsRepository, resolveTicketId } from '../tickets'
 import { eventsRepository } from '../events'
 import { pluginsRepository } from '../plugins'
 
@@ -1129,6 +1129,115 @@ describe('labelsRepository', () => {
         : events[0]!.payload
       expect(payload.label_slug).toBe('manual-label')
       expect(payload.label_plugin_id).toBeNull()
+    })
+  })
+
+  describe('ByNumber methods', () => {
+    it('addToTicketByNumber should add a label using (projectId, ticketNumber)', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'by-number-label',
+      })
+      const ticket = ticketsRepository.create({
+        title: 'ByNumber test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      labelsRepository.addToTicketByNumber(TEST_PROJECT_ID, ticket.ticket_number, label.id, TEST_USER_ID)
+
+      const ticketLabels = labelsRepository.getTicketLabels(ticket.id)
+      expect(ticketLabels).toHaveLength(1)
+      expect(ticketLabels[0]?.id).toBe(label.id)
+    })
+
+    it('addToTicketByNumber should emit event with correct project_id', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'event-test-label',
+      })
+      const ticket = ticketsRepository.create({
+        title: 'Event test ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      db.prepare('DELETE FROM events').run()
+
+      labelsRepository.addToTicketByNumber(TEST_PROJECT_ID, ticket.ticket_number, label.id, TEST_USER_ID)
+
+      const events = eventsRepository.list({ event_type: 'label.added' })
+      expect(events).toHaveLength(1)
+      expect(events[0]?.project_id).toBe(TEST_PROJECT_ID)
+    })
+
+    it('removeFromTicketByNumber should remove a label using (projectId, ticketNumber)', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'remove-by-number',
+      })
+      const ticket = ticketsRepository.create({
+        title: 'Remove ByNumber ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      labelsRepository.addToTicket(ticket.id, label.id)
+
+      const removed = labelsRepository.removeFromTicketByNumber(TEST_PROJECT_ID, ticket.ticket_number, label.id)
+
+      expect(removed).toBe(true)
+      expect(labelsRepository.getTicketLabels(ticket.id)).toHaveLength(0)
+    })
+
+    it('getTicketLabelsByNumber should return labels using (projectId, ticketNumber)', () => {
+      const label1 = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'label-a',
+      })
+      const label2 = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'label-b',
+      })
+      const ticket = ticketsRepository.create({
+        title: 'GetByNumber ticket',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+      labelsRepository.addToTicket(ticket.id, label1.id)
+      labelsRepository.addToTicket(ticket.id, label2.id)
+
+      const labels = labelsRepository.getTicketLabelsByNumber(TEST_PROJECT_ID, ticket.ticket_number)
+
+      expect(labels).toHaveLength(2)
+      expect(labels.map((l) => l.name).sort()).toEqual(['label-a', 'label-b'])
+    })
+
+    it('ByNumber methods should throw for non-existent ticket', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'throw-test',
+      })
+
+      expect(() => labelsRepository.addToTicketByNumber(TEST_PROJECT_ID, 999999, label.id)).toThrow('Ticket not found')
+      expect(() => labelsRepository.removeFromTicketByNumber(TEST_PROJECT_ID, 999999, label.id)).toThrow('Ticket not found')
+      expect(() => labelsRepository.getTicketLabelsByNumber(TEST_PROJECT_ID, 999999)).toThrow('Ticket not found')
+    })
+  })
+
+  describe('resolveTicketId', () => {
+    it('should resolve (projectId, ticketNumber) to ticket id', () => {
+      const ticket = ticketsRepository.create({
+        title: 'Resolve test',
+        project_id: TEST_PROJECT_ID,
+        author_id: TEST_USER_ID,
+      })
+
+      const id = resolveTicketId(TEST_PROJECT_ID, ticket.ticket_number)
+      expect(id).toBe(ticket.id)
+    })
+
+    it('should throw for non-existent ticket', () => {
+      expect(() => resolveTicketId(TEST_PROJECT_ID, 999999)).toThrow('Ticket not found')
+      expect(() => resolveTicketId('non-existent-project', 1)).toThrow('Ticket not found')
     })
   })
 

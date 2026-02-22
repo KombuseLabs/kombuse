@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { eventService, ticketService } from '@kombuse/services'
+import { eventService } from '@kombuse/services'
 import {
   createEventSchema,
   eventFiltersSchema,
@@ -27,24 +27,15 @@ export async function eventRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket number' })
     }
 
-    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
-    if (!ticket) {
-      return reply.status(404).send({ error: 'Ticket not found' })
+    try {
+      return eventService.getByTicket(request.params.projectId, ticketNumber)
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Ticket not found' })
+      }
+      throw error
     }
-
-    return eventService.getByTicket(ticket.id)
   })
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // fastify.get<{
-  //   Params: { ticketId: string }
-  // }>('/tickets/:ticketId/events', async (request, reply) => {
-  //   const ticketId = parseInt(request.params.ticketId, 10)
-  //   if (isNaN(ticketId)) {
-  //     return reply.status(400).send({ error: 'Invalid ticket ID' })
-  //   }
-  //   return eventService.getByTicket(ticketId)
-  // })
 
   // Create event (internal/system use)
   fastify.post('/events', async (request, reply) => {

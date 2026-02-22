@@ -6,7 +6,7 @@ import type {
   EventSubscription,
   EventSubscriptionInput,
 } from '@kombuse/types'
-import { eventsRepository, eventSubscriptionsRepository } from '@kombuse/persistence'
+import { eventsRepository, eventSubscriptionsRepository, resolveTicketId } from '@kombuse/persistence'
 
 /**
  * Service interface for event and subscription operations
@@ -15,7 +15,7 @@ export interface IEventService {
   // Event methods
   list(filters?: EventFilters): EventWithActor[]
   get(id: number): EventWithActor | null
-  getByTicket(ticketId: number): EventWithActor[]
+  getByTicket(projectId: string, ticketNumber: number): EventWithActor[]
   create(input: CreateEventInput): EventWithActor
 
   // Subscription methods
@@ -40,7 +40,8 @@ export class EventService implements IEventService {
     return eventsRepository.get(id)
   }
 
-  getByTicket(ticketId: number): EventWithActor[] {
+  getByTicket(projectId: string, ticketNumber: number): EventWithActor[] {
+    const ticketId = resolveTicketId(projectId, ticketNumber)
     return eventsRepository.getByTicket(ticketId)
   }
 

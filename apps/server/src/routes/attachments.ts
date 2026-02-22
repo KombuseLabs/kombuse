@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
-import { attachmentService, ticketService } from '@kombuse/services'
+import { attachmentService } from '@kombuse/services'
+import { resolveTicketId } from '@kombuse/persistence'
 import { attachmentFiltersSchema } from '../schemas/attachments'
 import { existsSync } from 'fs'
 import { createReadStream } from 'fs'
@@ -12,11 +13,6 @@ export async function attachmentRoutes(fastify: FastifyInstance) {
     const ticketNumber = parseInt(request.params.number, 10)
     if (isNaN(ticketNumber) || ticketNumber < 1) {
       return reply.status(400).send({ error: 'Invalid ticket number' })
-    }
-
-    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
-    if (!ticket) {
-      return reply.status(404).send({ error: 'Ticket not found' })
     }
 
     const file = await request.file()
@@ -44,12 +40,16 @@ export async function attachmentRoutes(fastify: FastifyInstance) {
         filename: file.filename,
         mimeType: file.mimetype,
         data,
-        ticketId: ticket.id,
+        projectId: request.params.projectId,
+        ticketNumber,
         uploadedById,
       })
       return reply.status(201).send(attachment)
     } catch (error) {
       if (error instanceof Error) {
+        if (error.message.includes('not found')) {
+          return reply.status(404).send({ error: 'Ticket not found' })
+        }
         if (
           error.message.includes('MIME type') ||
           error.message.includes('File size')
@@ -60,17 +60,6 @@ export async function attachmentRoutes(fastify: FastifyInstance) {
       throw error
     }
   })
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // fastify.post<{
-  //   Params: { ticketId: string }
-  // }>('/tickets/:ticketId/attachments', async (request, reply) => {
-  //   const ticketId = parseInt(request.params.ticketId, 10)
-  //   if (isNaN(ticketId)) {
-  //     return reply.status(400).send({ error: 'Invalid ticket ID' })
-  //   }
-  //   ...
-  // })
 
   // Upload attachment to a comment
   fastify.post<{
@@ -176,32 +165,24 @@ export async function attachmentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid ticket number' })
     }
 
-    const ticket = ticketService.getByNumber(request.params.projectId, ticketNumber)
-    if (!ticket) {
-      return reply.status(404).send({ error: 'Ticket not found' })
-    }
-
     const parseResult = attachmentFiltersSchema.safeParse(request.query)
     if (!parseResult.success) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return attachmentService.list({
-      ticket_id: ticket.id,
-      ...parseResult.data,
-    })
+    try {
+      const ticketId = resolveTicketId(request.params.projectId, ticketNumber)
+      return attachmentService.list({
+        ticket_id: ticketId,
+        ...parseResult.data,
+      })
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.status(404).send({ error: 'Ticket not found' })
+      }
+      throw error
+    }
   })
-
-  // COMMENTED OUT — ticket #555: project_id + ticket_number is the canonical lookup
-  // fastify.get<{
-  //   Params: { ticketId: string }
-  // }>('/tickets/:ticketId/attachments', async (request, reply) => {
-  //   const ticketId = parseInt(request.params.ticketId, 10)
-  //   if (isNaN(ticketId)) {
-  //     return reply.status(400).send({ error: 'Invalid ticket ID' })
-  //   }
-  //   ...
-  // })
 
   // List attachments for a comment
   fastify.get<{

@@ -9,6 +9,7 @@ import { EVENT_TYPES, toSlug } from '@kombuse/types'
 import { getDatabase } from './database'
 import { eventsRepository } from './events'
 import { profilesRepository } from './profiles'
+import { resolveTicketId } from './resolve-ticket-id'
 
 /**
  * Data access layer for labels
@@ -342,5 +343,65 @@ export const labelsRepository = {
       .prepare('SELECT ticket_id FROM ticket_labels WHERE label_id = ?')
       .all(labelId) as { ticket_id: number }[]
     return rows.map((r) => r.ticket_id)
+  },
+
+  addToTicketByNumber(projectId: string, ticketNumber: number, labelId: number, addedById?: string): void {
+    const ticketId = resolveTicketId(projectId, ticketNumber)
+    const db = getDatabase()
+    const result = db
+      .prepare(
+        `INSERT OR IGNORE INTO ticket_labels (ticket_id, label_id, added_by_id)
+         VALUES (?, ?, ?)`
+      )
+      .run(ticketId, labelId, addedById ?? null)
+
+    if (result.changes > 0) {
+      const label = this.get(labelId)
+      const adderProfile = addedById ? profilesRepository.get(addedById) : null
+      const adderActorType: ActorType = addedById
+        ? (adderProfile?.type === 'agent' ? 'agent' : 'user')
+        : 'system'
+      eventsRepository.create({
+        event_type: EVENT_TYPES.LABEL_ADDED,
+        project_id: projectId,
+        ticket_id: ticketId,
+        actor_id: addedById,
+        actor_type: adderActorType,
+        payload: { label_id: labelId, label_name: label?.name, label_slug: label?.slug, label_plugin_id: label?.plugin_id },
+      })
+    }
+  },
+
+  removeFromTicketByNumber(projectId: string, ticketNumber: number, labelId: number, removedById?: string): boolean {
+    const ticketId = resolveTicketId(projectId, ticketNumber)
+    const db = getDatabase()
+
+    const label = this.get(labelId)
+
+    const result = db
+      .prepare('DELETE FROM ticket_labels WHERE ticket_id = ? AND label_id = ?')
+      .run(ticketId, labelId)
+
+    if (result.changes > 0) {
+      const removerProfile = removedById ? profilesRepository.get(removedById) : null
+      const removerActorType: ActorType = removedById
+        ? (removerProfile?.type === 'agent' ? 'agent' : 'user')
+        : 'system'
+      eventsRepository.create({
+        event_type: EVENT_TYPES.LABEL_REMOVED,
+        project_id: projectId,
+        ticket_id: ticketId,
+        actor_id: removedById,
+        actor_type: removerActorType,
+        payload: { label_id: labelId, label_name: label?.name, label_slug: label?.slug, label_plugin_id: label?.plugin_id },
+      })
+    }
+
+    return result.changes > 0
+  },
+
+  getTicketLabelsByNumber(projectId: string, ticketNumber: number): Label[] {
+    const ticketId = resolveTicketId(projectId, ticketNumber)
+    return this.getTicketLabels(ticketId)
   },
 }

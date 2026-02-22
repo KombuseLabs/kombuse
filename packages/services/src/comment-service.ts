@@ -5,7 +5,7 @@ import type {
   UpdateCommentInput,
   Mention,
 } from '@kombuse/types'
-import { commentsRepository, mentionsRepository } from '@kombuse/persistence'
+import { commentsRepository, mentionsRepository, resolveTicketId } from '@kombuse/persistence'
 
 /**
  * Service interface for comment operations
@@ -13,7 +13,7 @@ import { commentsRepository, mentionsRepository } from '@kombuse/persistence'
 export interface ICommentService {
   list(filters?: CommentFilters): CommentWithAuthor[]
   get(id: number): CommentWithAuthor | null
-  getByTicket(ticketId: number): CommentWithAuthor[]
+  getByTicket(projectId: string, ticketNumber: number): CommentWithAuthor[]
   create(input: CreateCommentInput): CommentWithAuthor
   update(id: number, input: UpdateCommentInput): CommentWithAuthor
   delete(id: number): void
@@ -33,7 +33,8 @@ export class CommentService implements ICommentService {
     return commentsRepository.get(id)
   }
 
-  getByTicket(ticketId: number): CommentWithAuthor[] {
+  getByTicket(projectId: string, ticketNumber: number): CommentWithAuthor[] {
+    const ticketId = resolveTicketId(projectId, ticketNumber)
     return commentsRepository.getByTicket(ticketId)
   }
 

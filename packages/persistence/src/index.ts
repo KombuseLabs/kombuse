@@ -29,7 +29,7 @@ export type {
 export { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 
 // Repositories
-export { ticketsRepository } from './tickets'
+export { ticketsRepository, resolveTicketId } from './tickets'
 export { ticketViewsRepository } from './ticket-views'
 export { profilesRepository } from './profiles'
 export { profileSettingsRepository } from './profile-settings'

@@ -15,9 +15,9 @@ export interface ILabelService {
   create(input: CreateLabelInput): Label
   update(id: number, input: UpdateLabelInput): Label
   delete(id: number): void
-  addToTicket(ticketId: number, labelId: number, addedById?: string): void
-  removeFromTicket(ticketId: number, labelId: number, removedById?: string): void
-  getTicketLabels(ticketId: number): Label[]
+  addToTicket(projectId: string, ticketNumber: number, labelId: number, addedById?: string): void
+  removeFromTicket(projectId: string, ticketNumber: number, labelId: number, removedById?: string): void
+  getTicketLabels(projectId: string, ticketNumber: number): Label[]
 }
 
 /**
@@ -57,19 +57,19 @@ export class LabelService implements ILabelService {
     }
   }
 
-  addToTicket(ticketId: number, labelId: number, addedById?: string): void {
-    labelsRepository.addToTicket(ticketId, labelId, addedById)
+  addToTicket(projectId: string, ticketNumber: number, labelId: number, addedById?: string): void {
+    labelsRepository.addToTicketByNumber(projectId, ticketNumber, labelId, addedById)
   }
 
-  removeFromTicket(ticketId: number, labelId: number, removedById?: string): void {
-    const success = labelsRepository.removeFromTicket(ticketId, labelId, removedById)
+  removeFromTicket(projectId: string, ticketNumber: number, labelId: number, removedById?: string): void {
+    const success = labelsRepository.removeFromTicketByNumber(projectId, ticketNumber, labelId, removedById)
     if (!success) {
-      throw new Error(`Label ${labelId} not attached to ticket ${ticketId}`)
+      throw new Error(`Label ${labelId} not attached to ticket`)
     }
   }
 
-  getTicketLabels(ticketId: number): Label[] {
-    return labelsRepository.getTicketLabels(ticketId)
+  getTicketLabels(projectId: string, ticketNumber: number): Label[] {
+    return labelsRepository.getTicketLabelsByNumber(projectId, ticketNumber)
   }
 }
 

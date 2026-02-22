@@ -2,7 +2,7 @@ import type {
   Attachment,
   AttachmentFilters,
 } from '@kombuse/types'
-import { attachmentsRepository } from '@kombuse/persistence'
+import { attachmentsRepository, resolveTicketId } from '@kombuse/persistence'
 import {
   fileStorage,
   ALLOWED_MIME_TYPES,
@@ -15,6 +15,8 @@ export interface UploadParams {
   mimeType: string
   data: Buffer
   ticketId?: number
+  projectId?: string
+  ticketNumber?: number
   commentId?: number
   uploadedById: string
 }
@@ -25,7 +27,7 @@ export interface UploadParams {
 export interface IAttachmentService {
   list(filters?: AttachmentFilters): Attachment[]
   get(id: number): Attachment | null
-  getByTicket(ticketId: number): Attachment[]
+  getByTicket(projectId: string, ticketNumber: number): Attachment[]
   getByComment(commentId: number): Attachment[]
   upload(params: UploadParams): Promise<Attachment>
   delete(id: number): void
@@ -50,7 +52,8 @@ export class AttachmentService implements IAttachmentService {
     return attachmentsRepository.get(id)
   }
 
-  getByTicket(ticketId: number): Attachment[] {
+  getByTicket(projectId: string, ticketNumber: number): Attachment[] {
+    const ticketId = resolveTicketId(projectId, ticketNumber)
     return attachmentsRepository.getByTicket(ticketId)
   }
 
@@ -59,8 +62,12 @@ export class AttachmentService implements IAttachmentService {
   }
 
   async upload(params: UploadParams): Promise<Attachment> {
-    const { filename, mimeType, data, ticketId, commentId, uploadedById } =
-      params
+    const { filename, mimeType, data, commentId, uploadedById } = params
+
+    let ticketId = params.ticketId
+    if (!ticketId && params.projectId && params.ticketNumber) {
+      ticketId = resolveTicketId(params.projectId, params.ticketNumber)
+    }
 
     if (!ticketId && !commentId) {
       throw new Error('Either ticketId or commentId must be provided')

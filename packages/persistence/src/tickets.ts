@@ -903,3 +903,5 @@ export const ticketsRepository = {
     return counts
   },
 }
+
+export { resolveTicketId } from './resolve-ticket-id'
