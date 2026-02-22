@@ -194,10 +194,10 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
                   <CommandItem
                     key={`ticket-${ticket.id}`}
                     value={`ticket-${ticket.id}-${ticket.title}`}
-                    onSelect={() => handleGoToTicket(ticket.id, ticket.project_id)}
+                    onSelect={() => handleGoToTicket(ticket.ticket_number, ticket.project_id)}
                   >
                     <Ticket className="size-4" />
-                    <span className="shrink-0 font-mono text-xs text-muted-foreground">#{ticket.id}</span>
+                    <span className="shrink-0 font-mono text-xs text-muted-foreground">#{ticket.ticket_number}</span>
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate">{ticket.title}</span>
                       {ticket.match_context && (

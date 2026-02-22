@@ -21,7 +21,7 @@ interface MarkdownProps {
   projectId?: string | null
 }
 
-const TICKET_LINK_REGEX = /\/projects\/[^/]+\/tickets\/(\d+)$/
+const TICKET_LINK_REGEX = /\/projects\/([^/]+)\/tickets\/(\d+)$/
 const LABEL_PROTOCOL_REGEX = /^label:\/\/(\d+)(?:\/([a-z0-9_-]+))?$/
 const COMMENT_PROTOCOL_REGEX = /^comment:\/\/(\d+)\/(\d+)$/
 
@@ -83,7 +83,7 @@ export function Markdown({ children, className, projectId }: MarkdownProps) {
       if (href?.startsWith('/projects/')) {
         const ticketMatch = href.match(TICKET_LINK_REGEX)
         if (ticketMatch) {
-          return <TicketMentionChip ticketId={Number(ticketMatch[1])} href={href} />
+          return <TicketMentionChip projectId={ticketMatch[1]!} ticketNumber={Number(ticketMatch[2])} href={href} />
         }
         return (
           <Link to={href} className={props.className}>

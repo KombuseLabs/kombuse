@@ -17,6 +17,14 @@ export function useTicket(id: number) {
   })
 }
 
+export function useTicketByNumber(projectId: string | undefined, ticketNumber: number) {
+  return useQuery({
+    queryKey: ['tickets', 'by-number', projectId, ticketNumber],
+    queryFn: () => ticketsApi.getByNumber(projectId!, ticketNumber),
+    enabled: !!projectId && ticketNumber > 0,
+  })
+}
+
 export function useCreateTicket() {
   const queryClient = useQueryClient()
   return useMutation({

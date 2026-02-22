@@ -215,7 +215,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
               <div className="min-h-[5.25rem] space-y-2">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <StatusIndicator status={agentStatus} size="default" />
-                  <span className="text-sm text-muted-foreground">#{ticket.id}</span>
+                  <span className="text-sm text-muted-foreground">#{ticket.ticket_number}</span>
                   {isEditable ? (
                     <Tabs
                       value={ticket.status}
@@ -283,7 +283,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
               <div className="min-h-[5.25rem] space-y-2">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <StatusIndicator status={agentStatus} size="default" />
-                  <span className="text-sm text-muted-foreground">#{ticket.id}</span>
+                  <span className="text-sm text-muted-foreground">#{ticket.ticket_number}</span>
                   <Tabs
                     value={editStatus}
                     onValueChange={(v) => setEditStatus(v as TicketStatus)}

@@ -103,7 +103,7 @@ function TicketItem({ ticket, isSelected, onTicketClick, sortBy }: TicketItemPro
           {agentStatus !== 'idle' && (
             <StatusIndicator status={agentStatus} />
           )}
-          <span className="text-xs text-muted-foreground font-mono">#{ticket.id}</span>
+          <span className="text-xs text-muted-foreground font-mono">#{ticket.ticket_number}</span>
           <span className={cn(
             "text-sm truncate",
             hasUnread || isSelected ? "font-semibold" : "font-medium",
@@ -177,7 +177,7 @@ function TicketList({
               <TicketItem
                 key={ticket.id}
                 ticket={ticket}
-                isSelected={ticket.id === selectedTicketId}
+                isSelected={ticket.ticket_number === selectedTicketId}
                 onTicketClick={onTicketClick}
                 sortBy={sortBy}
               />

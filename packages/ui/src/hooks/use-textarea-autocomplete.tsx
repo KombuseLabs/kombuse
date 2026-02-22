@@ -98,7 +98,7 @@ export function useTextareaAutocomplete({
         value,
         mentionContext.triggerIndex,
         cursorPos,
-        String(ticket.id),
+        String(ticket.ticket_number),
         '#'
       )
       onValueChange(newValue)

@@ -31,7 +31,7 @@ import type { ReplyTarget } from "@kombuse/ui/components";
 import { ChatProvider } from "@kombuse/ui/providers";
 import {
   useTickets,
-  useTicket,
+  useTicketByNumber,
   useCreateTicket,
   useAppContext,
   useCommentOperations,
@@ -64,12 +64,6 @@ export function Tickets() {
     ticketId?: string;
   }>();
   const navigate = useNavigate();
-
-  // Real-time updates via WebSocket
-  useRealtimeUpdates({
-    projectId,
-    ticketId: ticketId ? Number(ticketId) : undefined,
-  });
 
   // Sync route params to app context
   const { setCurrentTicket, setView } = useAppContext();
@@ -166,10 +160,18 @@ export function Tickets() {
     viewer_id: "user-1", // TODO: Get from auth context
   });
 
+  const ticketNumber = ticketId && ticketId !== 'new' ? Number(ticketId) : 0;
   const {
     data: selectedTicket,
     isLoading: isLoadingTicket,
-  } = useTicket(ticketId ? Number(ticketId) : 0);
+  } = useTicketByNumber(projectId, ticketNumber);
+  const selectedTicketDbId = selectedTicket?.id ?? 0;
+
+  // Real-time updates via WebSocket
+  useRealtimeUpdates({
+    projectId,
+    ticketId: selectedTicketDbId || undefined,
+  });
 
   const createTicket = useCreateTicket();
   const markViewed = useMarkTicketViewed();
@@ -186,7 +188,7 @@ export function Tickets() {
   } = useCommentOperations();
 
   // Unified timeline of comments + events
-  const { data: timeline, isFetched: isTimelineFetched } = useTicketTimeline(ticketId ? Number(ticketId) : 0);
+  const { data: timeline, isFetched: isTimelineFetched } = useTicketTimeline(selectedTicketDbId);
 
   // Fetch attachments for all comments in the timeline
   const commentIds = useMemo(
@@ -198,10 +200,9 @@ export function Tickets() {
   );
   const attachmentsByCommentId = useCommentsAttachments(commentIds);
   const uploadAttachment = useUploadAttachment();
-  const numericTicketId = ticketId ? Number(ticketId) : 0;
   // Fetch sessions for this ticket to compute Resume/Rerun eligibility
   const { data: ticketSessions } = useSessions(
-    numericTicketId > 0 ? { ticket_id: numericTicketId } : undefined
+    selectedTicketDbId > 0 ? { ticket_id: selectedTicketDbId } : undefined
   );
   const resumableSessionIds = useMemo(() => {
     if (!ticketSessions) return new Set<string>();
@@ -280,14 +281,14 @@ export function Tickets() {
         if (!agentReplySessionId || message.kombuseSessionId === agentReplySessionId) {
           setAgentReplySessionId(null);
           // Safety-net invalidation in case the realtime event was missed
-          if (numericTicketId > 0) {
-            queryClient.invalidateQueries({ queryKey: ["ticket-timeline", numericTicketId] });
-            queryClient.invalidateQueries({ queryKey: ["comments", numericTicketId], exact: false });
+          if (selectedTicketDbId > 0) {
+            queryClient.invalidateQueries({ queryKey: ["ticket-timeline", selectedTicketDbId] });
+            queryClient.invalidateQueries({ queryKey: ["comments", selectedTicketDbId], exact: false });
           }
         }
       }
     },
-    [agentReplySessionId, numericTicketId, queryClient]
+    [agentReplySessionId, selectedTicketDbId, queryClient]
   );
 
   // WebSocket for sending agent.invoke messages and receiving completions
@@ -571,7 +572,7 @@ export function Tickets() {
           setNewTicketTriggersEnabled(true);
           const params = new URLSearchParams(searchParams);
           params.delete('session');
-          navigate({ pathname: `/projects/${projectId}/tickets/${newTicket.id}`, search: params.toString() });
+          navigate({ pathname: `/projects/${projectId}/tickets/${newTicket.ticket_number}`, search: params.toString() });
         },
       }
     );
@@ -580,7 +581,7 @@ export function Tickets() {
   const handleTicketClick = (ticket: Ticket) => {
     const params = new URLSearchParams(searchParams);
     params.delete('session');
-    navigate({ pathname: `/projects/${projectId}/tickets/${ticket.id}`, search: params.toString() });
+    navigate({ pathname: `/projects/${projectId}/tickets/${ticket.ticket_number}`, search: params.toString() });
   };
 
   const handleCloseDetail = () => {
@@ -611,7 +612,7 @@ export function Tickets() {
         className="h-full min-h-0"
         sortBy={sortBy}
         emptyMessage={isLoading ? "Loading tickets..." : error ? `Error: ${error.message}` : "No tickets found"}
-        selectedTicketId={ticketId ? Number(ticketId) : undefined}
+        selectedTicketId={ticketNumber || undefined}
         onTicketClick={handleTicketClick}
         header={(
           <TicketListHeader

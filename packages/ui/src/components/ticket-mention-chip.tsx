@@ -1,14 +1,16 @@
 import { Link } from 'react-router-dom'
-import { useTicket } from '../hooks/use-tickets'
+import { useTicket, useTicketByNumber } from '../hooks/use-tickets'
 import { cn } from '../lib/utils'
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '../base/hover-card'
 import { TicketPreviewCard } from './ticket-preview-card'
 
-interface TicketMentionChipProps {
-  ticketId: number
+type TicketMentionChipProps = {
   href: string
   variant?: 'chip' | 'inline'
-}
+} & (
+  | { ticketNumber: number; projectId: string; ticketId?: never }
+  | { ticketId: number; ticketNumber?: never; projectId?: never }
+)
 
 const statusDotColors: Record<string, string> = {
   open: 'bg-green-500',
@@ -17,13 +19,22 @@ const statusDotColors: Record<string, string> = {
   closed: 'bg-gray-400',
 }
 
-export function TicketMentionChip({ ticketId, href, variant = 'chip' }: TicketMentionChipProps) {
-  const { data: ticket, isLoading, isError } = useTicket(ticketId)
+export function TicketMentionChip(props: TicketMentionChipProps) {
+  const { href, variant = 'chip' } = props
+  const byNumber = useTicketByNumber(
+    'projectId' in props ? props.projectId : undefined,
+    'ticketNumber' in props ? props.ticketNumber ?? 0 : 0,
+  )
+  const byId = useTicket(
+    'ticketId' in props ? props.ticketId ?? 0 : 0,
+  )
+  const { data: ticket, isLoading, isError } = 'ticketNumber' in props && props.ticketNumber ? byNumber : byId
+  const displayNumber = ticket?.ticket_number ?? ('ticketNumber' in props ? props.ticketNumber : props.ticketId)
 
   if (isLoading || isError || !ticket) {
     return (
       <Link to={href} className="text-primary no-underline hover:underline">
-        #{ticketId}
+        #{displayNumber}
       </Link>
     )
   }
@@ -33,7 +44,7 @@ export function TicketMentionChip({ ticketId, href, variant = 'chip' }: TicketMe
       <HoverCardTrigger asChild>
         {variant === 'inline' ? (
           <Link to={href} className="font-medium text-primary no-underline hover:underline">
-            #{ticket.id}
+            #{ticket.ticket_number}
           </Link>
         ) : (
           <Link
@@ -44,7 +55,7 @@ export function TicketMentionChip({ ticketId, href, variant = 'chip' }: TicketMe
               'align-baseline'
             )}
           >
-            <span className="font-mono text-xs text-muted-foreground">#{ticket.id}</span>
+            <span className="font-mono text-xs text-muted-foreground">#{ticket.ticket_number}</span>
             <span className="max-w-[200px] truncate text-foreground">{ticket.title}</span>
             <span
               className={cn('inline-block h-2 w-2 shrink-0 rounded-full', statusDotColors[ticket.status])}

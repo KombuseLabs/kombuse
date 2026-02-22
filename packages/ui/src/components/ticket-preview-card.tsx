@@ -16,7 +16,7 @@ export function TicketPreviewCard({ ticket }: { ticket: TicketWithRelations }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-start gap-2">
-        <span className="font-mono text-xs text-muted-foreground shrink-0">#{ticket.id}</span>
+        <span className="font-mono text-xs text-muted-foreground shrink-0">#{ticket.ticket_number}</span>
         <span className="font-semibold text-sm leading-snug">{ticket.title}</span>
       </div>
 

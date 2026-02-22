@@ -105,7 +105,7 @@ describe('TicketList date display', () => {
     const view = render(
       <TicketList
         tickets={[ticket]}
-        selectedTicketId={ticket.id}
+        selectedTicketId={ticket.ticket_number}
       />,
     )
 
