@@ -70,6 +70,7 @@ export const agentSchema = z.object({
   permissions: z.array(permissionSchema),
   config: agentConfigSchema,
   is_enabled: z.boolean(),
+  plugin_id: z.string().nullable(),
   plugin_base: pluginBaseSchema.nullable(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
