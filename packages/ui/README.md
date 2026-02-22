@@ -830,7 +830,7 @@ import { TicketList, TicketListHeader, TicketDetail } from '@kombuse/ui/componen
     />
   )}
   sortBy="closed_at"
-  selectedTicketId={selectedTicketId}
+  selectedTicketNumber={selectedTicketNumber}
   onTicketClick={setSelectedTicket}
 />
 
@@ -850,7 +850,7 @@ Props:
   - `className`: Optional class name
   - `header`: Optional header content rendered inside the list card surface (above the scroll viewport)
   - `emptyMessage`: Optional empty/loading/error message content
-  - `selectedTicketId`: Optional selected ticket ID for active row styling
+  - `selectedTicketNumber`: Optional selected ticket number for active row styling
   - `onTicketClick`: `(ticket: TicketWithLabels) => void`
   - `sortBy`: Optional sort field (`created_at`, `updated_at`, `opened_at`, `last_activity_at`, `closed_at`); controls which timestamp is shown in each row metadata line
   - When `sortBy` is `closed_at` and a row has `closed_at = null`, the list shows `Not closed` instead of substituting another date

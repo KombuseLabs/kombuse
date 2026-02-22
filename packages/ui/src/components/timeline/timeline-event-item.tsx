@@ -28,6 +28,7 @@ import {
 interface TimelineEventItemProps {
   event: EventWithActor
   projectId?: string | null
+  ticketNumber?: number
   onSessionClick?: (sessionId: string) => void
   isResumable?: boolean
   onResume?: () => void
@@ -52,7 +53,7 @@ const eventConfig: Record<string, { icon: LucideIcon; label: string }> = {
   'agent.failed': { icon: XCircle, label: 'failed to process' },
 }
 
-function TimelineEventItem({ event, projectId, onSessionClick, isResumable, onResume, onRerun, className }: TimelineEventItemProps) {
+function TimelineEventItem({ event, projectId, ticketNumber, onSessionClick, isResumable, onResume, onRerun, className }: TimelineEventItemProps) {
   const config = eventConfig[event.event_type] || {
     icon: Plus,
     label: event.event_type,
@@ -89,9 +90,6 @@ function TimelineEventItem({ event, projectId, onSessionClick, isResumable, onRe
     try {
       const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
       if (payload?.mention_type === 'ticket_cross_reference' && payload?.source_ticket_id) {
-        const ticketHref = projectId
-          ? `/projects/${projectId}/tickets/${payload.source_ticket_id}`
-          : `/tickets/${payload.source_ticket_id}`
         eventLabel = 'mentioned this ticket in'
         eventSuffix = (
           <>
@@ -99,14 +97,10 @@ function TimelineEventItem({ event, projectId, onSessionClick, isResumable, onRe
             <TicketMentionChip
               variant="inline"
               ticketId={Number(payload.source_ticket_id)}
-              href={ticketHref}
             />
           </>
         )
       } else if (payload?.mention_type === 'ticket' && payload?.mentioned_ticket_id) {
-        const ticketHref = projectId
-          ? `/projects/${projectId}/tickets/${payload.mentioned_ticket_id}`
-          : `/tickets/${payload.mentioned_ticket_id}`
         eventLabel = 'mentioned'
         eventSuffix = (
           <>
@@ -114,7 +108,6 @@ function TimelineEventItem({ event, projectId, onSessionClick, isResumable, onRe
             <TicketMentionChip
               variant="inline"
               ticketId={Number(payload.mentioned_ticket_id)}
-              href={ticketHref}
             />
           </>
         )
@@ -129,8 +122,8 @@ function TimelineEventItem({ event, projectId, onSessionClick, isResumable, onRe
   const { data: linkedSession } = useSessionByKombuseId(event.kombuse_session_id)
 
   const sessionUrl = linkedSession && projectId
-    ? (linkedSession.ticket_id || event.ticket_id)
-      ? `/projects/${projectId}/tickets/${linkedSession.ticket_id || event.ticket_id}?session=${linkedSession.kombuse_session_id}`
+    ? ticketNumber
+      ? `/projects/${projectId}/tickets/${ticketNumber}?session=${linkedSession.kombuse_session_id}`
       : `/projects/${projectId}/chats/${linkedSession.kombuse_session_id}`
     : null
 

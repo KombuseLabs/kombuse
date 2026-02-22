@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils'
 interface ActivityTimelineProps {
   items: TimelineItem[]
   projectId?: string | null
+  ticketNumber?: number
   attachmentsByCommentId?: Record<number, Attachment[]>
   highlightedCommentId?: number | null
   editingCommentId?: number | null
@@ -32,6 +33,7 @@ interface ActivityTimelineProps {
 function ActivityTimeline({
   items,
   projectId,
+  ticketNumber,
   attachmentsByCommentId,
   highlightedCommentId,
   editingCommentId,
@@ -144,6 +146,7 @@ function ActivityTimeline({
               <TimelineEventItem
                 event={event}
                 projectId={projectId}
+                ticketNumber={ticketNumber}
                 onSessionClick={onSessionClick}
                 isResumable={isResumable}
                 onResume={

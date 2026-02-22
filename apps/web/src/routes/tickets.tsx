@@ -612,7 +612,7 @@ export function Tickets() {
         className="h-full min-h-0"
         sortBy={sortBy}
         emptyMessage={isLoading ? "Loading tickets..." : error ? `Error: ${error.message}` : "No tickets found"}
-        selectedTicketId={ticketNumber || undefined}
+        selectedTicketNumber={ticketNumber || undefined}
         onTicketClick={handleTicketClick}
         header={(
           <TicketListHeader
@@ -1017,6 +1017,7 @@ export function Tickets() {
                                 <ActivityTimeline
                                   items={timeline?.items ?? []}
                                   projectId={projectId}
+                                  ticketNumber={selectedTicket?.ticket_number}
                                   attachmentsByCommentId={attachmentsByCommentId}
                                   highlightedCommentId={highlightedCommentId}
                                   editingCommentId={editingCommentId}

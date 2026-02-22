@@ -5,7 +5,7 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from '../base/hover-car
 import { TicketPreviewCard } from './ticket-preview-card'
 
 type TicketMentionChipProps = {
-  href: string
+  href?: string
   variant?: 'chip' | 'inline'
 } & (
   | { ticketNumber: number; projectId: string; ticketId?: never }
@@ -30,10 +30,13 @@ export function TicketMentionChip(props: TicketMentionChipProps) {
   )
   const { data: ticket, isLoading, isError } = 'ticketNumber' in props && props.ticketNumber ? byNumber : byId
   const displayNumber = ticket?.ticket_number ?? ('ticketNumber' in props ? props.ticketNumber : props.ticketId)
+  const resolvedHref = ticket
+    ? (href ?? `/projects/${ticket.project_id}/tickets/${ticket.ticket_number}`)
+    : (href ?? '#')
 
   if (isLoading || isError || !ticket) {
     return (
-      <Link to={href} className="text-primary no-underline hover:underline">
+      <Link to={resolvedHref} className="text-primary no-underline hover:underline">
         #{displayNumber}
       </Link>
     )
@@ -43,12 +46,12 @@ export function TicketMentionChip(props: TicketMentionChipProps) {
     <HoverCard>
       <HoverCardTrigger asChild>
         {variant === 'inline' ? (
-          <Link to={href} className="font-medium text-primary no-underline hover:underline">
+          <Link to={resolvedHref} className="font-medium text-primary no-underline hover:underline">
             #{ticket.ticket_number}
           </Link>
         ) : (
           <Link
-            to={href}
+            to={resolvedHref}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5',
               'bg-muted/50 text-sm no-underline hover:bg-muted transition-colors',

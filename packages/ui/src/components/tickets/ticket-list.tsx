@@ -12,7 +12,7 @@ interface TicketListProps {
   className?: string
   header?: ReactNode
   emptyMessage?: ReactNode
-  selectedTicketId?: number
+  selectedTicketNumber?: number
   onTicketClick?: (ticket: TicketWithLabels) => void
   sortBy?: TicketSortBy
 }
@@ -149,7 +149,7 @@ function TicketList({
   className,
   header,
   emptyMessage = 'No tickets found',
-  selectedTicketId,
+  selectedTicketNumber,
   onTicketClick,
   sortBy = 'created_at',
 }: TicketListProps) {
@@ -177,7 +177,7 @@ function TicketList({
               <TicketItem
                 key={ticket.id}
                 ticket={ticket}
-                isSelected={ticket.ticket_number === selectedTicketId}
+                isSelected={ticket.ticket_number === selectedTicketNumber}
                 onTicketClick={onTicketClick}
                 sortBy={sortBy}
               />

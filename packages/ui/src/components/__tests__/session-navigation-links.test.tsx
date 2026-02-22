@@ -142,7 +142,7 @@ describe('Session-aware navigation links', () => {
     expect(link.getAttribute('href')).toBe('/projects/1/tickets/321?session=trigger-session-1')
   })
 
-  it('uses event ticket id fallback when linked session lacks ticket id', () => {
+  it('uses event ticket number for session link when linked session lacks ticket id', () => {
     mockUseSessionByKombuseId.mockReturnValue({
       data: {
         kombuse_session_id: 'trigger-session-2',
@@ -152,12 +152,12 @@ describe('Session-aware navigation links', () => {
 
     render(
       <MemoryRouter>
-        <TimelineEventItem event={buildEvent()} projectId="1" />
+        <TimelineEventItem event={buildEvent()} projectId="1" ticketNumber={42} />
       </MemoryRouter>
     )
 
     const link = screen.getByRole('link')
-    expect(link.getAttribute('href')).toBe('/projects/1/tickets/777?session=trigger-session-2')
+    expect(link.getAttribute('href')).toBe('/projects/1/tickets/42?session=trigger-session-2')
   })
 
   it('merges session id into the ticket link for permission items', () => {
