@@ -258,10 +258,10 @@ export const ticketsRepository = {
           ))`)
           params.push(numericId, numericId, ftsQuery)
         } else {
-          conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id = ? OR tickets.id IN (
+          conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id = ? OR tickets.ticket_number = ? OR tickets.id IN (
             SELECT ticket_id FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments_fts MATCH ?
           ))`)
-          params.push(numericId, ftsQuery)
+          params.push(numericId, numericId, ftsQuery)
         }
         useRelevanceSort = true
         idBoostParam = numericId
@@ -285,8 +285,8 @@ export const ticketsRepository = {
           conditions.push('(tickets.id = ? OR tickets.ticket_number = ?)')
           params.push(numericId, numericId)
         } else {
-          conditions.push('tickets.id = ?')
-          params.push(numericId)
+          conditions.push('(tickets.id = ? OR tickets.ticket_number = ?)')
+          params.push(numericId, numericId)
         }
       }
     }
@@ -306,8 +306,8 @@ export const ticketsRepository = {
     const orderByParams: unknown[] = []
     if (useRelevanceSort && !filters?.sort_by) {
       if (idBoostParam !== null) {
-        orderByClause = 'ORDER BY CASE WHEN tickets.id = ? THEN 0 WHEN tickets_fts.rank IS NOT NULL THEN 1 ELSE 2 END, tickets_fts.rank, tickets.updated_at DESC'
-        orderByParams.push(idBoostParam)
+        orderByClause = 'ORDER BY CASE WHEN tickets.ticket_number = ? THEN 0 WHEN tickets.id = ? THEN 1 WHEN tickets_fts.rank IS NOT NULL THEN 2 ELSE 3 END, tickets_fts.rank, tickets.updated_at DESC'
+        orderByParams.push(idBoostParam, idBoostParam)
       } else {
         orderByClause = 'ORDER BY CASE WHEN tickets_fts.rank IS NOT NULL THEN 0 ELSE 1 END, tickets_fts.rank, tickets.updated_at DESC'
       }

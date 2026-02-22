@@ -1675,15 +1675,33 @@ describe('ticketsRepository', () => {
       expect(titles).toContain('Beta')
     })
 
-    it('should not match ticket_number when project_id is not filtered', () => {
+    it('should match ticket_number when project_id is not filtered', () => {
       ticketsRepository.create({ ...TEST_TICKET, title: 'Alpha' })
       ticketsRepository.create({ ...TEST_TICKET, title: 'Beta' })
 
       const results = ticketsRepository.list({ search: '2' })
-      // Without project filter, numeric search matches by global ID only
-      // ticket_number 2 may or may not match global ID 2 depending on test isolation
-      // Just verify it doesn't crash
-      expect(Array.isArray(results)).toBe(true)
+      const titles = results.map((t) => t.title)
+      expect(titles).toContain('Beta')
+    })
+
+    it('should prioritize ticket_number match over id match', () => {
+      // Create tickets across two projects so ticket_number diverges from id
+      db.prepare(`INSERT INTO projects (id, name, owner_id) VALUES (?, 'Project B', ?)`).run('project-b', TEST_USER_ID)
+
+      // Project A: id=1, ticket_number=1
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Filler A' })
+      // Project B: id=2, ticket_number=1
+      ticketsRepository.create({ ...TEST_TICKET, project_id: 'project-b', title: 'Filler B' })
+      // Project A: id=3, ticket_number=2
+      ticketsRepository.create({ ...TEST_TICKET, title: 'Target' })
+
+      // Search for "2" without project filter
+      // ticket id=2 has ticket_number=1, ticket id=3 has ticket_number=2
+      // ticket_number=2 match (id=3, "Target") should rank above id=2 match ("Filler B")
+      const results = ticketsRepository.list({ search: '2' })
+
+      expect(results.length).toBeGreaterThan(0)
+      expect(results[0]!.title, 'ticket_number match should rank first').toBe('Target')
     })
   })
 })
