@@ -24,6 +24,7 @@ interface UseTextareaAutocompleteOptions {
   onValueChange: (value: string) => void
   textareaRef: RefObject<HTMLTextAreaElement | null>
   triggersEnabled?: boolean
+  projectId?: string
 }
 
 export function useTextareaAutocomplete({
@@ -31,6 +32,7 @@ export function useTextareaAutocomplete({
   onValueChange,
   textareaRef,
   triggersEnabled,
+  projectId,
 }: UseTextareaAutocompleteOptions) {
   const [mentionContext, setMentionContext] = useState(() =>
     getMentionContext('', 0)
@@ -54,7 +56,7 @@ export function useTextareaAutocomplete({
   )
   const { data: mentionTickets = [] } = useTicketSearch(
     mentionContext.query,
-    { enabled: isTicketMention }
+    { enabled: isTicketMention, projectId: projectId ?? null }
   )
 
   const profileDropdownVisible =

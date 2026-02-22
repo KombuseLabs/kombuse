@@ -404,20 +404,35 @@ export const commentsRepository = {
       }
 
       // 4. Resolve ticket mentions
-      for (const mentionedTicketId of mentions.ticketIds) {
-        const mentionedTicket = db
-          .prepare('SELECT id, project_id FROM tickets WHERE id = ?')
-          .get(mentionedTicketId) as { id: number; project_id: string } | undefined
+      // Try project-scoped ticket_number first, then fall back to global ID
+      for (const mentionedNumber of mentions.ticketIds) {
+        let mentionedTicket: { id: number; project_id: string } | undefined
+
+        // First: try matching by ticket_number within the parent ticket's project
+        if (ticket?.project_id) {
+          mentionedTicket = db
+            .prepare('SELECT id, project_id FROM tickets WHERE project_id = ? AND ticket_number = ?')
+            .get(ticket.project_id, mentionedNumber) as { id: number; project_id: string } | undefined
+        }
+
+        // Fallback: match by global ticket ID (backward compatibility)
+        if (!mentionedTicket) {
+          mentionedTicket = db
+            .prepare('SELECT id, project_id FROM tickets WHERE id = ?')
+            .get(mentionedNumber) as { id: number; project_id: string } | undefined
+        }
 
         if (!mentionedTicket) {
           continue
         }
 
+        const mentionedTicketId = mentionedTicket.id
+
         mentionsRepository.create({
           comment_id: commentId,
           mention_type: 'ticket',
           mentioned_ticket_id: mentionedTicketId,
-          mention_text: `#${mentionedTicketId}`,
+          mention_text: `#${mentionedNumber}`,
         })
 
         eventsRepository.create({

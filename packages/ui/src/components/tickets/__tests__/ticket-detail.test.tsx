@@ -102,6 +102,7 @@ vi.mock('../../staged-file-previews', () => ({
 function buildTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
     id: 317,
+    ticket_number: 1,
     project_id: '1',
     author_id: 'user-1',
     assignee_id: null,

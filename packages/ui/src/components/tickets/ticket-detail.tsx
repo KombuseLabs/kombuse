@@ -98,6 +98,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
     value: editBody,
     onValueChange: setEditBody,
     textareaRef: editBodyRef,
+    projectId: currentTicket?.project_id,
   })
 
   const {

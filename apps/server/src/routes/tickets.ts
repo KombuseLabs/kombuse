@@ -34,6 +34,22 @@ export async function ticketRoutes(fastify: FastifyInstance) {
     return ticketService.countByStatus(parseResult.data.project_id)
   })
 
+  // Get ticket by per-project number
+  fastify.get<{
+    Params: { projectId: string; number: string }
+  }>('/projects/:projectId/tickets/by-number/:number', async (request, reply) => {
+    const ticketNumber = parseInt(request.params.number, 10)
+    if (isNaN(ticketNumber) || ticketNumber < 1) {
+      return reply.status(400).send({ error: 'Invalid ticket number' })
+    }
+
+    const ticket = ticketService.getByNumberWithRelations(request.params.projectId, ticketNumber)
+    if (!ticket) {
+      return reply.status(404).send({ error: 'Ticket not found' })
+    }
+    return ticket
+  })
+
   // Get single ticket with activities
   fastify.get<{
     Params: { id: string }

@@ -5,6 +5,7 @@ import { TicketDetail } from '../ticket-detail'
 const testState = vi.hoisted(() => ({
   currentTicket: {
     id: 352,
+    ticket_number: 1,
     project_id: '1',
     author_id: 'user-1',
     assignee_id: null,

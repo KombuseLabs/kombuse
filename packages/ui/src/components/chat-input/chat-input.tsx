@@ -26,6 +26,7 @@ interface ChatInputProps {
   onStop?: () => void
   className?: string
   triggersEnabled?: boolean
+  projectId?: string
 }
 
 function ChatInput({
@@ -39,6 +40,7 @@ function ChatInput({
   onStop,
   className,
   triggersEnabled,
+  projectId,
 }: ChatInputProps) {
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -61,6 +63,7 @@ function ChatInput({
     onValueChange: setMessage,
     textareaRef,
     triggersEnabled,
+    projectId,
   })
   const { onChange: handleAutocompleteChange, onKeyDown: handleAutocompleteKeyDown } = autocompleteProps
 

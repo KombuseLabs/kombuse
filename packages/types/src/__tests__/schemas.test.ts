@@ -80,6 +80,7 @@ describe('shared entity schemas', () => {
 
     const ticket = ticketSchema.parse({
       id: 135,
+      ticket_number: 7,
       project_id: 'proj-1',
       author_id: 'user-1',
       assignee_id: null,

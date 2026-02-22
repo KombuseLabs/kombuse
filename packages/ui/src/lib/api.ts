@@ -150,6 +150,11 @@ export const ticketsApi = {
     return handleResponse<TicketWithRelations>(response)
   },
 
+  async getByNumber(projectId: string, ticketNumber: number): Promise<TicketWithRelations> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}`)
+    return handleResponse<TicketWithRelations>(response)
+  },
+
   async markViewed(id: number, profileId: string): Promise<void> {
     const response = await fetch(`${API_BASE}/tickets/${id}/view`, {
       method: 'POST',

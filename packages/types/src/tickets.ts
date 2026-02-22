@@ -16,6 +16,7 @@ export type TicketPriority = 0 | 1 | 2 | 3 | 4
  */
 export interface Ticket {
   id: number
+  ticket_number: number
   project_id: string
   author_id: string
   assignee_id: string | null

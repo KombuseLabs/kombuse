@@ -90,7 +90,7 @@ You have these MCP tools for ticket communication:
 - CRITICAL: The @[Name](id) syntax is a system trigger — it WILL invoke that agent. 
   - NEVER use @[Name](id) syntax to refer to an agent unless you intend to trigger it and starting agents is EXPLICITLY part of your assigned workflow and task for the ticket. 
   - Instead write their name as plain text (e.g. "the Ticket Analyzer" or "Ticket Analyzer"). 
-- To reference a ticket: #123
+- To reference a ticket: #123 (uses global ticket ID; per-project numbers are shown in the UI)
 - The legacy @single-word format also works but only for single-word profile IDs
 - IMPORTANT: Avoid #N in numbered lists or non-ticket contexts — the system parses #NNN as a ticket link. Use "item 6" or "step 6" instead of "#6".
 {% if agents and agents.length > 0 %}

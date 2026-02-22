@@ -21,7 +21,9 @@ export interface ITicketService {
   listWithLabels(filters?: TicketFilters): TicketWithLabels[]
   listWithRelations(filters?: TicketFilters): TicketWithRelations[]
   get(id: number): Ticket | null
+  getByNumber(projectId: string, ticketNumber: number): Ticket | null
   getWithRelations(id: number): TicketWithRelations | null
+  getByNumberWithRelations(projectId: string, ticketNumber: number): TicketWithRelations | null
   create(input: CreateTicketInput): Ticket
   update(id: number, input: UpdateTicketInput, updatedById?: string): Ticket
   delete(id: number): void
@@ -52,8 +54,25 @@ export class TicketService implements ITicketService {
     return ticketsRepository.get(id)
   }
 
+  getByNumber(projectId: string, ticketNumber: number): Ticket | null {
+    return ticketsRepository.getByNumber(projectId, ticketNumber)
+  }
+
   getWithRelations(id: number): TicketWithRelations | null {
     const ticket = ticketsRepository.getWithRelations(id)
+    if (!ticket) return null
+
+    if (ticket.loop_protection_enabled) {
+      const maxDepth = readUserDefaultMaxChainDepth() ?? MAX_CHAIN_DEPTH
+      const recentCount = agentInvocationsRepository.countRecentByTicketId(ticket.id)
+      ticket.loop_protection_tripped = recentCount >= maxDepth
+    }
+
+    return ticket
+  }
+
+  getByNumberWithRelations(projectId: string, ticketNumber: number): TicketWithRelations | null {
+    const ticket = ticketsRepository.getByNumberWithRelations(projectId, ticketNumber)
     if (!ticket) return null
 
     if (ticket.loop_protection_enabled) {

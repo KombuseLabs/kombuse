@@ -61,6 +61,7 @@ describe('renderTemplate', () => {
       ...baseContext,
       ticket: {
         id: 123,
+        ticket_number: 1,
         project_id: 'proj-abc',
         author_id: 'user-alice',
         assignee_id: null,
@@ -105,6 +106,7 @@ describe('renderTemplate', () => {
       ...baseContext,
       ticket: {
         id: 123,
+        ticket_number: 5,
         project_id: 'proj-abc',
         author_id: 'user-alice',
         assignee_id: 'user-bob',

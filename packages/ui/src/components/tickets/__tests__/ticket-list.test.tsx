@@ -20,6 +20,7 @@ type TicketSortBy = NonNullable<TicketFilters['sort_by']>
 function buildTicket(overrides: Partial<TicketWithLabels> = {}): TicketWithLabels {
   return {
     id: 317,
+    ticket_number: 1,
     project_id: '1',
     author_id: 'user-1',
     assignee_id: null,

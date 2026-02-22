@@ -25,7 +25,7 @@ function TicketMentionAutocomplete({
 }: TicketMentionAutocompleteProps) {
   const renderItem = useCallback((ticket: TicketWithLabels) => (
     <>
-      <span className="shrink-0 font-mono text-xs text-muted-foreground">#{ticket.id}</span>
+      <span className="shrink-0 font-mono text-xs text-muted-foreground">#{ticket.ticket_number}</span>
       <span className="truncate">{ticket.title}</span>
       <span
         className={cn(

@@ -44,6 +44,7 @@ function mapTicketRow(row: RawTicketRow): Ticket {
 // Raw ticket row with joined author and assignee profile columns
 interface RawTicketWithProfiles {
   id: number
+  ticket_number: number
   project_id: string
   author_id: string
   assignee_id: string | null
@@ -114,6 +115,7 @@ const TICKET_WITH_PROFILES_SELECT = `
 function mapTicketWithProfiles(row: RawTicketWithProfiles): Omit<TicketWithRelations, 'labels' | 'has_unread'> {
   return {
     id: row.id,
+    ticket_number: row.ticket_number,
     project_id: row.project_id,
     author_id: row.author_id,
     assignee_id: row.assignee_id,
@@ -250,10 +252,17 @@ export const ticketsRepository = {
         selectColumns += `, (SELECT snippet(comments_fts, 0, '«', '»', '…', 64) FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments.ticket_id = tickets.id AND comments_fts MATCH ? LIMIT 1) AS comment_snippet`
         selectParams.push(ftsQuery)
         hasSnippets = true
-        conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id = ? OR tickets.id IN (
-          SELECT ticket_id FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments_fts MATCH ?
-        ))`)
-        params.push(numericId, ftsQuery)
+        if (filters?.project_id) {
+          conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id = ? OR tickets.ticket_number = ? OR tickets.id IN (
+            SELECT ticket_id FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments_fts MATCH ?
+          ))`)
+          params.push(numericId, numericId, ftsQuery)
+        } else {
+          conditions.push(`(tickets_fts.rowid IS NOT NULL OR tickets.id = ? OR tickets.id IN (
+            SELECT ticket_id FROM comments JOIN comments_fts ON comments.id = comments_fts.rowid WHERE comments_fts MATCH ?
+          ))`)
+          params.push(numericId, ftsQuery)
+        }
         useRelevanceSort = true
         idBoostParam = numericId
       } else if (ftsQuery) {
@@ -272,8 +281,13 @@ export const ticketsRepository = {
         useRelevanceSort = true
       } else if (numericId !== null) {
         // Defensive: unreachable while sanitizeFtsQuery passes digit-only strings, but guards against future changes
-        conditions.push('tickets.id = ?')
-        params.push(numericId)
+        if (filters?.project_id) {
+          conditions.push('(tickets.id = ? OR tickets.ticket_number = ?)')
+          params.push(numericId, numericId)
+        } else {
+          conditions.push('tickets.id = ?')
+          params.push(numericId)
+        }
       }
     }
     if (filters?.label_ids && filters.label_ids.length > 0) {
@@ -413,6 +427,24 @@ export const ticketsRepository = {
     return { ...mapTicketWithProfiles(row), labels }
   },
 
+  getByNumber(projectId: string, ticketNumber: number): Ticket | null {
+    const db = getDatabase()
+    const ticket = db
+      .prepare('SELECT * FROM tickets WHERE project_id = ? AND ticket_number = ?')
+      .get(projectId, ticketNumber) as RawTicketRow | undefined
+    return ticket ? mapTicketRow(ticket) : null
+  },
+
+  getByNumberWithRelations(projectId: string, ticketNumber: number): TicketWithRelations | null {
+    const db = getDatabase()
+    const row = db
+      .prepare(`${TICKET_WITH_PROFILES_SELECT} WHERE t.project_id = ? AND t.ticket_number = ?`)
+      .get(projectId, ticketNumber) as RawTicketWithProfiles | undefined
+    if (!row) return null
+    const labels = labelsRepository.getTicketLabels(row.id)
+    return { ...mapTicketWithProfiles(row), labels }
+  },
+
   /**
    * Create a new ticket
    */
@@ -421,10 +453,10 @@ export const ticketsRepository = {
     const insertTicket = db.prepare(`
       INSERT INTO tickets (
         project_id, author_id, assignee_id, title, body, triggers_enabled, loop_protection_enabled, status, priority,
-        milestone_id, external_source, external_id, external_url,
+        milestone_id, external_source, external_id, external_url, ticket_number,
         opened_at, closed_at, last_activity_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
     `)
 
     const insertTicketLabels = db.prepare(`
@@ -451,6 +483,12 @@ export const ticketsRepository = {
         }
       }
 
+      // Compute next per-project ticket number
+      const maxRow = db
+        .prepare('SELECT MAX(ticket_number) AS max_num FROM tickets WHERE project_id = ?')
+        .get(payload.project_id) as { max_num: number | null } | undefined
+      const nextTicketNumber = ((maxRow?.max_num) ?? 0) + 1
+
       const status = payload.status ?? 'open'
       const result = insertTicket.run(
         payload.project_id,
@@ -466,6 +504,7 @@ export const ticketsRepository = {
         payload.external_source ?? null,
         payload.external_id ?? null,
         payload.external_url ?? null,
+        nextTicketNumber,
         status
       )
 

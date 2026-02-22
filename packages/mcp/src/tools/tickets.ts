@@ -112,6 +112,7 @@ function buildMinimalTicketFallbackPayload(
   return {
     ticket: {
       id: normalizedTicket.id ?? null,
+      ticket_number: normalizedTicket.ticket_number ?? null,
       project_id: normalizedTicket.project_id ?? null,
       title: normalizedTicket.title ?? null,
       status: normalizedTicket.status ?? null,
@@ -209,6 +210,7 @@ function buildTicketSummary(
 
   const summary: Record<string, unknown> = {
     id: ticket.id,
+    ticket_number: ticket.ticket_number,
     project_id: ticket.project_id,
     title: ticket.title,
     status: ticket.status,

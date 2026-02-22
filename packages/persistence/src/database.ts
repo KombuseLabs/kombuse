@@ -682,6 +682,38 @@ const migrations: Migration[] = [
       `)
     },
   },
+  {
+    name: '007_ticket_numbers',
+    run: (db: DatabaseType) => {
+      // 1. Add ticket_number column (nullable for ALTER TABLE compatibility)
+      db.exec(`ALTER TABLE tickets ADD COLUMN ticket_number INTEGER`)
+
+      // 2. Backfill existing tickets with sequential numbers per project
+      const projects = db
+        .prepare('SELECT DISTINCT project_id FROM tickets')
+        .all() as { project_id: string }[]
+
+      const getTicketsByProject = db.prepare(
+        'SELECT id FROM tickets WHERE project_id = ? ORDER BY id ASC'
+      )
+      const updateNumber = db.prepare(
+        'UPDATE tickets SET ticket_number = ? WHERE id = ?'
+      )
+
+      for (const { project_id } of projects) {
+        const tickets = getTicketsByProject.all(project_id) as { id: number }[]
+        for (let i = 0; i < tickets.length; i++) {
+          updateNumber.run(i + 1, tickets[i]!.id)
+        }
+      }
+
+      // 3. Add unique constraint for per-project ticket numbers
+      db.exec(`
+        CREATE UNIQUE INDEX idx_tickets_project_number
+          ON tickets(project_id, ticket_number)
+      `)
+    },
+  },
 ]
 
 /**

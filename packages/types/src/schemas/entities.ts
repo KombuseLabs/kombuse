@@ -87,6 +87,7 @@ export const ticketPrioritySchema = z.union([
 
 export const ticketSchema = z.object({
   id: z.number().int().positive(),
+  ticket_number: z.number().int().positive(),
   project_id: z.string().min(1),
   author_id: z.string().min(1),
   assignee_id: z.string().nullable(),

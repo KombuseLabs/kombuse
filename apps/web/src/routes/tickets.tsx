@@ -244,6 +244,7 @@ export function Tickets() {
     value: newTicketBody,
     onValueChange: setNewTicketBody,
     textareaRef: newTicketBodyRef,
+    projectId,
   });
   const {
     stagedFiles: createStagedFiles, previewUrls: createPreviewUrls,
@@ -1105,6 +1106,7 @@ export function Tickets() {
                               replyTarget={replyTarget}
                               onCancelReply={handleCancelReply}
                               triggersEnabled={selectedTicket?.triggers_enabled}
+                              projectId={projectId}
                             />
                           </div>
                         </div>

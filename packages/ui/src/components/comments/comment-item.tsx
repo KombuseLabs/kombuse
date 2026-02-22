@@ -72,6 +72,7 @@ function CommentItem({
     value: editBody,
     onValueChange: handleEditBodyChange,
     textareaRef: editTextareaRef,
+    projectId: projectId ?? undefined,
   })
   const {
     stagedFiles, previewUrls, isDragOver, hasFiles,
