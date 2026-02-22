@@ -34,6 +34,7 @@ export const projectRepoSourceSchema = z.enum(['github', 'gitlab', 'bitbucket'])
 export const projectSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  slug: z.string().min(1),
   description: z.string().nullable(),
   owner_id: z.string().min(1),
   local_path: z.string().nullable(),

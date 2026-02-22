@@ -12,6 +12,7 @@ import { projectsRepository } from '@kombuse/persistence'
 export interface IProjectService {
   list(filters?: ProjectFilters): Project[]
   get(id: string): Project | null
+  getByIdOrSlug(identifier: string): Project | null
   create(input: CreateProjectInput): Project
   update(id: string, input: UpdateProjectInput): Project
   delete(id: string): void
@@ -27,6 +28,10 @@ export class ProjectService implements IProjectService {
 
   get(id: string): Project | null {
     return projectsRepository.get(id)
+  }
+
+  getByIdOrSlug(identifier: string): Project | null {
+    return projectsRepository.getByIdOrSlug(identifier)
   }
 
   create(input: CreateProjectInput): Project {

@@ -1,8 +1,10 @@
 import { z } from 'zod'
+import { SLUG_REGEX } from '@kombuse/types'
 
 export const createProjectSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1),
+  slug: z.string().regex(SLUG_REGEX).optional(),
   description: z.string().optional(),
   owner_id: z.string().min(1),
   local_path: z.string().optional(),
@@ -13,6 +15,7 @@ export const createProjectSchema = z.object({
 
 export const updateProjectSchema = z.object({
   name: z.string().min(1).optional(),
+  slug: z.string().regex(SLUG_REGEX).optional(),
   description: z.string().optional(),
   local_path: z.string().optional(),
   repo_source: z.enum(['github', 'gitlab', 'bitbucket']).optional(),

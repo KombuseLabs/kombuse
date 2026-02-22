@@ -37,11 +37,11 @@ export async function projectRoutes(fastify: FastifyInstance) {
     return projectService.list(parseResult.data)
   })
 
-  // Get single project
+  // Get single project (resolves by UUID or slug)
   fastify.get<{
     Params: { id: string }
   }>('/projects/:id', async (request, reply) => {
-    const project = projectService.get(request.params.id)
+    const project = projectService.getByIdOrSlug(request.params.id)
     if (!project) {
       return reply.status(404).send({ error: 'Project not found' })
     }
@@ -60,7 +60,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
     return reply.status(201).send(project)
   })
 
-  // Update project
+  // Update project (resolves by UUID or slug)
   fastify.patch<{
     Params: { id: string }
   }>('/projects/:id', async (request, reply) => {
@@ -69,8 +69,13 @@ export async function projectRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
+    const existing = projectService.getByIdOrSlug(request.params.id)
+    if (!existing) {
+      return reply.status(404).send({ error: 'Project not found' })
+    }
+
     try {
-      const project = projectService.update(request.params.id, parseResult.data)
+      const project = projectService.update(existing.id, parseResult.data)
       if (parseResult.data.local_path !== undefined) {
         configureCodexForProject(project.local_path)
       }
@@ -83,12 +88,17 @@ export async function projectRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // Delete project
+  // Delete project (resolves by UUID or slug)
   fastify.delete<{
     Params: { id: string }
   }>('/projects/:id', async (request, reply) => {
+    const existing = projectService.getByIdOrSlug(request.params.id)
+    if (!existing) {
+      return reply.status(404).send({ error: 'Project not found' })
+    }
+
     try {
-      projectService.delete(request.params.id)
+      projectService.delete(existing.id)
       return reply.status(204).send()
     } catch (error) {
       if (error instanceof Error && error.message.includes('not found')) {

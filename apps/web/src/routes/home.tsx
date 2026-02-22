@@ -101,7 +101,7 @@ export function Home() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {projects.map((project) => (
-                <Link key={project.id} to={`/projects/${project.id}/tickets`}>
+                <Link key={project.id} to={`/projects/${project.slug}/tickets`}>
                   <Card className="group cursor-pointer border-border/60 hover:border-primary/20 transition-all">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">

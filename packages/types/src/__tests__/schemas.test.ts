@@ -68,6 +68,7 @@ describe('shared entity schemas', () => {
     const project = projectSchema.parse({
       id: 'proj-1',
       name: 'Kombuse',
+      slug: 'kombuse',
       description: null,
       owner_id: 'user-1',
       local_path: '/tmp/repo',

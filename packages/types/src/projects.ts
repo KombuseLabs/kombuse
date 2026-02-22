@@ -9,6 +9,7 @@ export type RepoSource = 'github' | 'gitlab' | 'bitbucket'
 export interface Project {
   id: string
   name: string
+  slug: string
   description: string | null
   owner_id: string
   local_path: string | null
@@ -25,6 +26,7 @@ export interface Project {
 export interface CreateProjectInput {
   id?: string
   name: string
+  slug?: string
   description?: string
   owner_id: string
   local_path?: string
@@ -38,6 +40,7 @@ export interface CreateProjectInput {
  */
 export interface UpdateProjectInput {
   name?: string
+  slug?: string
   description?: string
   local_path?: string
   repo_source?: RepoSource

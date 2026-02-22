@@ -714,6 +714,33 @@ const migrations: Migration[] = [
       `)
     },
   },
+  {
+    name: '008_project_slugs',
+    run: (db: DatabaseType) => {
+      // 1. Add slug column
+      db.exec(`ALTER TABLE projects ADD COLUMN slug TEXT`)
+
+      // 2. Backfill from name
+      const projects = db
+        .prepare('SELECT id, name FROM projects')
+        .all() as { id: string; name: string }[]
+
+      const slugCounts = new Map<string, number>()
+      const updateSlug = db.prepare('UPDATE projects SET slug = ? WHERE id = ?')
+
+      for (const project of projects) {
+        const baseSlug = toSlug(project.name)
+        const count = (slugCounts.get(baseSlug) ?? 0) + 1
+        slugCounts.set(baseSlug, count)
+
+        const finalSlug = count === 1 ? baseSlug : `${baseSlug}-${count}`
+        updateSlug.run(finalSlug, project.id)
+      }
+
+      // 3. Add unique index
+      db.exec(`CREATE UNIQUE INDEX idx_projects_slug ON projects(slug)`)
+    },
+  },
 ]
 
 /**

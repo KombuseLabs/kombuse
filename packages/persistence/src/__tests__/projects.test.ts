@@ -98,6 +98,26 @@ describe('projectsRepository', () => {
       expect(project.updated_at, 'updated_at should be set').toBeDefined()
       expect(() => new Date(project.created_at)).not.toThrow()
     })
+
+    it('should auto-generate slug from name', () => {
+      const project = projectsRepository.create(TEST_PROJECT)
+
+      expect(project.slug).toBe('test-project')
+    })
+
+    it('should use explicit slug when provided', () => {
+      const project = projectsRepository.create({ ...TEST_PROJECT, slug: 'my-custom-slug' })
+
+      expect(project.slug).toBe('my-custom-slug')
+    })
+
+    it('should handle duplicate slugs with suffix', () => {
+      const project1 = projectsRepository.create({ ...TEST_PROJECT, name: 'Duplicate' })
+      const project2 = projectsRepository.create({ ...TEST_PROJECT, name: 'Duplicate' })
+
+      expect(project1.slug).toBe('duplicate')
+      expect(project2.slug).toBe('duplicate-2')
+    })
   })
 
   /*
@@ -118,6 +138,55 @@ describe('projectsRepository', () => {
       expect(project).not.toBeNull()
       expect(project?.id).toBe(created.id)
       expect(project?.name).toBe(TEST_PROJECT.name)
+    })
+  })
+
+  /*
+   * GET BY SLUG TESTS
+   */
+  describe('getBySlug', () => {
+    it('should return project by slug', () => {
+      const created = projectsRepository.create(TEST_PROJECT)
+
+      const project = projectsRepository.getBySlug(created.slug)
+
+      expect(project).not.toBeNull()
+      expect(project?.id).toBe(created.id)
+    })
+
+    it('should return null for non-existent slug', () => {
+      const project = projectsRepository.getBySlug('non-existent-slug')
+
+      expect(project).toBeNull()
+    })
+  })
+
+  /*
+   * GET BY ID OR SLUG TESTS
+   */
+  describe('getByIdOrSlug', () => {
+    it('should resolve by UUID', () => {
+      const created = projectsRepository.create(TEST_PROJECT)
+
+      const project = projectsRepository.getByIdOrSlug(created.id)
+
+      expect(project).not.toBeNull()
+      expect(project?.id).toBe(created.id)
+    })
+
+    it('should resolve by slug', () => {
+      const created = projectsRepository.create(TEST_PROJECT)
+
+      const project = projectsRepository.getByIdOrSlug(created.slug)
+
+      expect(project).not.toBeNull()
+      expect(project?.id).toBe(created.id)
+    })
+
+    it('should return null for non-existent identifier', () => {
+      const project = projectsRepository.getByIdOrSlug('no-such-project')
+
+      expect(project).toBeNull()
     })
   })
 
@@ -230,6 +299,14 @@ describe('projectsRepository', () => {
 
       expect(result?.id).toBe(project.id)
       expect(result?.name).toBe(project.name)
+    })
+
+    it('should update slug', () => {
+      const project = projectsRepository.create(TEST_PROJECT)
+
+      const updated = projectsRepository.update(project.id, { slug: 'new-slug' })
+
+      expect(updated?.slug).toBe('new-slug')
     })
 
     it('should update repo fields', () => {

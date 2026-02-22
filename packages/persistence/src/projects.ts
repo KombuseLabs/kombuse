@@ -4,6 +4,7 @@ import type {
   CreateProjectInput,
   UpdateProjectInput,
 } from '@kombuse/types'
+import { toSlug, UUID_REGEX } from '@kombuse/types'
 import { getDatabase } from './database'
 
 /**
@@ -64,18 +65,20 @@ export const projectsRepository = {
   create(input: CreateProjectInput): Project {
     const db = getDatabase()
     const id = input.id || crypto.randomUUID()
+    const slug = input.slug || this._generateUniqueSlug(toSlug(input.name))
 
     db.prepare(
       `
       INSERT INTO projects (
-        id, name, description, owner_id, local_path,
+        id, name, slug, description, owner_id, local_path,
         repo_source, repo_owner, repo_name
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
     ).run(
       id,
       input.name,
+      slug,
       input.description ?? null,
       input.owner_id,
       input.local_path ?? null,
@@ -99,6 +102,10 @@ export const projectsRepository = {
     if (input.name !== undefined) {
       fields.push('name = ?')
       params.push(input.name)
+    }
+    if (input.slug !== undefined) {
+      fields.push('slug = ?')
+      params.push(input.slug)
     }
     if (input.description !== undefined) {
       fields.push('description = ?')
@@ -140,5 +147,38 @@ export const projectsRepository = {
     const db = getDatabase()
     const result = db.prepare('DELETE FROM projects WHERE id = ?').run(id)
     return result.changes > 0
+  },
+
+  getBySlug(slug: string): Project | null {
+    const db = getDatabase()
+    const project = db
+      .prepare('SELECT * FROM projects WHERE slug = ?')
+      .get(slug) as Project | undefined
+    return project ?? null
+  },
+
+  getByIdOrSlug(identifier: string): Project | null {
+    if (UUID_REGEX.test(identifier)) {
+      return this.get(identifier)
+    }
+    return this.getBySlug(identifier)
+  },
+
+  _generateUniqueSlug(baseSlug: string): string {
+    const db = getDatabase()
+    const existing = db
+      .prepare('SELECT slug FROM projects WHERE slug = ?')
+      .get(baseSlug) as { slug: string } | undefined
+    if (!existing) return baseSlug
+
+    let counter = 2
+    while (true) {
+      const candidate = `${baseSlug}-${counter}`
+      const found = db
+        .prepare('SELECT slug FROM projects WHERE slug = ?')
+        .get(candidate) as { slug: string } | undefined
+      if (!found) return candidate
+      counter++
+    }
   },
 }
