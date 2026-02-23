@@ -150,6 +150,25 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           )
         }
 
+        if (event.type === 'raw' && event.sourceType === 'task_started') {
+          const d = event.data as Record<string, unknown> | null
+          const description = d?.description as string | undefined
+          const taskType = d?.task_type as string | undefined
+          return (
+            <div key={event.eventId} className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
+              <span>
+                Task started{description && <span>: {description}</span>}
+                {taskType && (
+                  <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+                    {taskType}
+                  </span>
+                )}
+              </span>
+              <span className="ml-auto shrink-0 font-mono text-[10px]">{formatEventTime(event.timestamp)}</span>
+            </div>
+          )
+        }
+
         if (event.type === 'raw' && event.sourceType === 'init') {
           return <InitRenderer key={event.eventId} event={event} />
         }

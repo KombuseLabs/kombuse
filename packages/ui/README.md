@@ -1237,9 +1237,15 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Displays model name and Claude Code version inline with timestamp
 - Follows the same inline pattern as `process_spawn` (no card wrapper)
 
+`task_started` inline renderer (in `session-viewer.tsx`):
+- Minimal one-liner for `task_started` raw events (agent sub-task spawned)
+- Displays task description and optional task_type badge inline with timestamp
+- Follows the same inline pattern as `process_spawn` (no card wrapper)
+
 `RateLimitRenderer` (in `renderers/`):
-- Amber warning-style `EventCard` for `rate_limit_event` raw events
-- Shows "Rate limited" header with `AlertTriangle` icon, optional message and retry duration
+- Status-aware `EventCard` for `rate_limit_event` raw events
+- Three visual tiers: neutral (`allowed`), amber warning (`allowed_warning` with utilization %), red error (other statuses)
+- Reads `data.rate_limit_info` with legacy fallback for `data.message` / `data.retry_after`
 
 `ErrorRenderer` (in `renderers/`):
 - Dedicated renderer for `error` session events
