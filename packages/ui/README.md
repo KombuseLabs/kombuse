@@ -1093,10 +1093,16 @@ import { AgentCard, AgentDetail, AgentHoverCard, AgentPreviewCard } from '@kombu
 Both `AgentCard` and `AgentDetail` display the agent ID (`agent.id`) so users can easily reference it in trigger conditions. `AgentDetail` includes a click-to-copy button next to the ID.
 
 `AgentDetail` is split into two tabs:
-- `Basic Info`: name, description, avatar, system prompt
+- `Basic Info`: name, description, avatar, system prompt, and collapsible include sections (when `{% include %}` directives are present)
 - `Configuration`: available-in-chat toggle, backend override, model override, permissions, triggers
 - Tab switches preserve in-progress editor state (for example unsaved permission/trigger drafts)
 - Save action: rendered in a persistent footer and shown only when there are unsaved changes
+
+`PromptIncludeSections` — self-contained collapsible sections for included files:
+- Each `{% include %}` directive resolves to a collapsible section with file path, expand/collapse chevron, and "Modified" badge
+- Collapsed by default; expanding reveals read-only file content
+- Inline edit mode with Save/Cancel actions
+- Props: `files: PluginFile[]`, `isLoading?: boolean`, `onFileUpdate?: (fileId: number, content: string) => Promise<void>`
 
 `AgentHoverCard` props:
 - `agentId`: target agent ID

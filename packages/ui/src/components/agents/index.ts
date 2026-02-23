@@ -12,3 +12,6 @@ export type { AgentHoverCardProps } from './agent-hover-card'
 
 export { AgentPreviewCard } from './agent-preview-card'
 export type { AgentPreviewCardProps } from './agent-preview-card'
+
+export { PromptIncludeSections } from './prompt-include-sections'
+export type { PromptIncludeSectionsProps } from './prompt-include-sections'

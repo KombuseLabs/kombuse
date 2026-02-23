@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { BACKEND_TYPES, type Agent, type AgentConfig, type AgentTrigger, type BackendType, type Permission, type Profile, type UpdateAgentInput, type UpdateProfileInput } from '@kombuse/types'
 import type { PluginFile } from '@kombuse/types'
-import { X, Trash2, Save, Copy, Check, Puzzle, FileText, Loader2 } from 'lucide-react'
+import { X, Trash2, Save, Copy, Check, Puzzle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../base/card'
 import { Button } from '../../base/button'
@@ -16,6 +16,7 @@ import { PromptEditor } from '../prompt-editor'
 import { AvatarPicker, getAvatarIcon } from './avatar-picker'
 import { TriggerEditor, type TriggerFormData } from '../triggers'
 import { PermissionEditor } from '../permission-editor'
+import { PromptIncludeSections } from './prompt-include-sections'
 import { ModelSelector } from '../model-selector'
 import { useDefaultBackendType } from '../../hooks/use-app-context'
 import { useAvailableBackends } from '../../hooks/use-available-backends'
@@ -83,9 +84,6 @@ function AgentDetail({
     typeof agent.config?.model === 'string' ? agent.config.model : ''
   )
   const [activeTab, setActiveTab] = useState('basic-info')
-  const [editingFileId, setEditingFileId] = useState<number | null>(null)
-  const [editingFileContent, setEditingFileContent] = useState('')
-  const [savingFileId, setSavingFileId] = useState<number | null>(null)
   const { defaultBackendType } = useDefaultBackendType()
   const { availableBackends, isAvailable, noneAvailable } = useAvailableBackends()
   const effectiveBackendForModels: BackendType | undefined =
@@ -237,15 +235,9 @@ function AgentDetail({
 
         <CardContent className="flex-1 min-h-0 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full min-h-0 flex-col">
-            <TabsList className={cn('grid w-full', includedFiles.length > 0 ? 'grid-cols-3' : 'grid-cols-2')}>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="basic-info">Basic Info</TabsTrigger>
               <TabsTrigger value="configuration">Configuration</TabsTrigger>
-              {includedFiles.length > 0 && (
-                <TabsTrigger value="included-files">
-                  <FileText className="size-3 mr-1" />
-                  Includes ({includedFiles.length})
-                </TabsTrigger>
-              )}
             </TabsList>
 
             <TabsContent
@@ -253,9 +245,18 @@ function AgentDetail({
               forceMount
               hidden={activeTab !== 'basic-info'}
               data-testid="agent-basic-info-scroll"
-              className="flex h-full min-h-0 flex-col pr-1 data-[state=inactive]:hidden"
+              className={cn(
+                'h-full pr-1 data-[state=inactive]:hidden',
+                includedFiles.length > 0
+                  ? 'overflow-y-auto'
+                  : 'flex min-h-0 flex-col'
+              )}
             >
-              <div className="flex h-full min-h-0 flex-col gap-6">
+              <div className={cn(
+                includedFiles.length > 0
+                  ? 'space-y-6'
+                  : 'flex h-full min-h-0 flex-col gap-6'
+              )}>
                 {/* Name */}
                 <div className="space-y-2">
                   <Label htmlFor="agent-name">Name</Label>
@@ -286,16 +287,28 @@ function AgentDetail({
                 </div>
 
                 {/* System Prompt */}
-                <div className="flex min-h-0 flex-1 flex-col space-y-2">
+                <div className={cn(
+                  'space-y-2',
+                  includedFiles.length === 0 && 'flex min-h-0 flex-1 flex-col'
+                )}>
                   <Label>System Prompt</Label>
                   <PromptEditor
                     value={systemPrompt}
                     onChange={setSystemPrompt}
                     placeholder="Enter the agent's system prompt..."
                     showAvailableVariables
-                    fillHeight
+                    fillHeight={includedFiles.length === 0}
                   />
                 </div>
+
+                {/* Included Files */}
+                {includedFiles.length > 0 && (
+                  <PromptIncludeSections
+                    files={includedFiles}
+                    isLoading={isLoadingPluginFiles}
+                    onFileUpdate={onPluginFileUpdate}
+                  />
+                )}
               </div>
             </TabsContent>
 
@@ -403,94 +416,6 @@ function AgentDetail({
               </div>
             </TabsContent>
 
-            {includedFiles.length > 0 && (
-              <TabsContent
-                value="included-files"
-                forceMount
-                hidden={activeTab !== 'included-files'}
-                className="min-h-0 overflow-y-auto pr-1 data-[state=inactive]:hidden"
-              >
-                <div className="space-y-4">
-                  {isLoadingPluginFiles ? (
-                    <div className="flex items-center justify-center py-8 text-muted-foreground">
-                      <Loader2 className="size-4 animate-spin mr-2" />
-                      Loading files...
-                    </div>
-                  ) : (
-                    includedFiles.map((file) => (
-                      <div key={file.id} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <FileText className="size-4 text-muted-foreground" />
-                            <span className="font-mono text-sm">{file.path}</span>
-                            {file.is_user_modified && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                Modified
-                              </span>
-                            )}
-                          </div>
-                          {onPluginFileUpdate && editingFileId !== file.id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingFileId(file.id)
-                                setEditingFileContent(file.content)
-                              }}
-                            >
-                              Edit
-                            </Button>
-                          )}
-                        </div>
-                        {editingFileId === file.id ? (
-                          <div className="space-y-2">
-                            <Textarea
-                              value={editingFileContent}
-                              onChange={(e) => setEditingFileContent(e.target.value)}
-                              className="font-mono text-xs min-h-40"
-                            />
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditingFileId(null)}
-                                disabled={savingFileId === file.id}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                size="sm"
-                                disabled={savingFileId === file.id || editingFileContent === file.content}
-                                onClick={async () => {
-                                  setSavingFileId(file.id)
-                                  try {
-                                    await onPluginFileUpdate?.(file.id, editingFileContent)
-                                    setEditingFileId(null)
-                                  } finally {
-                                    setSavingFileId(null)
-                                  }
-                                }}
-                              >
-                                {savingFileId === file.id ? (
-                                  <Loader2 className="size-3 animate-spin mr-1" />
-                                ) : (
-                                  <Save className="size-3 mr-1" />
-                                )}
-                                Save
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-60 overflow-y-auto">
-                            {file.content}
-                          </pre>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </TabsContent>
-            )}
           </Tabs>
         </CardContent>
 
