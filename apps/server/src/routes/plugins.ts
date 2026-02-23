@@ -189,12 +189,13 @@ export async function pluginRoutes(fastify: FastifyInstance) {
     if (!parseResult.success) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
-    const file = pluginFilesRepository.update(Number(fileId), {
-      content: parseResult.data.content,
-    })
-    if (!file || file.plugin_id !== pluginId) {
+    const existing = pluginFilesRepository.getById(Number(fileId))
+    if (!existing || existing.plugin_id !== pluginId) {
       return reply.status(404).send({ error: 'File not found' })
     }
+    const file = pluginFilesRepository.update(existing.id, {
+      content: parseResult.data.content,
+    })
     return file
   })
 }
