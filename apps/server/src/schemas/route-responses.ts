@@ -21,6 +21,7 @@ import {
   milestoneSchema,
   milestoneWithStatsSchema,
   permissionLogEntrySchema,
+  pluginFileSchema,
   pluginSchema,
   profileSchema,
   profileSettingSchema,
@@ -270,6 +271,9 @@ registerSuccessSchema('GET', '/api/plugins/:id', pluginSchema)
 registerSuccessSchema('POST', '/api/plugins/install', pluginInstallResultSchema)
 registerSuccessSchema('PATCH', '/api/plugins/:id', pluginSchema)
 registerSuccessSchema('POST', '/api/plugins/export', pluginExportResultSchema)
+registerSuccessSchema('GET', '/api/plugins/:pluginId/files', z.array(pluginFileSchema))
+registerSuccessSchema('GET', '/api/plugins/:pluginId/files/:fileId', pluginFileSchema)
+registerSuccessSchema('PATCH', '/api/plugins/:pluginId/files/:fileId', pluginFileSchema)
 
 // Backend status routes
 registerSuccessSchema('GET', '/api/backend-status', z.array(backendStatusSchema))

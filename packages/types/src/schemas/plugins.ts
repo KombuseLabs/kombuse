@@ -41,5 +41,16 @@ export const availablePluginSchema = z.object({
   installed: z.boolean(),
 })
 
+export const pluginFileSchema = z.object({
+  id: z.number().int().positive(),
+  plugin_id: z.string().min(1),
+  path: z.string().min(1),
+  content: z.string(),
+  content_hash: z.string().min(1),
+  is_user_modified: z.boolean(),
+  created_at: timestampSchema,
+  updated_at: timestampSchema,
+})
+
 export type PluginEntity = z.infer<typeof pluginSchema>
 export type AvailablePluginEntity = z.infer<typeof availablePluginSchema>
