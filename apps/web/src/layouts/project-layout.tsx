@@ -6,13 +6,13 @@ import { Ticket, Bot, MessageSquare, History, Tags, Shield, Database, Puzzle, Ba
 
 export function ProjectLayout() {
   const { projectId } = useParams<{ projectId: string }>();
-  useProject(projectId ?? "");
+  const { data: project } = useProject(projectId ?? "");
 
   const { setCurrentProjectId } = useAppContext();
   useEffect(() => {
-    setCurrentProjectId(projectId ?? null);
+    setCurrentProjectId(project?.id ?? null);
     return () => setCurrentProjectId(null);
-  }, [projectId, setCurrentProjectId]);
+  }, [project?.id, setCurrentProjectId]);
 
   const { data: eventsSetting } = useProfileSetting("user-1", "sidebar.hidden.events");
   const { data: permissionsSetting } = useProfileSetting("user-1", "sidebar.hidden.permissions");

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useAppContext } from '@kombuse/ui/hooks'
 import {
   useSessionsPerDay,
   useDurationPercentiles,
@@ -71,7 +71,7 @@ const tooltipStyle = {
 }
 
 export function Analytics() {
-  const { projectId } = useParams<{ projectId: string }>()
+  const { currentProjectId } = useAppContext()
   const [days, setDays] = useState(30)
   const queryClient = useQueryClient()
   const fetchingCount = useIsFetching({ queryKey: ['analytics'] })
@@ -127,7 +127,7 @@ export function Analytics() {
             >
               <SectionContent
                 sectionId={section.id}
-                projectId={projectId ?? ''}
+                projectId={currentProjectId ?? ''}
                 days={days}
               />
             </ChartCard>

@@ -46,6 +46,7 @@ import {
   useUpdatePlugin,
   usePluginFiles,
   useUpdatePluginFile,
+  useAppContext,
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
 import { Plus, X, Save, Package, Puzzle, ChevronDown } from "lucide-react";
@@ -56,11 +57,12 @@ const AGENTS_PANEL_LAYOUT_KEY = "agents-panel-layout";
 export function Agents() {
   const { projectId: pid, agentId } = useParams<{ projectId: string; agentId?: string }>();
   const projectId = pid!;
+  const { currentProjectId } = useAppContext();
   const navigate = useNavigate();
   const isCreating = agentId === "new";
   const basePath = `/projects/${projectId}/agents`;
 
-  const { data: agents, isLoading, error } = useAgents({ project_id: projectId });
+  const { data: agents, isLoading, error } = useAgents({ project_id: currentProjectId ?? "" });
   const { data: profiles } = useAgentProfiles();
   const {
     data: selectedAgentData,
@@ -81,8 +83,8 @@ export function Agents() {
   const toggleTriggerMutation = useToggleTrigger();
 
   // Plugin hooks for onboarding and grouping
-  const { data: availablePlugins } = useAvailablePlugins(projectId);
-  const { data: installedPlugins } = useInstalledPlugins(projectId);
+  const { data: availablePlugins } = useAvailablePlugins(currentProjectId ?? "");
+  const { data: installedPlugins } = useInstalledPlugins(currentProjectId ?? "");
   const installPlugin = useInstallPlugin();
   const updatePlugin = useUpdatePlugin();
   const selectedPluginId = selectedAgentData?.agent.plugin_id ?? null;
@@ -151,7 +153,7 @@ export function Agents() {
 
   const handleInstallPlugin = (directory: string) => {
     installPlugin.mutate(
-      { package_path: directory, project_id: projectId },
+      { package_path: directory, project_id: currentProjectId ?? "" },
       {
         onSuccess: (result) => {
           toast.success(
@@ -222,7 +224,7 @@ export function Agents() {
         avatar_url: newAgentAvatar,
         system_prompt: newAgentPrompt,
         is_enabled: true,
-        project_id: projectId,
+        project_id: currentProjectId ?? "",
       },
       {
         onSuccess: (agent) => {

@@ -40,10 +40,10 @@ export function Chats() {
   const selectedSessionId = sessionId ?? null;
   const isDraft = !selectedSessionId;
 
-  const { data: sessions, isLoading: sessionsLoading } = useSessions({ project_id: projectId, sort_by: 'updated_at' });
+  const { currentProjectId, pendingPermissions } = useAppContext();
+  const { data: sessions, isLoading: sessionsLoading } = useSessions({ project_id: currentProjectId ?? undefined, sort_by: 'updated_at' });
   const createSession = useCreateSession();
   const deleteSession = useDeleteSession();
-  const { pendingPermissions } = useAppContext();
   const { data: defaultBackendSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_BACKEND_SETTING_KEY);
   const { data: defaultModelSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_MODEL_SETTING_KEY);
 
@@ -111,7 +111,7 @@ export function Chats() {
       backend_type: draftBackendType,
       agent_id: selectedAgentId ?? undefined,
       model_preference: draftModelPreference.trim().length > 0 ? draftModelPreference.trim() : undefined,
-      project_id: projectId,
+      project_id: currentProjectId ?? undefined,
     });
     navigate(`${chatsBasePath}/${session.kombuse_session_id}`);
     return session.kombuse_session_id;

@@ -66,7 +66,7 @@ export function Tickets() {
   const navigate = useNavigate();
 
   // Sync route params to app context
-  const { setCurrentTicket, setView } = useAppContext();
+  const { currentProjectId, setCurrentTicket, setView } = useAppContext();
 
   // Filter state synced to URL search params
   const [searchParams, setSearchParams] = useSearchParams();
@@ -90,11 +90,11 @@ export function Tickets() {
     ? (rawStatus as TicketStatus | "all")
     : "open";
 
-  const { data: projectLabels } = useProjectLabels(projectId ?? "", {
+  const { data: projectLabels } = useProjectLabels(currentProjectId ?? "", {
     sort: "usage",
     usage_scope: "open",
   });
-  const { data: projectMilestones } = useProjectMilestones(projectId ?? "");
+  const { data: projectMilestones } = useProjectMilestones(currentProjectId ?? "");
 
   const validSortByValues = new Set<TicketFilters["sort_by"]>(["created_at", "updated_at", "closed_at", "opened_at", "last_activity_at"]);
   const showClosedSort = statusFilter === "all" || statusFilter === "closed";
@@ -140,7 +140,7 @@ export function Tickets() {
   }, [projectLabels]);
 
   // Server-side status counts (not affected by pagination limits)
-  const { data: statusCounts } = useTicketStatusCounts(projectId);
+  const { data: statusCounts } = useTicketStatusCounts(currentProjectId ?? "");
   const openCount = statusCounts?.open ?? 0;
   const closedCount = statusCounts?.closed ?? 0;
   const inProgressCount = statusCounts?.in_progress ?? 0;
@@ -151,7 +151,7 @@ export function Tickets() {
     isLoading,
     error,
   } = useTickets({
-    project_id: projectId,
+    project_id: currentProjectId ?? undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
     label_ids: selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
     milestone_id: selectedMilestoneId ?? undefined,
@@ -164,12 +164,12 @@ export function Tickets() {
   const {
     data: selectedTicket,
     isLoading: isLoadingTicket,
-  } = useTicketByNumber(projectId, ticketNumber);
+  } = useTicketByNumber(currentProjectId ?? undefined, ticketNumber);
   const selectedTicketDbId = selectedTicket?.id ?? 0;
 
   // Real-time updates via WebSocket
   useRealtimeUpdates({
-    projectId,
+    projectId: currentProjectId ?? undefined,
     ticketNumber: ticketNumber || undefined,
   });
 
@@ -188,7 +188,7 @@ export function Tickets() {
   } = useCommentOperations();
 
   // Unified timeline of comments + events
-  const { data: timeline, isFetched: isTimelineFetched } = useTicketTimeline(projectId ?? '', ticketNumber);
+  const { data: timeline, isFetched: isTimelineFetched } = useTicketTimeline(currentProjectId ?? '', ticketNumber);
 
   // Fetch attachments for all comments in the timeline
   const commentIds = useMemo(
@@ -245,7 +245,7 @@ export function Tickets() {
     value: newTicketBody,
     onValueChange: setNewTicketBody,
     textareaRef: newTicketBodyRef,
-    projectId,
+    projectId: currentProjectId ?? undefined,
   });
   const {
     stagedFiles: createStagedFiles, previewUrls: createPreviewUrls,
@@ -281,14 +281,14 @@ export function Tickets() {
         if (!agentReplySessionId || message.kombuseSessionId === agentReplySessionId) {
           setAgentReplySessionId(null);
           // Safety-net invalidation in case the realtime event was missed
-          if (projectId && ticketNumber) {
-            queryClient.invalidateQueries({ queryKey: ["ticket-timeline", projectId, ticketNumber] });
-            queryClient.invalidateQueries({ queryKey: ["comments", projectId, ticketNumber], exact: false });
+          if (currentProjectId && ticketNumber) {
+            queryClient.invalidateQueries({ queryKey: ["ticket-timeline", currentProjectId, ticketNumber] });
+            queryClient.invalidateQueries({ queryKey: ["comments", currentProjectId, ticketNumber], exact: false });
           }
         }
       }
     },
-    [agentReplySessionId, projectId, ticketNumber, queryClient]
+    [agentReplySessionId, currentProjectId, ticketNumber, queryClient]
   );
 
   // WebSocket for sending agent.invoke messages and receiving completions
@@ -544,13 +544,13 @@ export function Tickets() {
   };
 
   const handleCreateTicket = () => {
-    if (!projectId || !newTicketTitle.trim()) return;
+    if (!currentProjectId || !newTicketTitle.trim()) return;
     createTicket.mutate(
       {
         title: newTicketTitle.trim(),
         body: newTicketBody.trim() || undefined,
         triggers_enabled: newTicketTriggersEnabled,
-        project_id: projectId,
+        project_id: currentProjectId,
         author_id: "user-1", // TODO: Get from auth context
       },
       {
@@ -1016,7 +1016,7 @@ export function Tickets() {
 
                                 <ActivityTimeline
                                   items={timeline?.items ?? []}
-                                  projectId={projectId}
+                                  projectId={currentProjectId ?? undefined}
                                   ticketNumber={selectedTicket?.ticket_number}
                                   attachmentsByCommentId={attachmentsByCommentId}
                                   highlightedCommentId={highlightedCommentId}
@@ -1108,7 +1108,7 @@ export function Tickets() {
                               replyTarget={replyTarget}
                               onCancelReply={handleCancelReply}
                               triggersEnabled={selectedTicket?.triggers_enabled}
-                              projectId={projectId}
+                              projectId={currentProjectId ?? undefined}
                             />
                           </div>
                         </div>
@@ -1139,7 +1139,7 @@ export function Tickets() {
                       <ChatProvider
                         key={chatSessionId}
                         sessionId={chatSessionId}
-                        projectId={projectId ?? null}
+                        projectId={currentProjectId ?? null}
                       >
                         <Chat
                           emptyMessage="Loading session..."

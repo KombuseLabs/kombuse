@@ -25,6 +25,7 @@ import {
   useDeleteLabel,
   useInstalledPlugins,
   useUpdatePlugin,
+  useAppContext,
 } from "@kombuse/ui/hooks";
 import { Plus, X, Tags, Puzzle, ChevronDown } from "lucide-react";
 import type { Label } from "@kombuse/types";
@@ -38,16 +39,17 @@ export function Labels() {
     labelId?: string;
   }>();
   const navigate = useNavigate();
+  const { currentProjectId } = useAppContext();
   const isCreating = labelId === "new";
   const basePath = `/projects/${projectId}/labels`;
 
-  const { data: labels, isLoading, error } = useProjectLabels(projectId ?? "", { is_enabled: false });
-  const createLabel = useCreateLabel(projectId ?? "");
-  const updateLabel = useUpdateLabel(projectId ?? "");
-  const deleteLabel = useDeleteLabel(projectId ?? "");
+  const { data: labels, isLoading, error } = useProjectLabels(currentProjectId ?? "", { is_enabled: false });
+  const createLabel = useCreateLabel(currentProjectId ?? "");
+  const updateLabel = useUpdateLabel(currentProjectId ?? "");
+  const deleteLabel = useDeleteLabel(currentProjectId ?? "");
 
   // Plugin hooks for grouping
-  const { data: installedPlugins } = useInstalledPlugins(projectId ?? "");
+  const { data: installedPlugins } = useInstalledPlugins(currentProjectId ?? "");
   const updatePlugin = useUpdatePlugin();
 
   const pluginMap = useMemo(() => {

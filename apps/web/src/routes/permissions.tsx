@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { usePermissions } from '@kombuse/ui/hooks'
+import { usePermissions, useAppContext } from '@kombuse/ui/hooks'
 import { PermissionList, PermissionFilters, PermissionRulesTab, AutoApprovedToolsTab } from '@kombuse/ui/components'
 import { Button } from '@kombuse/ui/base'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@kombuse/ui/base'
@@ -11,11 +10,11 @@ import type { PermissionLogFilters } from '@kombuse/types'
 type Filters = Omit<PermissionLogFilters, 'project_id'>
 
 export function Permissions() {
-  const { projectId } = useParams<{ projectId: string }>()
+  const { currentProjectId } = useAppContext()
   const [activeTab, setActiveTab] = useState('decision-log')
   const [filters, setFilters] = useState<Filters>({ limit: 50 })
   const { data: entries, isLoading, error, refetch, isFetching } = usePermissions(
-    projectId ?? '',
+    currentProjectId ?? '',
     filters
   )
 
@@ -71,7 +70,7 @@ export function Permissions() {
               </div>
             )}
 
-            {!isLoading && !error && entries && <PermissionList entries={entries} projectId={projectId} />}
+            {!isLoading && !error && entries && <PermissionList entries={entries} projectId={currentProjectId ?? ''} />}
           </div>
 
           {entries && entries.length >= (filters.limit || 50) && (
@@ -94,7 +93,7 @@ export function Permissions() {
           hidden={activeTab !== 'permission-rules'}
           className="flex-1 overflow-y-auto p-6 data-[state=inactive]:hidden"
         >
-          <PermissionRulesTab projectId={projectId} />
+          <PermissionRulesTab projectId={currentProjectId ?? ''} />
         </TabsContent>
 
         <TabsContent
@@ -103,7 +102,7 @@ export function Permissions() {
           hidden={activeTab !== 'auto-approved-tools'}
           className="flex-1 overflow-y-auto p-6 data-[state=inactive]:hidden"
         >
-          <AutoApprovedToolsTab projectId={projectId} />
+          <AutoApprovedToolsTab projectId={currentProjectId ?? ''} />
         </TabsContent>
       </Tabs>
     </main>
