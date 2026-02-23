@@ -6,10 +6,10 @@ export const CODEX_FALLBACK_MODELS: ModelOption[] = [
 
 export const CLAUDE_CODE_MODELS: ModelOption[] = [
   { id: 'claude-opus-4-6', name: 'Claude Opus 4.6', provider: 'Anthropic', isDefault: true },
-  { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', provider: 'Anthropic', isDefault: false },
+  { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', provider: 'Anthropic', isDefault: false },
   { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', provider: 'Anthropic', isDefault: false },
+  { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', provider: 'Anthropic', isDefault: false },
   { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', provider: 'Anthropic', isDefault: false },
-  { id: 'claude-haiku-3-5-20241022', name: 'Claude Haiku 3.5', provider: 'Anthropic', isDefault: false },
 ]
 
 const CLAUDE_CODE_DEFAULT_MODEL_ID = 'claude-opus-4-6'
