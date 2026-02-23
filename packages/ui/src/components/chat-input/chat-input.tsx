@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, type FormEvent, type KeyboardEvent, type
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { cn } from '../../lib/utils'
+import { useIsMobile } from '../../hooks/use-is-mobile'
 import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
 import { useFileStaging } from '../../hooks/use-file-staging'
 import { StagedFilePreviews } from '../staged-file-previews'
@@ -58,6 +59,7 @@ function ChatInput({
     handleFileInputChange,
   } = useFileStaging()
 
+  const isMobile = useIsMobile()
   const { textareaProps: autocompleteProps, AutocompletePortal } = useTextareaAutocomplete({
     value: message,
     onValueChange: setMessage,
@@ -150,10 +152,10 @@ function ChatInput({
           onPaste={handlePaste}
           placeholder={effectivePlaceholder}
           disabled={isDisabled}
-          className="h-20 min-h-[80px] resize-none border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-          rows={3}
+          className="h-10 min-h-[40px] md:h-20 md:min-h-[80px] resize-none border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          rows={isMobile ? 1 : 3}
         />
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-1 md:pt-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {toolbarControls}
             <Button

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useIsMobile } from '../../hooks/use-is-mobile'
 import type { TicketStatus, TicketPriority } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
@@ -122,6 +123,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
   } = useMilestoneOperations()
 
   const { currentProjectId } = useCurrentProject()
+  const isMobile = useIsMobile()
   const agentStatus = useTicketAgentStatus(currentTicket?.ticket_number)
   const { data: ticketAttachments } = useTicketAttachments(currentTicket?.project_id ?? '', currentTicket?.ticket_number ?? 0)
   const uploadTicketAttachment = useUploadTicketAttachment()
@@ -205,14 +207,14 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
       {/* Sticky header — direct child of scroll container so sticky works correctly */}
       <div
         className={cn(
-          'sticky top-0 z-20 border-b bg-card/95 px-4 py-3 shadow-md backdrop-blur-sm',
+          'sticky top-0 z-20 border-b bg-card/95 px-4 py-2 md:py-3 shadow-md backdrop-blur-sm',
           className
         )}
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-2 md:gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0 flex-1">
             {mode === 'view' ? (
-              <div className="min-h-[5.25rem] space-y-2">
+              <div className="md:min-h-[5.25rem] space-y-2">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.ticket_number}</span>
@@ -280,7 +282,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
                 </div>
               </div>
             ) : (
-              <div className="min-h-[5.25rem] space-y-2">
+              <div className="md:min-h-[5.25rem] space-y-2">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.ticket_number}</span>
@@ -330,48 +332,52 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
                 </div>
               </div>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-1">
-              {ticketLabels.map((label) => (
-                <LabelBadge
-                  key={label.id}
-                  label={label}
-                  size="sm"
-                  onRemove={isEditable ? () => removeLabel(label.id, 'user-1') : undefined}
-                />
-              ))}
-              {isEditable && (
-                <LabelSelector
-                  availableLabels={projectLabels}
-                  selectedLabelIds={ticketLabels.map((l) => l.id)}
-                  onLabelAdd={(labelId) => addLabel(labelId, 'user-1')}
-                  onLabelRemove={(labelId) => removeLabel(labelId, 'user-1')}
-                  onLabelCreate={(data) => createLabel(data)}
-                  onLabelUpdate={(id, data) => updateLabel(id, data)}
-                  onLabelDelete={(id) => deleteLabel(id)}
-                  isCreating={isCreatingLabel}
-                  isUpdating={isUpdatingLabel}
-                  isDeleting={isDeletingLabel}
-                />
-              )}
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-1">
-              {currentMilestone && !isEditable && (
-                <MilestoneBadge milestone={currentMilestone} size="sm" showProgress />
-              )}
-              {isEditable && (
-                <MilestoneSelector
-                  availableMilestones={projectMilestones}
-                  selectedMilestoneId={ticket.milestone_id ?? null}
-                  onSelect={(milestoneId) => updateCurrentTicket({ milestone_id: milestoneId })}
-                  onMilestoneCreate={(data) => createMilestone(data)}
-                  isCreating={isCreatingMilestone}
-                  showProgress
-                />
-              )}
-            </div>
+            {!isMobile && (
+              <div className="mt-2 flex flex-wrap items-center gap-1">
+                {ticketLabels.map((label) => (
+                  <LabelBadge
+                    key={label.id}
+                    label={label}
+                    size="sm"
+                    onRemove={isEditable ? () => removeLabel(label.id, 'user-1') : undefined}
+                  />
+                ))}
+                {isEditable && (
+                  <LabelSelector
+                    availableLabels={projectLabels}
+                    selectedLabelIds={ticketLabels.map((l) => l.id)}
+                    onLabelAdd={(labelId) => addLabel(labelId, 'user-1')}
+                    onLabelRemove={(labelId) => removeLabel(labelId, 'user-1')}
+                    onLabelCreate={(data) => createLabel(data)}
+                    onLabelUpdate={(id, data) => updateLabel(id, data)}
+                    onLabelDelete={(id) => deleteLabel(id)}
+                    isCreating={isCreatingLabel}
+                    isUpdating={isUpdatingLabel}
+                    isDeleting={isDeletingLabel}
+                  />
+                )}
+              </div>
+            )}
+            {!isMobile && (
+              <div className="mt-1 flex flex-wrap items-center gap-1">
+                {currentMilestone && !isEditable && (
+                  <MilestoneBadge milestone={currentMilestone} size="sm" showProgress />
+                )}
+                {isEditable && (
+                  <MilestoneSelector
+                    availableMilestones={projectMilestones}
+                    selectedMilestoneId={ticket.milestone_id ?? null}
+                    onSelect={(milestoneId) => updateCurrentTicket({ milestone_id: milestoneId })}
+                    onMilestoneCreate={(data) => createMilestone(data)}
+                    isCreating={isCreatingMilestone}
+                    showProgress
+                  />
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-start gap-1">
-            {isEditable && mode === 'view' && (
+            {!isMobile && isEditable && mode === 'view' && (
               <div className="mr-1 flex items-center gap-1.5 rounded-md border px-2 py-1">
                 <Switch
                   checked={ticket.triggers_enabled}
@@ -386,7 +392,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
                 </span>
               </div>
             )}
-            {isEditable && mode === 'view' && ticket.loop_protection_tripped && (
+            {!isMobile && isEditable && mode === 'view' && ticket.loop_protection_tripped && (
               <div className="mr-1 flex items-center gap-1.5 rounded-md border px-2 py-1">
                 <Switch
                   checked={ticket.loop_protection_enabled}

@@ -1077,7 +1077,7 @@ export function Tickets() {
               )}
             </div>
 
-            <div className="border-t p-4 shrink-0" data-testid="ticket-composer-shell">
+            <div className="border-t p-2 md:p-4 shrink-0" data-testid="ticket-composer-shell">
               {agentReplySessionId && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 animate-pulse">
                   <span className="inline-block size-2 rounded-full bg-primary" />

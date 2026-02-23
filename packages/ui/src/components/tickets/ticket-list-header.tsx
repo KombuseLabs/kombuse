@@ -11,10 +11,10 @@ interface TicketListHeaderProps {
 
 function TicketListHeader({ title, meta, controls, filters, className }: TicketListHeaderProps) {
   return (
-    <div className={cn('space-y-3 p-4', className)}>
+    <div className={cn('space-y-1.5 px-3 py-2 md:space-y-3 md:p-4', className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <h1 className="text-2xl font-bold leading-tight">{title}</h1>
+          <h1 className="text-lg md:text-2xl font-bold leading-tight">{title}</h1>
           {meta ? (
             <div className="text-sm text-muted-foreground">
               {meta}
