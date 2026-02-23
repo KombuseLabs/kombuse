@@ -372,6 +372,78 @@ describe('pluginImportService', () => {
       expect(labels.find((l) => l.name === 'NewLabel')).toBeDefined()
       expect(labels.find((l) => l.name === 'AnotherLabel')).toBeDefined()
     })
+
+    it('should update label description and color from manifest during merge', () => {
+      labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Bug',
+        color: '#d73a4a',
+      })
+
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: {
+            name: 'desc-merge-plugin',
+            kombuse: {
+              plugin_system_version: 'kombuse-plugin-v1',
+              project_id: TEST_PROJECT_ID,
+              exported_at: new Date().toISOString(),
+              labels: [{ name: 'Bug', color: '#ff0000', description: 'Something is broken' }],
+            },
+          },
+        })
+      )
+
+      const result = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      expect(result.labels_merged).toBe(1)
+      expect(result.labels_created).toBe(0)
+
+      const labels = labelsRepository.getByProject(TEST_PROJECT_ID)
+      const bugLabel = labels.find((l) => l.name === 'Bug')
+      expect(bugLabel).toBeDefined()
+      expect(bugLabel!.description).toBe('Something is broken')
+      expect(bugLabel!.color).toBe('#ff0000')
+      expect(bugLabel!.plugin_id).toBe(result.plugin_id)
+    })
+
+    it('should preserve existing description when manifest has null', () => {
+      labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Feature',
+        color: '#00ff00',
+        description: 'Existing feature description',
+      })
+
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: {
+            name: 'preserve-desc-plugin',
+            kombuse: {
+              plugin_system_version: 'kombuse-plugin-v1',
+              project_id: TEST_PROJECT_ID,
+              exported_at: new Date().toISOString(),
+              labels: [{ name: 'Feature', color: '#00ff00', description: null }],
+            },
+          },
+        })
+      )
+
+      const result = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      expect(result.labels_merged).toBe(1)
+
+      const labels = labelsRepository.getByProject(TEST_PROJECT_ID)
+      const featureLabel = labels.find((l) => l.name === 'Feature')
+      expect(featureLabel).toBeDefined()
+      expect(featureLabel!.description).toBe('Existing feature description')
+    })
   })
 
   describe('slug match — update in place', () => {

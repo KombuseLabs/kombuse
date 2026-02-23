@@ -120,7 +120,12 @@ export class PluginImportService implements IPluginImportService {
 
         if (existingLabel) {
           // Merge: link existing label to this plugin and ensure slug is set
-          labelsRepository.update(existingLabel.id, { plugin_id: pluginId, slug })
+          labelsRepository.update(existingLabel.id, {
+            plugin_id: pluginId,
+            slug,
+            description: exportedLabel.description ?? existingLabel.description ?? undefined,
+            color: exportedLabel.color ?? existingLabel.color,
+          })
           labelsMerged++
         } else {
           // Create new label

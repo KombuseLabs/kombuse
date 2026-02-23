@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useAppContext } from '@kombuse/ui/hooks'
 import { Puzzle, Package, Download, Upload, Trash2, Power, PowerOff } from 'lucide-react'
 import {
   useAgents,
@@ -12,7 +13,7 @@ import {
   useUpdatePlugin,
   useUninstallPlugin,
 } from '@kombuse/ui/hooks'
-import { Button, Input, Label, Checkbox, toast } from '@kombuse/ui/base'
+import { Button, Input, Label, Checkbox, toast, Tooltip, TooltipTrigger, TooltipContent } from '@kombuse/ui/base'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import type { Plugin as PluginType, AvailablePlugin } from '@kombuse/types'
 
@@ -383,18 +384,30 @@ function ExportSection({ projectId }: { projectId: string }) {
             All project labels will be included in the plugin manifest.
           </p>
           <div className="flex flex-wrap gap-2">
-            {labels.map((label) => (
-              <span
-                key={label.id}
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border"
-              >
+            {labels.map((label) => {
+              const pill = (
                 <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: label.color }}
-                />
-                {label.name}
-              </span>
-            ))}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                >
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: label.color }}
+                  />
+                  {label.name}
+                </span>
+              )
+
+              if (label.description) {
+                return (
+                  <Tooltip key={label.id}>
+                    <TooltipTrigger asChild>{pill}</TooltipTrigger>
+                    <TooltipContent>{label.description}</TooltipContent>
+                  </Tooltip>
+                )
+              }
+
+              return <span key={label.id}>{pill}</span>
+            })}
           </div>
         </div>
       )}
@@ -411,11 +424,14 @@ function ExportSection({ projectId }: { projectId: string }) {
 
 export function PluginsPage() {
   const { projectId } = useParams<{ projectId: string }>()
+  const { currentProjectId } = useAppContext()
   const [activeTab, setActiveTab] = useState<'installed' | 'available' | 'export'>('installed')
 
   if (!projectId) {
     return <p className="p-6 text-muted-foreground">No project selected.</p>
   }
+
+  const resolvedId = currentProjectId ?? projectId
 
   return (
     <main className="flex flex-col h-full">
@@ -449,9 +465,9 @@ export function PluginsPage() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl">
-          {activeTab === 'installed' && <InstalledPlugins projectId={projectId} />}
-          {activeTab === 'available' && <AvailablePluginsList projectId={projectId} />}
-          {activeTab === 'export' && <ExportSection projectId={projectId} />}
+          {activeTab === 'installed' && <InstalledPlugins projectId={resolvedId} />}
+          {activeTab === 'available' && <AvailablePluginsList projectId={resolvedId} />}
+          {activeTab === 'export' && <ExportSection projectId={resolvedId} />}
         </div>
       </div>
     </main>
