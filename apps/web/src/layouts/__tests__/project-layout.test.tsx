@@ -27,11 +27,13 @@ vi.mock('@kombuse/ui/components', () => ({
     mockSidebarItemProps(props)
     return <a href={props.to}>{props.label}</a>
   },
+  BottomNav: (props: any) => <nav data-testid="bottom-nav" data-project-id={props.projectId} />,
 }))
 
 vi.mock('@kombuse/ui/hooks', () => ({
+  useIsMobile: () => false,
   useProject: () => ({
-    data: { name: 'Alpha' },
+    data: { id: '1', name: 'Alpha' },
   }),
   useProfileSetting: (...args: unknown[]) => mockUseProfileSetting(...args),
   useAppContext: () => ({

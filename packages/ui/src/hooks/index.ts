@@ -117,6 +117,7 @@ export {
   type UseScrollToCommentReturn,
 } from './use-scroll-to-comment'
 export { useDesktop } from './use-desktop'
+export { useIsMobile } from './use-is-mobile'
 export { useProfileSetting, useProfileSettings, useUpsertProfileSetting } from './use-profile-settings'
 export { useCodexMcpStatus, useSetCodexMcpEnabled } from './use-codex-mcp'
 export { useClaudeCodeMcpStatus, useSetClaudeCodeMcpEnabled } from './use-claude-code-mcp'

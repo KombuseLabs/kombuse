@@ -26,6 +26,11 @@ vi.mock('@kombuse/ui/base', () => ({
   ResizablePanelGroup: ({ children }: any) => <div>{children}</div>,
   ResizablePanel: ({ children, id }: any) => <div data-testid={`panel-${id}`}>{children}</div>,
   ResizableHandle: () => <div data-testid="resizable-handle" />,
+  Switch: (props: any) => <input type="checkbox" {...props} />,
+  Collapsible: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  CollapsibleContent: ({ children }: any) => <div>{children}</div>,
+  CollapsibleTrigger: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  toast: vi.fn(),
 }))
 
 vi.mock('@kombuse/ui/components', () => ({
@@ -41,9 +46,12 @@ vi.mock('@kombuse/ui/components', () => ({
       />
     )
   },
+  MobileListDetail: ({ list, detail, hasSelection }: any) => <div>{hasSelection ? detail : list}</div>,
 }))
 
 vi.mock('@kombuse/ui/hooks', () => ({
+  useIsMobile: () => false,
+  useAppContext: () => ({ currentProjectId: '1' }),
   useAgents: () => ({
     data: [{ id: 'agent-1', is_enabled: true }],
     isLoading: false,
@@ -92,6 +100,12 @@ vi.mock('@kombuse/ui/hooks', () => ({
   useToggleTrigger: () => ({
     mutateAsync: vi.fn(),
   }),
+  useAvailablePlugins: () => ({ data: [], isLoading: false }),
+  useInstalledPlugins: () => ({ data: [], isLoading: false }),
+  useInstallPlugin: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePlugin: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePluginFiles: () => ({ data: [], isLoading: false }),
+  useUpdatePluginFile: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 import { Agents } from '../agents'

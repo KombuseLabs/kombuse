@@ -17,7 +17,7 @@ import {
   ResizablePanelGroup,
   ResizablePanel,
 } from "@kombuse/ui/base";
-import { LabelCard, LabelDetail, LabelForm } from "@kombuse/ui/components";
+import { LabelCard, LabelDetail, LabelForm, MobileListDetail } from "@kombuse/ui/components";
 import {
   useProjectLabels,
   useCreateLabel,
@@ -26,6 +26,7 @@ import {
   useInstalledPlugins,
   useUpdatePlugin,
   useAppContext,
+  useIsMobile,
 } from "@kombuse/ui/hooks";
 import { Plus, X, Tags, Puzzle, ChevronDown } from "lucide-react";
 import type { Label } from "@kombuse/types";
@@ -40,6 +41,7 @@ export function Labels() {
   }>();
   const navigate = useNavigate();
   const { currentProjectId } = useAppContext();
+  const isMobile = useIsMobile();
   const isCreating = labelId === "new";
   const basePath = `/projects/${projectId}/labels`;
 
@@ -334,6 +336,22 @@ export function Labels() {
       Label not found
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileListDetail
+        hasSelection={showDetailPanel}
+        onBack={handleCloseDetail}
+        backLabel="Labels"
+        list={
+          <div className="h-full min-h-0 px-3 pt-2 pb-2">
+            {labelListContent}
+          </div>
+        }
+        detail={labelDetailContent}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0">

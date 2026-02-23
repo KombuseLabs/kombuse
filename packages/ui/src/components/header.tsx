@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "../base/button";
 import { useDesktop } from "../hooks/use-desktop";
+import { useIsMobile } from "../hooks/use-is-mobile";
 import { ModeToggle } from "./mode-toggle";
 
 interface HeaderProps extends React.ComponentProps<"header"> {
@@ -30,15 +31,17 @@ function Header({
   ...props
 }: HeaderProps) {
   const { isDesktop, platform } = useDesktop();
+  const isMobile = useIsMobile();
   const isMac = platform === "darwin";
   const showNavArrows = onGoBack !== undefined && onGoForward !== undefined;
 
   return (
     <header
       className={cn(
-        "flex items-center px-6",
+        "flex items-center",
+        isMobile ? "px-3" : "px-6",
         isDesktop ? "h-10 electron-drag" : "h-16",
-        isMac && "pl-24",
+        isMac && !isMobile && "pl-24",
         className
       )}
       {...props}
@@ -52,7 +55,7 @@ function Header({
       </button>
       {!minimal && (
         <div className="flex flex-1 justify-center px-[21px] mt-[10px]">
-          {showNavArrows && (
+          {showNavArrows && !isMobile && (
             <div className="flex items-center gap-0.5 mr-2 electron-no-drag">
               <Button
                 type="button"

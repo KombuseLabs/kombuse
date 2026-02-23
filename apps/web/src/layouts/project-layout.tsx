@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { Outlet, useParams } from "react-router-dom";
-import { Sidebar, SidebarItem } from "@kombuse/ui/components";
-import { useProject, useProfileSetting, useAppContext } from "@kombuse/ui/hooks";
+import { Sidebar, SidebarItem, BottomNav } from "@kombuse/ui/components";
+import { useProject, useProfileSetting, useAppContext, useIsMobile } from "@kombuse/ui/hooks";
 import { Ticket, Bot, MessageSquare, History, Tags, Shield, Database, Puzzle, BarChart3 } from "lucide-react";
 
 export function ProjectLayout() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project } = useProject(projectId ?? "");
+  const isMobile = useIsMobile();
 
   const { setCurrentProjectId } = useAppContext();
   useEffect(() => {
@@ -29,6 +30,17 @@ export function ProjectLayout() {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-muted-foreground">Project not found</p>
+      </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <div className="flex h-full flex-col">
+        <main className="flex-1 min-h-0 overflow-y-auto">
+          <Outlet />
+        </main>
+        <BottomNav projectId={projectId} />
       </div>
     );
   }

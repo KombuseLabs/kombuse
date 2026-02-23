@@ -26,7 +26,7 @@ import {
   PopoverTrigger,
   toast,
 } from "@kombuse/ui/base";
-import { TicketList, TicketListHeader, TicketDetail, ChatInput, ActivityTimeline, Chat } from "@kombuse/ui/components";
+import { TicketList, TicketListHeader, TicketDetail, ChatInput, ActivityTimeline, Chat, MobileListDetail } from "@kombuse/ui/components";
 import type { ReplyTarget } from "@kombuse/ui/components";
 import { ChatProvider } from "@kombuse/ui/providers";
 import {
@@ -50,6 +50,7 @@ import {
   useSessions,
   useScrollToBottom,
   useScrollToComment,
+  useIsMobile,
 } from "@kombuse/ui/hooks";
 import { LabelBadge, MilestoneBadge, StagedFilePreviews } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip, Check, ChevronsUpDown } from "lucide-react";
@@ -64,6 +65,7 @@ export function Tickets() {
     ticketNumber?: string;
   }>();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Sync route params to app context
   const { currentProjectId, setCurrentTicket, setView } = useAppContext();
@@ -866,6 +868,254 @@ export function Tickets() {
     );
   }
 
+  const ticketDetailContent = isCreating ? (
+    // Create Form
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-4 shrink-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="size-12 rounded-lg bg-muted flex items-center justify-center">
+              <Plus className="size-6" />
+            </div>
+            <CardTitle className="text-xl">New Ticket</CardTitle>
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleCloseDetail}>
+            <X className="size-4" />
+          </Button>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex-1 overflow-y-auto space-y-6">
+        {/* Title */}
+        <div className="space-y-2">
+          <Label htmlFor="new-ticket-title">Title *</Label>
+          <Input
+            id="new-ticket-title"
+            value={newTicketTitle}
+            onChange={(e) => setNewTicketTitle(e.target.value)}
+            placeholder="Ticket title"
+            autoFocus
+          />
+        </div>
+
+        {/* Description */}
+        <div className="space-y-2">
+          <Label htmlFor="new-ticket-body">Description</Label>
+          <div
+            className={`rounded transition-colors ${createIsDragOver ? "ring-2 ring-primary/50 bg-primary/5" : ""}`}
+            {...createDragHandlers}
+          >
+            <Textarea
+              id="new-ticket-body"
+              ref={newTicketBodyRef}
+              value={newTicketBody}
+              onChange={newTicketAutocomplete.onChange}
+              onKeyDown={newTicketAutocomplete.onKeyDown}
+              onPaste={createHandlePaste}
+              placeholder="Describe the ticket..."
+              className="min-h-32"
+              autoResize
+            />
+            <NewTicketAutocomplete />
+            <StagedFilePreviews stagedFiles={createStagedFiles} previewUrls={createPreviewUrls} onRemove={createRemoveFile} className="mt-1" />
+            <input
+              ref={createFileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={createHandleFileInputChange}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="new-ticket-triggers">Agent Triggers</Label>
+            <p className="text-xs text-muted-foreground">
+              {newTicketTriggersEnabled
+                ? "Enabled: creation and updates can trigger agents."
+                : "Disabled: no agents will be triggered for this ticket."}
+            </p>
+          </div>
+          <Switch
+            id="new-ticket-triggers"
+            checked={newTicketTriggersEnabled}
+            onCheckedChange={setNewTicketTriggersEnabled}
+          />
+        </div>
+
+        {/* Create Button */}
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="ghost" size="icon" onClick={() => createFileInputRef.current?.click()} disabled={createTicket.isPending}>
+            <Paperclip className="size-4" />
+          </Button>
+          <Button variant="outline" onClick={handleCloseDetail}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreateTicket}
+            disabled={createTicket.isPending || !newTicketTitle.trim()}
+          >
+            <Save className="size-4 mr-2" />
+            {createTicket.isPending ? "Creating..." : "Create Ticket"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  ) : (
+    // View existing ticket
+    <>
+      {isLoadingTicket && (
+        <div className="text-center py-8 text-muted-foreground">
+          Loading ticket...
+        </div>
+      )}
+
+      {selectedTicket && (
+        <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div
+              className="ticket-scroll-viewport relative flex-1 min-h-0"
+              data-testid="ticket-scroll-viewport"
+            >
+              <div
+                ref={ticketScrollRef}
+                onScroll={ticketOnScroll}
+                className="ticket-detail-scroll h-full overflow-y-auto"
+              >
+                <TicketDetail
+                  onClose={handleCloseDetail}
+                  isEditable
+                  onEditModeChange={(mode) => {
+                    if (mode === 'edit') ticketScrollToTop()
+                  }}
+                />
+
+                <div className="mt-6 px-4 pb-4">
+                  <h3 className="text-sm font-medium mb-4">
+                    Activity {timeline?.total ? `(${timeline.total})` : ""}
+                  </h3>
+
+                  <ActivityTimeline
+                    items={timeline?.items ?? []}
+                    projectId={currentProjectId ?? undefined}
+                    ticketNumber={selectedTicket?.ticket_number}
+                    attachmentsByCommentId={attachmentsByCommentId}
+                    highlightedCommentId={highlightedCommentId}
+                    editingCommentId={editingCommentId}
+                    editBody={editBody}
+                    onEditBodyChange={setEditBody}
+                    onStartEditComment={(comment) => {
+                      setEditingCommentId(comment.id);
+                      setEditBody(comment.body);
+                    }}
+                    onSaveEditComment={async (stagedFiles?: File[]) => {
+                      if (editingCommentId) {
+                        await updateComment(editingCommentId, editBody);
+                        if (stagedFiles?.length) {
+                          for (const file of stagedFiles) {
+                            try {
+                              await uploadAttachment.mutateAsync({
+                                commentId: editingCommentId,
+                                file,
+                                uploadedById: "user-1", // TODO: Get from auth context
+                              });
+                            } catch {
+                              // Individual upload failures don't block remaining uploads
+                            }
+                          }
+                        }
+                        setEditingCommentId(null);
+                        setEditBody("");
+                      }
+                    }}
+                    onCancelEditComment={() => {
+                      setEditingCommentId(null);
+                      setEditBody("");
+                    }}
+                    onDeleteComment={deleteComment}
+                    onReplyComment={handleReplyToComment}
+                    onSessionClick={(sessionId) => updateSearchParams({ session: sessionId })}
+                    resumableSessionIds={resumableSessionIds}
+                    onResume={handleResumeAgent}
+                    onRerun={handleRerunAgent}
+                    isUpdatingComment={isUpdatingComment}
+                    isDeletingComment={isDeletingComment}
+                  />
+                </div>
+              </div>
+
+              {(!ticketIsAtTop || !ticketIsAtBottom) && (
+                <div
+                  data-testid="ticket-scroll-controls"
+                  className="ticket-scroll-controls pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10"
+                >
+                  {!ticketIsAtTop && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="ticket-scroll-control-button rounded-full shadow-md h-8 w-8"
+                      onClick={ticketScrollToTop}
+                      aria-label="Scroll to top"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {!ticketIsAtBottom && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="ticket-scroll-control-button rounded-full shadow-md h-8 w-8"
+                      onClick={ticketScrollToBottom}
+                      aria-label="Scroll to bottom"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t p-4 shrink-0" data-testid="ticket-composer-shell">
+              {agentReplySessionId && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 animate-pulse">
+                  <span className="inline-block size-2 rounded-full bg-primary" />
+                  Agent is thinking...
+                </div>
+              )}
+              <ChatInput
+                onSubmit={handleAddComment}
+                isLoading={isCreatingComment}
+                placeholder="Add a comment..."
+                replyTarget={replyTarget}
+                onCancelReply={handleCancelReply}
+                triggersEnabled={selectedTicket?.triggers_enabled}
+                projectId={currentProjectId ?? undefined}
+              />
+            </div>
+          </div>
+        </Card>
+      )}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <MobileListDetail
+        hasSelection={!!ticketNumberParam}
+        onBack={handleCloseDetail}
+        backLabel="Tickets"
+        list={
+          <div className="h-full min-h-0 px-3 pt-2 pb-2">
+            {ticketListContent}
+          </div>
+        }
+        detail={ticketDetailContent}
+      />
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
@@ -885,237 +1135,7 @@ export function Tickets() {
 
             <ResizablePanel id="detail" defaultSize={50} minSize={25} className="min-h-0">
               <ResizableCardPanel side="detail">
-                {isCreating ? (
-                  // Create Form
-                  <Card className="h-full flex flex-col">
-                    <CardHeader className="pb-4 shrink-0">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="size-12 rounded-lg bg-muted flex items-center justify-center">
-                            <Plus className="size-6" />
-                          </div>
-                          <CardTitle className="text-xl">New Ticket</CardTitle>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={handleCloseDetail}>
-                          <X className="size-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="flex-1 overflow-y-auto space-y-6">
-                      {/* Title */}
-                      <div className="space-y-2">
-                        <Label htmlFor="new-ticket-title">Title *</Label>
-                        <Input
-                          id="new-ticket-title"
-                          value={newTicketTitle}
-                          onChange={(e) => setNewTicketTitle(e.target.value)}
-                          placeholder="Ticket title"
-                          autoFocus
-                        />
-                      </div>
-
-                      {/* Description */}
-                      <div className="space-y-2">
-                        <Label htmlFor="new-ticket-body">Description</Label>
-                        <div
-                          className={`rounded transition-colors ${createIsDragOver ? "ring-2 ring-primary/50 bg-primary/5" : ""}`}
-                          {...createDragHandlers}
-                        >
-                          <Textarea
-                            id="new-ticket-body"
-                            ref={newTicketBodyRef}
-                            value={newTicketBody}
-                            onChange={newTicketAutocomplete.onChange}
-                            onKeyDown={newTicketAutocomplete.onKeyDown}
-                            onPaste={createHandlePaste}
-                            placeholder="Describe the ticket..."
-                            className="min-h-32"
-                            autoResize
-                          />
-                          <NewTicketAutocomplete />
-                          <StagedFilePreviews stagedFiles={createStagedFiles} previewUrls={createPreviewUrls} onRemove={createRemoveFile} className="mt-1" />
-                          <input
-                            ref={createFileInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={createHandleFileInputChange}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between rounded-lg border p-3">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="new-ticket-triggers">Agent Triggers</Label>
-                          <p className="text-xs text-muted-foreground">
-                            {newTicketTriggersEnabled
-                              ? "Enabled: creation and updates can trigger agents."
-                              : "Disabled: no agents will be triggered for this ticket."}
-                          </p>
-                        </div>
-                        <Switch
-                          id="new-ticket-triggers"
-                          checked={newTicketTriggersEnabled}
-                          onCheckedChange={setNewTicketTriggersEnabled}
-                        />
-                      </div>
-
-                      {/* Create Button */}
-                      <div className="flex justify-end gap-2 pt-4 border-t">
-                        <Button variant="ghost" size="icon" onClick={() => createFileInputRef.current?.click()} disabled={createTicket.isPending}>
-                          <Paperclip className="size-4" />
-                        </Button>
-                        <Button variant="outline" onClick={handleCloseDetail}>
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleCreateTicket}
-                          disabled={createTicket.isPending || !newTicketTitle.trim()}
-                        >
-                          <Save className="size-4 mr-2" />
-                          {createTicket.isPending ? "Creating..." : "Create Ticket"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  // View existing ticket
-                  <>
-                    {isLoadingTicket && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Loading ticket...
-                      </div>
-                    )}
-
-                    {selectedTicket && (
-                      <Card className="flex h-full min-h-0 flex-col overflow-hidden">
-                        <div className="flex min-h-0 flex-1 flex-col">
-                          <div
-                            className="ticket-scroll-viewport relative flex-1 min-h-0"
-                            data-testid="ticket-scroll-viewport"
-                          >
-                            <div
-                              ref={ticketScrollRef}
-                              onScroll={ticketOnScroll}
-                              className="ticket-detail-scroll h-full overflow-y-auto"
-                            >
-                              <TicketDetail
-                                onClose={handleCloseDetail}
-                                isEditable
-                                onEditModeChange={(mode) => {
-                                  if (mode === 'edit') ticketScrollToTop()
-                                }}
-                              />
-
-                              <div className="mt-6 px-4 pb-4">
-                                <h3 className="text-sm font-medium mb-4">
-                                  Activity {timeline?.total ? `(${timeline.total})` : ""}
-                                </h3>
-
-                                <ActivityTimeline
-                                  items={timeline?.items ?? []}
-                                  projectId={currentProjectId ?? undefined}
-                                  ticketNumber={selectedTicket?.ticket_number}
-                                  attachmentsByCommentId={attachmentsByCommentId}
-                                  highlightedCommentId={highlightedCommentId}
-                                  editingCommentId={editingCommentId}
-                                  editBody={editBody}
-                                  onEditBodyChange={setEditBody}
-                                  onStartEditComment={(comment) => {
-                                    setEditingCommentId(comment.id);
-                                    setEditBody(comment.body);
-                                  }}
-                                  onSaveEditComment={async (stagedFiles?: File[]) => {
-                                    if (editingCommentId) {
-                                      await updateComment(editingCommentId, editBody);
-                                      if (stagedFiles?.length) {
-                                        for (const file of stagedFiles) {
-                                          try {
-                                            await uploadAttachment.mutateAsync({
-                                              commentId: editingCommentId,
-                                              file,
-                                              uploadedById: "user-1", // TODO: Get from auth context
-                                            });
-                                          } catch {
-                                            // Individual upload failures don't block remaining uploads
-                                          }
-                                        }
-                                      }
-                                      setEditingCommentId(null);
-                                      setEditBody("");
-                                    }
-                                  }}
-                                  onCancelEditComment={() => {
-                                    setEditingCommentId(null);
-                                    setEditBody("");
-                                  }}
-                                  onDeleteComment={deleteComment}
-                                  onReplyComment={handleReplyToComment}
-                                  onSessionClick={(sessionId) => updateSearchParams({ session: sessionId })}
-                                  resumableSessionIds={resumableSessionIds}
-                                  onResume={handleResumeAgent}
-                                  onRerun={handleRerunAgent}
-                                  isUpdatingComment={isUpdatingComment}
-                                  isDeletingComment={isDeletingComment}
-                                />
-                              </div>
-                            </div>
-
-                            {(!ticketIsAtTop || !ticketIsAtBottom) && (
-                              <div
-                                data-testid="ticket-scroll-controls"
-                                className="ticket-scroll-controls pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-10"
-                              >
-                                {!ticketIsAtTop && (
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="ticket-scroll-control-button rounded-full shadow-md h-8 w-8"
-                                    onClick={ticketScrollToTop}
-                                    aria-label="Scroll to top"
-                                  >
-                                    <ArrowUp className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {!ticketIsAtBottom && (
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="ticket-scroll-control-button rounded-full shadow-md h-8 w-8"
-                                    onClick={ticketScrollToBottom}
-                                    aria-label="Scroll to bottom"
-                                  >
-                                    <ArrowDown className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="border-t p-4 shrink-0" data-testid="ticket-composer-shell">
-                            {agentReplySessionId && (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 animate-pulse">
-                                <span className="inline-block size-2 rounded-full bg-primary" />
-                                Agent is thinking...
-                              </div>
-                            )}
-                            <ChatInput
-                              onSubmit={handleAddComment}
-                              isLoading={isCreatingComment}
-                              placeholder="Add a comment..."
-                              replyTarget={replyTarget}
-                              onCancelReply={handleCancelReply}
-                              triggersEnabled={selectedTicket?.triggers_enabled}
-                              projectId={currentProjectId ?? undefined}
-                            />
-                          </div>
-                        </div>
-                      </Card>
-                    )}
-                  </>
-                )}
+                {ticketDetailContent}
               </ResizableCardPanel>
             </ResizablePanel>
 
@@ -1158,7 +1178,6 @@ export function Tickets() {
           </div>
         )}
       </div>
-
     </div>
   );
 }

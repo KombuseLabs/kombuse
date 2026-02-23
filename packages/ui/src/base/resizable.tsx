@@ -68,8 +68,8 @@ function ResizableCardPanel({ side, className, children }: ResizableCardPanelPro
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col pt-3 pb-6",
-        side === "list" ? "pl-3 pr-3" : "pl-3 pr-6",
+        "flex h-full min-h-0 flex-col pt-2 pb-4 md:pt-3 md:pb-6",
+        side === "list" ? "pl-2 pr-2 md:pl-3 md:pr-3" : "pl-2 pr-3 md:pl-3 md:pr-6",
         className
       )}
     >

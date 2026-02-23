@@ -24,7 +24,8 @@ src/
 │   ├── labels/           - Label management components
 │   ├── milestones/       - Milestone management components
 │   ├── prompt-editor/    - System prompt editor with template variables
-│   ├── sidebar/          - Sidebar navigation (panel + icon rail variants) + backend status indicator
+│   ├── mobile-list-detail.tsx - Mobile list/detail navigation wrapper
+│   ├── sidebar/          - Sidebar navigation (panel + icon rail variants), bottom nav + backend status indicator
 │   ├── backend-status-banner.tsx - Warning banner for missing CLI backends
 │   ├── find-bar.tsx              - Find-in-page bar for Electron desktop app
 │   ├── no-backend-screen.tsx     - Full-page blocking screen when no backends found
@@ -48,6 +49,7 @@ src/
 │   ├── use-claude-code.ts     - Claude Code project scanner hooks
 │   ├── use-database.ts        - Database table/query hooks
 │   ├── use-desktop.ts         - Electron desktop detection hook
+│   ├── use-is-mobile.ts       - Mobile viewport detection hook
 │   ├── use-shell-updates.ts   - Shell (Electron) auto-update hook
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
@@ -160,6 +162,16 @@ const { isDesktop, platform, selectDirectory } = useDesktop()
 // isDesktop: true when window.electron exists
 // platform: 'darwin' | 'win32' | 'linux' | null
 // selectDirectory: async native directory picker in desktop mode; resolves to `string | null`
+```
+
+```typescript
+import { useIsMobile } from '@kombuse/ui/hooks'
+
+// Detect if viewport is mobile-width (< 768px)
+const isMobile = useIsMobile()
+// Always returns false in Electron desktop app
+// SSR-safe: returns false when window is undefined
+// Uses matchMedia listener for efficient threshold-based updates
 ```
 
 ```typescript
@@ -541,6 +553,44 @@ Props:
 - `SidebarItem`: `icon`, `label`, `to` (React Router path), `variant` (`"panel"` | `"rail"`), `isCollapsed` (panel mode)
 - `rail` `Sidebar` renders a rounded, content-height shell with increased vertical spacing between icon items.
 - `rail` `SidebarItem` renders as a circular bordered icon button (`size-12`) with tooltip labels and a stronger active border/ring state.
+
+### BottomNav
+
+```typescript
+import { BottomNav } from '@kombuse/ui/components'
+
+// Fixed bottom navigation bar for mobile viewports
+<BottomNav projectId={projectId} />
+```
+
+Props:
+- `projectId`: Project ID for building navigation URLs
+- `className`: Optional class name
+
+Shows 4 navigation items: Tickets, Chats, Agents, Labels. Active state matches current route via pathname. Includes iOS safe area padding.
+
+### MobileListDetail
+
+```typescript
+import { MobileListDetail } from '@kombuse/ui/components'
+
+// Mobile list/detail navigation wrapper
+<MobileListDetail
+  hasSelection={!!selectedId}
+  onBack={() => navigate('/list')}
+  backLabel="Items"
+  list={<ListContent />}
+  detail={<DetailContent />}
+/>
+```
+
+Props:
+- `hasSelection`: When false, renders `list` full-width. When true, renders back button + `detail`
+- `onBack`: Callback when back button is clicked
+- `list`: List view content
+- `detail`: Detail view content
+- `backLabel`: Optional label for back button (default: "Back")
+- `className`: Optional class name
 
 ### Label Components
 

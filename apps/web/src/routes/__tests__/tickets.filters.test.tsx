@@ -91,6 +91,10 @@ vi.mock('@kombuse/ui/components', () => ({
 }))
 
 vi.mock('@kombuse/ui/hooks', () => ({
+  useIsMobile: () => false,
+  useTicketStatusCounts: () => ({ data: undefined }),
+  useSessions: () => ({ data: [] }),
+  useTicketByNumber: () => ({ data: undefined, isLoading: false }),
   useTickets: (filters: any) => {
     mockUseTickets(filters)
     return {

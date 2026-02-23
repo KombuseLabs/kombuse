@@ -138,6 +138,13 @@ vi.mock('@kombuse/ui/components', () => ({
 }))
 
 vi.mock('@kombuse/ui/hooks', () => ({
+  useIsMobile: () => false,
+  useTicketStatusCounts: () => ({ data: undefined }),
+  useSessions: () => ({ data: [] }),
+  useTicketByNumber: (_projectId: string | undefined, ticketNumber: number) => ({
+    data: ticketNumber > 0 ? mockSelectedTicket.value : undefined,
+    isLoading: false,
+  }),
   useTickets: () => ({
     data: [{ id: 42, status: 'open', title: 'Ticket 42' }],
     isLoading: false,

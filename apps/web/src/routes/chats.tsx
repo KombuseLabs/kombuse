@@ -11,7 +11,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@kombuse/ui/base";
-import { AgentPicker, Chat, ModelSelector, SessionList } from "@kombuse/ui/components";
+import { AgentPicker, Chat, ModelSelector, SessionList, MobileListDetail } from "@kombuse/ui/components";
 import {
   useAvailableBackends,
   useCreateSession,
@@ -20,6 +20,7 @@ import {
   useAppContext,
   useDeleteSession,
   useProfileSetting,
+  useIsMobile,
 } from "@kombuse/ui/hooks";
 import { backendLabel, normalizeBackendType } from "@kombuse/ui/lib/backend-utils";
 import { ChatProvider } from "@kombuse/ui/providers";
@@ -33,6 +34,7 @@ const CHATS_PANEL_LAYOUT_KEY = "chats-panel-layout";
 
 export function Chats() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { projectId, sessionId } = useParams<{
     projectId: string;
     sessionId?: string;
@@ -240,6 +242,26 @@ export function Chats() {
       </ChatProvider>
     </div>
   );
+
+  if (isMobile && showSessionList) {
+    return (
+      <MobileListDetail
+        hasSelection={!!selectedSessionId}
+        onBack={handleNewChat}
+        backLabel="Chats"
+        list={
+          <div className="h-full min-h-0 px-3 pt-2 pb-2">
+            {sessionListContent}
+          </div>
+        }
+        detail={
+          <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+            {chatDetailContent}
+          </Card>
+        }
+      />
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0">

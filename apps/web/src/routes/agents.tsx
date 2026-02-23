@@ -25,6 +25,7 @@ import {
   AgentDetail,
   AvatarPicker,
   PromptEditor,
+  MobileListDetail,
 } from "@kombuse/ui/components";
 import {
   useAgents,
@@ -47,6 +48,7 @@ import {
   usePluginFiles,
   useUpdatePluginFile,
   useAppContext,
+  useIsMobile,
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
 import { Plus, X, Save, Package, Puzzle, ChevronDown } from "lucide-react";
@@ -59,6 +61,7 @@ export function Agents() {
   const projectId = pid!;
   const { currentProjectId } = useAppContext();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const isCreating = agentId === "new";
   const basePath = `/projects/${projectId}/agents`;
 
@@ -528,6 +531,22 @@ export function Agents() {
       )}
     </>
   );
+
+  if (isMobile) {
+    return (
+      <MobileListDetail
+        hasSelection={showDetailPanel}
+        onBack={handleCloseDetail}
+        backLabel="Agents"
+        list={
+          <div className="h-full min-h-0 px-3 pt-2 pb-2">
+            {agentListContent}
+          </div>
+        }
+        detail={agentDetailContent}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0">
