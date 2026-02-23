@@ -10,7 +10,7 @@ interface WebSocketProviderProps {
   url: string
   /** Time between reconnection attempts in ms (default: 3000) */
   reconnectInterval?: number
-  /** Maximum number of reconnection attempts (default: 10) */
+  /** Maximum number of reconnection attempts (default: Infinity) */
   maxReconnectAttempts?: number
 }
 
@@ -105,7 +105,7 @@ export function WebSocketProvider({
   children,
   url,
   reconnectInterval = 3000,
-  maxReconnectAttempts = 10,
+  maxReconnectAttempts = Infinity,
 }: WebSocketProviderProps) {
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttempts = useRef(0)
@@ -184,12 +184,15 @@ export function WebSocketProvider({
         safeSetConnected(false)
         wsRef.current = null
 
-        // Attempt reconnection with jitter
+        // Attempt reconnection with exponential backoff
         if (shouldReconnectRef.current && reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current++
+          const exponentialDelay = Math.min(
+            reconnectInterval * Math.pow(2, reconnectAttempts.current - 1),
+            60_000
+          )
           const jitter = Math.random() * 1000
-          const delay = reconnectInterval + jitter
-          reconnectTimeout.current = setTimeout(connect, delay)
+          reconnectTimeout.current = setTimeout(connect, exponentialDelay + jitter)
         }
       }
 

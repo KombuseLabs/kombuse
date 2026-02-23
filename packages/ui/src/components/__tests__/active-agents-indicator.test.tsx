@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from 'react'
 import type { ActiveSessionInfo, AppContextValue } from '@kombuse/types'
 import { ActiveAgentsIndicator } from '../active-agents-indicator'
 import { AppCtx } from '../../providers/app-context'
+import { WebSocketCtx, type WebSocketContextValue } from '../../providers/websocket-context'
 import * as backendStatusHooks from '../../hooks/use-backend-status'
 import * as profileSettingsHooks from '../../hooks/use-profile-settings'
 
@@ -18,6 +19,11 @@ vi.mock('../../hooks/use-profile-settings', () => ({
   useProfileSetting: vi.fn(() => ({ data: null })),
   useProfileSettings: vi.fn(() => ({ data: null })),
   useUpsertProfileSetting: vi.fn(() => ({ mutate: vi.fn() })),
+}))
+
+vi.mock('../../hooks/use-profile', () => ({
+  useCurrentUserProfile: vi.fn(() => ({ data: { id: 'user-1' } })),
+  useProfile: vi.fn(() => ({ data: { id: 'user-1' } })),
 }))
 
 const mockedUseProfileSetting = vi.mocked(profileSettingsHooks.useProfileSetting)
@@ -327,5 +333,56 @@ describe('ActiveAgentsIndicator project scoping', () => {
     ])
 
     expect(screen.getByText('Agent C')).toBeDefined()
+  })
+})
+
+describe('ActiveAgentsIndicator disconnection indicator', () => {
+  function renderWithWs(
+    sessions: ActiveSessionInfo[],
+    wsOverrides: Partial<WebSocketContextValue> = {},
+  ) {
+    const wsValue: WebSocketContextValue = {
+      isConnected: true,
+      send: vi.fn(),
+      registerTopics: vi.fn(),
+      unregisterTopics: vi.fn(),
+      addMessageHandler: vi.fn(),
+      removeMessageHandler: vi.fn(),
+      ...wsOverrides,
+    }
+
+    render(
+      <WebSocketCtx.Provider value={wsValue}>
+        <TestProvider sessions={sessions}>
+          <ActiveAgentsIndicator />
+        </TestProvider>
+      </WebSocketCtx.Provider>
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+  }
+
+  it('shows disconnection banner when WebSocket is disconnected', () => {
+    renderWithWs([], { isConnected: false })
+    expect(screen.getByText(/Live updates paused/)).toBeDefined()
+  })
+
+  it('does not show disconnection banner when connected', () => {
+    renderWithWs([], { isConnected: true })
+    expect(screen.queryByText(/Live updates paused/)).toBeNull()
+  })
+
+  it('shows amber dot on button when disconnected', () => {
+    renderWithWs([], { isConnected: false })
+    const button = screen.getByRole('button')
+    const amberDot = button.querySelector('.bg-amber-500')
+    expect(amberDot).not.toBeNull()
+  })
+
+  it('does not show amber dot on button when connected', () => {
+    renderWithWs([], { isConnected: true })
+    const button = screen.getByRole('button')
+    const amberDot = button.querySelector('.bg-amber-500')
+    expect(amberDot).toBeNull()
   })
 })

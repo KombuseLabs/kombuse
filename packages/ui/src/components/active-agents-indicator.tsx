@@ -1,16 +1,18 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useContext } from 'react'
 import { Bot, ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '../base/button'
 import { Badge } from '../base/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '../base/popover'
 import { useAppContext } from '../hooks/use-app-context'
+import { useCurrentUserProfile } from '../hooks/use-profile'
 import { useProfileSetting } from '../hooks/use-profile-settings'
 import { useBackendStatus, useRefreshBackendStatus } from '../hooks/use-backend-status'
 import { backendLabel } from '../lib/backend-utils'
 import { cn } from '../lib/utils'
 import { StatusIndicator } from './status-indicator'
+import { WebSocketCtx } from '../providers/websocket-context'
 import type { ActiveSessionInfo, BackendStatus } from '@kombuse/types'
 
 export interface ActiveAgentsIndicatorProps {
@@ -50,10 +52,13 @@ function formatDuration(startedAt: string): string {
 
 export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps) {
   const { activeSessions, currentProjectId } = useAppContext()
-  const { data: scopeSetting } = useProfileSetting('user-1', 'notifications.scope_to_project')
+  const { data: profile } = useCurrentUserProfile()
+  const { data: scopeSetting } = useProfileSetting(profile?.id ?? '', 'notifications.scope_to_project')
   const scopeToProject = scopeSetting?.setting_value !== 'all'
   const { data: backendStatuses } = useBackendStatus()
   const refreshMutation = useRefreshBackendStatus()
+  const wsCtx = useContext(WebSocketCtx)
+  const isConnected = wsCtx?.isConnected ?? true
 
   const sessions = useMemo(() => {
     const all = [...activeSessions.values()]
@@ -84,6 +89,12 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
               {count > 9 ? '9+' : count}
             </Badge>
           )}
+          {!isConnected && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-amber-500 animate-pulse"
+              aria-hidden="true"
+            />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
@@ -92,6 +103,11 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
             Active Agents{count > 0 ? ` (${count})` : ''}
           </h4>
         </div>
+        {!isConnected && (
+          <div className="border-b bg-amber-500/10 px-3 py-1.5 text-xs text-amber-600 dark:text-amber-400">
+            Live updates paused &mdash; reconnecting
+          </div>
+        )}
         {sessions.length === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-muted-foreground">
             No agents running
