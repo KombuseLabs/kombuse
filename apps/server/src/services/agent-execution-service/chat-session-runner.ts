@@ -748,7 +748,7 @@ export function startAgentChatSession(
     })
 
     const agentType = (agent?.config as { type?: string } | undefined)?.type
-    const preset = getEffectivePreset(agentType, agent?.config)
+    const preset = getEffectivePreset(agentType, agent?.config, agent?.plugin_id ?? undefined)
     dependencies.stateMachine.setMetadata(persistentSessionId, {
       agent_preset_type: agentType ?? 'kombuse',
       permission_mode: preset.permissionMode ?? null,
@@ -906,7 +906,7 @@ export function startAgentChatSession(
       : undefined)
 
   const agentType = (agent?.config as { type?: string } | undefined)?.type
-  const preset = getEffectivePreset(agentType, agent?.config)
+  const preset = getEffectivePreset(agentType, agent?.config, agent?.plugin_id ?? undefined)
   dependencies.stateMachine.setMetadata(persistentSessionId, {
     agent_preset_type: agentType ?? 'kombuse',
     permission_mode: preset.permissionMode ?? null,

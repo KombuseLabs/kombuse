@@ -1,4 +1,5 @@
 import type { AgentConfig, PermissionMode } from '@kombuse/types'
+import { pluginFilesRepository } from '@kombuse/persistence'
 
 /**
  * Agent type preset — determines auto-approved tools and system preamble for an agent class.
@@ -68,10 +69,24 @@ export function getAvailableAgentTypes(): string[] {
 
 /**
  * Resolve the type preset for an agent. Falls back to 'kombuse' if type is unknown.
+ * When pluginId is provided, attempts to load from plugin files first.
  */
-export function getTypePreset(agentType?: string): AgentTypePreset {
-  if (agentType && agentType in AGENT_TYPE_PRESETS) {
-    return AGENT_TYPE_PRESETS[agentType]!
+export function getTypePreset(agentType?: string, pluginId?: string): AgentTypePreset {
+  const resolvedType = agentType ?? DEFAULT_AGENT_TYPE
+
+  if (pluginId) {
+    try {
+      const file = pluginFilesRepository.get(pluginId, `presets/${resolvedType}.json`)
+      if (file) {
+        return JSON.parse(file.content) as AgentTypePreset
+      }
+    } catch {
+      // Parse error — fall through to hardcoded map
+    }
+  }
+
+  if (resolvedType in AGENT_TYPE_PRESETS) {
+    return AGENT_TYPE_PRESETS[resolvedType]!
   }
   return AGENT_TYPE_PRESETS[DEFAULT_AGENT_TYPE]!
 }
@@ -81,8 +96,8 @@ export function getTypePreset(agentType?: string): AgentTypePreset {
  * If config contains override arrays, they replace the base preset values.
  * Undefined overrides fall through to the base preset.
  */
-export function getEffectivePreset(agentType?: string, config?: AgentConfig): AgentTypePreset {
-  const base = getTypePreset(agentType)
+export function getEffectivePreset(agentType?: string, config?: AgentConfig, pluginId?: string): AgentTypePreset {
+  const base = getTypePreset(agentType, pluginId)
   if (!config) return base
 
   const toolsOverride = config.auto_approved_tools_override

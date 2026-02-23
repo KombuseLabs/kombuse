@@ -1,5 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('@kombuse/persistence', () => ({
+  pluginFilesRepository: {
+    get: vi.fn(() => null),
+  },
+}))
+
+import { pluginFilesRepository } from '@kombuse/persistence'
 import { getTypePreset, getEffectivePreset } from '../agent-type-preset-service'
+
+const mockGet = pluginFilesRepository.get as ReturnType<typeof vi.fn>
 
 describe('getEffectivePreset', () => {
   it('returns base preset when config is undefined', () => {
@@ -70,5 +80,88 @@ describe('getEffectivePreset', () => {
       auto_approved_tools_override: ['Read'],
     })
     expect(preset.autoApprovedTools).toEqual(['Read'])
+  })
+})
+
+describe('getTypePreset with pluginId', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockGet.mockReturnValue(null)
+  })
+
+  it('returns plugin preset when plugin file exists', () => {
+    const pluginPreset = {
+      autoApprovedTools: ['Read', 'Grep'],
+      autoApprovedBashCommands: ['ls'],
+    }
+    mockGet.mockReturnValue({ content: JSON.stringify(pluginPreset) })
+
+    const preset = getTypePreset('kombuse', 'test-plugin-id')
+
+    expect(mockGet).toHaveBeenCalledWith('test-plugin-id', 'presets/kombuse.json')
+    expect(preset.autoApprovedTools).toEqual(['Read', 'Grep'])
+    expect(preset.autoApprovedBashCommands).toEqual(['ls'])
+  })
+
+  it('falls back to hardcoded when plugin file not found', () => {
+    mockGet.mockReturnValue(null)
+
+    const preset = getTypePreset('kombuse', 'test-plugin-id')
+    const hardcoded = getTypePreset('kombuse')
+
+    expect(mockGet).toHaveBeenCalledWith('test-plugin-id', 'presets/kombuse.json')
+    expect(preset.autoApprovedTools).toEqual(hardcoded.autoApprovedTools)
+    expect(preset.autoApprovedBashCommands).toEqual(hardcoded.autoApprovedBashCommands)
+  })
+
+  it('falls back to hardcoded when plugin file has invalid JSON', () => {
+    mockGet.mockReturnValue({ content: 'not valid json{{{' })
+
+    const preset = getTypePreset('kombuse', 'test-plugin-id')
+    const hardcoded = getTypePreset('kombuse')
+
+    expect(preset.autoApprovedTools).toEqual(hardcoded.autoApprovedTools)
+  })
+
+  it('resolves default type when agentType is undefined', () => {
+    const pluginPreset = {
+      autoApprovedTools: ['Edit'],
+      autoApprovedBashCommands: [],
+    }
+    mockGet.mockReturnValue({ content: JSON.stringify(pluginPreset) })
+
+    const preset = getTypePreset(undefined, 'test-plugin-id')
+
+    expect(mockGet).toHaveBeenCalledWith('test-plugin-id', 'presets/kombuse.json')
+    expect(preset.autoApprovedTools).toEqual(['Edit'])
+  })
+
+  it('does not query plugin files when no pluginId', () => {
+    getTypePreset('kombuse')
+    expect(mockGet).not.toHaveBeenCalled()
+  })
+})
+
+describe('getEffectivePreset with pluginId', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockGet.mockReturnValue(null)
+  })
+
+  it('applies config overrides on top of plugin preset', () => {
+    const pluginPreset = {
+      autoApprovedTools: ['Read', 'Grep'],
+      autoApprovedBashCommands: ['ls'],
+      permissionMode: 'plan',
+    }
+    mockGet.mockReturnValue({ content: JSON.stringify(pluginPreset) })
+
+    const preset = getEffectivePreset('kombuse', {
+      auto_approved_tools_override: ['Write'],
+    }, 'test-plugin-id')
+
+    expect(preset.autoApprovedTools).toEqual(['Write'])
+    expect(preset.autoApprovedBashCommands).toEqual(['ls'])
+    expect(preset.permissionMode).toBe('plan')
   })
 })
