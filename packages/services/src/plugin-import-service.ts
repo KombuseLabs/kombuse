@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import * as yaml from 'js-yaml'
 import type {
   KombusePluginManifest,
@@ -13,6 +13,7 @@ import type {
 import { SELF_PLACEHOLDER, toSlug } from '@kombuse/types'
 import {
   pluginsRepository,
+  pluginFilesRepository,
   agentsRepository,
   agentTriggersRepository,
   labelsRepository,
@@ -96,6 +97,8 @@ export class PluginImportService implements IPluginImportService {
     let agentsUpdated = 0
     let triggersCreated = 0
     let triggersUpdated = 0
+    let filesImported = 0
+    let filesPreserved = 0
     const importedAgentIds = new Set<string>()
 
     // Step 4: Import labels
@@ -153,6 +156,14 @@ export class PluginImportService implements IPluginImportService {
           labelsRepository.delete(oldLabelId)
         }
       }
+    }
+
+    // Step 4c: Import plugin files
+    const filesDir = join(package_path, 'files')
+    if (existsSync(filesDir)) {
+      const fileStats = this.importPluginFiles(pluginId, filesDir)
+      filesImported += fileStats.imported
+      filesPreserved += fileStats.preserved
     }
 
     // Step 5: Import agents
@@ -302,8 +313,49 @@ export class PluginImportService implements IPluginImportService {
       labels_merged: labelsMerged,
       triggers_created: triggersCreated,
       triggers_updated: triggersUpdated,
+      files_imported: filesImported,
+      files_preserved: filesPreserved,
       warnings,
     }
+  }
+
+  private importPluginFiles(
+    pluginId: string,
+    filesDir: string,
+    basePath?: string
+  ): { imported: number; preserved: number } {
+    const base = basePath ?? filesDir
+    let imported = 0
+    let preserved = 0
+
+    const entries = readdirSync(filesDir)
+    for (const entry of entries) {
+      const fullPath = join(filesDir, entry)
+      const stat = statSync(fullPath)
+
+      if (stat.isDirectory()) {
+        const sub = this.importPluginFiles(pluginId, fullPath, base)
+        imported += sub.imported
+        preserved += sub.preserved
+      } else {
+        const filePath = relative(base, fullPath)
+        const content = readFileSync(fullPath, 'utf-8')
+        const existing = pluginFilesRepository.get(pluginId, filePath)
+
+        if (existing?.is_user_modified) {
+          preserved++
+        } else {
+          pluginFilesRepository.upsert({
+            plugin_id: pluginId,
+            path: filePath,
+            content,
+          })
+          imported++
+        }
+      }
+    }
+
+    return { imported, preserved }
   }
 
   private readManifest(packagePath: string): KombusePluginManifest {

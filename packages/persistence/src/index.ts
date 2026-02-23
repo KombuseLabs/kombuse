@@ -46,6 +46,7 @@ export {
   agentInvocationsRepository,
 } from './agents'
 export { pluginsRepository } from './plugins'
+export { pluginFilesRepository } from './plugin-files'
 export { sessionsRepository } from './sessions'
 export { analyticsRepository } from './analytics'
 export { sessionEventsRepository } from './session-events'

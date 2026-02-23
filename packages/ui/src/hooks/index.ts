@@ -132,6 +132,8 @@ export {
   useInstallPlugin,
   useUpdatePlugin,
   useUninstallPlugin,
+  usePluginFiles,
+  useUpdatePluginFile,
 } from './use-plugins'
 export {
   useSessionsPerDay,

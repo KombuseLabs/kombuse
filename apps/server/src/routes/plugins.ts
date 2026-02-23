@@ -8,7 +8,7 @@ import {
   pluginLifecycleService,
   PluginNotFoundError,
 } from '@kombuse/services'
-import { pluginsRepository } from '@kombuse/persistence'
+import { pluginFilesRepository, pluginsRepository } from '@kombuse/persistence'
 import {
   pluginExportSchema,
   pluginInstallSchema,
@@ -16,6 +16,7 @@ import {
   pluginFiltersSchema,
   availablePluginsSchema,
   pluginUninstallQuerySchema,
+  updatePluginFileSchema,
 } from '../schemas/plugins'
 
 export async function pluginRoutes(fastify: FastifyInstance) {
@@ -151,5 +152,49 @@ export async function pluginRoutes(fastify: FastifyInstance) {
       }
       throw error
     }
+  })
+
+  // List all files for a plugin
+  fastify.get('/plugins/:pluginId/files', async (request, reply) => {
+    const { pluginId } = request.params as { pluginId: string }
+    const plugin = pluginsRepository.get(pluginId)
+    if (!plugin) {
+      return reply.status(404).send({ error: 'Plugin not found' })
+    }
+    return pluginFilesRepository.list(pluginId)
+  })
+
+  // Get a single plugin file
+  fastify.get('/plugins/:pluginId/files/:fileId', async (request, reply) => {
+    const { pluginId, fileId } = request.params as { pluginId: string; fileId: string }
+    const plugin = pluginsRepository.get(pluginId)
+    if (!plugin) {
+      return reply.status(404).send({ error: 'Plugin not found' })
+    }
+    const file = pluginFilesRepository.getById(Number(fileId))
+    if (!file || file.plugin_id !== pluginId) {
+      return reply.status(404).send({ error: 'File not found' })
+    }
+    return file
+  })
+
+  // Update a plugin file's content
+  fastify.patch('/plugins/:pluginId/files/:fileId', async (request, reply) => {
+    const { pluginId, fileId } = request.params as { pluginId: string; fileId: string }
+    const plugin = pluginsRepository.get(pluginId)
+    if (!plugin) {
+      return reply.status(404).send({ error: 'Plugin not found' })
+    }
+    const parseResult = updatePluginFileSchema.safeParse(request.body)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+    const file = pluginFilesRepository.update(Number(fileId), {
+      content: parseResult.data.content,
+    })
+    if (!file || file.plugin_id !== pluginId) {
+      return reply.status(404).send({ error: 'File not found' })
+    }
+    return file
   })
 }

@@ -113,6 +113,7 @@ const EXPECTED_MIGRATIONS = [
   '006_agents_project_id',
   '007_ticket_numbers',
   '008_project_slugs',
+  '009_plugin_files',
 ]
 
 describe('database', () => {

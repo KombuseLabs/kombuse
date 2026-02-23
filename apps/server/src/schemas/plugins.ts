@@ -13,6 +13,7 @@ export const pluginExportResultSchema = z.object({
   directory: z.string(),
   agent_count: z.number().int().nonnegative(),
   label_count: z.number().int().nonnegative(),
+  file_count: z.number().int().nonnegative(),
   files: z.array(z.string()),
 })
 
@@ -49,7 +50,24 @@ export const pluginInstallResultSchema = z.object({
   labels_merged: z.number().int().nonnegative(),
   triggers_created: z.number().int().nonnegative(),
   triggers_updated: z.number().int().nonnegative(),
+  files_imported: z.number().int().nonnegative(),
+  files_preserved: z.number().int().nonnegative(),
   warnings: z.array(z.string()),
+})
+
+export const updatePluginFileSchema = z.object({
+  content: z.string().min(1),
+})
+
+export const pluginFileSchema = z.object({
+  id: z.number().int().positive(),
+  plugin_id: z.string().min(1),
+  path: z.string().min(1),
+  content: z.string(),
+  content_hash: z.string(),
+  is_user_modified: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
 })
 
 export type PluginInstallBody = z.infer<typeof pluginInstallSchema>

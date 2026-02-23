@@ -741,6 +741,22 @@ const migrations: Migration[] = [
       db.exec(`CREATE UNIQUE INDEX idx_projects_slug ON projects(slug)`)
     },
   },
+  {
+    name: '009_plugin_files',
+    sql: `
+      CREATE TABLE IF NOT EXISTS plugin_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+        path TEXT NOT NULL,
+        content TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        is_user_modified INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(plugin_id, path)
+      );
+    `,
+  },
 ]
 
 /**

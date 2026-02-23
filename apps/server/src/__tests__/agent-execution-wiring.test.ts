@@ -1440,10 +1440,11 @@ describe('startAgentChatSession agent resolution from session context', () => {
   const coderAgent = {
     id: 'ticket-analyzer',
     name: 'Ticket Analyzer',
-    system_prompt: '',
+    system_prompt: 'You are a read-only ticket analyzer. Do not modify any files.',
     is_enabled: true,
     config: { type: 'coder' },
     permissions: {},
+    plugin_id: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
@@ -1582,10 +1583,6 @@ describe('startAgentChatSession agent resolution from session context', () => {
       systemPrompt,
       'system prompt should contain the agent role prompt'
     ).toContain('You are a read-only ticket analyzer')
-    expect(
-      systemPrompt,
-      'system prompt should include the Agent Role heading'
-    ).toContain('## Agent Role')
   })
 
   it('does not use disabled agent from invocation lookup', async () => {
@@ -1712,7 +1709,6 @@ describe('startAgentChatSession agent resolution from session context', () => {
     const systemPrompt = getCapturedOptions()?.systemPrompt ?? ''
     expect(systemPrompt).not.toContain('## Prior Conversation')
     // Agent role prompt is still injected for sessions with prior context
-    expect(systemPrompt).toContain('## Agent Role')
     expect(systemPrompt).toContain('You are a ticket analyzer.')
   })
 

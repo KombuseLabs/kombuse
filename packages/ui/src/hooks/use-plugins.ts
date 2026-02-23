@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PluginExportInput, PluginInstallInput } from '@kombuse/types'
-import { pluginsApi } from '../lib/api'
+import { pluginFilesApi, pluginsApi } from '../lib/api'
 
 export function useExportPlugin() {
   return useMutation({
@@ -56,6 +56,25 @@ export function useUninstallPlugin() {
       pluginsApi.uninstall(id, mode),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] })
+    },
+  })
+}
+
+export function usePluginFiles(pluginId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['plugin-files', pluginId],
+    queryFn: () => pluginFilesApi.list(pluginId!),
+    enabled: !!pluginId,
+  })
+}
+
+export function useUpdatePluginFile() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ pluginId, fileId, content }: { pluginId: string; fileId: number; content: string }) =>
+      pluginFilesApi.update(pluginId, fileId, { content }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['plugin-files', variables.pluginId] })
     },
   })
 }

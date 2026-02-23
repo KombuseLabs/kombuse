@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 import { agentInvocationsRepository, commentsRepository, sessionsRepository, ticketsRepository } from '@kombuse/persistence'
-import { buildTemplateContext, getEffectivePreset, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplate } from '@kombuse/services'
+import { buildTemplateContext, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplateWithIncludes } from '@kombuse/services'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, type KombuseSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import { serializeAgentStreamEvent } from '../../websocket/serialize-agent-event'
@@ -26,7 +26,7 @@ interface TriggerPrompt {
  */
 function buildTriggerPrompt(
   event: EventWithActor,
-  agent: { system_prompt: string; config: { type?: string; [key: string]: unknown } },
+  agent: { system_prompt: string; plugin_id: string | null; config: { type?: string; [key: string]: unknown } },
   kombuseSessionId: string
 ): TriggerPrompt {
   const templateContext = {
@@ -34,17 +34,11 @@ function buildTriggerPrompt(
     kombuse_session_id: kombuseSessionId,
   }
 
-  const preset = getEffectivePreset(agent.config.type as string | undefined, agent.config)
-  const systemPrompt = preset.preambleTemplate
-    ? renderTemplate(preset.preambleTemplate, templateContext)
+  const systemPrompt = agent.system_prompt
+    ? renderTemplateWithIncludes(agent.system_prompt, templateContext, agent.plugin_id)
     : ''
 
   const lines: string[] = []
-  if (agent.system_prompt) {
-    const renderedRolePrompt = renderTemplate(agent.system_prompt, templateContext)
-    lines.push(renderedRolePrompt, '')
-  }
-
   lines.push(
     `Event: ${event.event_type}`,
     `Ticket: #${event.ticket_number ?? event.ticket_id ?? 'N/A'}`,

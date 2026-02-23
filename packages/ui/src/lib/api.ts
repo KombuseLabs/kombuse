@@ -59,6 +59,7 @@ import type {
   AgentExportResult,
   PluginExportInput,
   PluginExportResult,
+  PluginFile,
   Plugin,
   PluginInstallInput,
   PluginInstallResult,
@@ -941,6 +942,27 @@ export const pluginsApi = {
       method: 'DELETE',
     })
     return handleEmptyResponse(response)
+  },
+}
+
+export const pluginFilesApi = {
+  async list(pluginId: string): Promise<PluginFile[]> {
+    const response = await fetch(`${API_BASE}/plugins/${pluginId}/files`)
+    return handleResponse<PluginFile[]>(response)
+  },
+
+  async get(pluginId: string, fileId: number): Promise<PluginFile> {
+    const response = await fetch(`${API_BASE}/plugins/${pluginId}/files/${fileId}`)
+    return handleResponse<PluginFile>(response)
+  },
+
+  async update(pluginId: string, fileId: number, input: { content: string }): Promise<PluginFile> {
+    const response = await fetch(`${API_BASE}/plugins/${pluginId}/files/${fileId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<PluginFile>(response)
   },
 }
 

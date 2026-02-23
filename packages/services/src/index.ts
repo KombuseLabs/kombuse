@@ -67,6 +67,7 @@ export type {
 // Template rendering
 export {
   renderTemplate,
+  renderTemplateWithIncludes,
   hasTemplateVariables,
   buildTemplateContext,
 } from './template'

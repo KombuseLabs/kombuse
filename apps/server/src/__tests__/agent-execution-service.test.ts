@@ -12,14 +12,6 @@ describe('getTypePreset', () => {
     expect(preset.autoApprovedTools).toContain('mcp__kombuse__get_ticket')
     expect(preset.autoApprovedTools).toContain('mcp__kombuse__get_ticket_comment')
     expect(preset.autoApprovedBashCommands).toContain('git show')
-    expect(preset.preambleTemplate).toContain('Kombuse Tools')
-  })
-
-  it('kombuse preamble instructs agents to pass kombuse_session_id on mutating tools', () => {
-    const preset = getTypePreset('kombuse')
-    const matches = preset.preambleTemplate.match(/kombuse_session_id/g) ?? []
-    // Should appear for add_comment, create_ticket, and update_ticket (at least 3 times)
-    expect(matches.length).toBeGreaterThanOrEqual(3)
   })
 
   it('returns coder preset for "coder"', () => {
@@ -28,7 +20,6 @@ describe('getTypePreset', () => {
     expect(preset.autoApprovedTools).toContain('Write')
     expect(preset.autoApprovedTools).toContain('Bash')
     expect(preset.autoApprovedBashCommands).toContain('bun')
-    expect(preset.preambleTemplate).toContain('Implementation Rules')
   })
 
   it('returns generic preset for "generic"', () => {
@@ -37,7 +28,6 @@ describe('getTypePreset', () => {
     expect(preset.autoApprovedTools).toContain('Glob')
     expect(preset.autoApprovedTools).toContain('Read')
     expect(preset.autoApprovedTools).not.toContain('mcp__kombuse__get_ticket')
-    expect(preset.preambleTemplate).toBe('')
   })
 
   it('falls back to kombuse for unknown type', () => {
@@ -90,12 +80,9 @@ describe('shouldAutoApprove', () => {
   })
 
   it('rejects Bash command that starts with prefix but no space separator', () => {
-    // Use a custom preset where Bash is NOT in autoApprovedTools,
-    // so the prefix-matching logic is actually exercised
     const bashPrefixOnlyPreset: AgentTypePreset = {
       autoApprovedTools: [],
       autoApprovedBashCommands: ['bun', 'npm', 'git status'],
-      preambleTemplate: '',
     }
     expect(shouldAutoApprove('Bash', { command: 'bunx' }, bashPrefixOnlyPreset)).toBe(false)
     expect(shouldAutoApprove('Bash', { command: 'npmrc' }, bashPrefixOnlyPreset)).toBe(false)
@@ -120,14 +107,11 @@ describe('shouldAutoApprove', () => {
   })
 
   it('handles undefined input gracefully for non-approved Bash', () => {
-    // Bash is in coder autoApprovedTools, so it's approved regardless of input
     expect(shouldAutoApprove('Bash', undefined, coderPreset)).toBe(true)
-    // kombuse has bash commands but undefined input has no command to match
     expect(shouldAutoApprove('Bash', undefined, kombusePreset)).toBe(false)
   })
 
   it('handles Bash with missing command property', () => {
-    // kombuse has bash commands but empty input has no command to match
     expect(shouldAutoApprove('Bash', {}, kombusePreset)).toBe(false)
   })
 })
@@ -189,43 +173,6 @@ describe('preset contents', () => {
     expect(preset.autoApprovedBashCommands).toContain('git diff')
     expect(preset.autoApprovedBashCommands).toContain('git log')
   })
-
-  it('kombuse preamble does not contain read-only enforcement', () => {
-    const preset = getTypePreset('kombuse')
-    expect(preset.preambleTemplate).not.toContain('Do not modify any files')
-    expect(preset.preambleTemplate).not.toContain('read-only analysis task')
-  })
-
-  it('coder preamble contains implementation rules', () => {
-    const preset = getTypePreset('coder')
-    expect(preset.preambleTemplate).toContain('Implementation Rules')
-    expect(preset.preambleTemplate).toContain('Run tests after changes')
-  })
-
-  it('kombuse preamble contains tool usage guidance', () => {
-    const preset = getTypePreset('kombuse')
-    expect(preset.preambleTemplate).toContain('## Tool Usage')
-    expect(preset.preambleTemplate).toContain('Use Glob')
-    expect(preset.preambleTemplate).toContain('Use Grep')
-    expect(preset.preambleTemplate).toContain('Use Read')
-  })
-
-  it('coder preamble inherits tool usage from shared section', () => {
-    const preset = getTypePreset('coder')
-    expect(preset.preambleTemplate).toContain('## Tool Usage')
-    expect(preset.preambleTemplate).toContain('Use Glob')
-  })
-
-  it('kombuse preamble contains comment quality rules', () => {
-    const preset = getTypePreset('kombuse')
-    expect(preset.preambleTemplate).toContain('## Comment Quality')
-    expect(preset.preambleTemplate).toContain('Do NOT repeat or paraphrase')
-  })
-
-  it('coder preamble inherits comment quality from shared section', () => {
-    const preset = getTypePreset('coder')
-    expect(preset.preambleTemplate).toContain('## Comment Quality')
-  })
 })
 
 describe('presetToAllowedTools', () => {
@@ -238,9 +185,7 @@ describe('presetToAllowedTools', () => {
     expect(tools).toContain('Grep')
     expect(tools).toContain('Glob')
     expect(tools).toContain('Read')
-    // kombuse has no blanket Bash access
     expect(tools).not.toContain('Bash')
-    // but has Bash(git ... *) patterns for git read commands
     expect(tools).toContain('Bash(git show *)')
     expect(tools).toContain('Bash(git status *)')
     expect(tools).toContain('Bash(git diff *)')
@@ -257,7 +202,6 @@ describe('presetToAllowedTools', () => {
     expect(tools).toContain('Edit')
     expect(tools).toContain('Write')
     expect(tools).toContain('Task')
-    // No Bash(prefix *) patterns since Bash covers everything
     expect(tools.filter(t => t.startsWith('Bash(')).length).toBe(0)
   })
 
@@ -265,7 +209,6 @@ describe('presetToAllowedTools', () => {
     const customPreset: AgentTypePreset = {
       autoApprovedTools: ['Read', 'Grep'],
       autoApprovedBashCommands: ['npm', 'git status'],
-      preambleTemplate: '',
     }
     const tools = presetToAllowedTools(customPreset)
 
@@ -280,7 +223,6 @@ describe('presetToAllowedTools', () => {
     const emptyPreset: AgentTypePreset = {
       autoApprovedTools: [],
       autoApprovedBashCommands: [],
-      preambleTemplate: '',
     }
     expect(presetToAllowedTools(emptyPreset)).toEqual([])
   })

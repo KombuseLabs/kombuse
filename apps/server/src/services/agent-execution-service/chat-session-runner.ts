@@ -6,7 +6,7 @@ import {
   projectsRepository,
   ticketsRepository,
 } from '@kombuse/persistence'
-import { buildConversationSummary, renderTemplate } from '@kombuse/services'
+import { buildConversationSummary, renderTemplateWithIncludes } from '@kombuse/services'
 import {
   BACKEND_TYPES,
   isValidSessionId,
@@ -917,7 +917,7 @@ export function startAgentChatSession(
   let resolvedSystemPrompt: string | undefined
   if (options?.systemPromptOverride) {
     resolvedSystemPrompt = options.systemPromptOverride
-  } else if (agent && preset.preambleTemplate) {
+  } else if (agent?.system_prompt) {
     const preambleContext = {
       event_type: '',
       ticket_id: ticketId ?? null,
@@ -933,12 +933,7 @@ export function startAgentChatSession(
         return { id: profile.id, name: profile.name, description: profile.description, slug: agentRecord?.slug ?? null }
       }),
     }
-    resolvedSystemPrompt = renderTemplate(preset.preambleTemplate, preambleContext)
-
-    if (agent.system_prompt && (resumeSessionId || existingSession)) {
-      const renderedRolePrompt = renderTemplate(agent.system_prompt, preambleContext)
-      resolvedSystemPrompt += `\n\n## Agent Role\n${renderedRolePrompt}`
-    }
+    resolvedSystemPrompt = renderTemplateWithIncludes(agent.system_prompt, preambleContext, agent.plugin_id)
   }
 
   const effectiveProjectPath = projectPathOverride ?? dependencies.resolveProjectPath()

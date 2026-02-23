@@ -29,5 +29,6 @@ export interface PluginExportResult {
   directory: string
   agent_count: number
   label_count: number
+  file_count: number
   files: string[]
 }

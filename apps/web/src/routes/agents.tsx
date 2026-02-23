@@ -44,6 +44,8 @@ import {
   useInstalledPlugins,
   useInstallPlugin,
   useUpdatePlugin,
+  usePluginFiles,
+  useUpdatePluginFile,
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
 import { Plus, X, Save, Package, Puzzle, ChevronDown } from "lucide-react";
@@ -83,6 +85,9 @@ export function Agents() {
   const { data: installedPlugins } = useInstalledPlugins(projectId);
   const installPlugin = useInstallPlugin();
   const updatePlugin = useUpdatePlugin();
+  const selectedPluginId = selectedAgentData?.agent.plugin_id ?? null;
+  const { data: pluginFiles, isLoading: isLoadingPluginFiles } = usePluginFiles(selectedPluginId);
+  const updatePluginFile = useUpdatePluginFile();
   const [dismissed, setDismissed] = useState(() => {
     return localStorage.getItem(`plugin-onboarding-dismissed-${projectId}`) === "true";
   });
@@ -500,6 +505,12 @@ export function Agents() {
           profile={selectedAgentData.profile}
           triggers={triggers}
           pluginName={selectedAgentData.agent.plugin_id ? pluginMap.get(selectedAgentData.agent.plugin_id)?.name : undefined}
+          pluginFiles={pluginFiles}
+          isLoadingPluginFiles={isLoadingPluginFiles}
+          onPluginFileUpdate={async (fileId, content) => {
+            if (!selectedPluginId) return;
+            await updatePluginFile.mutateAsync({ pluginId: selectedPluginId, fileId, content });
+          }}
           onClose={handleCloseDetail}
           onSave={handleSaveAgent}
           onDelete={handleDeleteAgent}

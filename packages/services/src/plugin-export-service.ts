@@ -1,5 +1,5 @@
 import { mkdirSync, existsSync, writeFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import * as yaml from 'js-yaml'
 import type {
   Agent,
@@ -20,6 +20,8 @@ import {
   agentsRepository,
   agentTriggersRepository,
   labelsRepository,
+  pluginFilesRepository,
+  pluginsRepository,
   profilesRepository,
   projectsRepository,
 } from '@kombuse/persistence'
@@ -172,11 +174,26 @@ export class PluginExportService implements IPluginExportService {
       writtenFiles.push(`agents/${file.filename}`)
     }
 
+    // Write plugin files from DB
+    let pluginFileCount = 0
+    const plugin = pluginsRepository.getByName(project_id, package_name)
+    if (plugin) {
+      const pluginFiles = pluginFilesRepository.list(plugin.id)
+      for (const pf of pluginFiles) {
+        const filePath = join(directory, 'files', pf.path)
+        mkdirSync(dirname(filePath), { recursive: true })
+        writeFileSync(filePath, pf.content, 'utf-8')
+        writtenFiles.push(`files/${pf.path}`)
+        pluginFileCount++
+      }
+    }
+
     return {
       package_name,
       directory,
       agent_count: processedFiles.length,
       label_count: exportedLabels.length,
+      file_count: pluginFileCount,
       files: writtenFiles,
     }
   }

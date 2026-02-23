@@ -13,6 +13,8 @@ export interface PluginInstallResult {
   labels_merged: number
   triggers_created: number
   triggers_updated: number
+  files_imported: number
+  files_preserved: number
   warnings: string[]
 }
 

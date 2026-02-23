@@ -48,12 +48,11 @@ describe('getEffectivePreset', () => {
     expect(preset.autoApprovedBashCommands).toEqual([])
   })
 
-  it('preserves preambleTemplate and permissionMode from base', () => {
+  it('preserves permissionMode from base', () => {
     const base = getTypePreset('coder')
     const preset = getEffectivePreset('coder', {
       auto_approved_tools_override: ['Read'],
     })
-    expect(preset.preambleTemplate).toBe(base.preambleTemplate)
     expect(preset.permissionMode).toBe(base.permissionMode)
   })
 
@@ -71,7 +70,5 @@ describe('getEffectivePreset', () => {
       auto_approved_tools_override: ['Read'],
     })
     expect(preset.autoApprovedTools).toEqual(['Read'])
-    const base = getTypePreset('unknown-type')
-    expect(preset.preambleTemplate).toBe(base.preambleTemplate)
   })
 })
