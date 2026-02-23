@@ -9,12 +9,7 @@ import {
   initializeDatabase,
   seedDatabase,
   onEventCreated,
-  pluginsRepository,
 } from "@kombuse/persistence";
-import {
-  pluginImportService,
-  pluginLifecycleService,
-} from "@kombuse/services";
 import {
   registerTicketTools,
   registerDatabaseTools,
@@ -55,6 +50,7 @@ import {
   stopAllActiveBackends,
 } from "./services/agent-execution-service";
 import { createResponseValidationHook } from "./schemas/response-validation";
+import { resolveProjectSlug } from "./hooks/resolve-project-slug";
 
 // Re-export for desktop shell integration
 export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
@@ -66,27 +62,6 @@ export interface ServerOptions {
   desktop?: boolean;
 }
 
-function seedPlugins() {
-  const installed = pluginsRepository.list({ project_id: '1' })
-  if (installed.length > 0) return
-
-  const available = pluginLifecycleService.getAvailablePlugins('1')
-  const kombuseDev = available.find((p) => p.name === 'kombuse-dev')
-  if (!kombuseDev) return
-
-  try {
-    const result = pluginImportService.installPackage({
-      package_path: kombuseDev.directory,
-      project_id: '1',
-    })
-    console.log(
-      `[Server] Auto-installed plugin "${result.plugin_name}": ${result.agents_created} created, ${result.agents_updated} updated, ${result.labels_created} labels`
-    )
-  } catch (err) {
-    console.warn('[Server] Failed to auto-install default plugin:', err)
-  }
-}
-
 /**
  * Create a configured Fastify server instance.
  * Initializes and seeds the database internally.
@@ -95,7 +70,6 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   const db = initializeDatabase(dbPath);
   seedDatabase(db);
   setDatabase(db);
-  seedPlugins();
 
   // Clean up orphaned sessions from previous runs.
   // Startup recovery should reconcile immediately because in-process backends
@@ -126,11 +100,25 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   });
 
   fastify.addHook("preSerialization", createResponseValidationHook());
+  fastify.addHook("preHandler", resolveProjectSlug);
 
   // Enable CORS for web app
   // app:// is the Electron production origin (registered as privileged scheme)
   await fastify.register(cors, {
-    origin: ["http://localhost:3333", "app://."],
+    origin: (origin, cb) => {
+      // Allow Electron app, localhost, and LAN access for mobile dev
+      if (
+        !origin ||
+        origin === "app://." ||
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:") ||
+        origin.startsWith("http://192.168.")
+      ) {
+        cb(null, true);
+      } else {
+        cb(new Error("Not allowed by CORS"), false);
+      }
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
 
