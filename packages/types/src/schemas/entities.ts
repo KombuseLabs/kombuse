@@ -251,6 +251,7 @@ export const sessionSchema = z.object({
   effective_backend: backendTypeSchema.nullable().optional(),
   model_preference: z.string().nullable().optional(),
   applied_model: z.string().nullable().optional(),
+  ticket_number: z.number().int().positive().nullable().optional(),
 })
 
 export const publicSessionSchema = sessionSchema.omit({ id: true })
@@ -258,6 +259,7 @@ export const publicSessionSchema = sessionSchema.omit({ id: true })
 export const sessionEventSchema = z.object({
   id: z.number().int().positive(),
   session_id: z.string().min(1),
+  kombuse_session_id: z.string().nullable(),
   seq: z.number().int().nonnegative(),
   event_type: z.string().min(1),
   payload: z.record(z.string(), z.unknown()),
