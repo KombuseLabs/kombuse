@@ -17,7 +17,6 @@ export interface PromptEditorProps {
   disabled?: boolean
   className?: string
   minHeight?: number
-  maxHeight?: number
   fillHeight?: boolean
   showCounts?: boolean
   showPreview?: boolean
@@ -36,7 +35,6 @@ function PromptEditor({
   disabled = false,
   className,
   minHeight = 200,
-  maxHeight = 500,
   fillHeight = false,
   showCounts = true,
   showPreview = true,
@@ -88,7 +86,7 @@ function PromptEditor({
 
   // Rough token estimate (1 token ~ 4 chars for English)
   const estimatedTokens = Math.ceil(value.length / 4)
-  const editorStyle = fillHeight ? undefined : { minHeight, maxHeight }
+  const editorStyle = fillHeight ? undefined : { minHeight }
 
   // Render preview with highlighted variables
   const renderPreview = () => {
@@ -170,7 +168,7 @@ function PromptEditor({
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
-            'font-mono text-sm resize-none overflow-y-auto',
+            'font-mono text-sm resize-y overflow-y-auto',
             fillHeight && 'h-full min-h-0 flex-1'
           )}
           style={editorStyle}

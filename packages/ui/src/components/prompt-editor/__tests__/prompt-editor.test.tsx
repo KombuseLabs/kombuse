@@ -160,7 +160,7 @@ describe('PromptEditor', () => {
     const textarea = getByPlaceholderText("Enter your system prompt...") as HTMLTextAreaElement
 
     expect(textarea.style.minHeight).toBe('200px')
-    expect(textarea.style.maxHeight).toBe('500px')
+    expect(textarea.style.maxHeight).toBe('')
     expect(textarea.className).not.toContain('flex-1')
   })
 
