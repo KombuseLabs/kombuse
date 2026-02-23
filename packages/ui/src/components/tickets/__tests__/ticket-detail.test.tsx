@@ -313,13 +313,16 @@ describe('TicketDetail header behavior', () => {
     currentTicket = buildTicket()
   })
 
-  it('uses elevated sticky header styling classes', () => {
+  it('uses elevated sticky header styling classes (desktop-only via md: prefix)', () => {
     const { container } = render(<TicketDetail />)
-    const stickyHeader = container.querySelector('div.sticky.top-0.z-20')
+    const headers = container.querySelectorAll('div[class*="border-b"]')
+    const stickyHeader = Array.from(headers).find(el =>
+      el.className.includes('md:sticky') && el.className.includes('md:top-0') && el.className.includes('md:z-20')
+    )
 
     expect(stickyHeader).toBeTruthy()
-    expect(stickyHeader?.className.includes('shadow-md')).toBe(true)
-    expect(stickyHeader?.className.includes('backdrop-blur-sm')).toBe(true)
+    expect(stickyHeader?.className.includes('md:shadow-md')).toBe(true)
+    expect(stickyHeader?.className.includes('md:backdrop-blur-sm')).toBe(true)
   })
 
   it('renders the title as a semantic h1 with tight leading', () => {

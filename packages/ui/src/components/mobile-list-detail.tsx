@@ -9,7 +9,7 @@ interface MobileListDetailProps {
   hasSelection: boolean
   onBack: () => void
   list: ReactNode
-  detail: ReactNode
+  detail: ReactNode | ((props: { onBack: () => void }) => ReactNode)
   backLabel?: string
   className?: string
 }
@@ -26,6 +26,19 @@ function MobileListDetail({
     return (
       <div className={cn("flex h-full min-h-0 flex-col", className)}>
         {list}
+      </div>
+    )
+  }
+
+  // When detail is a render-prop, pass onBack through so the detail component
+  // can render its own back button (no separate back bar needed).
+  if (typeof detail === 'function') {
+    const detailContent = detail({ onBack })
+    return (
+      <div className={cn("flex h-full min-h-0 flex-col", className)}>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {detailContent}
+        </div>
       </div>
     )
   }

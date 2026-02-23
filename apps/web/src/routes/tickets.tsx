@@ -26,7 +26,7 @@ import {
   PopoverTrigger,
   toast,
 } from "@kombuse/ui/base";
-import { TicketList, TicketListHeader, TicketDetail, ChatInput, ActivityTimeline, Chat, MobileListDetail } from "@kombuse/ui/components";
+import { TicketList, TicketListHeader, TicketDetail, ChatInput, ActivityTimeline, Chat, MobileListDetail, TicketFilterSheet } from "@kombuse/ui/components";
 import type { ReplyTarget } from "@kombuse/ui/components";
 import { ChatProvider } from "@kombuse/ui/providers";
 import {
@@ -607,6 +607,42 @@ export function Tickets() {
     return label.name.toLowerCase().includes(overflowLabelSearch.toLowerCase());
   });
   const overflowSelectedCount = overflowLabels.filter((label) => selectedLabelIds.includes(label.id)).length;
+
+  // Compute active filter count for mobile badge
+  const activeFilterCount = (statusFilter !== "open" ? 1 : 0)
+    + selectedLabelIds.length
+    + (selectedMilestoneId !== null ? 1 : 0)
+    + (sortBy !== "created_at" ? 1 : 0)
+    + (sortOrder !== "desc" ? 1 : 0);
+
+  const mobileFilterTrigger = isMobile ? (
+    <TicketFilterSheet
+      statusFilter={statusFilter}
+      onStatusFilterChange={(status) => updateSearchParams({ status: status === "open" ? null : status })}
+      sortBy={sortBy}
+      onSortByChange={(value) => updateSearchParams({ sort_by: value === "created_at" ? null : value })}
+      sortOrder={sortOrder}
+      onSortOrderToggle={() => updateSearchParams({ sort_order: sortOrder === "desc" ? "asc" : null })}
+      showClosedSort={showClosedSort}
+      labels={usageSortedLabels}
+      selectedLabelIds={selectedLabelIds}
+      onLabelToggle={toggleLabelFilter}
+      onLabelsClear={() => updateSearchParams({ labels: null })}
+      milestones={projectMilestones}
+      selectedMilestoneId={selectedMilestoneId}
+      onMilestoneToggle={(id) => updateSearchParams({ milestone: selectedMilestoneId === id ? null : String(id) })}
+      onMilestoneClear={() => updateSearchParams({ milestone: null })}
+      statusCounts={statusCounts ? {
+        all: openCount + closedCount + inProgressCount + blockedCount,
+        open: openCount,
+        in_progress: inProgressCount,
+        blocked: blockedCount,
+        closed: closedCount,
+      } : null}
+      activeFilterCount={activeFilterCount}
+    />
+  ) : undefined;
+
   const ticketListContent = (
     <div className="relative h-full min-h-0">
       <TicketList
@@ -619,6 +655,7 @@ export function Tickets() {
         header={(
           <TicketListHeader
             title="Tickets"
+            mobileFilterTrigger={mobileFilterTrigger}
             meta={
               statusCounts ? (
                 <span>
@@ -986,6 +1023,7 @@ export function Tickets() {
               >
                 <TicketDetail
                   onClose={handleCloseDetail}
+                  onBack={isMobile ? handleCloseDetail : undefined}
                   isEditable
                   onEditModeChange={(mode) => {
                     if (mode === 'edit') ticketScrollToTop()
@@ -1105,13 +1143,12 @@ export function Tickets() {
       <MobileListDetail
         hasSelection={!!ticketNumberParam}
         onBack={handleCloseDetail}
-        backLabel="Tickets"
         list={
           <div className="h-full min-h-0 px-3 pt-2 pb-2">
             {ticketListContent}
           </div>
         }
-        detail={ticketDetailContent}
+        detail={() => ticketDetailContent}
       />
     );
   }

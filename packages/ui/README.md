@@ -85,10 +85,11 @@ Shadcn/ui primitives:
 import { Button } from '@kombuse/ui/base'
 import { Card, CardHeader, CardContent } from '@kombuse/ui/base'
 import { Dialog, DialogContent, DialogTrigger } from '@kombuse/ui/base'
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@kombuse/ui/base'
 import { Input } from '@kombuse/ui/base'
 ```
 
-Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `HoverCard`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Resizable`, `Select`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
+Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `HoverCard`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Resizable`, `Select`, `Sheet`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
 
 #### Textarea Auto-Resize
 
@@ -588,8 +589,8 @@ Props:
 - `hasSelection`: When false, renders `list` full-width. When true, renders back button + `detail`
 - `onBack`: Callback when back button is clicked
 - `list`: List view content
-- `detail`: Detail view content
-- `backLabel`: Optional label for back button (default: "Back")
+- `detail`: `ReactNode | ((props: { onBack: () => void }) => ReactNode)` — when a function, the back bar is hidden and `onBack` is passed to the detail component to render its own back button
+- `backLabel`: Optional label for back button (default: "Back") — only used when `detail` is a plain ReactNode
 - `className`: Optional class name
 
 ### Label Components
@@ -868,7 +869,7 @@ Props:
 ### Ticket Components
 
 ```typescript
-import { TicketList, TicketListHeader, TicketDetail } from '@kombuse/ui/components'
+import { TicketList, TicketListHeader, TicketDetail, TicketFilterSheet } from '@kombuse/ui/components'
 
 // Render a ticket list with date metadata aligned to the active sort mode
 <TicketList
@@ -915,9 +916,42 @@ Props:
 - View mode displays ticket attachments as clickable thumbnails with lightbox
 - Delete confirmation warns that related comments and attachments are also removed; confirm action shows `Deleting...` while pending
 - If delete fails, the dialog stays open so users can retry after the app-level error toast
-- Header stays sticky with elevated separation (`z-20`, `shadow-md`) and translucent blur treatment while content scrolls beneath
+- Header stays sticky on desktop (`md:sticky`) with elevated separation (`z-20`, `shadow-md`) and translucent blur treatment while content scrolls beneath. On mobile, the header scrolls with the content
+- `onBack`: Optional `() => void` — when provided, renders a back arrow button at the start of the header row (used on mobile to navigate back to the ticket list)
 - View mode uses semantic heading markup (`h1`) with `leading-tight`, and keeps created date in a secondary metadata row
 - In editable view mode, the trigger switch is grouped with header actions and is hidden while editing
+
+`TicketFilterSheet` — Mobile bottom-sheet filter panel for the ticket list:
+
+```typescript
+<TicketFilterSheet
+  statusFilter={statusFilter}
+  onStatusFilterChange={setStatusFilter}
+  sortBy={sortBy}
+  onSortByChange={setSortBy}
+  sortOrder={sortOrder}
+  onSortOrderToggle={toggleSortOrder}
+  showClosedSort={showClosedSort}
+  labels={labels}
+  selectedLabelIds={selectedLabelIds}
+  onLabelToggle={toggleLabel}
+  onLabelsClear={clearLabels}
+  milestones={milestones}
+  selectedMilestoneId={selectedMilestoneId}
+  onMilestoneToggle={toggleMilestone}
+  onMilestoneClear={clearMilestone}
+  statusCounts={statusCounts}
+  activeFilterCount={activeFilterCount}
+/>
+```
+
+- Renders a `Sheet` trigger button with `SlidersHorizontal` icon + "Filters" label + count badge
+- Opens a bottom sheet with status, sort, label, and milestone filter sections
+- Filters apply immediately on selection (no "Apply" button)
+- Designed for use with `TicketListHeader`'s `mobileFilterTrigger` prop
+
+`TicketListHeader` additional props:
+- `mobileFilterTrigger`: Optional `ReactNode` — when provided, hides `meta` and `filters` on mobile and renders this trigger element next to the title instead
 
 ### Session Components
 

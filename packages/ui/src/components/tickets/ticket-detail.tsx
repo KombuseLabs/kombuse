@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../../base/dialog'
-import { X, Trash2, Pencil, Paperclip, ChevronDown, ChevronRight } from 'lucide-react'
+import { X, Trash2, Pencil, Paperclip, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
 import { MilestoneBadge } from '../milestones/milestone-badge'
@@ -34,6 +34,7 @@ import { StagedFilePreviews } from '../staged-file-previews'
 interface TicketDetailProps {
   className?: string
   onClose?: () => void
+  onBack?: () => void
   isEditable?: boolean
   onEditModeChange?: (mode: 'view' | 'edit') => void
 }
@@ -85,7 +86,7 @@ const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
   { value: 'closed', label: 'Closed' },
 ]
 
-function TicketDetail({ className, onClose, isEditable, onEditModeChange }: TicketDetailProps) {
+function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange }: TicketDetailProps) {
   const { currentTicket, deleteCurrentTicket, updateCurrentTicket, isDeleting, isUpdating } =
     useTicketOperations()
 
@@ -207,7 +208,7 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
       {/* Sticky header — direct child of scroll container so sticky works correctly */}
       <div
         className={cn(
-          'sticky top-0 z-20 border-b bg-card/95 px-4 py-2 md:py-3 shadow-md backdrop-blur-sm',
+          'border-b bg-card px-4 py-2 md:sticky md:top-0 md:z-20 md:bg-card/95 md:py-3 md:shadow-md md:backdrop-blur-sm',
           className
         )}
       >
@@ -216,6 +217,11 @@ function TicketDetail({ className, onClose, isEditable, onEditModeChange }: Tick
             {mode === 'view' ? (
               <div className="md:min-h-[5.25rem] space-y-2">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {onBack && (
+                    <Button variant="ghost" size="icon" onClick={onBack} className="size-7 shrink-0">
+                      <ArrowLeft className="size-4" />
+                    </Button>
+                  )}
                   <StatusIndicator status={agentStatus} size="default" />
                   <span className="text-sm text-muted-foreground">#{ticket.ticket_number}</span>
                   {isEditable ? (

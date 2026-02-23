@@ -1,4 +1,6 @@
 export { TicketDetail } from './ticket-detail'
+export { TicketFilterSheet } from './ticket-filter-sheet'
+export type { TicketFilterSheetProps } from './ticket-filter-sheet'
 export { TicketList } from './ticket-list'
 export { TicketListHeader } from './ticket-list-header'
 export type { TicketListHeaderProps } from './ticket-list-header'
