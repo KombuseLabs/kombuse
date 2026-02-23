@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
-import type { JsonObject, JsonValue, SerializedAgentCompleteEvent, SerializedAgentErrorEvent, SerializedAgentEvent, SerializedAgentPermissionRequestEvent, SerializedAgentPermissionResponseEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
+import type { JsonObject, JsonValue, SerializedAgentCompleteEvent, SerializedAgentErrorEvent, SerializedAgentEvent, SerializedAgentPermissionRequestEvent, SerializedAgentPermissionResponseEvent, SerializedAgentRawEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { SessionViewer } from '../session-viewer'
 import { KNOWN_KOMBUSE_TOOL_NAMES, getKombuseToolConfig } from '../renderers'
 
@@ -147,6 +147,27 @@ function makePermissionResponseEvent({
     requestId,
     behavior,
     ...(message != null && { message }),
+  }
+}
+
+function makeRawEvent({
+  id,
+  sourceType,
+  data = null,
+  timestamp,
+}: {
+  id: string
+  sourceType?: string
+  data?: JsonValue
+  timestamp: number
+}): SerializedAgentRawEvent {
+  return {
+    type: 'raw',
+    eventId: `evt-${id}`,
+    backend: 'mock',
+    timestamp,
+    sourceType,
+    data,
   }
 }
 
@@ -492,5 +513,123 @@ describe('SessionViewer kombuse renderers', () => {
 
     expect(container.textContent).not.toContain('Allowed')
     expect(container.textContent).not.toContain('Permission Request')
+  })
+
+  it('renders task_started with description and task_type badge', () => {
+    const event = makeRawEvent({
+      id: 'task-full',
+      sourceType: 'task_started',
+      data: {
+        type: 'system',
+        subtype: 'task_started',
+        description: 'Investigate frozen display',
+        task_type: 'local_agent',
+      },
+      timestamp: 8000,
+    })
+
+    const { container } = render(<SessionViewer events={[event]} />)
+
+    expect(container.textContent).toContain('Task started')
+    expect(container.textContent).toContain('Investigate frozen display')
+    expect(container.textContent).toContain('local_agent')
+    expect(container.querySelector('pre')).toBeNull()
+  })
+
+  it('renders task_started without description or task_type', () => {
+    const event = makeRawEvent({
+      id: 'task-minimal',
+      sourceType: 'task_started',
+      data: { type: 'system', subtype: 'task_started' },
+      timestamp: 8100,
+    })
+
+    const { container } = render(<SessionViewer events={[event]} />)
+
+    expect(container.textContent).toContain('Task started')
+    expect(container.textContent).not.toContain('local_agent')
+    expect(container.querySelector('pre')).toBeNull()
+  })
+
+  it('renders task_started with null data gracefully', () => {
+    const event = makeRawEvent({
+      id: 'task-null',
+      sourceType: 'task_started',
+      data: null,
+      timestamp: 8200,
+    })
+
+    const { container } = render(<SessionViewer events={[event]} />)
+
+    expect(container.textContent).toContain('Task started')
+    expect(container.querySelector('pre')).toBeNull()
+  })
+
+  it('renders rate_limit_event with allowed status as neutral', () => {
+    const event = makeRawEvent({
+      id: 'rl-allowed',
+      sourceType: 'rate_limit_event',
+      data: { rate_limit_info: { status: 'allowed' } },
+      timestamp: 9000,
+    })
+
+    const { container } = render(<SessionViewer events={[event]} />)
+
+    expect(container.textContent).toContain('Rate limit')
+    expect(container.textContent).not.toContain('Rate limited')
+    expect(container.textContent).not.toContain('Rate limit warning')
+    expect(container.querySelector('.border-l-amber-500')).toBeNull()
+    expect(container.querySelector('.border-l-destructive')).toBeNull()
+  })
+
+  it('renders rate_limit_event with allowed_warning status as amber with utilization', () => {
+    const event = makeRawEvent({
+      id: 'rl-warning',
+      sourceType: 'rate_limit_event',
+      data: {
+        rate_limit_info: {
+          status: 'allowed_warning',
+          utilization: 0.89,
+          surpassedThreshold: 0.75,
+        },
+      },
+      timestamp: 9100,
+    })
+
+    const { container } = render(<SessionViewer events={[event]} />)
+
+    expect(container.textContent).toContain('Rate limit warning')
+    expect(container.textContent).toContain('89%')
+    expect(container.textContent).toContain('75%')
+    expect(container.querySelector('.border-l-amber-500')).not.toBeNull()
+  })
+
+  it('renders rate_limit_event with error status as destructive', () => {
+    const event = makeRawEvent({
+      id: 'rl-error',
+      sourceType: 'rate_limit_event',
+      data: { rate_limit_info: { status: 'throttled' } },
+      timestamp: 9200,
+    })
+
+    const { container } = render(<SessionViewer events={[event]} />)
+
+    expect(container.textContent).toContain('Rate limited')
+    expect(container.querySelector('.border-l-destructive')).not.toBeNull()
+  })
+
+  it('renders rate_limit_event with legacy format fallback', () => {
+    const event = makeRawEvent({
+      id: 'rl-legacy',
+      sourceType: 'rate_limit_event',
+      data: { message: 'Rate limit exceeded', retry_after: 30 },
+      timestamp: 9300,
+    })
+
+    const { container } = render(<SessionViewer events={[event]} />)
+
+    expect(container.textContent).toContain('Rate limit exceeded')
+    expect(container.textContent).toContain('Retry after 30s')
+    expect(container.querySelector('.border-l-amber-500')).not.toBeNull()
   })
 })
