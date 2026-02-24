@@ -101,6 +101,9 @@ export type {
   NotificationScope,
 } from './session-preferences-service'
 
+// Project initialization
+export { initProject } from './project-init-service'
+
 // Model catalog
 export { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS, CLAUDE_CODE_MODELS } from './model-catalog-service'
 

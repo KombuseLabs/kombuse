@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { useProject, useUpdateProject, useDesktop } from '@kombuse/ui/hooks'
+import { useProject, useUpdateProject, useInitProject, useDesktop } from '@kombuse/ui/hooks'
 import {
   Button, Input, Label, Textarea,
   Card, CardContent, CardHeader, CardTitle,
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
   toast,
 } from '@kombuse/ui/base'
-import { Save, Loader2, FolderOpen, FolderSync } from 'lucide-react'
+import { Save, Loader2, FolderOpen, FolderSync, Check, X, AlertCircle } from 'lucide-react'
 import type { RepoSource } from '@kombuse/types'
 
 export function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const { data: project, isLoading } = useProject(projectId!)
   const updateProject = useUpdateProject()
+  const initProject = useInitProject()
   const { isDesktop, selectDirectory } = useDesktop()
 
   const [name, setName] = useState('')
@@ -53,10 +54,7 @@ export function ProjectPage() {
   const hasChanges =
     name !== project.name ||
     description !== (project.description ?? '') ||
-    localPath !== (project.local_path ?? '') ||
-    repoSource !== (project.repo_source ?? 'none') ||
-    repoOwner !== (project.repo_owner ?? '') ||
-    repoName !== (project.repo_name ?? '')
+    localPath !== (project.local_path ?? '')
 
   const handleSave = () => {
     updateProject.mutate(
@@ -149,7 +147,8 @@ export function ProjectPage() {
           </CardContent>
         </Card>
 
-        {/* Repository */}
+        {/* Repository — hidden until feature is ready */}
+        {false && (
         <Card>
           <CardHeader>
             <CardTitle>Repository</CardTitle>
@@ -189,21 +188,58 @@ export function ProjectPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Initialize */}
         <Card>
           <CardContent className="pt-6">
             <Button
               variant="outline"
-              disabled
-              title="Requires project initialization setup"
+              disabled={!project.local_path || initProject.isPending}
+              onClick={() => {
+                initProject.mutate(project.id, {
+                  onSuccess: (result) => {
+                    const created = result.files.filter((f) => f.action === 'created')
+                    const errors = result.files.filter((f) => f.action === 'error')
+                    if (errors.length > 0) {
+                      toast.warning(`Initialized with ${errors.length} issue(s)`)
+                    } else if (created.length > 0) {
+                      toast.success(`Initialized ${created.length} file(s)`)
+                    } else {
+                      toast.info('Project already initialized')
+                    }
+                  },
+                  onError: (error) => {
+                    toast.error(error.message)
+                  },
+                })
+              }}
             >
-              <FolderSync className="mr-2 size-4" />
+              {initProject.isPending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <FolderSync className="mr-2 size-4" />
+              )}
               Initialize Project
             </Button>
             <p className="mt-2 text-xs text-muted-foreground">
               Set up AGENTS.md, MCP config, and .kombuse directory for this project.
             </p>
+            {initProject.data && (
+              <div className="mt-3 space-y-1">
+                {initProject.data.files.map((file) => (
+                  <div key={file.file} className="flex items-center gap-2 text-xs">
+                    {file.action === 'created' && <Check className="size-3 text-green-500" />}
+                    {file.action === 'skipped' && <AlertCircle className="size-3 text-muted-foreground" />}
+                    {file.action === 'error' && <X className="size-3 text-destructive" />}
+                    <span className="font-mono">{file.file}</span>
+                    <span className="text-muted-foreground">
+                      {file.action}{file.reason ? ` — ${file.reason}` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

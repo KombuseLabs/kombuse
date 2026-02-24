@@ -98,6 +98,17 @@ export const ticketTimelineResponseSchema = z.object({
   total: z.number().int().nonnegative(),
 })
 
+export const initProjectFileResultSchema = z.object({
+  file: z.string().min(1),
+  action: z.enum(['created', 'skipped', 'error']),
+  reason: z.string().optional(),
+})
+
+export const initProjectResultSchema = z.object({
+  projectPath: z.string().min(1),
+  files: z.array(initProjectFileResultSchema),
+})
+
 export type ApiError = z.infer<typeof apiErrorSchema>
 export type DatabaseQueryResponse = z.infer<typeof databaseQueryResponseSchema>
 export type ClaudeCodeSessionResponse = z.infer<typeof claudeCodeSessionResponseSchema>

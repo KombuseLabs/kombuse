@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { agentExportResultSchema } from './agents.schema'
 import { pluginExportResultSchema, pluginInstallResultSchema } from './plugins.schema'
+import { initProjectResultSchema } from '@kombuse/types/schemas'
 import {
   agentInvocationSchema,
   agentProcessEventResponseSchema,
@@ -364,6 +365,7 @@ registerSuccessSchema('GET', '/api/projects', z.array(projectSchema))
 registerSuccessSchema('GET', '/api/projects/:id', projectSchema)
 registerSuccessSchema('POST', '/api/projects', projectSchema)
 registerSuccessSchema('PATCH', '/api/projects/:id', projectSchema)
+registerSuccessSchema('POST', '/api/projects/:id/init', initProjectResultSchema)
 
 // Analytics routes
 registerSuccessSchema(

@@ -47,3 +47,13 @@ export function useDeleteProject() {
     },
   })
 }
+
+export function useInitProject() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => projectsApi.initProject(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+    },
+  })
+}

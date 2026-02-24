@@ -22,11 +22,18 @@ vi.mock('react-router-dom', () => ({
   useParams: () => ({ projectId: 'proj-1' }),
 }))
 
+const mockInitMutate = vi.fn()
+
 vi.mock('@kombuse/ui/hooks', () => ({
   useProject: () => mockProjectReturn,
   useUpdateProject: () => ({
     mutate: mockMutate,
     isPending: false,
+  }),
+  useInitProject: () => ({
+    mutate: mockInitMutate,
+    isPending: false,
+    data: undefined,
   }),
   useDesktop: () => ({
     isDesktop: false,
@@ -64,13 +71,14 @@ vi.mock('@kombuse/ui/base', () => ({
   SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
     <div data-value={value}>{children}</div>
   ),
-  toast: { success: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
 }))
 
 import { ProjectPage } from '../project'
 
 beforeEach(() => {
   mockMutate.mockReset()
+  mockInitMutate.mockReset()
   mockProjectReturn = { data: TEST_PROJECT, isLoading: false }
 })
 
@@ -172,7 +180,17 @@ describe('ProjectPage', () => {
     })
   })
 
-  it('should render disabled init button', () => {
+  it('should render enabled init button when project has local_path', () => {
+    const { getByText } = render(<ProjectPage />)
+    const initButton = getByText('Initialize Project').closest('button')!
+    expect(initButton.disabled).toBe(false)
+  })
+
+  it('should render disabled init button when project has no local_path', () => {
+    mockProjectReturn = {
+      data: { ...TEST_PROJECT, local_path: null },
+      isLoading: false,
+    }
     const { getByText } = render(<ProjectPage />)
     const initButton = getByText('Initialize Project').closest('button')!
     expect(initButton.disabled).toBe(true)

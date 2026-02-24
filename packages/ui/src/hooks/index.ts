@@ -71,6 +71,7 @@ export {
   useCreateProject,
   useUpdateProject,
   useDeleteProject,
+  useInitProject,
 } from './use-projects'
 export { useEvents } from './use-events'
 export { usePermissions } from './use-permissions'

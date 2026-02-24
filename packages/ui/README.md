@@ -1538,6 +1538,7 @@ import {
   useCreateProject,
   useUpdateProject,
   useDeleteProject,
+  useInitProject,
 } from '@kombuse/ui/hooks'
 
 // Fetch all projects (with optional filters)
@@ -1555,6 +1556,11 @@ updateProject.mutate({ id: 'project-id', input: { name: 'New Name' } })
 
 const deleteProject = useDeleteProject()
 deleteProject.mutate('project-id')
+
+// Initialize project (scaffolds .mcp.json, AGENTS.md, .kombuse/)
+const initProject = useInitProject()
+initProject.mutate('project-id')
+// Returns InitProjectResult with per-file outcomes (created/skipped/error)
 ```
 
 ### Claude Code Hooks

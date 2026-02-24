@@ -64,6 +64,7 @@ import type {
   PluginInstallInput,
   PluginInstallResult,
   AvailablePlugin,
+  InitProjectResult,
 } from '@kombuse/types'
 
 declare global {
@@ -544,6 +545,15 @@ export const projectsApi = {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
+  },
+
+  async initProject(id: string): Promise<InitProjectResult> {
+    const response = await fetch(`${API_BASE}/projects/${id}/init`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    return handleResponse<InitProjectResult>(response)
   },
 }
 

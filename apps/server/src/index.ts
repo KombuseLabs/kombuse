@@ -42,6 +42,7 @@ import {
   backendStatusRoutes,
   pluginRoutes,
   analyticsRoutes,
+  projectInitRoutes,
 } from "./routes";
 import { websocketRoutes, broadcastEvent } from "./websocket";
 import {
@@ -178,6 +179,7 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   fastify.register(backendStatusRoutes, { prefix: "/api" });
   fastify.register(pluginRoutes, { prefix: "/api" });
   fastify.register(analyticsRoutes, { prefix: "/api" });
+  fastify.register(projectInitRoutes, { prefix: "/api" });
 
   fastify.get("/", async () => {
     return { hello: "world" };
