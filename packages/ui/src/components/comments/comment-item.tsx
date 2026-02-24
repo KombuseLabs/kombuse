@@ -222,7 +222,7 @@ function CommentItem({
             <Button
               variant="ghost"
               size="icon"
-              className="size-6 text-muted-foreground hover:text-foreground"
+              className="hidden size-6 text-muted-foreground hover:text-foreground"
               onClick={onReply}
             >
               <Reply className="size-3" />
