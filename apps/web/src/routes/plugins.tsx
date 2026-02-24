@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAppContext } from '@kombuse/ui/hooks'
-import { Puzzle, Package, Download, Upload, Trash2, Power, PowerOff } from 'lucide-react'
+import { Puzzle, Package, Download, Upload, Trash2, Power, PowerOff, Settings, FolderOpen, Globe, Plus, Pencil } from 'lucide-react'
 import {
   useAgents,
   useAgentProfiles,
@@ -12,10 +12,12 @@ import {
   useInstallPlugin,
   useUpdatePlugin,
   useUninstallPlugin,
+  usePluginSources,
+  useUpdatePluginSources,
 } from '@kombuse/ui/hooks'
 import { Button, Input, Label, Checkbox, toast, Tooltip, TooltipTrigger, TooltipContent } from '@kombuse/ui/base'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
-import type { Plugin as PluginType, AvailablePlugin } from '@kombuse/types'
+import type { Plugin as PluginType, AvailablePlugin, PluginSourceConfig } from '@kombuse/types'
 
 const PACKAGE_NAME_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
@@ -422,10 +424,377 @@ function ExportSection({ projectId }: { projectId: string }) {
   )
 }
 
+const SOURCE_TYPE_LABELS: Record<PluginSourceConfig['type'], string> = {
+  filesystem: 'Filesystem',
+  github: 'GitHub',
+  http: 'HTTP',
+}
+
+const SOURCE_TYPE_ICONS: Record<PluginSourceConfig['type'], typeof FolderOpen> = {
+  filesystem: FolderOpen,
+  github: Globe,
+  http: Globe,
+}
+
+function sourceIdentifier(source: PluginSourceConfig): string {
+  switch (source.type) {
+    case 'filesystem':
+      return source.path
+    case 'github':
+      return source.repo
+    case 'http':
+      return source.base_url
+  }
+}
+
+function tokenDisplay(source: PluginSourceConfig): string | null {
+  if (source.type === 'filesystem') return null
+  if (!source.token) return null
+  return source.token.startsWith('$') ? `env: ${source.token}` : 'configured'
+}
+
+function SourceRow({
+  source,
+  isReadOnly,
+  onEdit,
+  onRemove,
+}: {
+  source: PluginSourceConfig
+  isReadOnly?: boolean
+  onEdit?: () => void
+  onRemove?: () => void
+}) {
+  const Icon = SOURCE_TYPE_ICONS[source.type]
+  const token = tokenDisplay(source)
+
+  return (
+    <div className="flex items-center gap-4 px-4 py-3">
+      <Icon className="size-4 text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{SOURCE_TYPE_LABELS[source.type]}</span>
+          {isReadOnly && <span className="text-xs text-muted-foreground">Global</span>}
+        </div>
+        <p className="text-sm font-medium truncate">{sourceIdentifier(source)}</p>
+        {source.type === 'github' && source.package_name && (
+          <p className="text-xs text-muted-foreground">package: {source.package_name}</p>
+        )}
+        {token && (
+          <p className="text-xs text-muted-foreground">token: {token}</p>
+        )}
+      </div>
+      {!isReadOnly && (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={onEdit} title="Edit source">
+            <Pencil className="size-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onRemove} title="Remove source">
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SourceForm({
+  source,
+  onSave,
+  onCancel,
+  isPending,
+}: {
+  source?: PluginSourceConfig
+  onSave: (source: PluginSourceConfig) => void
+  onCancel: () => void
+  isPending: boolean
+}) {
+  const [type, setType] = useState<PluginSourceConfig['type']>(source?.type ?? 'filesystem')
+  const [path, setPath] = useState(source?.type === 'filesystem' ? source.path : '')
+  const [repo, setRepo] = useState(source?.type === 'github' ? source.repo : '')
+  const [packageName, setPackageName] = useState(source?.type === 'github' ? (source.package_name ?? '') : '')
+  const [baseUrl, setBaseUrl] = useState(source?.type === 'http' ? source.base_url : '')
+  const [token, setToken] = useState(
+    source && source.type !== 'filesystem' ? (source.token ?? '') : ''
+  )
+
+  const handleTypeChange = (newType: PluginSourceConfig['type']) => {
+    setType(newType)
+    setPath('')
+    setRepo('')
+    setPackageName('')
+    setBaseUrl('')
+    setToken('')
+  }
+
+  const handleSubmit = () => {
+    switch (type) {
+      case 'filesystem':
+        if (!path.trim()) {
+          toast.error('Path is required')
+          return
+        }
+        onSave({ type: 'filesystem', path: path.trim() })
+        break
+      case 'github':
+        if (!repo.trim()) {
+          toast.error('Repository is required')
+          return
+        }
+        onSave({
+          type: 'github',
+          repo: repo.trim(),
+          ...(packageName.trim() ? { package_name: packageName.trim() } : {}),
+          ...(token.trim() ? { token: token.trim() } : {}),
+        })
+        break
+      case 'http':
+        if (!baseUrl.trim()) {
+          toast.error('Base URL is required')
+          return
+        }
+        onSave({
+          type: 'http',
+          base_url: baseUrl.trim(),
+          ...(token.trim() ? { token: token.trim() } : {}),
+        })
+        break
+    }
+  }
+
+  return (
+    <div className="border rounded-md p-4 space-y-3">
+      <div className="space-y-2">
+        <Label htmlFor="source-type">Source Type</Label>
+        <select
+          id="source-type"
+          value={type}
+          onChange={(e) => handleTypeChange(e.target.value as PluginSourceConfig['type'])}
+          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="filesystem">Filesystem</option>
+          <option value="github">GitHub</option>
+          <option value="http">HTTP</option>
+        </select>
+      </div>
+
+      {type === 'filesystem' && (
+        <div className="space-y-2">
+          <Label htmlFor="source-path">Path</Label>
+          <Input
+            id="source-path"
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+            placeholder="/path/to/plugins"
+          />
+        </div>
+      )}
+
+      {type === 'github' && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="source-repo">Repository</Label>
+            <Input
+              id="source-repo"
+              value={repo}
+              onChange={(e) => setRepo(e.target.value)}
+              placeholder="owner/repo"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="source-package-name">Package Name (optional)</Label>
+            <Input
+              id="source-package-name"
+              value={packageName}
+              onChange={(e) => setPackageName(e.target.value)}
+              placeholder="Defaults to repo name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="source-token-gh">Token (optional)</Label>
+            <Input
+              id="source-token-gh"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="$GITHUB_TOKEN"
+            />
+            <p className="text-xs text-muted-foreground">
+              Use <code>$ENV_VAR</code> to reference an environment variable
+            </p>
+          </div>
+        </>
+      )}
+
+      {type === 'http' && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="source-base-url">Base URL</Label>
+            <Input
+              id="source-base-url"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="https://feed.example.com"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="source-token-http">Token (optional)</Label>
+            <Input
+              id="source-token-http"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="$API_TOKEN"
+            />
+            <p className="text-xs text-muted-foreground">
+              Use <code>$ENV_VAR</code> to reference an environment variable
+            </p>
+          </div>
+        </>
+      )}
+
+      <div className="flex items-center gap-2 pt-1">
+        <Button onClick={handleSubmit} disabled={isPending} size="sm">
+          {isPending ? 'Saving...' : source ? 'Update' : 'Add'}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function SourcesSection({ projectId }: { projectId: string }) {
+  const { data, isLoading } = usePluginSources(projectId)
+  const updateSources = useUpdatePluginSources()
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [isAdding, setIsAdding] = useState(false)
+
+  const globalSources = data?.global_sources ?? []
+  const projectSources = data?.project_sources ?? []
+
+  const handleRemove = (index: number) => {
+    const source = projectSources[index]
+    if (!source) return
+    if (!window.confirm(`Remove ${SOURCE_TYPE_LABELS[source.type]} source "${sourceIdentifier(source)}"?`)) {
+      return
+    }
+    const updated = projectSources.filter((_, i) => i !== index)
+    updateSources.mutate(
+      { projectId, sources: updated },
+      {
+        onSuccess: () => toast.success('Source removed'),
+        onError: (error) => toast.error(error.message ?? 'Failed to remove source'),
+      }
+    )
+  }
+
+  const handleSave = (source: PluginSourceConfig, index?: number) => {
+    let updated: PluginSourceConfig[]
+    if (index !== undefined) {
+      updated = projectSources.map((s, i) => (i === index ? source : s))
+    } else {
+      updated = [...projectSources, source]
+    }
+    updateSources.mutate(
+      { projectId, sources: updated },
+      {
+        onSuccess: () => {
+          toast.success(index !== undefined ? 'Source updated' : 'Source added')
+          setEditingIndex(null)
+          setIsAdding(false)
+        },
+        onError: (error) => toast.error(error.message ?? 'Failed to save source'),
+      }
+    )
+  }
+
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground py-4">Loading plugin sources...</p>
+  }
+
+  const hasSources = globalSources.length > 0 || projectSources.length > 0
+
+  return (
+    <div className="space-y-6">
+      {!hasSources && !isAdding && (
+        <p className="text-sm text-muted-foreground py-4">
+          No plugin sources configured. Add a source to discover plugins from the filesystem, GitHub, or an HTTP feed.
+        </p>
+      )}
+
+      {globalSources.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Global Sources</h3>
+          <div className="border rounded-md divide-y">
+            {globalSources.map((source, i) => (
+              <SourceRow key={`global-${i}`} source={source} isReadOnly />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Global sources are defined in <code>~/.kombuse/config.json</code> and apply to all projects.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Project Sources</h3>
+          {!isAdding && editingIndex === null && (
+            <Button variant="outline" size="sm" onClick={() => setIsAdding(true)}>
+              <Plus className="size-4 mr-1" />
+              Add Source
+            </Button>
+          )}
+        </div>
+
+        {projectSources.length > 0 && (
+          <div className="border rounded-md divide-y">
+            {projectSources.map((source, i) =>
+              editingIndex === i ? (
+                <div key={`edit-${i}`} className="p-4">
+                  <SourceForm
+                    source={source}
+                    onSave={(s) => handleSave(s, i)}
+                    onCancel={() => setEditingIndex(null)}
+                    isPending={updateSources.isPending}
+                  />
+                </div>
+              ) : (
+                <SourceRow
+                  key={`project-${i}`}
+                  source={source}
+                  onEdit={() => {
+                    setEditingIndex(i)
+                    setIsAdding(false)
+                  }}
+                  onRemove={() => handleRemove(i)}
+                />
+              )
+            )}
+          </div>
+        )}
+
+        {projectSources.length === 0 && !isAdding && (
+          <p className="text-sm text-muted-foreground">
+            No project-level sources. Click "Add Source" to configure one.
+          </p>
+        )}
+      </div>
+
+      {isAdding && (
+        <SourceForm
+          onSave={(s) => handleSave(s)}
+          onCancel={() => setIsAdding(false)}
+          isPending={updateSources.isPending}
+        />
+      )}
+    </div>
+  )
+}
+
 export function PluginsPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const { currentProjectId } = useAppContext()
-  const [activeTab, setActiveTab] = useState<'installed' | 'available' | 'export'>('installed')
+  const [activeTab, setActiveTab] = useState<'installed' | 'available' | 'export' | 'sources'>('installed')
 
   if (!projectId) {
     return <p className="p-6 text-muted-foreground">No project selected.</p>
@@ -445,7 +814,7 @@ export function PluginsPage() {
 
       <div className="border-b px-6">
         <div className="flex gap-1">
-          {(['installed', 'available', 'export'] as const).map((tab) => (
+          {(['installed', 'available', 'export', 'sources'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -458,6 +827,7 @@ export function PluginsPage() {
               {tab === 'installed' && <span className="flex items-center gap-1.5"><Puzzle className="size-3.5" /> Installed</span>}
               {tab === 'available' && <span className="flex items-center gap-1.5"><Download className="size-3.5" /> Available</span>}
               {tab === 'export' && <span className="flex items-center gap-1.5"><Upload className="size-3.5" /> Export</span>}
+              {tab === 'sources' && <span className="flex items-center gap-1.5"><Settings className="size-3.5" /> Sources</span>}
             </button>
           ))}
         </div>
@@ -468,6 +838,7 @@ export function PluginsPage() {
           {activeTab === 'installed' && <InstalledPlugins projectId={resolvedId} />}
           {activeTab === 'available' && <AvailablePluginsList projectId={resolvedId} />}
           {activeTab === 'export' && <ExportSection projectId={resolvedId} />}
+          {activeTab === 'sources' && <SourcesSection projectId={resolvedId} />}
         </div>
       </div>
     </main>

@@ -8,7 +8,7 @@ export {
   seedDatabase,
 } from './database'
 export type { DatabaseType } from './database'
-export { loadKombuseConfig, loadProjectConfig, getKombuseDir, resolveDbPath, resolveEnvToken } from './config.repository'
+export { loadKombuseConfig, loadProjectConfig, saveProjectConfig, getKombuseDir, resolveDbPath, resolveEnvToken } from './config.repository'
 export {
   DEFAULT_QUERY_LIMIT,
   MAX_QUERY_LIMIT,

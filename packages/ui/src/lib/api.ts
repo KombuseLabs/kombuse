@@ -67,6 +67,7 @@ import type {
   PluginUpdateCheckResult,
   AvailablePlugin,
   InitProjectResult,
+  PluginSourceConfig,
 } from '@kombuse/types'
 
 declare global {
@@ -996,6 +997,31 @@ export const pluginFilesApi = {
       body: JSON.stringify(input),
     })
     return handleResponse<PluginFile>(response)
+  },
+}
+
+export interface PluginSourcesResponse {
+  global_sources: PluginSourceConfig[]
+  project_sources: PluginSourceConfig[]
+}
+
+export const pluginSourcesApi = {
+  async get(projectId: string): Promise<PluginSourcesResponse> {
+    const params = new URLSearchParams({ project_id: projectId })
+    const response = await fetch(`${API_BASE}/plugin-sources?${params}`)
+    return handleResponse<PluginSourcesResponse>(response)
+  },
+
+  async update(
+    projectId: string,
+    sources: PluginSourceConfig[]
+  ): Promise<PluginSourcesResponse> {
+    const response = await fetch(`${API_BASE}/plugin-sources`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, sources }),
+    })
+    return handleResponse<PluginSourcesResponse>(response)
   },
 }
 

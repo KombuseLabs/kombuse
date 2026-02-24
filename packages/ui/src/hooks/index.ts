@@ -141,6 +141,10 @@ export {
   usePullPluginUpdate,
 } from './use-plugins'
 export {
+  usePluginSources,
+  useUpdatePluginSources,
+} from './use-plugin-sources'
+export {
   useSessionsPerDay,
   useDurationPercentiles,
   usePipelineStageDuration,

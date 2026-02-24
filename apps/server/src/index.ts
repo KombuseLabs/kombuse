@@ -41,6 +41,7 @@ import {
   modelRoutes,
   backendStatusRoutes,
   pluginRoutes,
+  pluginSourceRoutes,
   analyticsRoutes,
   projectInitRoutes,
 } from "./routes";
@@ -178,6 +179,7 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   fastify.register(modelRoutes, { prefix: "/api" });
   fastify.register(backendStatusRoutes, { prefix: "/api" });
   fastify.register(pluginRoutes, { prefix: "/api" });
+  fastify.register(pluginSourceRoutes, { prefix: "/api" });
   fastify.register(analyticsRoutes, { prefix: "/api" });
   fastify.register(projectInitRoutes, { prefix: "/api" });
 

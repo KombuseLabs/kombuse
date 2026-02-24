@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, resolve, isAbsolute } from 'path'
 import type { KombuseConfig } from '@kombuse/types'
 
@@ -29,6 +29,17 @@ export function resolveDbPath(rawPath: string): string {
     return rawPath
   }
   return resolve(getKombuseDir(), rawPath)
+}
+
+export function saveProjectConfig(projectLocalPath: string, config: KombuseConfig): void {
+  const kombuseDir = join(projectLocalPath, '.kombuse')
+  const configPath = join(kombuseDir, 'config.json')
+
+  if (!existsSync(kombuseDir)) {
+    mkdirSync(kombuseDir, { recursive: true })
+  }
+
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8')
 }
 
 export function loadKombuseConfig(configPath?: string): KombuseConfig {

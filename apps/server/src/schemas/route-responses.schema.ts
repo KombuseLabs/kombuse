@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { agentExportResultSchema } from './agents.schema'
 import { pluginExportResultSchema, pluginInstallResultSchema } from './plugins.schema'
+import { pluginSourcesResponseSchema } from './plugin-sources.schema'
 import { initProjectResultSchema } from '@kombuse/types/schemas'
 import {
   agentInvocationSchema,
@@ -279,6 +280,10 @@ registerSuccessSchema('PATCH', '/api/plugins/:pluginId/files/:fileId', pluginFil
 registerSuccessSchema('GET', '/api/plugins/:id/check-updates', pluginUpdateCheckResultSchema)
 registerSuccessSchema('POST', '/api/plugins/install-remote', pluginInstallResultSchema)
 registerSuccessSchema('POST', '/api/plugins/:id/pull', pluginInstallResultSchema)
+
+// Plugin source routes
+registerSuccessSchema('GET', '/api/plugin-sources', pluginSourcesResponseSchema)
+registerSuccessSchema('PUT', '/api/plugin-sources', pluginSourcesResponseSchema)
 
 // Backend status routes
 registerSuccessSchema('GET', '/api/backend-status', z.array(backendStatusSchema))

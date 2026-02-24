@@ -55,6 +55,7 @@ src/
 │   ├── use-milestones.ts      - Milestone CRUD hooks
 │   ├── use-analytics.ts       - Analytics query hooks (sessions, duration, tool usage)
 │   ├── use-plugins.ts         - Plugin export, install, lifecycle hooks
+│   ├── use-plugin-sources.ts  - Plugin source configuration hooks (read/write)
 │   ├── use-permissions.ts     - Permission log query hook
 │   ├── use-models.ts          - Model catalog query hook
 │   ├── use-profile-settings.ts - Profile settings read/write hooks (single + all)
@@ -65,7 +66,7 @@ src/
 │   ├── command-provider.tsx   - Command system provider
 │   └── theme-provider.tsx     - Theme provider (next-themes)
 └── lib/            - Utilities
-    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database, agents, plugins)
+    ├── api.ts                 - API client (tickets, comments, labels, milestones, attachments, permissions, models, database, agents, plugins, plugin sources)
     ├── backend-utils.ts       - Backend display utilities (backendLabel, normalizeBackendType, normalizeBackendChoice, getInstallCommand)
     ├── remark-comment-links.ts  - Remark plugin: #N/c/M comment link syntax
     ├── remark-label-mentions.ts - Remark plugin: ~[Name](id) label mention syntax
@@ -1793,6 +1794,25 @@ installRemote.mutate({ name: 'my-plugin', project_id: 'project-id' })
 const pullUpdate = usePullPluginUpdate()
 pullUpdate.mutate('plugin-id')
 // Downloads latest version and reinstalls with overwrite: true
+```
+
+### Plugin Source Hooks
+
+```typescript
+import { usePluginSources, useUpdatePluginSources } from '@kombuse/ui/hooks'
+
+// Fetch global + project plugin sources for a project
+const { data: sources, isLoading } = usePluginSources('project-id')
+// sources?.global_sources => PluginSourceConfig[] (read-only, from ~/.kombuse/config.json)
+// sources?.project_sources => PluginSourceConfig[] (editable, from {project}/.kombuse/config.json)
+
+// Replace all project-level plugin sources
+const updateSources = useUpdatePluginSources()
+updateSources.mutate({
+  projectId: 'project-id',
+  sources: [{ type: 'http', base_url: 'https://feed.example.com' }],
+})
+// Invalidates plugin-sources and plugins queries on success
 ```
 
 ### Label Hooks
