@@ -9,6 +9,7 @@ import {
   slowestToolsQuerySchema,
   toolCallVolumeQuerySchema,
   ticketBurndownQuerySchema,
+  agentRuntimePerTicketQuerySchema,
 } from '../schemas/analytics.schema'
 
 export async function analyticsRoutes(fastify: FastifyInstance) {
@@ -128,6 +129,21 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       return analyticsService.ticketBurndown(project_id, days, milestone_id, label_id)
     } catch (error) {
       request.log.error({ err: error, route: 'ticketBurndown', params: request.query })
+      throw error
+    }
+  })
+
+  fastify.get('/analytics/agent-runtime-per-ticket', async (request, reply) => {
+    const parseResult = agentRuntimePerTicketQuerySchema.safeParse(request.query)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    try {
+      const { project_id, limit } = parseResult.data
+      return analyticsService.agentRuntimePerTicket(project_id, limit)
+    } catch (error) {
+      request.log.error({ err: error, route: 'agentRuntimePerTicket', params: request.query })
       throw error
     }
   })

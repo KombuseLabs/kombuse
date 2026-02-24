@@ -85,3 +85,13 @@ export function useTicketBurndown(
     refetchOnWindowFocus: false,
   })
 }
+
+export function useAgentRuntimePerTicket(projectId: string, limit?: number) {
+  return useQuery({
+    queryKey: ['analytics', 'agent-runtime-per-ticket', projectId, limit],
+    queryFn: () => analyticsApi.agentRuntimePerTicket(projectId, limit),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}

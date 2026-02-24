@@ -9,6 +9,7 @@ import {
 
   useToolCallVolume,
   useTicketBurndown,
+  useAgentRuntimePerTicket,
 } from '@kombuse/ui/hooks'
 import {
   Button,
@@ -31,7 +32,9 @@ import {
   AreaChart,
   Area,
   Line,
+  Rectangle,
 } from 'recharts'
+import type { AgentRuntimeSegmentEntry } from '@kombuse/ui/lib/api'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { useElementWidth } from '../hooks/use-element-width'
 
@@ -53,6 +56,7 @@ const SECTIONS = [
   // Temporarily disabled — see #476
   // { id: 'slowest-tools', title: 'Slowest Tools', description: 'p50 / p90 / p99 tool call duration (excludes aborted calls)' },
   { id: 'tool-calls-per-session', title: 'Tool Calls per Session', description: 'Tool call count by session, sorted by most active', colSpan2: true },
+  { id: 'agent-runtime', title: 'Agent Runtime per Ticket', description: 'Stacked agent session durations for the last 50 closed tickets', colSpan2: true },
 ] as const
 
 type SectionId = (typeof SECTIONS)[number]['id']
@@ -216,6 +220,8 @@ function SectionContent({
     //   return <SlowestToolsContent projectId={projectId} days={days} />
     case 'tool-calls-per-session':
       return <ToolCallsPerSessionContent projectId={projectId} days={days} />
+    case 'agent-runtime':
+      return <AgentRuntimeContent projectId={projectId} />
   }
 }
 
@@ -610,6 +616,155 @@ function ToolCallsPerSessionContent({ projectId, days }: { projectId: string; da
             ))}
           </tbody>
         </table>
+      </div>
+    </ChartState>
+  )
+}
+
+const AGENT_COLORS = [
+  'hsl(221, 83%, 53%)',  // blue
+  'hsl(142, 71%, 45%)',  // green
+  'hsl(25, 95%, 53%)',   // orange
+  'hsl(262, 83%, 58%)',  // purple
+  'hsl(0, 84%, 60%)',    // red
+  'hsl(47, 96%, 53%)',   // yellow
+  'hsl(173, 80%, 40%)',  // teal
+  'hsl(330, 81%, 60%)',  // pink
+  'hsl(199, 89%, 48%)',  // sky
+  'hsl(45, 93%, 47%)',   // amber
+]
+
+type SegmentMeta = { agent_name: string; run_index: number }
+
+function useAgentRuntimeChartData(data: AgentRuntimeSegmentEntry[] | undefined) {
+  return useMemo(() => {
+    if (!data || data.length === 0) return null
+
+    // Group by ticket_number preserving chronological order
+    const byTicket = new Map<number, AgentRuntimeSegmentEntry[]>()
+    for (const row of data) {
+      let arr = byTicket.get(row.ticket_number)
+      if (!arr) {
+        arr = []
+        byTicket.set(row.ticket_number, arr)
+      }
+      arr.push(row)
+    }
+
+    // Build color map for unique agent names
+    const agentNames = [...new Set(data.map((r) => r.agent_name))]
+    const colorMap = new Map<string, string>()
+    agentNames.forEach((name, i) => {
+      colorMap.set(name, AGENT_COLORS[i % AGENT_COLORS.length]!)
+    })
+
+    // Find max segments across all tickets
+    let maxSegments = 0
+    for (const segments of byTicket.values()) {
+      maxSegments = Math.max(maxSegments, segments.length)
+    }
+
+    // Build flat data + side map
+    const chartData: Record<string, unknown>[] = []
+    const segmentMeta = new Map<number, SegmentMeta[]>()
+
+    let ticketIndex = 0
+    for (const [ticketNumber, segments] of byTicket) {
+      const row: Record<string, unknown> = { ticket_number: `#${ticketNumber}` }
+      const meta: SegmentMeta[] = []
+      segments.forEach((seg, i) => {
+        row[`seg_${i}`] = seg.duration_ms / 1000
+        meta.push({ agent_name: seg.agent_name, run_index: seg.run_index })
+      })
+      chartData.push(row)
+      segmentMeta.set(ticketIndex, meta)
+      ticketIndex++
+    }
+
+    return { chartData, segmentMeta, maxSegments, colorMap, agentNames }
+  }, [data])
+}
+
+function AgentRuntimeContent({ projectId }: { projectId: string }) {
+  const query = useAgentRuntimePerTicket(projectId, 50)
+  const chart = useElementWidth()
+  const processed = useAgentRuntimeChartData(query.data)
+
+  return (
+    <ChartState query={query} emptyText="No closed tickets with agent sessions.">
+      <div ref={chart.ref} style={{ height: CHART_HEIGHT + 40 }}>
+        {chart.width > 0 && processed && (
+          <BarChart
+            data={processed.chartData}
+            width={chart.width}
+            height={CHART_HEIGHT + 40}
+          >
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+            <XAxis dataKey="ticket_number" tick={{ fontSize: 10 }} interval={0} angle={-45} textAnchor="end" height={50} />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatMs(v * 1000)} />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (!active || !payload || payload.length === 0) return null
+                return (
+                  <div style={tooltipStyle} className="p-2 text-sm">
+                    <p className="font-medium mb-1">{label}</p>
+                    {payload.map((entry) => {
+                      const segIndex = Number(String(entry.dataKey).replace('seg_', ''))
+                      const ticketIdx = processed.chartData.findIndex(
+                        (d) => d.ticket_number === label
+                      )
+                      const meta = processed.segmentMeta.get(ticketIdx)?.[segIndex]
+                      if (!meta || !entry.value) return null
+                      return (
+                        <p key={String(entry.dataKey)} style={{ color: String(entry.color) }}>
+                          {meta.agent_name}
+                          {meta.run_index > 1 ? ` (run ${meta.run_index})` : ''}
+                          : {formatMs(Number(entry.value) * 1000)}
+                        </p>
+                      )
+                    })}
+                  </div>
+                )
+              }}
+            />
+            {processed.agentNames.map((name) => (
+              <Bar
+                key={`legend-${name}`}
+                dataKey="_legend_placeholder"
+                name={name}
+                fill={processed.colorMap.get(name)}
+                hide
+              />
+            ))}
+            {Array.from({ length: processed.maxSegments }, (_, i) => (
+              <Bar
+                key={`seg_${i}`}
+                dataKey={`seg_${i}`}
+                stackId="stack"
+                legendType="none"
+                shape={
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ((props: any) => {
+                    const meta = processed.segmentMeta.get(props.index)?.[i]
+                    const fill = meta
+                      ? processed.colorMap.get(meta.agent_name) ?? '#888'
+                      : '#888'
+                    return (
+                      <Rectangle
+                        x={props.x}
+                        y={props.y}
+                        width={props.width}
+                        height={props.height}
+                        fill={fill}
+                      />
+                    )
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  }) as any
+                }
+              />
+            ))}
+          </BarChart>
+        )}
       </div>
     </ChartState>
   )

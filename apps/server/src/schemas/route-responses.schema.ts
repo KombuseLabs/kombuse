@@ -466,6 +466,22 @@ registerSuccessSchema(
   )
 )
 
+registerSuccessSchema(
+  'GET',
+  '/api/analytics/agent-runtime-per-ticket',
+  z.array(
+    z.object({
+      ticket_number: z.number().int(),
+      ticket_title: z.string(),
+      agent_name: z.string(),
+      agent_id: z.string().nullable(),
+      session_id: z.string(),
+      duration_ms: z.number(),
+      run_index: z.number().int(),
+    })
+  )
+)
+
 // Session routes
 registerSuccessSchema('GET', '/api/sessions', z.array(publicSessionSchema))
 registerSuccessSchema('GET', '/api/sessions/diagnostics', sessionDiagnosticsSchema)

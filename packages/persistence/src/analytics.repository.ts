@@ -6,6 +6,7 @@ import type {
   ToolCallsPerSession,
   ToolDurationPercentile,
   ToolCallVolume,
+  AgentRuntimeSegment,
 } from '@kombuse/types'
 
 export const analyticsRepository = {
@@ -303,5 +304,37 @@ export const analyticsRepository = {
       `
       )
       .all(projectId, -days) as ToolCallVolume[]
+  },
+
+  agentRuntimePerTicket(projectId: string, limit = 50): AgentRuntimeSegment[] {
+    const db = getDatabase()
+    return db
+      .prepare(
+        `
+        WITH last_closed AS (
+          SELECT id, ticket_number, title
+          FROM tickets
+          WHERE project_id = ? AND status = 'closed'
+          ORDER BY closed_at DESC
+          LIMIT ?
+        )
+        SELECT
+          lc.ticket_number,
+          lc.title AS ticket_title,
+          s.agent_id,
+          COALESCE(p.name, 'Unknown') AS agent_name,
+          s.id AS session_id,
+          ROUND((julianday(s.completed_at) - julianday(s.started_at)) * 86400000.0) AS duration_ms,
+          ROW_NUMBER() OVER (PARTITION BY lc.id, s.agent_id ORDER BY s.started_at) AS run_index
+        FROM last_closed lc
+        JOIN sessions s ON s.ticket_id = lc.id
+          AND s.status = 'completed'
+          AND s.completed_at IS NOT NULL
+          AND s.started_at IS NOT NULL
+        LEFT JOIN profiles p ON p.id = s.agent_id
+        ORDER BY lc.ticket_number ASC, s.started_at ASC
+      `
+      )
+      .all(projectId, limit) as AgentRuntimeSegment[]
   },
 }

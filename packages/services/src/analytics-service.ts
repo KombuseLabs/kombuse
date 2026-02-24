@@ -7,6 +7,7 @@ import type {
   ToolDurationPercentile,
   ToolCallVolume,
   BurndownEntry,
+  AgentRuntimeSegment,
 } from '@kombuse/types'
 
 export interface IAnalyticsService {
@@ -18,6 +19,7 @@ export interface IAnalyticsService {
   slowestTools(projectId: string, days?: number): ToolDurationPercentile[]
   toolCallVolume(projectId: string, days?: number): ToolCallVolume[]
   ticketBurndown(projectId: string, days?: number, milestoneId?: number, labelId?: number): BurndownEntry[]
+  agentRuntimePerTicket(projectId: string, limit?: number): AgentRuntimeSegment[]
 }
 
 export class AnalyticsService implements IAnalyticsService {
@@ -77,6 +79,10 @@ export class AnalyticsService implements IAnalyticsService {
       }
       return { ...entry, ideal }
     })
+  }
+
+  agentRuntimePerTicket(projectId: string, limit?: number): AgentRuntimeSegment[] {
+    return analyticsRepository.agentRuntimePerTicket(projectId, limit)
   }
 }
 

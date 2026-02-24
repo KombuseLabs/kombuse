@@ -51,3 +51,13 @@ export interface BurndownEntry {
   closed: number
   ideal: number | null
 }
+
+export interface AgentRuntimeSegment {
+  ticket_number: number
+  ticket_title: string
+  agent_name: string
+  agent_id: string | null
+  session_id: string
+  duration_ms: number
+  run_index: number
+}

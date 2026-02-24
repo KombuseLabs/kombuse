@@ -59,3 +59,10 @@ export const ticketBurndownQuerySchema = z.object({
 })
 
 export type TicketBurndownQuery = z.infer<typeof ticketBurndownQuerySchema>
+
+export const agentRuntimePerTicketQuerySchema = z.object({
+  project_id: z.string().min(1),
+  limit: z.coerce.number().int().positive().optional(),
+})
+
+export type AgentRuntimePerTicketQuery = z.infer<typeof agentRuntimePerTicketQuerySchema>

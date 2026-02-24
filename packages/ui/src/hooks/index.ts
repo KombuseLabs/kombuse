@@ -145,4 +145,5 @@ export {
   useSlowestTools,
   useToolCallVolume,
   useTicketBurndown,
+  useAgentRuntimePerTicket,
 } from './use-analytics'

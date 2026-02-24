@@ -93,10 +93,10 @@ export function getServerPort(): number {
 }
 
 export function getWsUrl(): string {
-  return `ws://localhost:${getServerPort()}/ws`
+  return `ws://${window.location.hostname}:${getServerPort()}/ws`
 }
 
-const API_BASE = `http://localhost:${getServerPort()}/api`
+const API_BASE = `http://${window.location.hostname}:${getServerPort()}/api`
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -1022,6 +1022,16 @@ export type BurndownEntry = {
   ideal: number | null
 }
 
+export type AgentRuntimeSegmentEntry = {
+  ticket_number: number
+  ticket_title: string
+  agent_name: string
+  agent_id: string | null
+  session_id: string
+  duration_ms: number
+  run_index: number
+}
+
 export const analyticsApi = {
   async sessionsPerDay(projectId: string, days?: number): Promise<SessionsPerDayEntry[]> {
     const params = new URLSearchParams()
@@ -1116,6 +1126,18 @@ export const analyticsApi = {
 
     const response = await fetch(`${API_BASE}/analytics/ticket-burndown?${params}`)
     return handleResponse<BurndownEntry[]>(response)
+  },
+
+  async agentRuntimePerTicket(
+    projectId: string,
+    limit?: number,
+  ): Promise<AgentRuntimeSegmentEntry[]> {
+    const params = new URLSearchParams()
+    params.set('project_id', projectId)
+    if (limit !== undefined) params.set('limit', String(limit))
+
+    const response = await fetch(`${API_BASE}/analytics/agent-runtime-per-ticket?${params}`)
+    return handleResponse<AgentRuntimeSegmentEntry[]>(response)
   },
 }
 
