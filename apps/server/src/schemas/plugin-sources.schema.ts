@@ -14,7 +14,7 @@ const githubSourceSchema = z.object({
 
 const httpSourceSchema = z.object({
   type: z.literal('http'),
-  base_url: z.string().min(1),
+  base_url: z.string().url(),
   token: z.string().min(1).optional(),
 })
 
