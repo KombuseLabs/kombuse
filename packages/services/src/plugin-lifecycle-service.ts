@@ -1,4 +1,3 @@
-import { join } from 'node:path'
 import type {
   Plugin,
   AvailablePlugin,
@@ -8,13 +7,10 @@ import {
   pluginsRepository,
   agentsRepository,
   profilesRepository,
-  projectsRepository,
   getDatabase,
-  getKombuseDir,
-  loadKombuseConfig,
-  loadProjectConfig,
 } from '@kombuse/persistence'
-import { buildPluginPackageManager } from './plugin-feed-builder'
+import { isNewerVersion } from '@kombuse/pkg'
+import { buildPluginPackageManager, resolvePluginConfig } from './plugin-feed-builder'
 
 export class PluginNotFoundError extends Error {
   constructor(pluginId: string) {
@@ -90,7 +86,7 @@ export class PluginLifecycleService implements IPluginLifecycleService {
     const installed = pluginsRepository.list({ project_id: projectId })
     const installedByName = new Map(installed.map((p) => [p.name, p]))
 
-    const { projectPluginsDir, globalPluginsDir, configSources } = this.resolvePluginConfig(projectId)
+    const { projectPluginsDir, globalPluginsDir, configSources } = resolvePluginConfig(projectId)
 
     const pm = buildPluginPackageManager(projectPluginsDir, globalPluginsDir, configSources)
     const packages = await pm.search()
@@ -115,7 +111,7 @@ export class PluginLifecycleService implements IPluginLifecycleService {
         installed: !!existingInstall,
         installed_version: existingInstall?.version,
         has_update: existingInstall
-          ? pkg.version !== existingInstall.version
+          ? isNewerVersion(pkg.version, existingInstall.version)
           : undefined,
         latest_version: pkg.version,
       })
@@ -128,7 +124,7 @@ export class PluginLifecycleService implements IPluginLifecycleService {
     const plugin = pluginsRepository.get(pluginId)
     if (!plugin) throw new PluginNotFoundError(pluginId)
 
-    const { projectPluginsDir, globalPluginsDir, configSources } = this.resolvePluginConfig(plugin.project_id)
+    const { projectPluginsDir, globalPluginsDir, configSources } = resolvePluginConfig(plugin.project_id)
 
     const pm = buildPluginPackageManager(projectPluginsDir, globalPluginsDir, configSources)
     const result = await pm.checkForUpdates(plugin.name, plugin.version)
@@ -141,25 +137,6 @@ export class PluginLifecycleService implements IPluginLifecycleService {
       latest_version: result.latest?.version,
       feed_id: result.feedId,
     }
-  }
-
-  private resolvePluginConfig(projectId: string) {
-    const project = projectsRepository.get(projectId)
-    const projectPluginsDir = project?.local_path
-      ? join(project.local_path, '.kombuse', 'plugins')
-      : null
-    const globalPluginsDir = join(getKombuseDir(), 'plugins')
-
-    const globalConfig = loadKombuseConfig()
-    const projectConfig = project?.local_path
-      ? loadProjectConfig(project.local_path)
-      : {}
-    const configSources = [
-      ...(globalConfig.plugins?.sources ?? []),
-      ...(projectConfig.plugins?.sources ?? []),
-    ]
-
-    return { projectPluginsDir, globalPluginsDir, configSources }
   }
 
   private inferSource(feedId: string): AvailablePlugin['source'] {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -2013,6 +2013,100 @@ describe('pluginImportService', () => {
       expect(triggersB.length).toBe(1)
       expect(triggersA[0]!.project_id).toBe(TEST_PROJECT_ID)
       expect(triggersB[0]!.project_id).toBe(PROJECT_B_ID)
+    })
+  })
+
+  describe('installFromRemote', () => {
+    it('should install a plugin via PackageManager.installLatest when no version specified', async () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'remote-plugin' },
+          agents: [
+            {
+              filename: 'remote-agent.md',
+              frontmatter: {
+                name: 'Remote Agent',
+                slug: `remote-agent-${Date.now()}`,
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                permissions: [],
+                triggers: [],
+              },
+              body: 'Remote prompt',
+            },
+          ],
+        })
+      )
+
+      // Create a fake cache directory structure matching PackageCache layout
+      const cacheDir = trackDir(mkdtempSync(join(tmpdir(), 'pm-cache-')))
+      const { cpSync } = await import('node:fs')
+      cpSync(pkg, join(cacheDir, 'content'), { recursive: true })
+
+      const feedBuilder = await import('../plugin-feed-builder')
+      const mockInstallLatest = vi.fn().mockResolvedValue({
+        version: '1.0.0',
+        cachePath: cacheDir,
+        manifest: { name: 'remote-plugin', version: '1.0.0', type: 'plugin' },
+      })
+      const spy = vi.spyOn(feedBuilder, 'buildPluginPackageManager').mockReturnValue({
+        installLatest: mockInstallLatest,
+        install: vi.fn(),
+      } as any)
+
+      try {
+        const result = await pluginImportService.installFromRemote({
+          name: 'remote-plugin',
+          project_id: TEST_PROJECT_ID,
+        })
+
+        expect(result.plugin_name).toBe('remote-plugin')
+        expect(result.agents_created).toBe(1)
+        expect(mockInstallLatest).toHaveBeenCalledWith('remote-plugin')
+
+        const plugin = pluginsRepository.get(result.plugin_id)
+        expect(plugin).not.toBeNull()
+        expect(plugin!.name).toBe('remote-plugin')
+      } finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('should call pm.install with specific version when version is provided', async () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'versioned-plugin' },
+        })
+      )
+
+      const cacheDir = trackDir(mkdtempSync(join(tmpdir(), 'pm-cache-v-')))
+      const { cpSync } = await import('node:fs')
+      cpSync(pkg, join(cacheDir, 'content'), { recursive: true })
+
+      const feedBuilder = await import('../plugin-feed-builder')
+      const mockInstall = vi.fn().mockResolvedValue({
+        version: '2.5.0',
+        cachePath: cacheDir,
+        manifest: { name: 'versioned-plugin', version: '2.5.0', type: 'plugin' },
+      })
+      const spy = vi.spyOn(feedBuilder, 'buildPluginPackageManager').mockReturnValue({
+        install: mockInstall,
+        installLatest: vi.fn(),
+      } as any)
+
+      try {
+        const result = await pluginImportService.installFromRemote({
+          name: 'versioned-plugin',
+          version: '2.5.0',
+          project_id: TEST_PROJECT_ID,
+        })
+
+        expect(result.plugin_name).toBe('versioned-plugin')
+        expect(mockInstall).toHaveBeenCalledWith('versioned-plugin', '2.5.0')
+      } finally {
+        spy.mockRestore()
+      }
     })
   })
 })

@@ -121,7 +121,7 @@ function writePluginManifest(
     join(dir, pluginName, 'manifest.json'),
     JSON.stringify({
       name: pluginName,
-      version: '1.0.0',
+      version: manifest?.version ?? '1.0.0',
       type: 'plugin',
       description: manifest?.description,
     })
@@ -541,6 +541,99 @@ describe('pluginLifecycleService', () => {
       // Cleanup extra dirs
       rmSync(projectBase, { recursive: true })
       rmSync(globalBase, { recursive: true })
+    })
+  })
+
+  describe('checkForUpdates', () => {
+    let tempDir: string
+    let originalHome: string | undefined
+
+    beforeEach(() => {
+      tempDir = mkdtempSync(join(tmpdir(), 'lifecycle-update-'))
+      originalHome = process.env.HOME
+    })
+
+    afterEach(() => {
+      process.env.HOME = originalHome
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true })
+    })
+
+    it('should detect update when feed version is newer', async () => {
+      const db = getDatabase()
+      db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
+        tempDir,
+        TEST_PROJECT_ID
+      )
+
+      const pluginsDir = join(tempDir, '.kombuse', 'plugins')
+      writePluginManifest(pluginsDir, 'updatable-plugin', { version: '2.0.0' })
+
+      const pluginId = crypto.randomUUID()
+      pluginsRepository.create({
+        id: pluginId,
+        project_id: TEST_PROJECT_ID,
+        name: 'updatable-plugin',
+        version: '1.0.0',
+        directory: join(pluginsDir, 'updatable-plugin'),
+        manifest: JSON.stringify({
+          name: 'updatable-plugin',
+          version: '1.0.0',
+          kombuse: {
+            plugin_system_version: 'kombuse-plugin-v1',
+            project_id: TEST_PROJECT_ID,
+            exported_at: new Date().toISOString(),
+            labels: [],
+          },
+        }),
+      })
+
+      const result = await pluginLifecycleService.checkForUpdates(pluginId)
+
+      expect(result.has_update).toBe(true)
+      expect(result.current_version).toBe('1.0.0')
+      expect(result.latest_version).toBe('2.0.0')
+      expect(result.plugin_name).toBe('updatable-plugin')
+    })
+
+    it('should report no update when versions match', async () => {
+      const db = getDatabase()
+      db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
+        tempDir,
+        TEST_PROJECT_ID
+      )
+
+      const pluginsDir = join(tempDir, '.kombuse', 'plugins')
+      writePluginManifest(pluginsDir, 'current-plugin')
+
+      const pluginId = crypto.randomUUID()
+      pluginsRepository.create({
+        id: pluginId,
+        project_id: TEST_PROJECT_ID,
+        name: 'current-plugin',
+        version: '1.0.0',
+        directory: join(pluginsDir, 'current-plugin'),
+        manifest: JSON.stringify({
+          name: 'current-plugin',
+          version: '1.0.0',
+          kombuse: {
+            plugin_system_version: 'kombuse-plugin-v1',
+            project_id: TEST_PROJECT_ID,
+            exported_at: new Date().toISOString(),
+            labels: [],
+          },
+        }),
+      })
+
+      const result = await pluginLifecycleService.checkForUpdates(pluginId)
+
+      expect(result.has_update).toBe(false)
+      expect(result.current_version).toBe('1.0.0')
+    })
+
+    it('should throw PluginNotFoundError for non-existent plugin', async () => {
+      await expect(
+        pluginLifecycleService.checkForUpdates('non-existent-id')
+      ).rejects.toThrow(PluginNotFoundError)
     })
   })
 })

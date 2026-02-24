@@ -1,12 +1,38 @@
+import { join } from 'node:path'
 import { PackageManager } from '@kombuse/pkg'
 import { FilesystemFeed, GitHubFeed, HttpFeed } from '@kombuse/pkg/feeds'
 import type { FeedAuth } from '@kombuse/pkg'
 import type { PluginSourceConfig } from '@kombuse/types'
-import { resolveEnvToken } from '@kombuse/persistence'
+import {
+  resolveEnvToken,
+  projectsRepository,
+  getKombuseDir,
+  loadKombuseConfig,
+  loadProjectConfig,
+} from '@kombuse/persistence'
 
 function resolveAuth(token?: string): FeedAuth | undefined {
   if (!token) return undefined
   return { token: resolveEnvToken(token), type: 'bearer' }
+}
+
+export function resolvePluginConfig(projectId: string) {
+  const project = projectsRepository.get(projectId)
+  const projectPluginsDir = project?.local_path
+    ? join(project.local_path, '.kombuse', 'plugins')
+    : null
+  const globalPluginsDir = join(getKombuseDir(), 'plugins')
+
+  const globalConfig = loadKombuseConfig()
+  const projectConfig = project?.local_path
+    ? loadProjectConfig(project.local_path)
+    : {}
+  const configSources = [
+    ...(globalConfig.plugins?.sources ?? []),
+    ...(projectConfig.plugins?.sources ?? []),
+  ]
+
+  return { projectPluginsDir, globalPluginsDir, configSources }
 }
 
 export function buildPluginPackageManager(

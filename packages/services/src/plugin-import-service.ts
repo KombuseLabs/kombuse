@@ -19,13 +19,9 @@ import {
   agentTriggersRepository,
   labelsRepository,
   profilesRepository,
-  projectsRepository,
   getDatabase,
-  getKombuseDir,
-  loadKombuseConfig,
-  loadProjectConfig,
 } from '@kombuse/persistence'
-import { buildPluginPackageManager } from './plugin-feed-builder'
+import { buildPluginPackageManager, resolvePluginConfig } from './plugin-feed-builder'
 
 export class PluginAlreadyInstalledError extends Error {
   public readonly pluginName: string
@@ -572,21 +568,7 @@ export class PluginImportService implements IPluginImportService {
   async installFromRemote(input: PluginRemoteInstallInput): Promise<PluginInstallResult> {
     const { name, version, project_id, overwrite } = input
 
-    const project = projectsRepository.get(project_id)
-    const projectPluginsDir = project?.local_path
-      ? join(project.local_path, '.kombuse', 'plugins')
-      : null
-    const globalPluginsDir = join(getKombuseDir(), 'plugins')
-
-    const globalConfig = loadKombuseConfig()
-    const projectConfig = project?.local_path
-      ? loadProjectConfig(project.local_path)
-      : {}
-    const configSources = [
-      ...(globalConfig.plugins?.sources ?? []),
-      ...(projectConfig.plugins?.sources ?? []),
-    ]
-
+    const { projectPluginsDir, globalPluginsDir, configSources } = resolvePluginConfig(project_id)
     const pm = buildPluginPackageManager(projectPluginsDir, globalPluginsDir, configSources)
 
     const result = version
