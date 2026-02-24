@@ -72,7 +72,7 @@ export function resolveProjectPathForProject(projectId: string | null): string |
     return undefined
   }
 
-  const project = projectService.get(projectId)
+  const project = projectService.getByIdOrSlug(projectId)
   const localPath = project?.local_path?.trim()
 
   if (!localPath) {

@@ -186,7 +186,7 @@ export function Chats() {
         key={chatKey}
         sessionId={selectedSessionId}
         agentId={effectiveAgentId ?? undefined}
-        projectId={projectId ?? null}
+        projectId={currentProjectId ?? null}
         backendType={effectiveBackendType}
         modelPreference={isDraft ? draftModelPreference : undefined}
         onEnsureSession={selectedSessionId ? undefined : ensureSessionForDraft}
