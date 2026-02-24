@@ -12,6 +12,7 @@ import { downloadFile } from './feed-provider'
 export interface HttpFeedOptions {
   baseUrl: string
   auth?: FeedAuth
+  cacheTtlMs?: number
 }
 
 export interface HttpPackageIndex {
@@ -36,11 +37,14 @@ export class HttpFeed implements FeedProvider {
   readonly name: string
   private readonly baseUrl: string
   private readonly auth?: FeedAuth
+  private readonly cacheTtlMs?: number
   private cachedIndex: HttpPackageIndex | null = null
+  private cachedAt: number = 0
 
   constructor(options: HttpFeedOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, '')
     this.auth = options.auth
+    this.cacheTtlMs = options.cacheTtlMs
     this.id = `http:${this.baseUrl}`
     this.name = `HTTP (${this.baseUrl})`
   }
@@ -115,10 +119,16 @@ export class HttpFeed implements FeedProvider {
 
   clearCache(): void {
     this.cachedIndex = null
+    this.cachedAt = 0
   }
 
   private async fetchIndex(): Promise<HttpPackageIndex> {
-    if (this.cachedIndex) return this.cachedIndex
+    if (this.cachedIndex) {
+      if (!this.cacheTtlMs || Date.now() - this.cachedAt < this.cacheTtlMs) {
+        return this.cachedIndex
+      }
+      this.cachedIndex = null
+    }
 
     const url = `${this.baseUrl}/index.json`
     const headers: Record<string, string> = {}
@@ -135,6 +145,7 @@ export class HttpFeed implements FeedProvider {
     }
 
     this.cachedIndex = (await response.json()) as HttpPackageIndex
+    this.cachedAt = Date.now()
     return this.cachedIndex
   }
 }

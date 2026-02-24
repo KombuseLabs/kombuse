@@ -297,6 +297,82 @@ describe('HttpFeed', () => {
     })
   })
 
+  describe('cache TTL', () => {
+    let fetchMockTtl: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      fetchMockTtl = vi.fn()
+      vi.stubGlobal('fetch', fetchMockTtl)
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('should re-fetch after TTL expires', async () => {
+      const ttlFeed = new HttpFeed({
+        baseUrl: 'https://registry.example.com',
+        cacheTtlMs: 5000,
+      })
+
+      fetchMockTtl.mockResolvedValue(mockJsonResponse(makeIndex({})))
+
+      await ttlFeed.listPackages()
+      await ttlFeed.listPackages()
+      expect(fetchMockTtl).toHaveBeenCalledTimes(1)
+
+      vi.advanceTimersByTime(5001)
+
+      await ttlFeed.listPackages()
+      expect(fetchMockTtl).toHaveBeenCalledTimes(2)
+    })
+
+    it('should return cached data within TTL window', async () => {
+      const ttlFeed = new HttpFeed({
+        baseUrl: 'https://registry.example.com',
+        cacheTtlMs: 5000,
+      })
+
+      fetchMockTtl.mockResolvedValue(mockJsonResponse(makeIndex({})))
+
+      await ttlFeed.listPackages()
+      vi.advanceTimersByTime(3000)
+      await ttlFeed.listPackages()
+
+      expect(fetchMockTtl).toHaveBeenCalledTimes(1)
+    })
+
+    it('should never expire cache when cacheTtlMs is not set', async () => {
+      const noTtlFeed = new HttpFeed({
+        baseUrl: 'https://registry.example.com',
+      })
+
+      fetchMockTtl.mockResolvedValue(mockJsonResponse(makeIndex({})))
+
+      await noTtlFeed.listPackages()
+      vi.advanceTimersByTime(999_999_999)
+      await noTtlFeed.listPackages()
+
+      expect(fetchMockTtl).toHaveBeenCalledTimes(1)
+    })
+
+    it('should re-fetch after clearCache regardless of TTL', async () => {
+      const ttlFeed = new HttpFeed({
+        baseUrl: 'https://registry.example.com',
+        cacheTtlMs: 60_000,
+      })
+
+      fetchMockTtl.mockResolvedValue(mockJsonResponse(makeIndex({})))
+
+      await ttlFeed.listPackages()
+      ttlFeed.clearCache()
+      await ttlFeed.listPackages()
+
+      expect(fetchMockTtl).toHaveBeenCalledTimes(2)
+    })
+  })
+
   describe('url handling', () => {
     it('should strip trailing slashes from baseUrl', async () => {
       const trailingSlashFeed = new HttpFeed({
