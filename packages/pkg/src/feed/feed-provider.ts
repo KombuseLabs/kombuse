@@ -1,5 +1,6 @@
 import { createWriteStream } from 'node:fs'
-import { once } from 'node:events'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import type { DownloadProgress, FeedAuth } from '../types'
 import { FeedError } from '../errors'
 
@@ -26,39 +27,35 @@ export async function downloadFile(
     response.headers.get('content-length') ?? '0',
     10
   )
-  let downloaded = 0
 
-  const fileStream = createWriteStream(destPath)
   const reader = response.body.getReader()
+  await pipeline(
+    Readable.from(readChunks(reader, contentLength, onProgress)),
+    createWriteStream(destPath)
+  )
+}
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+async function* readChunks(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  contentLength: number,
+  onProgress?: (progress: DownloadProgress) => void
+): AsyncGenerator<Uint8Array> {
+  let downloaded = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
 
-      const canContinue = fileStream.write(value)
-      downloaded += value.length
+    downloaded += value.length
+    onProgress?.({
+      phase: 'downloading',
+      percent:
+        contentLength > 0
+          ? Math.round((downloaded / contentLength) * 100)
+          : -1,
+      bytesDownloaded: downloaded,
+      bytesTotal: contentLength,
+    })
 
-      onProgress?.({
-        phase: 'downloading',
-        percent:
-          contentLength > 0
-            ? Math.round((downloaded / contentLength) * 100)
-            : -1,
-        bytesDownloaded: downloaded,
-        bytesTotal: contentLength,
-      })
-
-      if (!canContinue) {
-        await once(fileStream, 'drain')
-      }
-    }
-  } finally {
-    fileStream.end()
+    yield value
   }
-
-  await new Promise<void>((resolve, reject) => {
-    fileStream.on('finish', resolve)
-    fileStream.on('error', reject)
-  })
 }
