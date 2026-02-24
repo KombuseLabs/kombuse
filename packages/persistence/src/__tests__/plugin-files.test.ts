@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { DatabaseType } from '../database'
 import { setupTestDb, TEST_PROJECT_ID } from '../test-utils'
-import { pluginsRepository } from '../plugins'
-import { pluginFilesRepository } from '../plugin-files'
+import { pluginsRepository } from '../plugins.repository'
+import { pluginFilesRepository } from '../plugin-files.repository'
 
 const SAMPLE_MANIFEST = JSON.stringify({
   name: 'test-plugin',

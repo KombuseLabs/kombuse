@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { toSlug, SLUG_REGEX, UUID_REGEX } from '../slug'
+import { toSlug, SLUG_REGEX, UUID_REGEX } from '../slug.types'
 
 describe('toSlug', () => {
   it('should convert a multi-word name to kebab-case', () => {

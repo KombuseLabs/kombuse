@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { writeFileSync, mkdirSync, rmSync } from 'fs'
 import { join, resolve } from 'path'
 import { tmpdir } from 'os'
-import { loadKombuseConfig, getKombuseDir, resolveDbPath } from '../config'
+import { loadKombuseConfig, getKombuseDir, resolveDbPath } from '../config.repository'
 
 describe('loadKombuseConfig', () => {
   let tempDir: string

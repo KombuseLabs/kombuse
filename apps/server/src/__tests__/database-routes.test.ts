@@ -1,7 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { closeDatabase, initializeDatabase, setDatabase } from '@kombuse/persistence'
-import { databaseRoutes } from '../routes/database'
+import { databaseRoutes } from '../routes/database.routes'
 
 const LARGE_READ_QUERY = `
   WITH RECURSIVE numbers(n) AS (

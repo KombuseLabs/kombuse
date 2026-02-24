@@ -13,12 +13,12 @@
       "default": "./src/schemas/index.ts"
     },
     "./agent": {
-      "types": "./src/agent.ts",
-      "default": "./src/agent.ts"
+      "types": "./src/agent.types.ts",
+      "default": "./src/agent.types.ts"
     },
     "./commands": {
-      "types": "./src/commands.ts",
-      "default": "./src/commands.ts"
+      "types": "./src/commands.types.ts",
+      "default": "./src/commands.types.ts"
     }
   },
   "scripts": {

@@ -15,7 +15,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID } from '../test-utils'
-import { projectsRepository } from '../projects'
+import { projectsRepository } from '../projects.repository'
 
 // Test data constants
 const TEST_PROJECT = {

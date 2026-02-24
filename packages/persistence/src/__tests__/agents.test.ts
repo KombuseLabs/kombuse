@@ -18,11 +18,11 @@ import {
   agentsRepository,
   agentTriggersRepository,
   agentInvocationsRepository,
-} from '../agents'
-import { sessionsRepository } from '../sessions'
-import { profilesRepository } from '../profiles'
-import { eventsRepository } from '../events'
-import { pluginsRepository } from '../plugins'
+} from '../agents.repository'
+import { sessionsRepository } from '../sessions.repository'
+import { profilesRepository } from '../profiles.repository'
+import { eventsRepository } from '../events.repository'
+import { pluginsRepository } from '../plugins.repository'
 
 // Helper to create unique agent profiles
 let agentCounter = 0

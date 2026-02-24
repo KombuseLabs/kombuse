@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { AgentConfig, AgentInvocation, Permission } from '../agents'
-import type { DatabaseQueryResponse } from '../database'
-import type { Profile } from '../profiles'
-import type { Project } from '../projects'
-import type { Ticket } from '../tickets'
-import type { TicketTimeline } from '../timeline'
+import type { AgentConfig, AgentInvocation, Permission } from '../agents.types'
+import type { DatabaseQueryResponse } from '../database.types'
+import type { Profile } from '../profiles.types'
+import type { Project } from '../projects.types'
+import type { Ticket } from '../tickets.types'
+import type { TicketTimeline } from '../timeline.types'
 import {
   agentConfigSchema,
   agentProcessEventResponseSchema,

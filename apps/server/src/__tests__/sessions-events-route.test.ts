@@ -8,7 +8,7 @@ import {
   sessionEventsRepository,
   sessionsRepository,
 } from '@kombuse/persistence'
-import { sessionRoutes } from '../routes/sessions'
+import { sessionRoutes } from '../routes/sessions.routes'
 
 interface SessionEventsResponse {
   session_id: string

@@ -17,9 +17,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
-import { attachmentsRepository } from '../attachments'
-import { ticketsRepository } from '../tickets'
-import { commentsRepository } from '../comments'
+import { attachmentsRepository } from '../attachments.repository'
+import { ticketsRepository } from '../tickets.repository'
+import { commentsRepository } from '../comments.repository'
 
 const NON_EXISTENT_ID = 999999
 

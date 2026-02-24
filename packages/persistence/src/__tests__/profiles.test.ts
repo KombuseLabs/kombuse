@@ -15,7 +15,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb } from '../test-utils'
-import { profilesRepository } from '../profiles'
+import { profilesRepository } from '../profiles.repository'
 
 // Helper to generate unique emails
 let emailCounter = 0

@@ -49,7 +49,7 @@ import {
   cleanupOrphanedSessions,
   stopAllActiveBackends,
 } from "./services/agent-execution-service";
-import { createResponseValidationHook } from "./schemas/response-validation";
+import { createResponseValidationHook } from "./schemas/response-validation.schema";
 import { resolveProjectSlug } from "./hooks/resolve-project-slug";
 
 // Re-export for desktop shell integration
@@ -104,9 +104,9 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
 
   // Enable CORS for web app
   // app:// is the Electron production origin (registered as privileged scheme)
+  // 192.168.* allows LAN access from mobile devices during development
   await fastify.register(cors, {
     origin: (origin, cb) => {
-      // Allow Electron app, localhost, and LAN access for mobile dev
       if (
         !origin ||
         origin === "app://." ||

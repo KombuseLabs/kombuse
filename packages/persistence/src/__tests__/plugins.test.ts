@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { DatabaseType } from '../database'
 import { setupTestDb, TEST_PROJECT_ID } from '../test-utils'
-import { pluginsRepository } from '../plugins'
-import { agentsRepository } from '../agents'
-import { labelsRepository } from '../labels'
-import { profilesRepository } from '../profiles'
+import { pluginsRepository } from '../plugins.repository'
+import { agentsRepository } from '../agents.repository'
+import { labelsRepository } from '../labels.repository'
+import { profilesRepository } from '../profiles.repository'
 
 const SAMPLE_MANIFEST = JSON.stringify({
   name: 'test-plugin',

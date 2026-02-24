@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
-import { ticketViewsRepository } from '../ticket-views'
-import { ticketsRepository } from '../tickets'
-import { labelsRepository } from '../labels'
-import { commentsRepository } from '../comments'
+import { ticketViewsRepository } from '../ticket-views.repository'
+import { ticketsRepository } from '../tickets.repository'
+import { labelsRepository } from '../labels.repository'
+import { commentsRepository } from '../comments.repository'
 
 const TEST_TICKET = {
   title: 'Test ticket',

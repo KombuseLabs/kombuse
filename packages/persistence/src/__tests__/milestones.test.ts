@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
-import { milestonesRepository } from '../milestones'
-import { ticketsRepository } from '../tickets'
+import { milestonesRepository } from '../milestones.repository'
+import { ticketsRepository } from '../tickets.repository'
 import type { DatabaseType } from '../database'
 
 describe('milestonesRepository', () => {

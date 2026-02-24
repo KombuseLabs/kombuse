@@ -2,7 +2,7 @@ import { Readable } from 'node:stream'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { afterEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createResponseValidationHook } from '../schemas/response-validation'
+import { createResponseValidationHook } from '../schemas/response-validation.schema'
 
 describe('response validation hook', () => {
   const apps: FastifyInstance[] = []

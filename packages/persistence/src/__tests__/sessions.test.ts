@@ -14,9 +14,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { createSessionId } from '@kombuse/types'
 import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
-import { sessionsRepository } from '../sessions'
-import { sessionEventsRepository } from '../session-events'
-import { ticketsRepository } from '../tickets'
+import { sessionsRepository } from '../sessions.repository'
+import { sessionEventsRepository } from '../session-events.repository'
+import { ticketsRepository } from '../tickets.repository'
 
 describe('sessionsRepository', () => {
   let cleanup: () => void

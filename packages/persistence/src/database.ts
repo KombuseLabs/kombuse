@@ -2,8 +2,9 @@ import Database from 'better-sqlite3'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { join, resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
-import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config'
-import { toSlug, ANONYMOUS_AGENT_ID } from '@kombuse/types'
+import { randomUUID } from 'crypto'
+import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config.repository'
+import { toSlug, ANONYMOUS_AGENT_ID, UUID_REGEX } from '@kombuse/types'
 
 export type { Database as DatabaseType } from 'better-sqlite3'
 
@@ -756,6 +757,37 @@ const migrations: Migration[] = [
         UNIQUE(plugin_id, path)
       );
     `,
+  },
+  {
+    name: '010_project_uuids',
+    run: (db: DatabaseType) => {
+      // Find projects with non-UUID ids and migrate them
+      const projects = db.prepare('SELECT id FROM projects').all() as { id: string }[]
+      const nonUuidProjects = projects.filter((p) => !UUID_REGEX.test(p.id))
+      if (nonUuidProjects.length === 0) return
+
+      // No ON UPDATE CASCADE, so disable FK checks for bulk update
+      db.pragma('foreign_keys = OFF')
+
+      for (const { id: oldId } of nonUuidProjects) {
+        const newId = randomUUID()
+
+        // Update all tables referencing this project
+        db.prepare('UPDATE projects SET id = ? WHERE id = ?').run(newId, oldId)
+        db.prepare('UPDATE agents SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE tickets SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE labels SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE plugins SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE agent_triggers SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE milestones SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE agent_invocations SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE event_subscriptions SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE events SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+        db.prepare('UPDATE sessions SET project_id = ? WHERE project_id = ?').run(newId, oldId)
+      }
+
+      db.pragma('foreign_keys = ON')
+    },
   },
 ]
 

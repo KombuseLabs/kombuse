@@ -8,7 +8,7 @@ export {
   seedDatabase,
 } from './database'
 export type { DatabaseType } from './database'
-export { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config'
+export { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config.repository'
 export {
   DEFAULT_QUERY_LIMIT,
   MAX_QUERY_LIMIT,
@@ -29,25 +29,25 @@ export type {
 export { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 
 // Repositories
-export { ticketsRepository, resolveTicketId } from './tickets'
-export { ticketViewsRepository } from './ticket-views'
-export { profilesRepository } from './profiles'
-export { profileSettingsRepository } from './profile-settings'
-export { projectsRepository } from './projects'
-export { eventsRepository, onEventCreated } from './events'
-export { eventSubscriptionsRepository } from './event-subscriptions'
-export { labelsRepository } from './labels'
-export { milestonesRepository } from './milestones'
-export { mentionsRepository } from './mentions'
-export { commentsRepository } from './comments'
+export { ticketsRepository, resolveTicketId } from './tickets.repository'
+export { ticketViewsRepository } from './ticket-views.repository'
+export { profilesRepository } from './profiles.repository'
+export { profileSettingsRepository } from './profile-settings.repository'
+export { projectsRepository } from './projects.repository'
+export { eventsRepository, onEventCreated } from './events.repository'
+export { eventSubscriptionsRepository } from './event-subscriptions.repository'
+export { labelsRepository } from './labels.repository'
+export { milestonesRepository } from './milestones.repository'
+export { mentionsRepository } from './mentions.repository'
+export { commentsRepository } from './comments.repository'
 export {
   agentsRepository,
   agentTriggersRepository,
   agentInvocationsRepository,
-} from './agents'
-export { pluginsRepository } from './plugins'
-export { pluginFilesRepository } from './plugin-files'
-export { sessionsRepository } from './sessions'
-export { analyticsRepository } from './analytics'
-export { sessionEventsRepository } from './session-events'
-export { attachmentsRepository } from './attachments'
+} from './agents.repository'
+export { pluginsRepository } from './plugins.repository'
+export { pluginFilesRepository } from './plugin-files.repository'
+export { sessionsRepository } from './sessions.repository'
+export { analyticsRepository } from './analytics.repository'
+export { sessionEventsRepository } from './session-events.repository'
+export { attachmentsRepository } from './attachments.repository'

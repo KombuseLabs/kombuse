@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID } from '../test-utils'
-import { profileSettingsRepository } from '../profile-settings'
+import { profileSettingsRepository } from '../profile-settings.repository'
 
 describe('profileSettingsRepository', () => {
   let cleanup: () => void

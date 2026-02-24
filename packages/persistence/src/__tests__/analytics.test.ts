@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
-import { analyticsRepository } from '../analytics'
-import { sessionsRepository } from '../sessions'
-import { ticketsRepository } from '../tickets'
+import { analyticsRepository } from '../analytics.repository'
+import { sessionsRepository } from '../sessions.repository'
+import { ticketsRepository } from '../tickets.repository'
 
 describe('analyticsRepository', () => {
   let cleanup: () => void

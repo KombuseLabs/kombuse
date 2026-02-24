@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
-import { mentionsRepository } from '../mentions'
+import { mentionsRepository } from '../mentions.repository'
 
 const NON_EXISTENT_ID = 999999
 

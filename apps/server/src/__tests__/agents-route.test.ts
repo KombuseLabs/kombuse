@@ -7,7 +7,7 @@ import {
   agentsRepository,
   profilesRepository,
 } from '@kombuse/persistence'
-import { agentRoutes } from '../routes/agents'
+import { agentRoutes } from '../routes/agents.routes'
 
 describe('GET /agents/by-slug/:slug', () => {
   let app: FastifyInstance

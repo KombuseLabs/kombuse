@@ -20,7 +20,7 @@ vi.mock('@kombuse/services', async (importOriginal) => {
   }
 })
 
-import { claudeCodeRoutes } from '../routes/claude-code'
+import { claudeCodeRoutes } from '../routes/claude-code.routes'
 
 describe('claude-code routes', () => {
   let app: FastifyInstance

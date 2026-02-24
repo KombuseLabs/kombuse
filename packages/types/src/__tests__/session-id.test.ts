@@ -9,7 +9,7 @@ import {
   createSessionId,
   parseSessionId,
   isValidSessionId,
-} from '../session-id'
+} from '../session-id.types'
 
 describe('session-id utilities', () => {
   describe('createSessionId', () => {

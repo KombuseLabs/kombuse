@@ -18,10 +18,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
-import { labelsRepository } from '../labels'
-import { ticketsRepository, resolveTicketId } from '../tickets'
-import { eventsRepository } from '../events'
-import { pluginsRepository } from '../plugins'
+import { labelsRepository } from '../labels.repository'
+import { ticketsRepository, resolveTicketId } from '../tickets.repository'
+import { eventsRepository } from '../events.repository'
+import { pluginsRepository } from '../plugins.repository'
 
 const NON_EXISTENT_ID = 999999
 

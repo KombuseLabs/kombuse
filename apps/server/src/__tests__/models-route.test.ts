@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { modelRoutes, inferModelProvider } from '../routes/models'
+import { modelRoutes, inferModelProvider } from '../routes/models.routes'
 
 describe('models route', () => {
   let app: FastifyInstance

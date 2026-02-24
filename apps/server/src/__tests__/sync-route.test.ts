@@ -8,7 +8,7 @@ import {
   ticketsRepository,
 } from '@kombuse/persistence'
 import { TEST_PROJECT_ID, TEST_USER_ID, seedBaseData } from '@kombuse/persistence/test-utils'
-import { syncRoutes } from '../routes/sync'
+import { syncRoutes } from '../routes/sync.routes'
 
 vi.mock('../services/agent-execution-service', () => ({
   getPendingPermissions: vi.fn(() => []),

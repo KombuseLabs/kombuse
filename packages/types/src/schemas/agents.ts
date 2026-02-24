@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { BACKEND_TYPES } from '../agent'
-import { UUID_REGEX, SLUG_REGEX } from '../slug'
+import { BACKEND_TYPES } from '../agent.types'
+import { UUID_REGEX, SLUG_REGEX } from '../slug.types'
 
 export const permissionActionSchema = z.enum(['read', 'create', 'update', 'delete', '*'])
 export const permissionScopeSchema = z.enum(['invocation', 'project', 'global'])

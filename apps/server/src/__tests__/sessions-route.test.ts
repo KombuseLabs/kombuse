@@ -7,7 +7,7 @@ import {
   agentsRepository,
   profilesRepository,
 } from '@kombuse/persistence'
-import { sessionRoutes } from '../routes/sessions'
+import { sessionRoutes } from '../routes/sessions.routes'
 
 describe('POST /sessions agent_id validation', () => {
   let app: FastifyInstance

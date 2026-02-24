@@ -9,7 +9,7 @@ import {
   projectsRepository,
   profilesRepository,
 } from '@kombuse/persistence'
-import { analyticsRoutes } from '../routes/analytics'
+import { analyticsRoutes } from '../routes/analytics.routes'
 
 describe('GET /analytics/sessions-per-day', () => {
   let app: FastifyInstance
