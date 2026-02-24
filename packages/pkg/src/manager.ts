@@ -58,9 +58,13 @@ export class PackageManager {
     )
 
     const packages: PackageVersionInfo[] = []
-    for (const result of results) {
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i]!
       if (result.status !== 'fulfilled') continue
-      packages.push(...result.value)
+      const feed = this.feeds[i]!
+      for (const pkg of result.value) {
+        packages.push({ ...pkg, feedId: pkg.feedId ?? feed.id })
+      }
     }
 
     if (!query) return packages

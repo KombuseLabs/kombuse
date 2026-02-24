@@ -116,6 +116,16 @@ function writePluginManifest(
       ...manifest,
     })
   )
+  // Also write manifest.json for FilesystemFeed discovery
+  writeFileSync(
+    join(dir, pluginName, 'manifest.json'),
+    JSON.stringify({
+      name: pluginName,
+      version: '1.0.0',
+      type: 'plugin',
+      description: manifest?.description,
+    })
+  )
 }
 
 // --- Tests ---
@@ -406,7 +416,7 @@ describe('pluginLifecycleService', () => {
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true })
     })
 
-    it('should find plugins in project directory', () => {
+    it('should find plugins in project directory', async () => {
       const db = getDatabase()
       db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
         tempDir,
@@ -416,27 +426,27 @@ describe('pluginLifecycleService', () => {
       const pluginsDir = join(tempDir, '.kombuse', 'plugins')
       writePluginManifest(pluginsDir, 'project-plugin')
 
-      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
 
       expect(available).toHaveLength(1)
       expect(available[0]!.name).toBe('project-plugin')
-      expect(available[0]!.source).toBe('project')
+      expect(available[0]!.source).toBe('filesystem')
       expect(available[0]!.installed).toBe(false)
     })
 
-    it('should find plugins in global directory', () => {
+    it('should find plugins in global directory', async () => {
       // Point HOME to tempDir so getKombuseDir() returns tempDir/.kombuse
       process.env.HOME = tempDir
       const globalPluginsDir = join(tempDir, '.kombuse', 'plugins')
       writePluginManifest(globalPluginsDir, 'global-plugin')
 
-      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
       const globalPlugin = available.find((p) => p.name === 'global-plugin')
       expect(globalPlugin).toBeDefined()
-      expect(globalPlugin!.source).toBe('global')
+      expect(globalPlugin!.source).toBe('filesystem')
     })
 
-    it('should mark installed plugins', () => {
+    it('should mark installed plugins', async () => {
       const db = getDatabase()
       db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
         tempDir,
@@ -464,13 +474,13 @@ describe('pluginLifecycleService', () => {
         }),
       })
 
-      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
       const plugin = available.find((p) => p.name === 'installed-plugin')
       expect(plugin).toBeDefined()
       expect(plugin!.installed).toBe(true)
     })
 
-    it('should skip directories with invalid manifests', () => {
+    it('should skip directories with invalid manifests', async () => {
       const db = getDatabase()
       db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
         tempDir,
@@ -479,28 +489,26 @@ describe('pluginLifecycleService', () => {
 
       const pluginsDir = join(tempDir, '.kombuse', 'plugins')
 
-      // Valid plugin
+      // Valid plugin (has both manifest.json and .claude-plugin/plugin.json)
       writePluginManifest(pluginsDir, 'valid-plugin')
 
-      // Invalid plugin — no .claude-plugin dir
+      // Invalid plugin — no manifest.json at root
       mkdirSync(join(pluginsDir, 'no-manifest'), { recursive: true })
 
-      // Invalid plugin — bad JSON
-      const badDir = join(pluginsDir, 'bad-json', '.claude-plugin')
-      mkdirSync(badDir, { recursive: true })
-      writeFileSync(join(badDir, 'plugin.json'), 'not json')
+      // Invalid plugin — bad JSON in manifest.json
+      mkdirSync(join(pluginsDir, 'bad-json'), { recursive: true })
+      writeFileSync(join(pluginsDir, 'bad-json', 'manifest.json'), 'not json')
 
-      // Invalid plugin — missing required fields
-      const incompleteDir = join(pluginsDir, 'incomplete', '.claude-plugin')
-      mkdirSync(incompleteDir, { recursive: true })
-      writeFileSync(join(incompleteDir, 'plugin.json'), JSON.stringify({ version: '1.0.0' }))
+      // Invalid plugin — missing required fields in manifest.json
+      mkdirSync(join(pluginsDir, 'incomplete'), { recursive: true })
+      writeFileSync(join(pluginsDir, 'incomplete', 'manifest.json'), JSON.stringify({ version: '1.0.0' }))
 
-      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
       expect(available).toHaveLength(1)
       expect(available[0]!.name).toBe('valid-plugin')
     })
 
-    it('should give project plugins precedence over global duplicates', () => {
+    it('should give project plugins precedence over global duplicates', async () => {
       // Use separate dirs for project local_path and HOME
       const projectBase = mkdtempSync(join(tmpdir(), 'lifecycle-proj-'))
       const globalBase = mkdtempSync(join(tmpdir(), 'lifecycle-global-'))
@@ -524,10 +532,11 @@ describe('pluginLifecycleService', () => {
         description: 'global version',
       })
 
-      const available = pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
       const sharedPlugins = available.filter((p) => p.name === 'shared-plugin')
       expect(sharedPlugins).toHaveLength(1)
-      expect(sharedPlugins[0]!.source).toBe('project')
+      // Project feed is listed first, so project plugin wins dedup
+      expect(sharedPlugins[0]!.description).toBe('project version')
 
       // Cleanup extra dirs
       rmSync(projectBase, { recursive: true })

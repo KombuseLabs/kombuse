@@ -224,6 +224,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@kombuse/persistence": "*",
+        "@kombuse/pkg": "*",
         "@kombuse/types": "*",
         "js-yaml": "^4.1.0",
         "nunjucks": "^3.2.4",

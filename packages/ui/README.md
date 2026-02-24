@@ -1779,6 +1779,20 @@ const uninstallPlugin = useUninstallPlugin()
 uninstallPlugin.mutate({ id: 'plugin-id', mode: 'orphan' })
 // mode: 'orphan' — keep entities but unlink from plugin
 // mode: 'delete' — remove all plugin agents, triggers, labels, and profiles
+
+// Check for updates on an installed plugin
+const { data: updateInfo } = useCheckPluginUpdates('plugin-id')
+// Returns { plugin_id, plugin_name, has_update, current_version, latest_version?, feed_id? }
+
+// Install a plugin from remote feeds (GitHub, HTTP, or configured filesystem)
+const installRemote = useInstallRemotePlugin()
+installRemote.mutate({ name: 'my-plugin', project_id: 'project-id' })
+// Optionally specify version: { name: 'my-plugin', version: '1.2.0', project_id: '...' }
+
+// Pull the latest version of an installed plugin
+const pullUpdate = usePullPluginUpdate()
+pullUpdate.mutate('plugin-id')
+// Downloads latest version and reinstalls with overwrite: true
 ```
 
 ### Label Hooks

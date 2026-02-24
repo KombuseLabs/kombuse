@@ -481,13 +481,21 @@ describe('pluginExportService', () => {
 
       expect(result.package_name).toBe('my-plugin')
       expect(result.agent_count).toBe(1)
+      expect(result.files).toContain('manifest.json')
       expect(result.files).toContain('.claude-plugin/plugin.json')
       expect(result.files).toContain('agents/pkg-agent.md')
 
       // Verify files on disk
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'my-plugin')
+      expect(existsSync(join(pluginDir, 'manifest.json'))).toBe(true)
       expect(existsSync(join(pluginDir, '.claude-plugin', 'plugin.json'))).toBe(true)
       expect(existsSync(join(pluginDir, 'agents', 'pkg-agent.md'))).toBe(true)
+
+      // Verify manifest.json has correct PkgManifest format
+      const pkgManifest = JSON.parse(readFileSync(join(pluginDir, 'manifest.json'), 'utf-8'))
+      expect(pkgManifest.name).toBe('my-plugin')
+      expect(pkgManifest.version).toBe('1.0.0')
+      expect(pkgManifest.type).toBe('plugin')
     })
 
     it('should generate manifest with correct name', () => {

@@ -12,6 +12,7 @@ import { pluginFilesRepository, pluginsRepository } from '@kombuse/persistence'
 import {
   pluginExportSchema,
   pluginInstallSchema,
+  pluginRemoteInstallSchema,
   pluginUpdateSchema,
   pluginFiltersSchema,
   availablePluginsSchema,
@@ -93,7 +94,7 @@ export async function pluginRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.issues })
     }
 
-    return pluginLifecycleService.getAvailablePlugins(parseResult.data.project_id)
+    return await pluginLifecycleService.getAvailablePlugins(parseResult.data.project_id)
   })
 
   // Get a single plugin
@@ -146,6 +147,64 @@ export async function pluginRoutes(fastify: FastifyInstance) {
     try {
       pluginLifecycleService.uninstallPlugin(id, uninstallMode)
       return reply.status(204).send()
+    } catch (error) {
+      if (error instanceof PluginNotFoundError) {
+        return reply.status(404).send({ error: 'Plugin not found' })
+      }
+      throw error
+    }
+  })
+
+  // Install a plugin from remote feeds
+  fastify.post('/plugins/install-remote', async (request, reply) => {
+    const parseResult = pluginRemoteInstallSchema.safeParse(request.body)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+    try {
+      const result = await pluginImportService.installFromRemote(parseResult.data)
+      return reply.status(201).send(result)
+    } catch (error) {
+      if (error instanceof PluginAlreadyInstalledError) {
+        return reply.status(409).send({
+          error: 'plugin_already_installed',
+          plugin_name: error.pluginName,
+        })
+      }
+      if (error instanceof InvalidManifestError) {
+        return reply.status(400).send({ error: error.message })
+      }
+      throw error
+    }
+  })
+
+  // Check for updates for an installed plugin
+  fastify.get('/plugins/:id/check-updates', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    try {
+      return await pluginLifecycleService.checkForUpdates(id)
+    } catch (error) {
+      if (error instanceof PluginNotFoundError) {
+        return reply.status(404).send({ error: 'Plugin not found' })
+      }
+      throw error
+    }
+  })
+
+  // Pull latest version for an installed plugin
+  fastify.post('/plugins/:id/pull', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    try {
+      const plugin = pluginsRepository.get(id)
+      if (!plugin) {
+        return reply.status(404).send({ error: 'Plugin not found' })
+      }
+      const result = await pluginImportService.installFromRemote({
+        name: plugin.name,
+        project_id: plugin.project_id,
+        overwrite: true,
+      })
+      return result
     } catch (error) {
       if (error instanceof PluginNotFoundError) {
         return reply.status(404).send({ error: 'Plugin not found' })

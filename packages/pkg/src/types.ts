@@ -9,6 +9,7 @@ export interface PackageVersionInfo {
   checksum?: string
   publishedAt?: string
   archiveFormat?: 'tar.gz'
+  feedId?: string
 }
 
 export interface DownloadProgress {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { PluginExportInput, PluginInstallInput } from '@kombuse/types'
+import type { PluginExportInput, PluginInstallInput, PluginRemoteInstallInput } from '@kombuse/types'
 import { pluginFilesApi, pluginsApi } from '../lib/api'
 
 export function useExportPlugin() {
@@ -75,6 +75,39 @@ export function useUpdatePluginFile() {
       pluginFilesApi.update(pluginId, fileId, { content }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['plugin-files', variables.pluginId] })
+    },
+  })
+}
+
+export function useCheckPluginUpdates(pluginId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['plugins', 'check-updates', pluginId],
+    queryFn: () => pluginsApi.checkUpdates(pluginId!),
+    enabled: !!pluginId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useInstallRemotePlugin() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: PluginRemoteInstallInput) => pluginsApi.installRemote(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['labels'] })
+    },
+  })
+}
+
+export function usePullPluginUpdate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (pluginId: string) => pluginsApi.pull(pluginId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['labels'] })
     },
   })
 }

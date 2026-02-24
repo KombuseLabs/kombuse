@@ -14,6 +14,7 @@ import type {
   PluginExportInput,
   PluginExportResult,
   ExportedLabel,
+  PkgManifest,
 } from '@kombuse/types'
 import { SELF_PLACEHOLDER, ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import {
@@ -167,8 +168,22 @@ export class PluginExportService implements IPluginExportService {
     const manifestPath = join(pluginMetaDir, 'plugin.json')
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8')
 
+    // Write PkgManifest at plugin root for @kombuse/pkg discovery
+    const pkgManifest: PkgManifest = {
+      name: package_name,
+      version: '1.0.0',
+      type: 'plugin',
+      ...(description ? { description } : {}),
+      metadata: {
+        plugin_system_version: 'kombuse-plugin-v1',
+        label_count: exportedLabels.length,
+        agent_count: processedFiles.length,
+      },
+    }
+    writeFileSync(join(directory, 'manifest.json'), JSON.stringify(pkgManifest, null, 2), 'utf-8')
+
     // Write agent files
-    const writtenFiles: string[] = ['.claude-plugin/plugin.json']
+    const writtenFiles: string[] = ['manifest.json', '.claude-plugin/plugin.json']
     for (const file of processedFiles) {
       writeFileSync(join(agentsDir, file.filename), file.content, 'utf-8')
       writtenFiles.push(`agents/${file.filename}`)

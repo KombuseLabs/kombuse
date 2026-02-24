@@ -6,6 +6,7 @@ import type {
   AgentExportFrontmatter,
   PluginInstallInput,
   PluginInstallResult,
+  PluginRemoteInstallInput,
   AgentConfig,
   PluginBase,
   UpdateAgentInput,
@@ -18,8 +19,13 @@ import {
   agentTriggersRepository,
   labelsRepository,
   profilesRepository,
+  projectsRepository,
   getDatabase,
+  getKombuseDir,
+  loadKombuseConfig,
+  loadProjectConfig,
 } from '@kombuse/persistence'
+import { buildPluginPackageManager } from './plugin-feed-builder'
 
 export class PluginAlreadyInstalledError extends Error {
   public readonly pluginName: string
@@ -47,6 +53,7 @@ function isFieldCustomized(currentValue: unknown, oldBaseValue: unknown): boolea
 
 export interface IPluginImportService {
   installPackage(input: PluginInstallInput): PluginInstallResult
+  installFromRemote(input: PluginRemoteInstallInput): Promise<PluginInstallResult>
 }
 
 export class PluginImportService implements IPluginImportService {
@@ -560,6 +567,40 @@ export class PluginImportService implements IPluginImportService {
     }
 
     return { created, updated }
+  }
+
+  async installFromRemote(input: PluginRemoteInstallInput): Promise<PluginInstallResult> {
+    const { name, version, project_id, overwrite } = input
+
+    const project = projectsRepository.get(project_id)
+    const projectPluginsDir = project?.local_path
+      ? join(project.local_path, '.kombuse', 'plugins')
+      : null
+    const globalPluginsDir = join(getKombuseDir(), 'plugins')
+
+    const globalConfig = loadKombuseConfig()
+    const projectConfig = project?.local_path
+      ? loadProjectConfig(project.local_path)
+      : {}
+    const configSources = [
+      ...(globalConfig.plugins?.sources ?? []),
+      ...(projectConfig.plugins?.sources ?? []),
+    ]
+
+    const pm = buildPluginPackageManager(projectPluginsDir, globalPluginsDir, configSources)
+
+    const result = version
+      ? await pm.install(name, version)
+      : await pm.installLatest(name)
+
+    // Cache content is at {cachePath}/content
+    const packagePath = join(result.cachePath, 'content')
+
+    return this.installPackage({
+      package_path: packagePath,
+      project_id,
+      overwrite,
+    })
   }
 }
 

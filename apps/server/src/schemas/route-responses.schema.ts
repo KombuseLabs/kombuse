@@ -18,6 +18,7 @@ import {
   eventSubscriptionSchema,
   eventWithActorSchema,
   availablePluginSchema,
+  pluginUpdateCheckResultSchema,
   labelSchema,
   milestoneSchema,
   milestoneWithStatsSchema,
@@ -275,6 +276,9 @@ registerSuccessSchema('POST', '/api/plugins/export', pluginExportResultSchema)
 registerSuccessSchema('GET', '/api/plugins/:pluginId/files', z.array(pluginFileSchema))
 registerSuccessSchema('GET', '/api/plugins/:pluginId/files/:fileId', pluginFileSchema)
 registerSuccessSchema('PATCH', '/api/plugins/:pluginId/files/:fileId', pluginFileSchema)
+registerSuccessSchema('GET', '/api/plugins/:id/check-updates', pluginUpdateCheckResultSchema)
+registerSuccessSchema('POST', '/api/plugins/install-remote', pluginInstallResultSchema)
+registerSuccessSchema('POST', '/api/plugins/:id/pull', pluginInstallResultSchema)
 
 // Backend status routes
 registerSuccessSchema('GET', '/api/backend-status', z.array(backendStatusSchema))

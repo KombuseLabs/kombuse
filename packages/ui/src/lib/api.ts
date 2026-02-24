@@ -63,6 +63,8 @@ import type {
   Plugin,
   PluginInstallInput,
   PluginInstallResult,
+  PluginRemoteInstallInput,
+  PluginUpdateCheckResult,
   AvailablePlugin,
   InitProjectResult,
 } from '@kombuse/types'
@@ -952,6 +954,27 @@ export const pluginsApi = {
       method: 'DELETE',
     })
     return handleEmptyResponse(response)
+  },
+
+  async checkUpdates(pluginId: string): Promise<PluginUpdateCheckResult> {
+    const response = await fetch(`${API_BASE}/plugins/${pluginId}/check-updates`)
+    return handleResponse<PluginUpdateCheckResult>(response)
+  },
+
+  async installRemote(input: PluginRemoteInstallInput): Promise<PluginInstallResult> {
+    const response = await fetch(`${API_BASE}/plugins/install-remote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return handleResponse<PluginInstallResult>(response)
+  },
+
+  async pull(pluginId: string): Promise<PluginInstallResult> {
+    const response = await fetch(`${API_BASE}/plugins/${pluginId}/pull`, {
+      method: 'POST',
+    })
+    return handleResponse<PluginInstallResult>(response)
   },
 }
 

@@ -37,8 +37,28 @@ export const availablePluginSchema = z.object({
   version: z.string().min(1),
   description: z.string().optional(),
   directory: z.string().min(1),
-  source: z.enum(['project', 'global']),
+  source: z.enum(['project', 'global', 'filesystem', 'github', 'http']),
+  source_feed_id: z.string().optional(),
   installed: z.boolean(),
+  installed_version: z.string().optional(),
+  has_update: z.boolean().optional(),
+  latest_version: z.string().optional(),
+})
+
+export const pluginUpdateCheckResultSchema = z.object({
+  plugin_id: z.string().min(1),
+  plugin_name: z.string().min(1),
+  has_update: z.boolean(),
+  current_version: z.string().min(1),
+  latest_version: z.string().optional(),
+  feed_id: z.string().optional(),
+})
+
+export const pluginRemoteInstallSchema = z.object({
+  name: z.string().min(1),
+  version: z.string().optional(),
+  project_id: z.string().min(1),
+  overwrite: z.boolean().optional(),
 })
 
 export const pluginFileSchema = z.object({

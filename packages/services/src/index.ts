@@ -32,6 +32,8 @@ export type { IPluginImportService } from './plugin-import-service'
 
 export { PluginLifecycleService, pluginLifecycleService, PluginNotFoundError } from './plugin-lifecycle-service'
 export type { IPluginLifecycleService } from './plugin-lifecycle-service'
+
+export { buildPluginPackageManager } from './plugin-feed-builder'
 export type {
   PermissionContext,
   PermissionCheckRequest,

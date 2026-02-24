@@ -70,7 +70,15 @@ export const pluginFileSchema = z.object({
   updated_at: z.string(),
 })
 
+export const pluginRemoteInstallSchema = z.object({
+  name: z.string().min(1),
+  version: z.string().optional(),
+  project_id: z.string().min(1),
+  overwrite: z.boolean().optional(),
+})
+
 export type PluginInstallBody = z.infer<typeof pluginInstallSchema>
 export type PluginUpdateBody = z.infer<typeof pluginUpdateSchema>
 export type PluginFiltersQuery = z.infer<typeof pluginFiltersSchema>
 export type AvailablePluginsQuery = z.infer<typeof availablePluginsSchema>
+export type PluginRemoteInstallBody = z.infer<typeof pluginRemoteInstallSchema>

@@ -23,6 +23,26 @@ export interface AvailablePlugin {
   version: string
   description?: string
   directory: string
-  source: 'project' | 'global'
+  source: 'project' | 'global' | 'filesystem' | 'github' | 'http'
+  source_feed_id?: string
   installed: boolean
+  installed_version?: string
+  has_update?: boolean
+  latest_version?: string
+}
+
+export interface PluginUpdateCheckResult {
+  plugin_id: string
+  plugin_name: string
+  has_update: boolean
+  current_version: string
+  latest_version?: string
+  feed_id?: string
+}
+
+export interface PluginRemoteInstallInput {
+  name: string
+  version?: string
+  project_id: string
+  overwrite?: boolean
 }

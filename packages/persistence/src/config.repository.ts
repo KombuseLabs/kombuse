@@ -2,6 +2,21 @@ import { readFileSync, existsSync } from 'fs'
 import { join, resolve, isAbsolute } from 'path'
 import type { KombuseConfig } from '@kombuse/types'
 
+export function resolveEnvToken(value: string): string {
+  if (!value.startsWith('$')) return value
+  const envKey = value.slice(1)
+  const resolved = process.env[envKey]
+  if (!resolved) {
+    throw new Error(`Environment variable "${envKey}" is not set (referenced in config as "${value}")`)
+  }
+  return resolved
+}
+
+export function loadProjectConfig(projectLocalPath: string): KombuseConfig {
+  const configPath = join(projectLocalPath, '.kombuse', 'config.json')
+  return loadKombuseConfig(configPath)
+}
+
 export function getKombuseDir(): string {
   return join(
     process.env.HOME || process.env.USERPROFILE || '.',

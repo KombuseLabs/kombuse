@@ -1,9 +1,8 @@
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
-  KombusePluginManifest,
   Plugin,
   AvailablePlugin,
+  PluginUpdateCheckResult,
 } from '@kombuse/types'
 import {
   pluginsRepository,
@@ -12,7 +11,10 @@ import {
   projectsRepository,
   getDatabase,
   getKombuseDir,
+  loadKombuseConfig,
+  loadProjectConfig,
 } from '@kombuse/persistence'
+import { buildPluginPackageManager } from './plugin-feed-builder'
 
 export class PluginNotFoundError extends Error {
   constructor(pluginId: string) {
@@ -25,7 +27,8 @@ export interface IPluginLifecycleService {
   enablePlugin(pluginId: string): Plugin
   disablePlugin(pluginId: string): Plugin
   uninstallPlugin(pluginId: string, mode: 'orphan' | 'delete'): void
-  getAvailablePlugins(projectId: string): AvailablePlugin[]
+  getAvailablePlugins(projectId: string): Promise<AvailablePlugin[]>
+  checkForUpdates(pluginId: string): Promise<PluginUpdateCheckResult>
 }
 
 export class PluginLifecycleService implements IPluginLifecycleService {
@@ -64,87 +67,105 @@ export class PluginLifecycleService implements IPluginLifecycleService {
     const db = getDatabase()
 
     if (mode === 'delete') {
-      // Get agent IDs for profile cleanup
       const agentIds = db
         .prepare('SELECT id FROM agents WHERE plugin_id = ?')
         .all(pluginId) as { id: string }[]
 
-      // Delete agents (triggers cascade via FK)
       for (const { id } of agentIds) {
         agentsRepository.delete(id)
         profilesRepository.delete(id)
       }
 
-      // Orphan labels (preserve ticket-label associations)
       db.prepare('UPDATE labels SET plugin_id = NULL WHERE plugin_id = ?').run(pluginId)
     } else {
-      // Orphan: null out plugin_id on all entities
       db.prepare("UPDATE agents SET plugin_id = NULL, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
       db.prepare("UPDATE agent_triggers SET plugin_id = NULL, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
       db.prepare('UPDATE labels SET plugin_id = NULL WHERE plugin_id = ?').run(pluginId)
     }
 
-    // Delete the plugin row
     pluginsRepository.delete(pluginId)
   }
 
-  getAvailablePlugins(projectId: string): AvailablePlugin[] {
+  async getAvailablePlugins(projectId: string): Promise<AvailablePlugin[]> {
+    const installed = pluginsRepository.list({ project_id: projectId })
+    const installedByName = new Map(installed.map((p) => [p.name, p]))
+
+    const { projectPluginsDir, globalPluginsDir, configSources } = this.resolvePluginConfig(projectId)
+
+    const pm = buildPluginPackageManager(projectPluginsDir, globalPluginsDir, configSources)
+    const packages = await pm.search()
+
+    const seen = new Set<string>()
     const results: AvailablePlugin[] = []
 
-    // Get installed plugins for this project
-    const installed = pluginsRepository.list({ project_id: projectId })
-    const installedNames = new Set(installed.map((p) => p.name))
+    for (const pkg of packages) {
+      if (seen.has(pkg.name)) continue
+      if (pkg.manifest.type !== 'plugin') continue
+      seen.add(pkg.name)
 
-    // Scan project's .kombuse/plugins/ directory
-    const project = projectsRepository.get(projectId)
-    if (project?.local_path) {
-      const projectPluginsDir = join(project.local_path, '.kombuse', 'plugins')
-      this.scanDirectory(projectPluginsDir, 'project', installedNames, results)
+      const existingInstall = installedByName.get(pkg.name)
+
+      results.push({
+        name: pkg.name,
+        version: pkg.version,
+        description: pkg.manifest.description,
+        directory: pkg.localPath ?? '',
+        source: this.inferSource(pkg.feedId ?? ''),
+        source_feed_id: pkg.feedId,
+        installed: !!existingInstall,
+        installed_version: existingInstall?.version,
+        has_update: existingInstall
+          ? pkg.version !== existingInstall.version
+          : undefined,
+        latest_version: pkg.version,
+      })
     }
-
-    // Scan global ~/.kombuse/plugins/ directory
-    const globalPluginsDir = join(getKombuseDir(), 'plugins')
-    this.scanDirectory(globalPluginsDir, 'global', installedNames, results)
 
     return results
   }
 
-  private scanDirectory(
-    dir: string,
-    source: 'project' | 'global',
-    installedNames: Set<string>,
-    results: AvailablePlugin[]
-  ): void {
-    if (!existsSync(dir)) return
+  async checkForUpdates(pluginId: string): Promise<PluginUpdateCheckResult> {
+    const plugin = pluginsRepository.get(pluginId)
+    if (!plugin) throw new PluginNotFoundError(pluginId)
 
-    const entries = readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
+    const { projectPluginsDir, globalPluginsDir, configSources } = this.resolvePluginConfig(plugin.project_id)
 
-      const manifestPath = join(dir, entry.name, '.claude-plugin', 'plugin.json')
-      if (!existsSync(manifestPath)) continue
+    const pm = buildPluginPackageManager(projectPluginsDir, globalPluginsDir, configSources)
+    const result = await pm.checkForUpdates(plugin.name, plugin.version)
 
-      try {
-        const raw = readFileSync(manifestPath, 'utf-8')
-        const manifest = JSON.parse(raw) as KombusePluginManifest
-
-        if (!manifest.name || !manifest.kombuse?.plugin_system_version) continue
-
-        // Skip if already in results (project takes precedence over global)
-        if (results.some((r) => r.name === manifest.name)) continue
-
-        results.push({
-          name: manifest.name,
-          version: manifest.version ?? '1.0.0',
-          description: manifest.description,
-          directory: join(dir, entry.name),
-          source,
-          installed: installedNames.has(manifest.name),
-        })
-      } catch {
-        // Skip directories with invalid manifests
-      }
+    return {
+      plugin_id: plugin.id,
+      plugin_name: plugin.name,
+      has_update: result.hasUpdate,
+      current_version: plugin.version,
+      latest_version: result.latest?.version,
+      feed_id: result.feedId,
     }
+  }
+
+  private resolvePluginConfig(projectId: string) {
+    const project = projectsRepository.get(projectId)
+    const projectPluginsDir = project?.local_path
+      ? join(project.local_path, '.kombuse', 'plugins')
+      : null
+    const globalPluginsDir = join(getKombuseDir(), 'plugins')
+
+    const globalConfig = loadKombuseConfig()
+    const projectConfig = project?.local_path
+      ? loadProjectConfig(project.local_path)
+      : {}
+    const configSources = [
+      ...(globalConfig.plugins?.sources ?? []),
+      ...(projectConfig.plugins?.sources ?? []),
+    ]
+
+    return { projectPluginsDir, globalPluginsDir, configSources }
+  }
+
+  private inferSource(feedId: string): AvailablePlugin['source'] {
+    if (feedId.startsWith('github:')) return 'github'
+    if (feedId.startsWith('http:')) return 'http'
+    return 'filesystem'
   }
 }
 
