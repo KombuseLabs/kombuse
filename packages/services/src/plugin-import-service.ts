@@ -192,7 +192,7 @@ export class PluginImportService implements IPluginImportService {
         }
 
         const existingAgent = agentsRepository.getBySlugAndPlugin(slug, pluginId)
-          ?? agentsRepository.getBySlug(slug)
+          ?? agentsRepository.getBySlugAndProject(slug, project_id)
 
         if (existingAgent) {
           // Update existing agent in place
@@ -216,6 +216,7 @@ export class PluginImportService implements IPluginImportService {
           const oldBase = existingAgent.plugin_base
           const updateFields: UpdateAgentInput = {
             plugin_id: pluginId,
+            project_id,
             plugin_base: newPluginBase,
           }
 
@@ -244,8 +245,10 @@ export class PluginImportService implements IPluginImportService {
           importedAgentIds.add(agentId)
           agentsUpdated++
         } else {
-          // Check for a soft-deleted profile from a previous install
-          const existingProfile = profilesRepository.getBySlug(slug)
+          // Check for a soft-deleted profile from a previous install of this plugin,
+          // or an orphaned profile (plugin_id NULL from a previous uninstall)
+          const existingProfile = profilesRepository.getBySlugAndPlugin(slug, pluginId)
+            ?? profilesRepository.getBySlugOrphaned(slug)
           const agentId = existingProfile?.id ?? crypto.randomUUID()
 
           if (existingProfile) {

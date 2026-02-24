@@ -114,6 +114,28 @@ export const profilesRepository = {
   },
 
   /**
+   * Get a profile by slug scoped to a specific plugin
+   */
+  getBySlugAndPlugin(slug: string, pluginId: string): Profile | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM profiles WHERE slug = ? AND plugin_id = ?')
+      .get(slug, pluginId) as RawProfile | undefined
+    return row ? mapProfile(row) : null
+  },
+
+  /**
+   * Get an orphaned profile by slug (plugin_id IS NULL, e.g. after plugin uninstall)
+   */
+  getBySlugOrphaned(slug: string): Profile | null {
+    const db = getDatabase()
+    const row = db
+      .prepare('SELECT * FROM profiles WHERE slug = ? AND plugin_id IS NULL')
+      .get(slug) as RawProfile | undefined
+    return row ? mapProfile(row) : null
+  },
+
+  /**
    * Create a new profile
    */
   create(input: CreateProfileInput): Profile {

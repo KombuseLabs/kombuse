@@ -448,7 +448,7 @@ describe('pluginImportService', () => {
 
   describe('slug match — update in place', () => {
     it('should update existing agent in place when slug matches', () => {
-      // Pre-create an agent with the same slug
+      // Pre-create an agent with the same slug in the same project
       const existingId = crypto.randomUUID()
       profilesRepository.create({ id: existingId, type: 'agent', name: 'Existing' })
       agentsRepository.create({
@@ -457,6 +457,7 @@ describe('pluginImportService', () => {
         description: 'Existing agent',
         slug: 'collide-agent',
         system_prompt: 'old prompt',
+        project_id: TEST_PROJECT_ID,
       })
 
       const pkg = trackDir(
@@ -513,6 +514,7 @@ describe('pluginImportService', () => {
         description: 'Existing',
         slug: 'trigger-agent',
         system_prompt: 'old prompt',
+        project_id: TEST_PROJECT_ID,
       })
       // Create a manually-added trigger (no plugin_id)
       agentTriggersRepository.create({
@@ -1860,6 +1862,157 @@ describe('pluginImportService', () => {
       const agent = agentsRepository.getBySlug('derive-agent')!
       const triggers = agentTriggersRepository.listByAgent(agent.id)
       expect(triggers[0]!.slug).toBe('ticket-created')
+    })
+  })
+
+  describe('multi-project isolation', () => {
+    const PROJECT_B_ID = 'test-project-2'
+
+    beforeEach(() => {
+      const db = getDatabase()
+      db.prepare(
+        "INSERT INTO projects (id, name, owner_id) VALUES (?, 'Project B', ?)"
+      ).run(PROJECT_B_ID, TEST_USER_ID)
+    })
+
+    function createMultiProjectPlugin(name = 'shared-plugin') {
+      return createPluginPackage({
+        manifest: { name },
+        agents: [
+          {
+            filename: 'agent-one.md',
+            frontmatter: {
+              name: 'Agent One',
+              slug: 'agent-one',
+              type: 'kombuse',
+              is_enabled: true,
+              enabled_for_chat: false,
+              permissions: [],
+              triggers: [
+                {
+                  event_type: 'ticket.created',
+                  conditions: null,
+                  is_enabled: true,
+                  priority: 5,
+                },
+              ],
+            },
+            body: 'You are agent one.',
+          },
+          {
+            filename: 'agent-two.md',
+            frontmatter: {
+              name: 'Agent Two',
+              slug: 'agent-two',
+              type: 'kombuse',
+              is_enabled: true,
+              enabled_for_chat: false,
+              permissions: [],
+            },
+            body: 'You are agent two.',
+          },
+        ],
+      })
+    }
+
+    it('should create independent agents when installing the same plugin in two projects', () => {
+      const pkg = trackDir(createMultiProjectPlugin())
+
+      const resultA = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      const resultB = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: PROJECT_B_ID,
+      })
+
+      expect(resultA.agents_created).toBe(2)
+      expect(resultB.agents_created).toBe(2)
+      expect(resultA.plugin_id).not.toBe(resultB.plugin_id)
+
+      const agentA = agentsRepository.getBySlugAndProject('agent-one', TEST_PROJECT_ID)
+      const agentB = agentsRepository.getBySlugAndProject('agent-one', PROJECT_B_ID)
+
+      expect(agentA).not.toBeNull()
+      expect(agentB).not.toBeNull()
+      expect(agentA!.id).not.toBe(agentB!.id)
+      expect(agentA!.project_id).toBe(TEST_PROJECT_ID)
+      expect(agentB!.project_id).toBe(PROJECT_B_ID)
+    })
+
+    it('should not mutate Project A agents when installing for Project B', () => {
+      const pkg = trackDir(createMultiProjectPlugin())
+
+      const resultA = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      const agentBeforeA1 = agentsRepository.getBySlugAndProject('agent-one', TEST_PROJECT_ID)!
+      const agentBeforeA2 = agentsRepository.getBySlugAndProject('agent-two', TEST_PROJECT_ID)!
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: PROJECT_B_ID,
+      })
+
+      const agentAfterA1 = agentsRepository.getBySlugAndProject('agent-one', TEST_PROJECT_ID)!
+      const agentAfterA2 = agentsRepository.getBySlugAndProject('agent-two', TEST_PROJECT_ID)!
+
+      expect(agentAfterA1.id).toBe(agentBeforeA1.id)
+      expect(agentAfterA1.plugin_id).toBe(resultA.plugin_id)
+      expect(agentAfterA1.project_id).toBe(TEST_PROJECT_ID)
+
+      expect(agentAfterA2.id).toBe(agentBeforeA2.id)
+      expect(agentAfterA2.plugin_id).toBe(resultA.plugin_id)
+      expect(agentAfterA2.project_id).toBe(TEST_PROJECT_ID)
+    })
+
+    it('should create independent profiles per project', () => {
+      const pkg = trackDir(createMultiProjectPlugin())
+
+      const resultA = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      const resultB = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: PROJECT_B_ID,
+      })
+
+      const profileA = profilesRepository.getBySlugAndPlugin('agent-one', resultA.plugin_id)
+      const profileB = profilesRepository.getBySlugAndPlugin('agent-one', resultB.plugin_id)
+
+      expect(profileA).not.toBeNull()
+      expect(profileB).not.toBeNull()
+      expect(profileA!.id).not.toBe(profileB!.id)
+      expect(profileA!.plugin_id).toBe(resultA.plugin_id)
+      expect(profileB!.plugin_id).toBe(resultB.plugin_id)
+    })
+
+    it('should create triggers scoped to each project', () => {
+      const pkg = trackDir(createMultiProjectPlugin())
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: PROJECT_B_ID,
+      })
+
+      const agentA = agentsRepository.getBySlugAndProject('agent-one', TEST_PROJECT_ID)!
+      const agentB = agentsRepository.getBySlugAndProject('agent-one', PROJECT_B_ID)!
+
+      const triggersA = agentTriggersRepository.listByAgent(agentA.id)
+      const triggersB = agentTriggersRepository.listByAgent(agentB.id)
+
+      expect(triggersA.length).toBe(1)
+      expect(triggersB.length).toBe(1)
+      expect(triggersA[0]!.project_id).toBe(TEST_PROJECT_ID)
+      expect(triggersB[0]!.project_id).toBe(PROJECT_B_ID)
     })
   })
 })

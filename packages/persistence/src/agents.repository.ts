@@ -161,6 +161,10 @@ export const agentsRepository = {
       fields.push('plugin_id = ?')
       params.push(input.plugin_id)
     }
+    if (input.project_id !== undefined) {
+      fields.push('project_id = ?')
+      params.push(input.project_id)
+    }
     if (input.plugin_base !== undefined) {
       fields.push('plugin_base = ?')
       params.push(input.plugin_base ? JSON.stringify(input.plugin_base) : null)

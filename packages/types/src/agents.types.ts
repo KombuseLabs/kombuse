@@ -172,6 +172,7 @@ export interface UpdateAgentInput {
   config?: AgentConfig
   is_enabled?: boolean
   plugin_id?: string | null
+  project_id?: string | null
   plugin_base?: PluginBase | null
 }
 
