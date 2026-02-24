@@ -5,3 +5,7 @@ export {
   FilesystemFeed,
   type FilesystemFeedOptions,
 } from './filesystem-feed'
+export {
+  UpdateApiFeed,
+  type UpdateApiFeedOptions,
+} from './update-api-feed'

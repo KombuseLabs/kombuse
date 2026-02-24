@@ -1,44 +1,19 @@
 /**
  * Auto-updater for Kombuse packages.
  *
- * Checks GitHub releases for new package versions, downloads them,
- * verifies checksums, and installs them for the next app restart.
+ * Checks for new package versions via @kombuse/pkg, downloads them,
+ * and installs them for the next app restart.
  */
 
-import { createWriteStream, createReadStream, existsSync, rmSync, mkdirSync } from "node:fs";
-import { createHash } from "node:crypto";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { extract } from "tar";
+import { PackageManager, UpdateApiFeed } from "@kombuse/pkg";
+import type { DownloadProgress } from "@kombuse/pkg";
 import type { UpdateInfo, UpdateStatus, UpdateCheckResult, UpdateState } from "@kombuse/types";
 import { installPackage, listPackages } from "./updater";
-import { isNewerVersion } from "./version-utils";
-
-// Update server endpoint (proxies GitHub releases with auth)
-// Set UPDATE_API_BASE env var to override (e.g., for local testing)
-const UPDATE_API_BASE = process.env.UPDATE_API_BASE ?? "https://kombuse.dev";
-const UPDATE_API_URL = `${UPDATE_API_BASE}/api/updates/latest`;
-
-/**
- * Resolve a URL that may be relative to the update API base.
- */
-function resolveUrl(url: string): string {
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-  return `${UPDATE_API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
-}
-
-interface UpdateApiResponse {
-  version: string;
-  downloadUrl: string;
-  checksumUrl: string;
-  releaseUrl: string;
-  releaseNotes: string | null;
-  publishedAt: string;
-}
 
 type StatusListener = (status: UpdateStatus) => void;
+
+const UPDATE_API_BASE = process.env.UPDATE_API_BASE ?? "https://kombuse.dev";
 
 /**
  * Auto-updater class that manages checking, downloading, and installing updates.
@@ -53,8 +28,11 @@ export class AutoUpdater {
   };
 
   private statusListeners = new Set<StatusListener>();
+  private readonly packageManager: PackageManager;
 
   constructor() {
+    this.packageManager = new PackageManager();
+    this.packageManager.addFeed(new UpdateApiFeed({ baseUrl: UPDATE_API_BASE }));
     this.initCurrentVersion();
   }
 
@@ -101,35 +79,31 @@ export class AutoUpdater {
   }
 
   /**
-   * Check GitHub releases for a newer package version.
+   * Check for a newer package version.
    */
   async checkForUpdates(): Promise<UpdateCheckResult> {
     console.log(`[AutoUpdater] Checking for updates... (current: ${this.status.currentVersion})`);
     this.setState("checking", { error: null });
 
     try {
-      const release = await this.fetchLatestRelease();
-      if (!release) {
-        console.log("[AutoUpdater] No releases found");
+      const result = await this.packageManager.checkForUpdates("kombuse", this.status.currentVersion);
+      console.log(`[AutoUpdater] Check result: hasUpdate=${result.hasUpdate}, latest=${result.latest?.version ?? "none"}`);
+
+      if (!result.hasUpdate || !result.latest) {
         this.setState("idle");
         return { hasUpdate: false, updateInfo: null, currentVersion: this.status.currentVersion };
       }
 
-      const hasUpdate = isNewerVersion(release.version, this.status.currentVersion);
-      console.log(`[AutoUpdater] Latest release: ${release.version}, hasUpdate: ${hasUpdate}`);
-
-      if (!hasUpdate) {
-        this.setState("idle");
-        return { hasUpdate: false, updateInfo: null, currentVersion: this.status.currentVersion };
-      }
+      const latest = result.latest;
+      const metadata = latest.manifest.metadata;
 
       const updateInfo: UpdateInfo = {
-        version: release.version,
-        releaseUrl: release.releaseUrl,
-        downloadUrl: resolveUrl(release.downloadUrl),
-        checksumUrl: resolveUrl(release.checksumUrl),
-        releaseNotes: release.releaseNotes,
-        publishedAt: release.publishedAt,
+        version: latest.version,
+        downloadUrl: latest.downloadUrl ?? "",
+        checksumUrl: (metadata?.checksumUrl as string) ?? "",
+        releaseUrl: (metadata?.releaseUrl as string) ?? "",
+        releaseNotes: (metadata?.releaseNotes as string | null) ?? null,
+        publishedAt: latest.publishedAt ?? "",
       };
 
       this.setState("available", { updateInfo });
@@ -150,47 +124,26 @@ export class AutoUpdater {
       throw new Error("No update available");
     }
 
-    const tempDir = join(tmpdir(), `kombuse-update-${Date.now()}`);
-    const tarPath = join(tempDir, `package-${updateInfo.version}.tar.gz`);
-
     try {
-      mkdirSync(tempDir, { recursive: true });
-      console.log(`[AutoUpdater] Created temp dir: ${tempDir}`);
-
-      // Download
       this.setState("downloading", { downloadProgress: 0 });
-      console.log(`[AutoUpdater] Downloading from: ${updateInfo.downloadUrl}`);
-      await this.downloadFile(updateInfo.downloadUrl, tarPath);
+      console.log(`[AutoUpdater] Installing version ${updateInfo.version}`);
 
-      if (!existsSync(tarPath)) {
-        throw new Error(`Downloaded file not found: ${tarPath}`);
-      }
-      const { statSync } = await import("node:fs");
-      const fileSize = statSync(tarPath).size;
-      console.log(`[AutoUpdater] Downloaded ${fileSize} bytes to ${tarPath}`);
+      const result = await this.packageManager.install("kombuse", updateInfo.version, (progress: DownloadProgress) => {
+        if (progress.phase === "downloading") {
+          this.setState("downloading", {
+            downloadProgress: progress.percent >= 0 ? progress.percent : 0,
+          });
+        } else if (progress.phase === "verifying") {
+          this.setState("verifying");
+        }
+        // extracting and caching phases are internal details
+      });
 
-      // Verify checksum
-      this.setState("verifying");
-      console.log(`[AutoUpdater] Verifying checksum from: ${updateInfo.checksumUrl}`);
-      await this.verifyChecksum(tarPath, updateInfo.checksumUrl);
-      console.log(`[AutoUpdater] Checksum verified`);
+      console.log(`[AutoUpdater] Downloaded and cached at ${result.cachePath}`);
 
-      // Extract
-      console.log(`[AutoUpdater] Extracting to ${tempDir}`);
-      await extract({ file: tarPath, cwd: tempDir });
-
-      // List extracted contents for debugging
-      const { readdirSync } = await import("node:fs");
-      const contents = readdirSync(tempDir);
-      console.log(`[AutoUpdater] Extracted contents: ${contents.join(", ")}`);
-
-      // Install (tar extracts to 'package/' directory)
-      const packageDir = join(tempDir, "package");
-      if (!existsSync(packageDir)) {
-        throw new Error(`Extracted package directory not found. Contents: ${contents.join(", ")}`);
-      }
-
-      const installedVersion = installPackage(packageDir);
+      // Install from cache to packages directory (symlink management)
+      const contentPath = join(result.cachePath, "content");
+      const installedVersion = installPackage(contentPath);
 
       this.setState("ready", {
         currentVersion: installedVersion,
@@ -200,95 +153,6 @@ export class AutoUpdater {
       const message = error instanceof Error ? error.message : "Install failed";
       this.setState("error", { error: message });
       throw error;
-    } finally {
-      // Cleanup temp files
-      if (existsSync(tempDir)) {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    }
-  }
-
-  private async fetchLatestRelease(): Promise<UpdateApiResponse | null> {
-    console.log(`[AutoUpdater] Fetching from ${UPDATE_API_URL}`);
-    const response = await fetch(UPDATE_API_URL);
-
-    if (!response.ok) {
-      throw new Error(`Update API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // API returns null if no releases found
-    if (!data || !data.version) {
-      return null;
-    }
-
-    return data as UpdateApiResponse;
-  }
-
-  private async downloadFile(url: string, destPath: string): Promise<void> {
-    const response = await fetch(url);
-    if (!response.ok || !response.body) {
-      throw new Error(`Download failed: ${response.status}`);
-    }
-
-    const contentLength = parseInt(response.headers.get("content-length") ?? "0", 10);
-    let downloaded = 0;
-
-    const fileStream = createWriteStream(destPath);
-    const reader = response.body.getReader();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        fileStream.write(value);
-        downloaded += value.length;
-
-        if (contentLength > 0) {
-          const progress = Math.round((downloaded / contentLength) * 100);
-          this.status.downloadProgress = progress;
-          this.emit();
-        }
-      }
-    } finally {
-      fileStream.end();
-    }
-
-    // Wait for file to finish writing
-    await new Promise<void>((resolve, reject) => {
-      fileStream.on("finish", resolve);
-      fileStream.on("error", reject);
-    });
-  }
-
-  private async verifyChecksum(filePath: string, checksumUrl: string): Promise<void> {
-    // Download expected checksum
-    const response = await fetch(checksumUrl);
-    if (!response.ok) {
-      throw new Error("Failed to download checksum");
-    }
-
-    const checksumContent = await response.text();
-    const expectedHash = checksumContent.split(/\s+/)[0]?.toLowerCase();
-
-    if (!expectedHash || expectedHash.length !== 64) {
-      throw new Error("Invalid checksum format");
-    }
-
-    // Calculate actual checksum
-    const hash = createHash("sha256");
-    const stream = createReadStream(filePath);
-
-    for await (const chunk of stream) {
-      hash.update(chunk);
-    }
-
-    const actualHash = hash.digest("hex").toLowerCase();
-
-    if (actualHash !== expectedHash) {
-      throw new Error(`Checksum mismatch: expected ${expectedHash.slice(0, 8)}..., got ${actualHash.slice(0, 8)}...`);
     }
   }
 }

@@ -4,7 +4,8 @@
   "private": true,
   "main": "dist/shell/main.mjs",
   "scripts": {
-    "dev": "bun run build:server && bun run build:shell && bun run rebuild && KOMBUSE_MODE=dev ELECTRON_RUN_AS_NODE= electron .",
+    "dev:foo": "bun run build:server && bun run build:shell && bun run rebuild && KOMBUSE_MODE=dev ELECTRON_RUN_AS_NODE= electron .",
+    "dev": "bun run build:server && bun run build:shell && bun run rebuild && KOMBUSE_PORT=3331 KOMBUSE_MODE=dev ELECTRON_RUN_AS_NODE= electron .",
     "preview": "bun run build:shell && bun run build:package && bun run rebuild && KOMBUSE_MODE=preview ELECTRON_RUN_AS_NODE= electron .",
     "build": "bun run build:shell",
     "build:server": "bun run --cwd ../server build",
@@ -26,21 +27,19 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@kombuse/pkg": "*",
     "@kombuse/types": "*",
     "better-sqlite3": "^12.6.2",
     "bindings": "^1.5.0",
     "dotenv": "^17.2.3",
     "electron-updater": "^6.3.9",
-    "server": "*",
-    "semver": "^7.7.3",
-    "tar": "^7.4.3"
+    "server": "*"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.7.1",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/mime-types": "^3.0.1",
-    "@types/semver": "^7.5.0",
     "electron": "40.3.0",
     "electron-builder": "^26.7.0",
     "esbuild": "^0.25.0",

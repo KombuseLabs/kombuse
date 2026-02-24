@@ -8,6 +8,7 @@ export interface PackageVersionInfo {
   localPath?: string
   checksum?: string
   publishedAt?: string
+  archiveFormat?: 'tar.gz'
 }
 
 export interface DownloadProgress {

@@ -17,21 +17,19 @@
       "name": "desktop",
       "version": "1.0.0-rc.2",
       "dependencies": {
+        "@kombuse/pkg": "*",
         "@kombuse/types": "*",
         "better-sqlite3": "^12.6.2",
         "bindings": "^1.5.0",
         "dotenv": "^17.2.3",
         "electron-updater": "^6.3.9",
-        "semver": "^7.7.3",
         "server": "*",
-        "tar": "^7.4.3",
       },
       "devDependencies": {
         "@electron/rebuild": "^3.7.1",
         "@repo/eslint-config": "*",
         "@repo/typescript-config": "*",
         "@types/mime-types": "^3.0.1",
-        "@types/semver": "^7.5.0",
         "electron": "40.3.0",
         "electron-builder": "^26.7.0",
         "esbuild": "^0.25.0",
@@ -201,6 +199,24 @@
       },
       "peerDependencies": {
         "better-sqlite3": "^12.6.2",
+      },
+    },
+    "packages/pkg": {
+      "name": "@kombuse/pkg",
+      "version": "0.1.0",
+      "dependencies": {
+        "@kombuse/types": "*",
+        "semver": "^7.7.3",
+        "tar": "^7.4.3",
+      },
+      "devDependencies": {
+        "@repo/eslint-config": "*",
+        "@repo/typescript-config": "*",
+        "@types/node": "^22.15.3",
+        "@types/semver": "^7.5.0",
+        "eslint": "^9.39.1",
+        "typescript": "5.9.2",
+        "vitest": "^3.0.0",
       },
     },
     "packages/services": {
@@ -632,6 +648,8 @@
     "@kombuse/mcp": ["@kombuse/mcp@workspace:packages/mcp"],
 
     "@kombuse/persistence": ["@kombuse/persistence@workspace:packages/persistence"],
+
+    "@kombuse/pkg": ["@kombuse/pkg@workspace:packages/pkg"],
 
     "@kombuse/services": ["@kombuse/services@workspace:packages/services"],
 

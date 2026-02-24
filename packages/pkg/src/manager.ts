@@ -1,7 +1,9 @@
 import { join } from 'node:path'
 import { homedir } from 'node:os'
+import { existsSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { extract } from 'tar'
 import type {
   FeedProvider,
   PackageManagerOptions,
@@ -143,6 +145,22 @@ export class PackageManager {
         await verifySha256(tempContent, versionInfo.checksum)
       }
 
+      // Extract archive if needed
+      let contentToCache = tempContent
+      if (versionInfo.archiveFormat === 'tar.gz') {
+        onProgress?.({
+          phase: 'extracting',
+          percent: -1,
+          bytesDownloaded: 0,
+          bytesTotal: 0,
+        })
+        const extractDir = join(tempDir, 'extracted')
+        await mkdir(extractDir, { recursive: true })
+        await extract({ file: tempContent, cwd: extractDir })
+        const packageDir = join(extractDir, 'package')
+        contentToCache = existsSync(packageDir) ? packageDir : extractDir
+      }
+
       // Store in cache
       onProgress?.({
         phase: 'caching',
@@ -153,7 +171,7 @@ export class PackageManager {
       const entry = await this.cache.put(
         packageName,
         version,
-        tempContent,
+        contentToCache,
         versionInfo.manifest
       )
 
