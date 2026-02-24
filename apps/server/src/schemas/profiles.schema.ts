@@ -24,6 +24,7 @@ export const profileFiltersSchema = z.object({
   is_active: z.coerce.boolean().optional(),
   search: z.string().optional(),
   has_agent: z.coerce.boolean().optional(),
+  project_id: z.string().uuid().optional(),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 })

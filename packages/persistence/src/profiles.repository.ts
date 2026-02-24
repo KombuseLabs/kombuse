@@ -34,6 +34,10 @@ export const profilesRepository = {
         `%${filters.search}%`
       )
     }
+    if (filters?.has_agent && filters?.project_id) {
+      conditions.push('(agents.project_id IS NULL OR agents.project_id = ?)')
+      params.push(filters.project_id)
+    }
 
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -178,6 +182,10 @@ export const profilesRepository = {
     if (input.name !== undefined) {
       fields.push('name = ?')
       params.push(input.name)
+    }
+    if (input.slug !== undefined) {
+      fields.push('slug = ?')
+      params.push(input.slug)
     }
     if (input.email !== undefined) {
       fields.push('email = ?')

@@ -52,7 +52,7 @@ export function useTextareaAutocomplete({
 
   const { data: mentionProfiles = [] } = useProfileSearch(
     mentionContext.query,
-    { enabled: isProfileMention }
+    { enabled: isProfileMention, projectId }
   )
   const { data: mentionTickets = [] } = useTicketSearch(
     mentionContext.query,

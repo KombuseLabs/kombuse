@@ -43,6 +43,7 @@ export interface CreateProfileInput {
  */
 export interface UpdateProfileInput {
   name?: string
+  slug?: string | null
   email?: string
   description?: string
   avatar_url?: string
@@ -58,6 +59,7 @@ export interface ProfileFilters {
   is_active?: boolean
   search?: string
   has_agent?: boolean
+  project_id?: string
   limit?: number
   offset?: number
 }

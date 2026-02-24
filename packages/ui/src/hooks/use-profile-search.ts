@@ -13,18 +13,20 @@ function useDebouncedValue(value: string, delay: number): string {
   return debounced
 }
 
-export function useProfileSearch(query: string, options?: { enabled?: boolean }) {
+export function useProfileSearch(query: string, options?: { enabled?: boolean; projectId?: string }) {
   const enabled = options?.enabled ?? query.length > 0
+  const projectId = options?.projectId
   const debouncedQuery = useDebouncedValue(query, 200)
 
   return useQuery({
-    queryKey: ['profiles', 'search', debouncedQuery],
+    queryKey: ['profiles', 'search', debouncedQuery, projectId],
     queryFn: () =>
       profilesApi.list({
         ...(debouncedQuery ? { search: debouncedQuery } : {}),
         type: 'agent',
         is_active: true,
         has_agent: true,
+        project_id: projectId,
         limit: 10,
       }),
     enabled,

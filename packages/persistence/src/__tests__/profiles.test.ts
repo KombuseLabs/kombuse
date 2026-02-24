@@ -14,7 +14,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
-import { setupTestDb } from '../test-utils'
+import { setupTestDb, TEST_USER_ID } from '../test-utils'
 import { profilesRepository } from '../profiles.repository'
 
 // Helper to generate unique emails
@@ -379,6 +379,75 @@ describe('profilesRepository', () => {
       const unfilteredIds = unfiltered.map((p) => p.id)
       expect(unfilteredIds, 'Should include both when has_agent not set').toContain(withAgent.id)
       expect(unfilteredIds, 'Should include both when has_agent not set').toContain(orphan.id)
+    })
+
+    it('should filter by project_id when has_agent is true', () => {
+      const projectA = 'project-a-' + Date.now()
+      const projectB = 'project-b-' + Date.now()
+      db.prepare("INSERT INTO projects (id, owner_id, name) VALUES (?, ?, 'Project A')").run(projectA, TEST_USER_ID)
+      db.prepare("INSERT INTO projects (id, owner_id, name) VALUES (?, ?, 'Project B')").run(projectB, TEST_USER_ID)
+
+      // Agent in project A
+      const agentA = profilesRepository.create({
+        type: 'agent',
+        name: uniqueName('Agent A'),
+        slug: 'agent-a-' + Date.now(),
+      })
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt, project_id) VALUES (?, 'prompt', ?)"
+      ).run(agentA.id, projectA)
+
+      // Agent in project B with same name
+      const agentB = profilesRepository.create({
+        type: 'agent',
+        name: uniqueName('Agent B'),
+        slug: 'agent-b-' + Date.now(),
+      })
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt, project_id) VALUES (?, 'prompt', ?)"
+      ).run(agentB.id, projectB)
+
+      // Global agent (no project_id)
+      const globalAgent = profilesRepository.create({
+        type: 'agent',
+        name: uniqueName('Global Agent'),
+        slug: 'global-agent-' + Date.now(),
+      })
+      db.prepare(
+        "INSERT INTO agents (id, system_prompt) VALUES (?, 'prompt')"
+      ).run(globalAgent.id)
+
+      // Filter by project A: should see agent A + global, not agent B
+      const resultA = profilesRepository.list({
+        type: 'agent',
+        has_agent: true,
+        project_id: projectA,
+      })
+      const idsA = resultA.map((p) => p.id)
+      expect(idsA, 'Should include project A agent').toContain(agentA.id)
+      expect(idsA, 'Should include global agent').toContain(globalAgent.id)
+      expect(idsA, 'Should exclude project B agent').not.toContain(agentB.id)
+
+      // Filter by project B: should see agent B + global, not agent A
+      const resultB = profilesRepository.list({
+        type: 'agent',
+        has_agent: true,
+        project_id: projectB,
+      })
+      const idsB = resultB.map((p) => p.id)
+      expect(idsB, 'Should include project B agent').toContain(agentB.id)
+      expect(idsB, 'Should include global agent').toContain(globalAgent.id)
+      expect(idsB, 'Should exclude project A agent').not.toContain(agentA.id)
+
+      // Without project_id: should see all agents
+      const resultAll = profilesRepository.list({
+        type: 'agent',
+        has_agent: true,
+      })
+      const idsAll = resultAll.map((p) => p.id)
+      expect(idsAll, 'Should include all agents').toContain(agentA.id)
+      expect(idsAll, 'Should include all agents').toContain(agentB.id)
+      expect(idsAll, 'Should include all agents').toContain(globalAgent.id)
     })
   })
 
