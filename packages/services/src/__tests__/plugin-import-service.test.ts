@@ -849,17 +849,15 @@ describe('pluginImportService', () => {
       // Agent should be updated, not recreated
       expect(second.agents_created).toBe(0)
       expect(second.agents_updated).toBe(1)
-      expect(second.plugin_id).not.toBe(first.plugin_id)
+      // Overwrite updates the plugin row in place (same ID)
+      expect(second.plugin_id).toBe(first.plugin_id)
 
       // Agent ID should be preserved
       const updatedAgent = agentsRepository.getBySlug('ow-agent')
       expect(updatedAgent!.id).toBe(originalId)
       expect(updatedAgent!.plugin_id).toBe(second.plugin_id)
 
-      // Old plugin should be gone
-      expect(pluginsRepository.get(first.plugin_id)).toBeNull()
-
-      // New plugin should exist
+      // Plugin should still exist (updated in place)
       expect(pluginsRepository.get(second.plugin_id)).not.toBeNull()
     })
 
@@ -2107,6 +2105,91 @@ describe('pluginImportService', () => {
       } finally {
         spy.mockRestore()
       }
+    })
+  })
+
+  describe('cross-project installs', () => {
+    it('should create separate agents when same plugin is installed in two projects', () => {
+      const PROJECT_B = 'test-project-2'
+      const db = getDatabase()
+      db.prepare("INSERT INTO projects (id, name, owner_id) VALUES (?, 'Project B', ?)").run(
+        PROJECT_B, TEST_USER_ID,
+      )
+
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'cross-proj-plugin' },
+          agents: [
+            {
+              filename: 'bot.md',
+              frontmatter: { name: 'Bot', slug: 'bot', description: 'A bot' },
+              body: 'You are a bot.',
+            },
+          ],
+        })
+      )
+
+      // Install in project A
+      const r1 = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(r1.agents_created).toBe(1)
+
+      // Install in project B — this used to crash with UNIQUE constraint on agents.id
+      const r2 = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: PROJECT_B,
+      })
+      expect(r2.agents_created).toBe(1)
+
+      // Both projects should have their own agent
+      const agentA = agentsRepository.getBySlugAndProject('bot', TEST_PROJECT_ID)
+      const agentB = agentsRepository.getBySlugAndProject('bot', PROJECT_B)
+      expect(agentA, 'Agent should exist in project A').not.toBeNull()
+      expect(agentB, 'Agent should exist in project B').not.toBeNull()
+      expect(agentA!.id).not.toBe(agentB!.id)
+    })
+
+    it('should overwrite-reinstall in project B without slug collision from project A profiles', () => {
+      const PROJECT_B = 'test-project-2'
+      const db = getDatabase()
+      db.prepare("INSERT INTO projects (id, name, owner_id) VALUES (?, 'Project B', ?)").run(
+        PROJECT_B, TEST_USER_ID,
+      )
+
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'cross-proj-plugin' },
+          agents: [
+            {
+              filename: 'bot.md',
+              frontmatter: { name: 'Bot', slug: 'bot', description: 'A bot' },
+              body: 'You are a bot.',
+            },
+          ],
+        })
+      )
+
+      // Install in both projects
+      pluginImportService.installPackage({ package_path: pkg, project_id: TEST_PROJECT_ID })
+      pluginImportService.installPackage({ package_path: pkg, project_id: PROJECT_B })
+
+      // Overwrite-reinstall in project B — used to crash with UNIQUE constraint on profiles.slug
+      const r = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: PROJECT_B,
+        overwrite: true,
+      })
+      expect(r.agents_updated).toBe(1)
+
+      // Both projects' agents still exist with correct profiles
+      const agentA = agentsRepository.getBySlugAndProject('bot', TEST_PROJECT_ID)
+      const agentB = agentsRepository.getBySlugAndProject('bot', PROJECT_B)
+      expect(agentA).not.toBeNull()
+      expect(agentB).not.toBeNull()
+      expect(profilesRepository.get(agentA!.id)).not.toBeNull()
+      expect(profilesRepository.get(agentB!.id)).not.toBeNull()
     })
   })
 })

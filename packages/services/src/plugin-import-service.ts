@@ -68,30 +68,38 @@ export class PluginImportService implements IPluginImportService {
     let oldLabelsBySlug = new Map<string, number>()
     if (existing && overwrite) {
       const db = getDatabase()
-      // Collect agent IDs BEFORE plugin delete (FK cascade nulls plugin_id)
       const oldAgents = db
         .prepare('SELECT id FROM agents WHERE plugin_id = ?')
         .all(existing.id) as { id: string }[]
       oldPluginAgentIds = new Set(oldAgents.map((a) => a.id))
-      // Collect old labels for remap (labels survive plugin delete via ON DELETE SET NULL)
       const oldLabels = db
         .prepare('SELECT id, slug FROM labels WHERE plugin_id = ?')
         .all(existing.id) as { id: number; slug: string }[]
       oldLabelsBySlug = new Map(oldLabels.map((l) => [l.slug, l.id]))
-      pluginsRepository.delete(existing.id)
     }
 
-    // Step 3: Create plugin row
-    const pluginId = crypto.randomUUID()
-    pluginsRepository.create({
-      id: pluginId,
-      project_id,
-      name: manifest.name,
-      version: manifest.version,
-      description: manifest.description,
-      directory: package_path,
-      manifest: JSON.stringify(manifest),
-    })
+    // Step 3: Create or update plugin row
+    // On overwrite, UPDATE in place to avoid FK CASCADE SET NULL side effects
+    // (deleting the plugin would orphan profiles and collide with other projects)
+    const pluginId = existing?.id ?? crypto.randomUUID()
+    if (existing && overwrite) {
+      pluginsRepository.update(pluginId, {
+        version: manifest.version,
+        description: manifest.description,
+        directory: package_path,
+        manifest: JSON.stringify(manifest),
+      })
+    } else {
+      pluginsRepository.create({
+        id: pluginId,
+        project_id,
+        name: manifest.name,
+        version: manifest.version,
+        description: manifest.description,
+        directory: package_path,
+        manifest: JSON.stringify(manifest),
+      })
+    }
 
     const warnings: string[] = []
     let labelsCreated = 0
@@ -107,6 +115,7 @@ export class PluginImportService implements IPluginImportService {
     // Step 4: Import labels
     const labelNameToId = new Map<string, number>()
     const labelNameToSlug = new Map<string, string | null>()
+    const importedLabelSlugs = new Set<string>()
 
     // Preload existing project labels
     const existingLabels = labelsRepository.getByProject(project_id)
@@ -118,6 +127,7 @@ export class PluginImportService implements IPluginImportService {
     if (manifest.kombuse?.labels) {
       for (const exportedLabel of manifest.kombuse.labels) {
         const slug = toSlug(exportedLabel.name)
+        importedLabelSlugs.add(slug)
         const existingLabel = labelsRepository.getBySlugAndPlugin(slug, project_id, pluginId)
           ?? existingLabels.find((l) => l.name === exportedLabel.name)
 
@@ -147,7 +157,7 @@ export class PluginImportService implements IPluginImportService {
       }
     }
 
-    // Step 4b: Remap ticket-label associations from old labels to newly imported ones
+    // Step 4b: Remap ticket-label associations and orphan removed labels
     if (oldLabelsBySlug.size > 0) {
       const newLabelsBySlug = new Map<string, number>()
       const currentLabels = labelsRepository.getByProject(project_id, true)
@@ -162,6 +172,9 @@ export class PluginImportService implements IPluginImportService {
         if (newLabelId && newLabelId !== oldLabelId) {
           labelsRepository.remapTicketLabels(oldLabelId, newLabelId)
           labelsRepository.delete(oldLabelId)
+        } else if (!importedLabelSlugs.has(slug)) {
+          // Label was removed from manifest — orphan it (detach from plugin)
+          labelsRepository.update(oldLabelId, { plugin_id: null })
         }
       }
     }
@@ -252,9 +265,15 @@ export class PluginImportService implements IPluginImportService {
           // or an orphaned profile (plugin_id NULL from a previous uninstall)
           const existingProfile = profilesRepository.getBySlugAndPlugin(slug, pluginId)
             ?? profilesRepository.getBySlugOrphaned(slug)
-          const agentId = existingProfile?.id ?? crypto.randomUUID()
 
-          if (existingProfile) {
+          // Guard: if the profile's agent already exists (e.g. in another project),
+          // don't reuse it — create a fresh agent+profile pair
+          const reusableProfile = existingProfile && !agentsRepository.get(existingProfile.id)
+            ? existingProfile
+            : null
+          const agentId = reusableProfile?.id ?? crypto.randomUUID()
+
+          if (reusableProfile) {
             // Reactivate the profile
             profilesRepository.update(agentId, {
               name: frontmatter.name,
