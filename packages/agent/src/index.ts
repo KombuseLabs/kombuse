@@ -1,5 +1,36 @@
-export * from './types'
-export * from './errors'
+export {
+  BACKEND_TYPES,
+  type AgentBackend,
+  type AgentBackendLifecycleState,
+  type ImageAttachment,
+  type AgentCompleteEvent,
+  type AgentCompleteReason,
+  type AgentErrorEvent,
+  type AgentEvent,
+  type AgentEventBase,
+  type AgentLifecycleEvent,
+  type AgentMessageEvent,
+  type AgentMessageRole,
+  type AgentPermissionRequestEvent,
+  type PermissionResponseOptions,
+  type AgentRawEvent,
+  type AgentToolResultEvent,
+  type AgentToolUseEvent,
+  type BackendType,
+  type ConversationContext,
+  type PermissionConfig,
+  type StartOptions,
+  type SpawnOptions,
+  type ProcessCallbacks,
+  type ProcessStatus,
+  type ProcessInfo,
+  type ProcessBehavior,
+} from './types'
+export {
+  ProcessError,
+  createProcessError,
+  type ProcessErrorCode,
+} from './errors'
 export {
   Process,
   spawn,

@@ -1,3 +1,9 @@
 // Core logic package
 
-export * from './commands'
+export {
+  createCommandRegistry,
+  isMacPlatform,
+  normalizeKeybinding,
+  eventToKeybinding,
+  formatKeybinding,
+} from './commands'

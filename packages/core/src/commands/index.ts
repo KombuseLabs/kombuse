@@ -1,2 +1,7 @@
 export { createCommandRegistry } from './registry'
-export * from './keybindings'
+export {
+  isMacPlatform,
+  normalizeKeybinding,
+  eventToKeybinding,
+  formatKeybinding,
+} from './keybindings'

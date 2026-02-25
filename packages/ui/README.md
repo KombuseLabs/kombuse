@@ -2053,7 +2053,9 @@ function MyComponent() {
 
 ## Adding New Components
 
-1. **Base components** (shadcn/ui): Add to `src/base/` and re-export from `src/base/index.ts`
-2. **Domain components**: Add to `src/components/` and re-export from `src/components/index.ts`
+1. **Base components** (shadcn/ui): Add to `src/base/` and add an explicit named export in `src/base/index.ts`
+2. **Domain components**: Add to `src/components/` and add an explicit named export in `src/components/index.ts` (import directly from the source file, not through an intermediate barrel)
 3. **Hooks**: Add to `src/hooks/` and re-export from `src/hooks/index.ts`
 4. **Providers**: Add to `src/providers/` and re-export from `src/providers/index.ts`
+
+> **Note:** All barrel files use explicit named exports (no `export * from`). Small subdirectory barrels (agent-picker, chat-input, comments, timeline, sessions, sidebar) have been removed — `components/index.ts` imports directly from source files.
