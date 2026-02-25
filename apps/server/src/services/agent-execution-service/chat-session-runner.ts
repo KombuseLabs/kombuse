@@ -960,6 +960,18 @@ export function startAgentChatSession(
       `\n\n## Project Agent Instructions (AGENTS.md)\n${agentsMdContent}`
   }
 
+  if (resolvedSystemPrompt) {
+    const systemPromptEvent: AgentEvent = {
+      type: 'raw',
+      eventId: crypto.randomUUID(),
+      backend: backend.name,
+      timestamp: Date.now(),
+      sourceType: 'system_prompt',
+      data: { content: resolvedSystemPrompt },
+    }
+    dependencies.sessionPersistence.persistEvent(persistentSessionId, systemPromptEvent)
+  }
+
   const allowedTools = presetToAllowedTools(preset)
 
   const restoredMetadata = dependencies.stateMachine.getMetadata(persistentSessionId)
