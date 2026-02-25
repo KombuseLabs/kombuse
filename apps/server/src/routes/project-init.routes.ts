@@ -23,11 +23,19 @@ export async function projectInitRoutes(fastify: FastifyInstance) {
 
     const bridgeConfig = resolveKombuseBridgeCommandConfig()
 
-    const result = initProject(project.local_path, {
-      ...parseResult.data,
-      mcpBridgeConfig: bridgeConfig,
-    })
+    try {
+      const result = initProject(project.local_path, {
+        ...parseResult.data,
+        mcpBridgeConfig: bridgeConfig,
+      })
 
-    return result
+      return result
+    } catch (error) {
+      const message = (error as Error).message
+      if (message.includes('does not exist or is not a directory')) {
+        return reply.status(400).send({ error: message })
+      }
+      throw error
+    }
   })
 }
