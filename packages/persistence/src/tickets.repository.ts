@@ -526,19 +526,18 @@ export const ticketsRepository = {
     const ticketId = createTicket(input)
     const ticket = this._getInternal(ticketId) as Ticket
 
-    if (ticket.triggers_enabled) {
-      // Emit ticket.created event
-      const authorProfile = ticket.author_id ? profilesRepository.get(ticket.author_id) : null
-      const authorActorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
-      eventsRepository.create({
-        event_type: EVENT_TYPES.TICKET_CREATED,
-        project_id: ticket.project_id,
-        ticket_id: ticket.id,
-        actor_id: ticket.author_id,
-        actor_type: authorActorType,
-        payload: { title: ticket.title },
-      })
-    }
+    // Always emit ticket.created event — trigger orchestrator handles
+    // its own triggers_enabled check independently (trigger-orchestrator.ts:158)
+    const authorProfile = ticket.author_id ? profilesRepository.get(ticket.author_id) : null
+    const authorActorType: ActorType = authorProfile?.type === 'agent' ? 'agent' : 'user'
+    eventsRepository.create({
+      event_type: EVENT_TYPES.TICKET_CREATED,
+      project_id: ticket.project_id,
+      ticket_id: ticket.id,
+      actor_id: ticket.author_id,
+      actor_type: authorActorType,
+      payload: { title: ticket.title },
+    })
 
     return ticket
   },

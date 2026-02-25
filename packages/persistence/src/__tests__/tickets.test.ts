@@ -112,7 +112,7 @@ describe('ticketsRepository', () => {
       expect(rows[0]?.added_by_id).toBe(TEST_USER_ID)
     })
 
-    it('should create a ticket with triggers disabled and suppress ticket.created event', () => {
+    it('should create a ticket with triggers disabled and still emit ticket.created event', () => {
       db.prepare('DELETE FROM events').run()
 
       const ticket = ticketsRepository.create({
@@ -121,8 +121,12 @@ describe('ticketsRepository', () => {
       })
 
       expect(ticket.triggers_enabled).toBe(false)
+      // Event must always be emitted for WebSocket broadcast (UI refresh).
+      // The trigger orchestrator independently checks triggers_enabled
+      // before running agent triggers (trigger-orchestrator.ts:158).
       const events = eventsRepository.list({ event_type: 'ticket.created' })
-      expect(events).toHaveLength(0)
+      expect(events).toHaveLength(1)
+      expect(events[0]?.ticket_id).toBe(ticket.id)
     })
 
     it('should create a ticket with loop protection disabled', () => {

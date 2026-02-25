@@ -325,10 +325,12 @@ export function AppProvider({
           }
           return next
         })
+        // Invalidate ticket queries as a fallback for missed WebSocket events
+        queryClient.invalidateQueries({ queryKey: ['tickets'], exact: false })
       }).catch(() => {})
     }, 30_000)
     return () => clearInterval(interval)
-  }, [addActiveSession])
+  }, [addActiveSession, queryClient])
 
   // Fetch smart label IDs when project changes
   useEffect(() => {
