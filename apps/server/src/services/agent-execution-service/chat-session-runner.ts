@@ -2,6 +2,7 @@ import {
   agentInvocationsRepository,
   agentsRepository,
   commentsRepository,
+  labelsRepository,
   profilesRepository,
   projectsRepository,
   ticketsRepository,
@@ -932,6 +933,19 @@ export function startAgentChatSession(
         const agentRecord = agentsRepository.get(profile.id)
         return { id: profile.id, name: profile.name, description: profile.description, slug: agentRecord?.slug ?? null }
       }),
+      project: effectiveProjectId
+        ? projectsRepository.get(effectiveProjectId)
+        : undefined,
+      ticket: ticketRecord
+        ? {
+            ...ticketRecord,
+            author: profilesRepository.get(ticketRecord.author_id) ?? undefined,
+            assignee: ticketRecord.assignee_id
+              ? profilesRepository.get(ticketRecord.assignee_id) ?? undefined
+              : undefined,
+            labels: labelsRepository.getTicketLabels(ticketRecord.id),
+          }
+        : undefined,
     }
     resolvedSystemPrompt = renderTemplateWithIncludes(agent.system_prompt, preambleContext, agent.plugin_id)
   }
