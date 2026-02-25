@@ -16,6 +16,7 @@ import {
   useUpdatePluginSources,
 } from '@kombuse/ui/hooks'
 import { Button, Input, Label, Checkbox, toast, Tooltip, TooltipTrigger, TooltipContent } from '@kombuse/ui/base'
+import { cn } from '@kombuse/ui/lib/utils'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import type { Plugin as PluginType, AvailablePlugin, PluginSourceConfig } from '@kombuse/types'
 
@@ -141,7 +142,7 @@ function AvailablePluginsList({ projectId }: { projectId: string }) {
         onError: (error) => {
           if (error.message === 'plugin_already_installed') {
             const confirmed = window.confirm(
-              `Plugin "${plugin.name}" is already installed. Reinstall it?`
+              `Plugin "${plugin.name}" is already installed. ${plugin.has_update ? 'Update' : 'Reinstall'} it?`
             )
             if (confirmed) {
               handleInstall(plugin, true)
@@ -176,8 +177,13 @@ function AvailablePluginsList({ projectId }: { projectId: string }) {
               <span className="text-xs text-muted-foreground">v{plugin.version}</span>
               <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{plugin.source}</span>
               {plugin.installed && (
-                <span className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-1.5 py-0.5 rounded">
-                  installed
+                <span className={cn(
+                  "text-xs px-1.5 py-0.5 rounded",
+                  plugin.has_update
+                    ? "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
+                    : "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                )}>
+                  {plugin.has_update ? 'update available' : 'installed'}
                 </span>
               )}
             </div>
@@ -192,7 +198,7 @@ function AvailablePluginsList({ projectId }: { projectId: string }) {
             disabled={installPlugin.isPending}
           >
             <Download className="size-4 mr-1" />
-            {plugin.installed ? 'Reinstall' : 'Install'}
+            {!plugin.installed ? 'Install' : plugin.has_update ? 'Update' : 'Reinstall'}
           </Button>
         </div>
       ))}
