@@ -20,6 +20,7 @@ import {
   type ServerMessage,
   type SessionMetadata,
 } from '@kombuse/types'
+import { createAppLogger } from '@kombuse/core/logger'
 import { createSessionLogger } from '../../logger'
 import { wsHub } from '../../websocket/hub'
 import {
@@ -42,6 +43,8 @@ import type {
 } from './types'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+const log = createAppLogger('ChatSessionRunner')
 
 /**
  * Read AGENTS.md from a project directory if it exists.
@@ -541,8 +544,8 @@ export function startAgentChatSession(
       const resolvedAgent = dependencies.getAgent(firstInvocation.agent_id)
       if (resolvedAgent?.is_enabled) {
         agent = resolvedAgent
-        console.log(
-          `[Server] Resolved agent ${resolvedAgent.id} from session ${kombuseSessionId}`
+        log.debug(
+          `Resolved agent ${resolvedAgent.id} from session ${kombuseSessionId}`
         )
       }
     }
@@ -554,8 +557,8 @@ export function startAgentChatSession(
       const resolvedAgent = dependencies.getAgent(existingSessionRecord.agent_id)
       if (resolvedAgent?.is_enabled) {
         agent = resolvedAgent
-        console.log(
-          `[Server] Resolved agent ${resolvedAgent.id} from session.agent_id for ${kombuseSessionId}`
+        log.debug(
+          `Resolved agent ${resolvedAgent.id} from session.agent_id for ${kombuseSessionId}`
         )
       }
     }
@@ -704,8 +707,8 @@ export function startAgentChatSession(
     && existingBackend.isRunning()
     && existingBackend.name !== resolvedBackendType
   ) {
-    console.log(
-      `[Server] Backend mismatch for session ${appSessionId}; replacing ${existingBackend.name} with ${resolvedBackendType}`
+    log.debug(
+      `Backend mismatch for session ${appSessionId}; replacing ${existingBackend.name} with ${resolvedBackendType}`
     )
     void existingBackend.stop().catch(() => {
       // Best effort stop when swapping backend type.

@@ -1,3 +1,4 @@
+import { createAppLogger } from '@kombuse/core/logger'
 import type { FastifyInstance } from 'fastify'
 import { projectService } from '@kombuse/services'
 import {
@@ -10,6 +11,8 @@ import {
   initializeProjectCodexConfig,
 } from '../services/codex-mcp-config'
 
+const log = createAppLogger('ProjectRoutes')
+
 function configureCodexForProject(localPath: string | null | undefined): void {
   if (!localPath) {
     return
@@ -18,10 +21,9 @@ function configureCodexForProject(localPath: string | null | undefined): void {
     ensureCodexProjectTrust(localPath)
     initializeProjectCodexConfig(localPath)
   } catch (error) {
-    console.warn(
-      '[Server] Failed to configure Codex for project path:',
-      localPath,
-      error instanceof Error ? error.message : error
+    log.warn(
+      `Failed to configure Codex for project path: ${localPath}`,
+      { error: error instanceof Error ? error.message : String(error) }
     )
   }
 }

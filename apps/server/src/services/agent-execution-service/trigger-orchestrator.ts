@@ -1,4 +1,5 @@
 import { statSync } from 'node:fs'
+import { createAppLogger } from '@kombuse/core/logger'
 import { resolve as resolvePath } from 'node:path'
 import { agentInvocationsRepository, commentsRepository, sessionsRepository, ticketsRepository } from '@kombuse/persistence'
 import { buildTemplateContext, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplateWithIncludes } from '@kombuse/services'
@@ -9,6 +10,8 @@ import { broadcastTicketAgentStatus } from './backend-registry'
 import { readAgentsMd, startAgentChatSession } from './chat-session-runner'
 import { emitAgentEvent } from './emit-agent-event'
 import type { AgentExecutionDependencies } from './types'
+
+const log = createAppLogger('TriggerOrchestrator')
 
 /**
  * Result of building a trigger prompt — separates system prompt from user message.
@@ -86,12 +89,12 @@ export function resolveProjectPathForProject(projectId: string | null): string |
       return candidatePath
     }
 
-    console.warn(
-      `[Server] Project ${projectId} local_path is not a directory: ${candidatePath}`
+    log.warn(
+      `Project ${projectId} local_path is not a directory: ${candidatePath}`
     )
   } catch {
-    console.warn(
-      `[Server] Project ${projectId} local_path does not exist: ${candidatePath}`
+    log.warn(
+      `Project ${projectId} local_path does not exist: ${candidatePath}`
     )
   }
 
@@ -144,8 +147,8 @@ export async function processEventAndRunAgents(
   }
 
   if (event.kombuse_session_id && !isPassthroughEvent) {
-    console.log(
-      `[Server] Skipping event #${event.id} — session ${event.kombuse_session_id} already active`
+    log.debug(
+      `Skipping event #${event.id} — session ${event.kombuse_session_id} already active`
     )
     return
   }
@@ -153,8 +156,8 @@ export async function processEventAndRunAgents(
   if (typeof event.ticket_id === 'number') {
     const ticket = ticketsRepository._getInternal(event.ticket_id)
     if (ticket && !ticket.triggers_enabled) {
-      console.log(
-        `[Server] Skipping event #${event.id} — triggers disabled on ticket #${event.ticket_id}`
+      log.debug(
+        `Skipping event #${event.id} — triggers disabled on ticket #${event.ticket_id}`
       )
       return
     }
@@ -166,14 +169,14 @@ export async function processEventAndRunAgents(
     return
   }
 
-  console.log(
-    `[Server] Created ${invocations.length} invocation(s), running agents via chat infrastructure...`
+  log.debug(
+    `Created ${invocations.length} invocation(s), running agents via chat infrastructure...`
   )
 
   for (const invocation of invocations) {
     const agent = dependencies.getAgent(invocation.agent_id)
     if (!agent) {
-      console.warn(`[Server] Agent ${invocation.agent_id} not found for invocation #${invocation.id}`)
+      log.warn(`Agent ${invocation.agent_id} not found for invocation #${invocation.id}`)
       continue
     }
 
@@ -185,7 +188,7 @@ export async function processEventAndRunAgents(
         const recentCount = agentInvocationsRepository.countRecentByTicketId(ticketId)
         if (recentCount >= maxDepth) {
           const errorMessage = `Chain depth limit reached (${maxDepth} invocations on ticket #${ticketId} in the last hour). Halting to prevent infinite loops.`
-          console.warn(`[Server] ${errorMessage}`)
+          log.warn(errorMessage)
           agentInvocationsRepository.update(invocation.id, {
             status: 'failed',
             error: errorMessage,
@@ -209,7 +212,7 @@ export async function processEventAndRunAgents(
               body: `**Agent loop detected** — ${errorMessage}`,
             })
           } catch (commentError) {
-            console.warn(`[Server] Failed to post chain depth comment on ticket #${ticketId}:`, commentError)
+            log.error(`Failed to post chain depth comment on ticket #${ticketId}`, { error: String(commentError) })
           }
           continue
         }
@@ -224,7 +227,7 @@ export async function processEventAndRunAgents(
       )
       if (existingActive && existingActive.id !== invocation.id) {
         const errorMessage = `Skipped: agent ${invocation.agent_id} already has active invocation #${existingActive.id} on ticket #${ticketId}`
-        console.log(`[Server] ${errorMessage}`)
+        log.debug(errorMessage)
         agentInvocationsRepository.update(invocation.id, {
           status: 'failed',
           error: errorMessage,
@@ -276,8 +279,8 @@ export async function processEventAndRunAgents(
       const eligible = sessionsRepository.findMostRecentForTicketAgent(ticketId, invocation.agent_id)
       if (eligible?.kombuse_session_id && isValidSessionId(eligible.kombuse_session_id)) {
         mentionResolvedSessionId = eligible.kombuse_session_id
-        console.log(
-          `[Server] Mention session resolution: reusing session ${mentionResolvedSessionId} ` +
+        log.debug(
+          `Mention session resolution: reusing session ${mentionResolvedSessionId} ` +
           `(status=${eligible.status}) for agent ${invocation.agent_id} on ticket #${ticketId}`
         )
       }

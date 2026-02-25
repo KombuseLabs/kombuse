@@ -1,3 +1,4 @@
+import { createAppLogger } from '@kombuse/core/logger'
 import type { FastifyInstance } from 'fastify'
 import type { RawData, WebSocket } from 'ws'
 import type { ClientMessage, ServerMessage } from '@kombuse/types'
@@ -5,6 +6,8 @@ import { wsHub } from './hub'
 import { serializeAgentStreamEvent } from './serialize-agent-event'
 import { resolveTicketId } from '@kombuse/persistence'
 import { respondToPermission, startAgentChatSession, stopAgentSession } from '../services/agent-execution-service'
+
+const log = createAppLogger('WebSocket')
 
 /**
  * WebSocket route handler for real-time event subscriptions.
@@ -78,7 +81,7 @@ export async function websocketRoutes(fastify: FastifyInstance) {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Failed to process websocket message'
-        console.error('[ws.message] failed:', error)
+        log.error('Failed to process websocket message', { error: error instanceof Error ? error.message : String(error) })
         sendServerMessage(socket, { type: 'error', message: errorMessage })
       }
     })
@@ -100,7 +103,7 @@ function sendServerMessage(socket: WebSocket, message: ServerMessage): void {
   try {
     socket.send(JSON.stringify(message))
   } catch (error) {
-    console.error('[ws.send] failed:', error)
+    log.error('Failed to send websocket message', { error: error instanceof Error ? error.message : String(error) })
   }
 }
 

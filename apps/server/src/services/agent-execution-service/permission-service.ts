@@ -1,3 +1,4 @@
+import { createAppLogger } from '@kombuse/core/logger'
 import { sessionPersistenceService } from '@kombuse/services'
 import type { AgentEvent, ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
@@ -8,6 +9,8 @@ import {
   type ServerPendingPermission,
 } from './runtime-state'
 import type { PermissionResponseMessage } from './types'
+
+const log = createAppLogger('PermissionService')
 
 /**
  * Known tool descriptions for generating human-readable permission context.
@@ -233,7 +236,7 @@ export function broadcastPermissionPending(
 ): void {
   const permissionKey = createPermissionKey(sessionId, event.requestId)
   const description = generatePermissionDescription(event.toolName, event.input)
-  console.log('[server] permission_request:', event.requestId, event.toolName, '-', description)
+  log.debug(`permission_request: ${event.requestId} ${event.toolName} - ${description}`)
   serverPendingPermissions.set(permissionKey, {
     permissionKey,
     sessionId,
@@ -268,12 +271,12 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
 
   const backend = activeBackends.get(kombuseSessionId)
   if (!backend) {
-    console.warn(`[Server] No active backend for session ${kombuseSessionId}`)
+    log.warn(`No active backend for session ${kombuseSessionId}`)
     return false
   }
 
   if (!backend.respondToPermission) {
-    console.warn('[Server] Backend does not support respondToPermission')
+    log.warn('Backend does not support respondToPermission')
     return false
   }
 

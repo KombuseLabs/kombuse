@@ -19,6 +19,10 @@
     "./commands": {
       "types": "./src/commands/index.ts",
       "default": "./src/commands/index.ts"
+    },
+    "./logger": {
+      "types": "./src/logger.ts",
+      "default": "./src/logger.ts"
     }
   },
   "scripts": {

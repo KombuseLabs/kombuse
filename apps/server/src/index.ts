@@ -53,6 +53,9 @@ import {
 } from "./services/agent-execution-service";
 import { createResponseValidationHook } from "./schemas/response-validation.schema";
 import { resolveProjectSlug } from "./hooks/resolve-project-slug";
+import { createAppLogger, closeAppLogger, pruneOldLogs } from "./logger";
+
+const serverLog = createAppLogger('Server');
 
 // Re-export for desktop shell integration
 export { setAutoUpdater, type AutoUpdaterInterface } from "./routes";
@@ -82,8 +85,8 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
     minInactiveMs: 0,
   });
   if (abortedCount > 0) {
-    console.log(
-      `[Server] Aborted ${abortedCount} orphaned session(s) from previous run`
+    serverLog.info(
+      `Aborted ${abortedCount} orphaned session(s) from previous run`
     );
   }
 
@@ -91,11 +94,13 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   const orphanInterval = setInterval(() => {
     const count = cleanupOrphanedSessions();
     if (count > 0) {
-      console.log(
-        `[Server] Cleaned up ${count} orphaned session(s)`
+      serverLog.info(
+        `Cleaned up ${count} orphaned session(s)`
       );
     }
   }, 60_000);
+
+  pruneOldLogs();
 
   const fastify = Fastify({
     logger: false,
@@ -214,6 +219,7 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
     close: () => {
       clearInterval(orphanInterval);
       stopAllActiveBackends();
+      closeAppLogger();
       return fastify.close();
     },
     instance: fastify,
@@ -231,7 +237,7 @@ if (isDirectExecution) {
   const { homedir } = await import("node:os");
 
   const portFile = join(homedir(), ".kombuse", "server-port");
-  console.log(`===> [Server] Starting Kombuse server...`, { portFile });
+  serverLog.info('Starting Kombuse server...', { portFile });
   const server = await createServer({ port: 3331 });
   try {
     const address = await server.listen();
