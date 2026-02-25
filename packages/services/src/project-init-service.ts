@@ -10,19 +10,45 @@ const AGENTS_MD_TEMPLATE = `# Agent Guidance
 
 Instructions for AI coding agents working in this project.
 
-## Project Overview
+## Core Principles
 
-<!-- Describe your project briefly so AI agents have context -->
+<!-- Define behavioral rules for agents, e.g.: -->
+<!-- - Think before coding: read existing code, understand context, then act -->
+<!-- - Simplicity first: prefer the smallest correct change -->
+<!-- - Verify your work: run tests and type-check after changes -->
 
-## Key Files
+## Critical Rules
 
-<!-- List important files and directories -->
-<!-- | File | Purpose | -->
-<!-- |------|---------|  -->
+<!-- List hard constraints agents must always follow, e.g.: -->
+<!-- - Tests are colocated in \`__tests__/\` directories next to source files -->
 
-## Conventions
+## Quick Commands
 
-<!-- Note naming conventions, patterns, or rules agents should follow -->
+<!-- List frequently used commands -->
+<!-- \`\`\`bash -->
+<!-- npm install   # Install dependencies -->
+<!-- npm test      # Run tests -->
+<!-- npm run build # Build the project -->
+<!-- \`\`\` -->
+
+## Structure
+
+<!-- Describe your project layout -->
+<!-- \`\`\` -->
+<!-- src/ -->
+<!--   components/  - UI components -->
+<!--   lib/         - Shared utilities -->
+<!--   routes/      - Page routes -->
+<!-- \`\`\` -->
+
+## Key Patterns
+
+<!-- Note naming conventions, import patterns, or rules agents should follow -->
+
+## Agent-Operational Guidance
+
+<!-- Optional: tips for agent efficiency -->
+<!-- List large files, shim re-exports, or confusingly named files -->
 `
 
 function writeMcpJson(
