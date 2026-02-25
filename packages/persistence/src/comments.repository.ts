@@ -4,6 +4,7 @@ import type {
   CommentWithAuthor,
   CommentFilters,
   CreateCommentInput,
+  Profile,
   UpdateCommentInput,
 } from '@kombuse/types'
 import { getDatabase } from './database'
@@ -205,6 +206,20 @@ function parseMentions(body: string): ParsedMentions {
 }
 
 /**
+ * Resolve an agent slug to its profile, preferring the agent in the given project.
+ */
+function resolveAgentSlug(
+  slug: string,
+  projectId: string | undefined
+): Profile | null {
+  const agent =
+    (projectId
+      ? agentsRepository.getBySlugAndProject(slug, projectId)
+      : null) ?? agentsRepository.getBySlug(slug)
+  return agent ? profilesRepository.get(agent.id) ?? null : null
+}
+
+/**
  * Data access layer for comments
  */
 export const commentsRepository = {
@@ -329,17 +344,9 @@ export const commentsRepository = {
 
       // 3a. Resolve new-format profile mentions (by ID, with slug fallback)
       for (const profileId of mentions.profileIds) {
-        let profile = profilesRepository.get(profileId)
-        // Slug fallback: if no direct profile match, try agent slug (project-scoped first)
-        if (!profile) {
-          const agentBySlug =
-            (ticket?.project_id
-              ? agentsRepository.getBySlugAndProject(profileId, ticket.project_id)
-              : null) ?? agentsRepository.getBySlug(profileId)
-          if (agentBySlug) {
-            profile = profilesRepository.get(agentBySlug.id) ?? null
-          }
-        }
+        const profile =
+          profilesRepository.get(profileId) ??
+          resolveAgentSlug(profileId, ticket?.project_id)
         if (profile) {
           mentionsRepository.create({
             comment_id: commentId,
@@ -370,17 +377,9 @@ export const commentsRepository = {
 
       // 3b. Resolve legacy-format profile mentions (by name, with slug fallback)
       for (const name of mentions.legacyProfileNames) {
-        let profile = profilesRepository.getByName(name)
-        // Slug fallback: if no name match, try agent slug (project-scoped first)
-        if (!profile) {
-          const agentBySlug =
-            (ticket?.project_id
-              ? agentsRepository.getBySlugAndProject(name, ticket.project_id)
-              : null) ?? agentsRepository.getBySlug(name)
-          if (agentBySlug) {
-            profile = profilesRepository.get(agentBySlug.id) ?? null
-          }
-        }
+        const profile =
+          profilesRepository.getByName(name) ??
+          resolveAgentSlug(name, ticket?.project_id)
         if (profile) {
           mentionsRepository.create({
             comment_id: commentId,
@@ -577,18 +576,11 @@ export const commentsRepository = {
               .get(comment.ticket_id) as { project_id: string; ticket_number: number } | undefined)
           : undefined
 
-        // Create new mention records (new format, by ID, with slug fallback, project-scoped first)
+        // Create new mention records (new format, by ID, with slug fallback)
         for (const profileId of mentions.profileIds) {
-          let profile = profilesRepository.get(profileId)
-          if (!profile) {
-            const agentBySlug =
-              (ticket?.project_id
-                ? agentsRepository.getBySlugAndProject(profileId, ticket.project_id)
-                : null) ?? agentsRepository.getBySlug(profileId)
-            if (agentBySlug) {
-              profile = profilesRepository.get(agentBySlug.id) ?? null
-            }
-          }
+          const profile =
+            profilesRepository.get(profileId) ??
+            resolveAgentSlug(profileId, ticket?.project_id)
           if (profile) {
             mentionsRepository.create({
               comment_id: id,
@@ -599,18 +591,11 @@ export const commentsRepository = {
           }
         }
 
-        // Create new mention records (legacy format, by name, with slug fallback, project-scoped first)
+        // Create new mention records (legacy format, by name, with slug fallback)
         for (const name of mentions.legacyProfileNames) {
-          let profile = profilesRepository.getByName(name)
-          if (!profile) {
-            const agentBySlug =
-              (ticket?.project_id
-                ? agentsRepository.getBySlugAndProject(name, ticket.project_id)
-                : null) ?? agentsRepository.getBySlug(name)
-            if (agentBySlug) {
-              profile = profilesRepository.get(agentBySlug.id) ?? null
-            }
-          }
+          const profile =
+            profilesRepository.getByName(name) ??
+            resolveAgentSlug(name, ticket?.project_id)
           if (profile) {
             mentionsRepository.create({
               comment_id: id,
