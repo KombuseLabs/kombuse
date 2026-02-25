@@ -60,7 +60,7 @@ export type ClaudeInputEvent =
 
 /**
  * Agent backend that spawns Claude Code CLI as a subprocess.
- * Leverages existing CLI configuration (API keys, CLAUDE.md, MCP servers, etc.)
+ * Leverages existing CLI configuration (API keys, AGENTS.md, MCP servers, etc.)
  */
 export class ClaudeCodeBackend extends BaseAgentBackend {
   readonly name = BACKEND_TYPES.CLAUDE_CODE

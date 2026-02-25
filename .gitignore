@@ -43,7 +43,6 @@ logs
 *.pem
 
 # Claude
-CLAUDE.md
 AGENTS.md
 
 specs
