@@ -714,7 +714,7 @@ function AgentRuntimeContent({ projectId }: { projectId: string }) {
                         (d) => d.ticket_number === label
                       )
                       const meta = processed.segmentMeta.get(ticketIdx)?.[segIndex]
-                      if (!meta || !entry.value) return null
+                      if (!meta || entry.value == null) return null
                       return (
                         <p key={String(entry.dataKey)} style={{ color: String(entry.color) }}>
                           {meta.agent_name}
@@ -727,6 +727,7 @@ function AgentRuntimeContent({ projectId }: { projectId: string }) {
                 )
               }}
             />
+            <Legend />
             {processed.agentNames.map((name) => (
               <Bar
                 key={`legend-${name}`}

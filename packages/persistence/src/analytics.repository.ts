@@ -308,6 +308,7 @@ export const analyticsRepository = {
 
   agentRuntimePerTicket(projectId: string, limit = 50): AgentRuntimeSegment[] {
     const db = getDatabase()
+    const ACTIVE_GAP_THRESHOLD_MS = 300_000 // 5 minutes
     return db
       .prepare(
         `
@@ -317,6 +318,30 @@ export const analyticsRepository = {
           WHERE project_id = ? AND status = 'closed'
           ORDER BY closed_at DESC
           LIMIT ?
+        ),
+        relevant_sessions AS (
+          SELECT s.id
+          FROM last_closed lc
+          JOIN sessions s ON s.ticket_id = lc.id
+            AND s.status = 'completed'
+            AND s.completed_at IS NOT NULL
+            AND s.started_at IS NOT NULL
+        ),
+        event_gaps AS (
+          SELECT
+            se.session_id,
+            ROUND(
+              (julianday(se.created_at) - julianday(LAG(se.created_at) OVER (PARTITION BY se.session_id ORDER BY se.seq))) * 86400000.0
+            ) AS gap_ms
+          FROM session_events se
+          WHERE se.session_id IN (SELECT id FROM relevant_sessions)
+        ),
+        active_durations AS (
+          SELECT
+            session_id,
+            SUM(CASE WHEN gap_ms IS NOT NULL AND gap_ms <= ? THEN gap_ms ELSE 0 END) AS active_ms
+          FROM event_gaps
+          GROUP BY session_id
         )
         SELECT
           lc.ticket_number,
@@ -324,7 +349,7 @@ export const analyticsRepository = {
           s.agent_id,
           COALESCE(p.name, 'Unknown') AS agent_name,
           s.id AS session_id,
-          ROUND((julianday(s.completed_at) - julianday(s.started_at)) * 86400000.0) AS duration_ms,
+          COALESCE(ad.active_ms, MAX(ROUND((julianday(s.completed_at) - julianday(s.started_at)) * 86400000.0), 0)) AS duration_ms,
           ROW_NUMBER() OVER (PARTITION BY lc.id, s.agent_id ORDER BY s.started_at) AS run_index
         FROM last_closed lc
         JOIN sessions s ON s.ticket_id = lc.id
@@ -332,9 +357,10 @@ export const analyticsRepository = {
           AND s.completed_at IS NOT NULL
           AND s.started_at IS NOT NULL
         LEFT JOIN profiles p ON p.id = s.agent_id
+        LEFT JOIN active_durations ad ON ad.session_id = s.id
         ORDER BY lc.ticket_number ASC, s.started_at ASC
       `
       )
-      .all(projectId, limit) as AgentRuntimeSegment[]
+      .all(projectId, limit, ACTIVE_GAP_THRESHOLD_MS) as AgentRuntimeSegment[]
   },
 }
