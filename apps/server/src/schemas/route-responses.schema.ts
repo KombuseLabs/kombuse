@@ -266,6 +266,8 @@ registerSuccessSchema('GET', '/api/invocations/:id', agentInvocationSchema)
 registerSuccessSchema('GET', '/api/agents/:agentId/invocations', z.array(agentInvocationSchema))
 registerSuccessSchema('POST', '/api/agents/process-event', agentProcessEventResponseSchema)
 registerSuccessSchema('POST', '/api/agents/export', agentExportResultSchema)
+registerSuccessSchema('GET', '/api/agents/by-slug/:slug', agentSchema)
+registerSuccessSchema('POST', '/api/agents/:id/reset-to-plugin-defaults', agentSchema)
 
 // Plugin routes
 registerSuccessSchema('GET', '/api/plugins', z.array(pluginSchema))
@@ -556,4 +558,18 @@ export function isStreamResponseRoute(routeKey: string): boolean {
 
 export function isNoBodyResponseRoute(routeKey: string): boolean {
   return noBodyResponseRouteKeys.has(routeKey)
+}
+
+export function getAllRegisteredRouteKeys(): Set<string> {
+  const keys = new Set<string>()
+  for (const key of successResponseSchemaByRoute.keys()) {
+    keys.add(key)
+  }
+  for (const key of streamResponseRouteKeys) {
+    keys.add(key)
+  }
+  for (const key of noBodyResponseRouteKeys) {
+    keys.add(key)
+  }
+  return keys
 }
