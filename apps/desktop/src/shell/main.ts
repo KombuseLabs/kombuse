@@ -59,7 +59,7 @@ async function startDevServer() {
   setAutoUpdater(autoUpdater);
   setShellAutoUpdater(shellUpdater);
 
-  const server = await createServerDirect({ port: 0, desktop: true });
+  const server = await createServerDirect({ port: Number(process.env.KOMBUSE_PORT || 0), desktop: true });
   server.instance.register(desktopApiPlugin, { prefix: "/api", createWindow, getWebUrl: () => webUrl } as any);
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
@@ -92,6 +92,16 @@ async function startPackageServer() {
   return { server, pkg };
 }
 
+const SAFE_EXTERNAL_PROTOCOLS = new Set(["http:", "https:"]);
+
+function isSafeExternalUrl(url: string): boolean {
+  try {
+    return SAFE_EXTERNAL_PROTOCOLS.has(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+}
+
 let webUrl = DEV_WEB_URL;
 
 function createWindow(path?: string): BrowserWindow {
@@ -111,6 +121,7 @@ function createWindow(path?: string): BrowserWindow {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       preload: join(__dirname, "preload.cjs"),
     },
   });
@@ -123,12 +134,16 @@ function createWindow(path?: string): BrowserWindow {
       return;
     }
     event.preventDefault();
-    shell.openExternal(url);
+    if (isSafeExternalUrl(url)) {
+      shell.openExternal(url);
+    }
   });
 
   // Intercept window.open() / target="_blank" links
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (isSafeExternalUrl(url)) {
+      shell.openExternal(url);
+    }
     return { action: "deny" };
   });
 

@@ -5,6 +5,18 @@ import { join, extname } from "node:path";
 
 let webRoot: string;
 
+const CSP_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
 /**
  * Register the app:// protocol to serve web assets.
  * Must be called after app.whenReady().
@@ -62,6 +74,8 @@ function serveFile(filePath: string): Response {
       status: 200,
       headers: {
         "Content-Type": mimeType,
+        "Content-Security-Policy": CSP_POLICY,
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {
