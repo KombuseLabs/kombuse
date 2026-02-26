@@ -10,7 +10,7 @@ const CSP_POLICY = [
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: http://localhost:* http://127.0.0.1:*",
   "font-src 'self' data:",
   "object-src 'none'",
   "base-uri 'self'",
