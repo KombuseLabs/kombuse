@@ -8,6 +8,7 @@ export interface PkgManifest {
   channel?: string
   description?: string
   checksum?: string
+  release_notes?: string
   minRuntimeVersion?: string
   metadata?: Record<string, unknown>
 }

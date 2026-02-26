@@ -14,25 +14,30 @@ export interface HttpFeedOptions {
   cacheTtlMs?: number
 }
 
-/** Response from GET /api/plugins */
-interface PluginListResponse {
-  plugins: Array<{
+/** Response from GET /api/pkg */
+interface PackageListResponse {
+  packages: Array<{
     id: string
     author: string
     name: string
+    type?: string
+    source?: string
+    source_config?: unknown
     created_at: string
     updated_at: string
     latest_version: string | null
   }>
 }
 
-/** Response from GET /api/plugins/{author}/{name}/versions */
-interface PluginVersionsResponse {
+/** Response from GET /api/pkg/{author}/{name}/versions */
+interface PackageVersionsResponse {
   versions: Array<{
     version: string
     channel: string
     type: string
     archive_size: number
+    checksum?: string
+    release_notes?: string
     manifest: { author: string; name: string; version: string; type: string; channel?: string }
     published_at: string
     download_url: string
@@ -66,22 +71,22 @@ export class HttpFeed implements FeedProvider {
       return this.cachedPluginList.data
     }
 
-    const response = await this.fetch(`${this.baseUrl}/api/plugins`)
-    const body = (await response.json()) as PluginListResponse
+    const response = await this.fetch(`${this.baseUrl}/api/pkg`)
+    const body = (await response.json()) as PackageListResponse
 
     const results: PackageVersionInfo[] = []
-    for (const plugin of body.plugins) {
-      if (!plugin.latest_version || !valid(plugin.latest_version)) continue
+    for (const pkg of body.packages) {
+      if (!pkg.latest_version || !valid(pkg.latest_version)) continue
 
-      const compoundName = `${plugin.author}/${plugin.name}`
+      const compoundName = `${pkg.author}/${pkg.name}`
       results.push({
         name: compoundName,
-        version: plugin.latest_version,
+        version: pkg.latest_version,
         manifest: {
-          name: plugin.name,
-          version: plugin.latest_version,
-          type: 'plugin',
-          author: plugin.author,
+          name: pkg.name,
+          version: pkg.latest_version,
+          type: (pkg.type as PackageVersionInfo['manifest']['type']) ?? 'plugin',
+          author: pkg.author,
         },
         archiveFormat: 'tar.gz',
       })
@@ -99,9 +104,9 @@ export class HttpFeed implements FeedProvider {
 
     const { author, name } = this.splitPackageName(packageName)
     const response = await this.fetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(author)}/${encodeURIComponent(name)}/versions`
+      `${this.baseUrl}/api/pkg/${encodeURIComponent(author)}/${encodeURIComponent(name)}/versions`
     )
-    const body = (await response.json()) as PluginVersionsResponse
+    const body = (await response.json()) as PackageVersionsResponse
 
     const results: PackageVersionInfo[] = []
     for (const entry of body.versions) {
@@ -117,10 +122,12 @@ export class HttpFeed implements FeedProvider {
         manifest: {
           name,
           version: entry.version,
-          type: 'plugin',
+          type: (entry.manifest?.type ?? entry.type ?? 'plugin') as PackageVersionInfo['manifest']['type'],
           author,
           channel: entry.channel,
+          release_notes: entry.release_notes,
         },
+        checksum: entry.checksum,
         downloadUrl,
         publishedAt: entry.published_at,
         archiveFormat: 'tar.gz',

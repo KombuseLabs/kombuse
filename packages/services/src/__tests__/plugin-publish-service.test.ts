@@ -68,7 +68,7 @@ describe('PluginPublishService', () => {
           name: 'test-plugin',
           version: '1.0.0',
           channel: 'stable',
-          download_url: '/api/plugins/acme/test-plugin/versions/1.0.0/download',
+          download_url: '/api/pkg/acme/test-plugin/versions/1.0.0/download',
         },
       }),
     })
@@ -80,7 +80,7 @@ describe('PluginPublishService', () => {
       name: 'test-plugin',
       version: '1.0.0',
       channel: 'stable',
-      download_url: '/api/plugins/acme/test-plugin/versions/1.0.0/download',
+      download_url: '/api/pkg/acme/test-plugin/versions/1.0.0/download',
     })
   })
 
@@ -124,7 +124,7 @@ describe('PluginPublishService', () => {
     await service.publish(makePublishInput())
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://kombuse.dev/api/plugins/acme/test-plugin',
+      'https://kombuse.dev/api/pkg/acme/test-plugin',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -147,7 +147,7 @@ describe('PluginPublishService', () => {
     await service.publish(makePublishInput({ channel: 'beta' }))
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://kombuse.dev/api/plugins/acme/test-plugin?channel=beta',
+      'https://kombuse.dev/api/pkg/acme/test-plugin?channel=beta',
       expect.any(Object)
     )
   })

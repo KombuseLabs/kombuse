@@ -2,14 +2,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { HttpFeed } from '../feed/http-feed'
 import { FeedError } from '../errors'
 
-function makePluginListResponse(
-  plugins: Array<{ author: string; name: string; latest_version: string | null }>
+function makePackageListResponse(
+  packages: Array<{ author: string; name: string; latest_version: string | null; type?: string }>
 ) {
   return {
-    plugins: plugins.map((p, i) => ({
+    packages: packages.map((p, i) => ({
       id: `id-${i}`,
       author: p.author,
       name: p.name,
+      type: p.type,
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
       latest_version: p.latest_version,
@@ -72,7 +73,7 @@ describe('HttpFeed', () => {
     it('should return latest version of each plugin', async () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
-          makePluginListResponse([
+          makePackageListResponse([
             { author: 'acme', name: 'pkg-a', latest_version: '2.0.0' },
             { author: 'acme', name: 'pkg-b', latest_version: '1.0.0' },
           ])
@@ -91,7 +92,7 @@ describe('HttpFeed', () => {
     it('should skip plugins with null latest_version', async () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
-          makePluginListResponse([
+          makePackageListResponse([
             { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
             { author: 'acme', name: 'pkg-b', latest_version: null },
           ])
@@ -107,7 +108,7 @@ describe('HttpFeed', () => {
     it('should skip plugins with invalid semver latest_version', async () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
-          makePluginListResponse([
+          makePackageListResponse([
             { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
             { author: 'acme', name: 'pkg-b', latest_version: 'latest' },
           ])
@@ -122,7 +123,7 @@ describe('HttpFeed', () => {
     it('should set archiveFormat to tar.gz', async () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
-          makePluginListResponse([
+          makePackageListResponse([
             { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
           ])
         )
@@ -136,7 +137,7 @@ describe('HttpFeed', () => {
     it('should set manifest with author', async () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
-          makePluginListResponse([
+          makePackageListResponse([
             { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
           ])
         )
@@ -148,15 +149,43 @@ describe('HttpFeed', () => {
       expect(packages[0]!.manifest.type).toBe('plugin')
     })
 
-    it('should call GET /api/plugins', async () => {
+    it('should use type from response instead of hardcoding plugin', async () => {
       fetchMock.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(
+          makePackageListResponse([
+            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0', type: 'app' },
+          ])
+        )
+      )
+
+      const packages = await feed.listPackages()
+
+      expect(packages[0]!.manifest.type).toBe('app')
+    })
+
+    it('should default to plugin type when response has no type', async () => {
+      fetchMock.mockResolvedValue(
+        mockJsonResponse(
+          makePackageListResponse([
+            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
+          ])
+        )
+      )
+
+      const packages = await feed.listPackages()
+
+      expect(packages[0]!.manifest.type).toBe('plugin')
+    })
+
+    it('should call GET /api/pkg', async () => {
+      fetchMock.mockResolvedValue(
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await feed.listPackages()
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://registry.example.com/api/plugins',
+        'https://registry.example.com/api/pkg',
         expect.any(Object)
       )
     })
@@ -167,9 +196,9 @@ describe('HttpFeed', () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
           makeVersionsResponse([
-            { version: '1.0.0', download_url: '/api/plugins/acme/pkg/versions/1.0.0/download' },
-            { version: '3.0.0', download_url: '/api/plugins/acme/pkg/versions/3.0.0/download' },
-            { version: '2.0.0', download_url: '/api/plugins/acme/pkg/versions/2.0.0/download' },
+            { version: '1.0.0', download_url: '/api/pkg/acme/pkg/versions/1.0.0/download' },
+            { version: '3.0.0', download_url: '/api/pkg/acme/pkg/versions/3.0.0/download' },
+            { version: '2.0.0', download_url: '/api/pkg/acme/pkg/versions/2.0.0/download' },
           ])
         )
       )
@@ -183,7 +212,7 @@ describe('HttpFeed', () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
           makeVersionsResponse([
-            { version: '1.0.0', download_url: '/api/plugins/acme/pkg/versions/1.0.0/download' },
+            { version: '1.0.0', download_url: '/api/pkg/acme/pkg/versions/1.0.0/download' },
           ])
         )
       )
@@ -191,7 +220,7 @@ describe('HttpFeed', () => {
       const versions = await feed.getVersions('acme/pkg')
 
       expect(versions[0]!.downloadUrl).toBe(
-        'https://registry.example.com/api/plugins/acme/pkg/versions/1.0.0/download'
+        'https://registry.example.com/api/pkg/acme/pkg/versions/1.0.0/download'
       )
     })
 
@@ -209,7 +238,7 @@ describe('HttpFeed', () => {
       expect(versions[0]!.downloadUrl).toBe('https://cdn.example.com/pkg-1.0.0.tar.gz')
     })
 
-    it('should call GET /api/plugins/{author}/{name}/versions', async () => {
+    it('should call GET /api/pkg/{author}/{name}/versions', async () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(makeVersionsResponse([]))
       )
@@ -217,7 +246,7 @@ describe('HttpFeed', () => {
       await feed.getVersions('acme/test-pkg')
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://registry.example.com/api/plugins/acme/test-pkg/versions',
+        'https://registry.example.com/api/pkg/acme/test-pkg/versions',
         expect.any(Object)
       )
     })
@@ -266,6 +295,71 @@ describe('HttpFeed', () => {
       expect(versions[0]!.archiveFormat).toBe('tar.gz')
     })
 
+    it('should use type from manifest in version response', async () => {
+      const response = {
+        versions: [
+          {
+            version: '1.0.0',
+            channel: 'stable',
+            type: 'app',
+            archive_size: 1024,
+            manifest: { author: 'acme', name: 'pkg', version: '1.0.0', type: 'app' },
+            published_at: '2026-01-01T00:00:00Z',
+            download_url: '/dl/1',
+          },
+        ],
+      }
+      fetchMock.mockResolvedValue(mockJsonResponse(response))
+
+      const versions = await feed.getVersions('acme/pkg')
+
+      expect(versions[0]!.manifest.type).toBe('app')
+    })
+
+    it('should extract checksum from version entries', async () => {
+      const response = {
+        versions: [
+          {
+            version: '1.0.0',
+            channel: 'stable',
+            type: 'plugin',
+            archive_size: 1024,
+            checksum: 'abc123',
+            manifest: { author: 'acme', name: 'pkg', version: '1.0.0', type: 'plugin' },
+            published_at: '2026-01-01T00:00:00Z',
+            download_url: '/dl/1',
+          },
+        ],
+      }
+      fetchMock.mockResolvedValue(mockJsonResponse(response))
+
+      const versions = await feed.getVersions('acme/pkg')
+
+      expect(versions[0]!.checksum).toBe('abc123')
+    })
+
+    it('should extract release_notes from version entries', async () => {
+      const response = {
+        versions: [
+          {
+            version: '1.0.0',
+            channel: 'stable',
+            type: 'plugin',
+            archive_size: 1024,
+            release_notes: 'Bug fixes',
+            manifest: { author: 'acme', name: 'pkg', version: '1.0.0', type: 'plugin' },
+            published_at: '2026-01-01T00:00:00Z',
+            download_url: '/dl/1',
+          },
+        ],
+      }
+      fetchMock.mockResolvedValue(mockJsonResponse(response))
+
+      const versions = await feed.getVersions('acme/pkg')
+
+      expect(versions[0]!.manifest.release_notes).toBe('Bug fixes')
+    })
+
     it('should throw FeedError for non-compound package name', async () => {
       await expect(feed.getVersions('simple-name')).rejects.toThrow(FeedError)
     })
@@ -306,7 +400,7 @@ describe('HttpFeed', () => {
   describe('caching', () => {
     it('should fetch plugin list only once across multiple calls', async () => {
       fetchMock.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await feed.listPackages()
@@ -339,7 +433,7 @@ describe('HttpFeed', () => {
 
     it('should re-fetch after clearCache()', async () => {
       fetchMock.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await feed.listPackages()
@@ -370,7 +464,7 @@ describe('HttpFeed', () => {
       })
 
       fetchMock.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await authedFeed.listPackages()
@@ -435,7 +529,7 @@ describe('HttpFeed', () => {
       })
 
       fetchMockTtl.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await ttlFeed.listPackages()
@@ -455,7 +549,7 @@ describe('HttpFeed', () => {
       })
 
       fetchMockTtl.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await ttlFeed.listPackages()
@@ -471,7 +565,7 @@ describe('HttpFeed', () => {
       })
 
       fetchMockTtl.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await noTtlFeed.listPackages()
@@ -488,7 +582,7 @@ describe('HttpFeed', () => {
       })
 
       fetchMockTtl.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await ttlFeed.listPackages()
@@ -523,13 +617,13 @@ describe('HttpFeed', () => {
       })
 
       fetchMock.mockResolvedValue(
-        mockJsonResponse(makePluginListResponse([]))
+        mockJsonResponse(makePackageListResponse([]))
       )
 
       await trailingSlashFeed.listPackages()
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://registry.example.com/api/plugins',
+        'https://registry.example.com/api/pkg',
         expect.any(Object)
       )
     })

@@ -73,7 +73,7 @@ export class PluginPublishService {
 
       // Upload to registry
       const baseUrl = registry_url.replace(/\/+$/, '')
-      const uploadUrl = `${baseUrl}/api/plugins/${encodeURIComponent(author)}/${encodeURIComponent(package_name)}${channel ? `?channel=${encodeURIComponent(channel)}` : ''}`
+      const uploadUrl = `${baseUrl}/api/pkg/${encodeURIComponent(author)}/${encodeURIComponent(package_name)}${channel ? `?channel=${encodeURIComponent(channel)}` : ''}`
 
       const response = await fetch(uploadUrl, {
         method: 'POST',
