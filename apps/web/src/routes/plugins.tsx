@@ -1064,20 +1064,17 @@ function SourcesPopover({
 // ---------------------------------------------------------------------------
 
 export function PluginsPage() {
-  const { projectId, pluginName: rawPluginName } = useParams<{
+  const { projectId: pid, pluginName: rawPluginName } = useParams<{
     projectId: string
     pluginName?: string
   }>()
+  const projectId = pid!
   const { currentProjectId } = useAppContext()
   const navigate = useNavigate()
   const isMobile = useIsMobile()
 
   const [exportOpen, setExportOpen] = useState(false)
   const [sourcesDialogOpen, setSourcesDialogOpen] = useState(false)
-
-  if (!projectId) {
-    return <p className="p-6 text-muted-foreground">No project selected.</p>
-  }
 
   const resolvedId = currentProjectId ?? projectId
   const pluginName = rawPluginName ? decodeURIComponent(rawPluginName) : undefined

@@ -1385,6 +1385,12 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Read-only renderer for historical `AskUserQuestion` permission request events in the session timeline
 - Falls back to `PermissionRequestRenderer` if `input.questions` is malformed
 
+`ChatImageGallery` (in `renderers/`):
+- Renders inline image thumbnails for `ImageAttachment[]` data (base64 data URIs)
+- Displays images in a flex-wrap row with max-height constraints
+- Click-to-open lightbox with Radix Dialog, keyboard navigation (arrow keys), and close (Escape)
+- Used by `MessageRenderer` to render user-sent images in chat messages
+
 `PlanApprovalBar` props:
 - `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request with `toolName: 'ExitPlanMode'`
 - `onRespond`: `(behavior: 'allow' | 'deny', message?: string) => void` — callback for user decision
@@ -1838,6 +1844,7 @@ import { usePluginSources, useUpdatePluginSources } from '@kombuse/ui/hooks'
 const { data: sources, isLoading } = usePluginSources('project-id')
 // sources?.global_sources => PluginSourceConfig[] (read-only, from ~/.kombuse/config.json)
 // sources?.project_sources => PluginSourceConfig[] (editable, from {project}/.kombuse/config.json)
+// sources?.default_sources => DefaultSource[] (read-only scan locations: project plugins dir, global plugins dir, kombuse.dev registry)
 
 // Replace all project-level plugin sources
 const updateSources = useUpdatePluginSources()

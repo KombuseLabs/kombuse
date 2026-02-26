@@ -6,6 +6,15 @@ import {
   putPluginSourcesBodySchema,
 } from '../schemas/plugin-sources.schema'
 
+function buildDefaultSources(projectId: string) {
+  const { projectPluginsDir, globalPluginsDir } = resolvePluginConfig(projectId)
+  return [
+    ...(projectPluginsDir ? [{ type: 'filesystem' as const, path: projectPluginsDir, label: 'Project plugins' }] : []),
+    { type: 'filesystem' as const, path: globalPluginsDir, label: 'Global plugins' },
+    { type: 'http' as const, base_url: 'https://kombuse.dev', label: 'Kombuse Registry' },
+  ]
+}
+
 export async function pluginSourceRoutes(fastify: FastifyInstance) {
   fastify.get('/plugin-sources', async (request, reply) => {
     const parseResult = pluginSourcesQuerySchema.safeParse(request.query)
@@ -24,16 +33,10 @@ export async function pluginSourceRoutes(fastify: FastifyInstance) {
       ? loadProjectConfig(project.local_path)
       : {}
 
-    const { projectPluginsDir, globalPluginsDir } = resolvePluginConfig(project_id)
-
     return {
       global_sources: globalConfig.plugins?.sources ?? [],
       project_sources: projectConfig.plugins?.sources ?? [],
-      default_sources: [
-        ...(projectPluginsDir ? [{ type: 'filesystem' as const, path: projectPluginsDir, label: 'Project plugins' }] : []),
-        { type: 'filesystem' as const, path: globalPluginsDir, label: 'Global plugins' },
-        { type: 'http' as const, base_url: 'https://kombuse.dev', label: 'Kombuse Registry' },
-      ],
+      default_sources: buildDefaultSources(project_id),
     }
   })
 
@@ -81,15 +84,10 @@ export async function pluginSourceRoutes(fastify: FastifyInstance) {
     }
 
     const globalConfig = loadKombuseConfig()
-    const { projectPluginsDir, globalPluginsDir } = resolvePluginConfig(project_id)
     return {
       global_sources: globalConfig.plugins?.sources ?? [],
       project_sources: sources,
-      default_sources: [
-        ...(projectPluginsDir ? [{ type: 'filesystem' as const, path: projectPluginsDir, label: 'Project plugins' }] : []),
-        { type: 'filesystem' as const, path: globalPluginsDir, label: 'Global plugins' },
-        { type: 'http' as const, base_url: 'https://kombuse.dev', label: 'Kombuse Registry' },
-      ],
+      default_sources: buildDefaultSources(project_id),
     }
   })
 }
