@@ -932,6 +932,7 @@ export function startAgentChatSession(
       actor_type: 'user' as const,
       payload: {} as Record<string, unknown>,
       kombuse_session_id: appSessionId,
+      backend_type: resolvedBackendType,
       agents: profilesRepository.list({
         type: 'agent',
         is_active: true,

@@ -35,6 +35,7 @@ function buildTriggerPrompt(
   const templateContext = {
     ...buildTemplateContext(event),
     kombuse_session_id: kombuseSessionId,
+    backend_type: (agent.config as { backend_type?: string })?.backend_type ?? 'claude-code',
   }
 
   const systemPrompt = agent.system_prompt

@@ -38,6 +38,8 @@ export interface TemplateContext {
   kombuse_session_id?: string
   /** Active agent profiles for mention directory */
   agents?: Array<{ id: string; name: string; description: string | null; slug: string | null }>
+  /** The backend type rendering this prompt (e.g. 'claude-code', 'codex'). */
+  backend_type?: string
 }
 
 /**
