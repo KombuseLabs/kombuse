@@ -4282,7 +4282,7 @@ describe('AGENTS.md system prompt injection', () => {
     vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
   })
 
-  it('appends AGENTS.md content to system prompt when file exists', async () => {
+  it('prepends AGENTS.md content to system prompt when file exists', async () => {
     vi.mocked(existsSync).mockImplementation((p) =>
       String(p).endsWith('AGENTS.md')
     )
@@ -4312,6 +4312,51 @@ describe('AGENTS.md system prompt injection', () => {
     expect(startCall.systemPrompt).toContain('## Project Agent Instructions (AGENTS.md)')
     expect(startCall.systemPrompt).toContain('# Custom Agent Instructions')
     expect(startCall.systemPrompt).toContain('Do not modify production data.')
+  })
+
+  it('prepends AGENTS.md before agent-specific system prompt', async () => {
+    vi.mocked(existsSync).mockImplementation((p) =>
+      String(p).endsWith('AGENTS.md')
+    )
+    vi.mocked(readFileSync).mockImplementation(((p: string) => {
+      if (String(p).endsWith('AGENTS.md')) {
+        return '# Project-wide rules'
+      }
+      throw new Error(`Unexpected readFileSync: ${p}`)
+    }) as typeof readFileSync)
+
+    const backend = createPassiveBackend()
+    const deps = createDeps(backend)
+    ;(deps.getAgent as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'test-agent-id',
+      is_enabled: true,
+      system_prompt: 'You are a helpful agent.',
+      config: {},
+      slug: 'test-agent',
+      plugin_id: null,
+      project_id: null,
+    })
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke',
+        agentId: 'test-agent-id',
+        message: 'hello',
+        kombuseSessionId: 'agents-md-test' as KombuseSessionId,
+      },
+      () => {},
+      deps as any,
+    )
+
+    await waitForBackendStart(backend)
+
+    const startCall = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
+    const prompt = startCall.systemPrompt!
+    const agentsMdIndex = prompt.indexOf('## Project Agent Instructions (AGENTS.md)')
+    const agentPromptIndex = prompt.indexOf('You are a helpful agent.')
+    expect(agentsMdIndex).toBeGreaterThanOrEqual(0)
+    expect(agentPromptIndex).toBeGreaterThan(0)
+    expect(agentsMdIndex).toBeLessThan(agentPromptIndex)
   })
 
   it('does not inject anything when AGENTS.md does not exist', async () => {

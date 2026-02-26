@@ -72,7 +72,12 @@ export function buildTemplateContext(event: Event): TemplateContext {
 
   // Inject active agent profiles for the mention directory (exclude orphaned profiles without agent records)
   context.agents = profilesRepository
-    .list({ type: 'agent', is_active: true })
+    .list({
+      type: 'agent',
+      is_active: true,
+      has_agent: true,
+      ...(event.project_id ? { project_id: event.project_id } : {}),
+    })
     .map((p) => {
       const agent = agentsRepository.get(p.id)
       return agent

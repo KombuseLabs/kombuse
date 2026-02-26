@@ -932,7 +932,12 @@ export function startAgentChatSession(
       actor_type: 'user' as const,
       payload: {} as Record<string, unknown>,
       kombuse_session_id: appSessionId,
-      agents: profilesRepository.list({ type: 'agent', is_active: true }).map((profile) => {
+      agents: profilesRepository.list({
+        type: 'agent',
+        is_active: true,
+        has_agent: true,
+        ...(effectiveProjectId ? { project_id: effectiveProjectId } : {}),
+      }).map((profile) => {
         const agentRecord = agentsRepository.get(profile.id)
         return { id: profile.id, name: profile.name, description: profile.description, slug: agentRecord?.slug ?? null }
       }),
@@ -956,8 +961,10 @@ export function startAgentChatSession(
   const effectiveProjectPath = projectPathOverride ?? dependencies.resolveProjectPath()
   const agentsMdContent = readAgentsMd(effectiveProjectPath)
   if (agentsMdContent) {
-    resolvedSystemPrompt = (resolvedSystemPrompt ?? '') +
-      `\n\n## Project Agent Instructions (AGENTS.md)\n${agentsMdContent}`
+    const agentsMdSection = `## Project Agent Instructions (AGENTS.md)\n${agentsMdContent}`
+    resolvedSystemPrompt = resolvedSystemPrompt
+      ? `${agentsMdSection}\n\n${resolvedSystemPrompt}`
+      : agentsMdSection
   }
 
   if (resolvedSystemPrompt) {
