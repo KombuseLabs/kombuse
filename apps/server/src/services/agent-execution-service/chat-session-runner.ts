@@ -775,8 +775,6 @@ export function startAgentChatSession(
           return
         }
 
-        dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
-
         if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
           followUpDidCallAddComment = true
         }
@@ -796,10 +794,12 @@ export function startAgentChatSession(
             emit,
           })
           if (wasAutoApproved) {
+            dependencies.sessionPersistence.persistEvent(persistentSessionId, { ...event, autoApproved: true })
             return
           }
         }
 
+        dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
         emit({ type: 'event', kombuseSessionId: appSessionId, event })
       },
       onComplete: (context: ConversationContext) => {
@@ -1005,8 +1005,6 @@ export function startAgentChatSession(
         return
       }
 
-      dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
-
       if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
         didCallAddComment = true
         dependencies.stateMachine.setMetadata(persistentSessionId, { didCallAddComment: true })
@@ -1080,10 +1078,12 @@ export function startAgentChatSession(
           emit,
         })
         if (wasAutoApproved) {
+          dependencies.sessionPersistence.persistEvent(persistentSessionId, { ...event, autoApproved: true })
           return
         }
       }
 
+      dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
       emit({
         type: 'event',
         kombuseSessionId: appSessionId,
@@ -1192,7 +1192,6 @@ export function startAgentChatSession(
             return
           }
 
-          dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
           if (event.type === 'tool_use' && event.name === 'mcp__kombuse__add_comment') {
             didCallAddComment = true
           }
@@ -1212,10 +1211,12 @@ export function startAgentChatSession(
               emit,
             })
             if (wasAutoApproved) {
+              dependencies.sessionPersistence.persistEvent(persistentSessionId, { ...event, autoApproved: true })
               return
             }
           }
 
+          dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
           emit({ type: 'event', kombuseSessionId: appSessionId, event })
         },
         onComplete: (context: ConversationContext) => {
