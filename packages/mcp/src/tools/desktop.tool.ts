@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { InjectableServer } from './api.tool'
 import { writeFileSync, mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, resolve, normalize } from 'node:path'
+import { homedir } from 'node:os'
 import { z } from 'zod/v3'
 
 function errorResponse(message: string) {
@@ -223,14 +224,23 @@ export function registerDesktopTools(
         const { data } = body as { data: string; mimeType: string }
         const buffer = Buffer.from(data, 'base64')
 
+        const normalized = normalize(resolve(file_path))
+        const home = homedir()
+        if (normalized.includes('..') || !normalized.startsWith(home)) {
+          return errorResponse('file_path must be an absolute path within the home directory')
+        }
+        if (!normalized.endsWith('.png')) {
+          return errorResponse('file_path must end with .png')
+        }
+
         try {
-          mkdirSync(dirname(file_path), { recursive: true })
-          writeFileSync(file_path, buffer)
+          mkdirSync(dirname(normalized), { recursive: true })
+          writeFileSync(normalized, buffer)
         } catch (fsErr) {
           return errorResponse(`Failed to write file: ${(fsErr as Error).message}`)
         }
 
-        return successResponse({ file_path, size: buffer.length })
+        return successResponse({ file_path: normalized, size: buffer.length })
       } catch (err) {
         return errorResponse(`save_screenshot failed: ${(err as Error).message}`)
       }

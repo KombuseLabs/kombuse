@@ -13,6 +13,14 @@ vi.mock('node:fs', async (importOriginal) => {
   }
 })
 
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>()
+  return {
+    ...actual,
+    homedir: vi.fn(() => '/Users/testuser'),
+  }
+})
+
 function createMockInjectable(
   response: { statusCode: number; body: string } = { statusCode: 200, body: '{"ok":true}' }
 ): InjectableServer & { lastCall: { method: string; url: string; payload?: unknown } | null } {
@@ -331,12 +339,12 @@ describe('save_screenshot', () => {
 
     const result = await client.callTool({
       name: 'save_screenshot',
-      arguments: { window_id: 1, file_path: '/tmp/screenshots/test.png' },
+      arguments: { window_id: 1, file_path: '/Users/testuser/screenshots/test.png' },
     })
     const data = parseContent(result) as { file_path: string; size: number }
 
     expect(result.isError).toBeFalsy()
-    expect(data.file_path).toBe('/tmp/screenshots/test.png')
+    expect(data.file_path).toBe('/Users/testuser/screenshots/test.png')
     expect(data.size).toBe(Buffer.from(base64Data, 'base64').length)
     expect(injectable.lastCall).toEqual({
       method: 'POST',
@@ -344,9 +352,9 @@ describe('save_screenshot', () => {
     })
 
     const { mkdirSync, writeFileSync } = await import('node:fs')
-    expect(mkdirSync).toHaveBeenCalledWith('/tmp/screenshots', { recursive: true })
+    expect(mkdirSync).toHaveBeenCalledWith('/Users/testuser/screenshots', { recursive: true })
     expect(writeFileSync).toHaveBeenCalledWith(
-      '/tmp/screenshots/test.png',
+      '/Users/testuser/screenshots/test.png',
       Buffer.from(base64Data, 'base64'),
     )
   })
@@ -360,7 +368,7 @@ describe('save_screenshot', () => {
 
     const result = await client.callTool({
       name: 'save_screenshot',
-      arguments: { window_id: 99, file_path: '/tmp/test.png' },
+      arguments: { window_id: 99, file_path: '/Users/testuser/test.png' },
     })
     const data = parseContent(result) as { error: string }
 
@@ -384,7 +392,7 @@ describe('save_screenshot', () => {
 
     const result = await client.callTool({
       name: 'save_screenshot',
-      arguments: { window_id: 1, file_path: '/readonly/test.png' },
+      arguments: { window_id: 1, file_path: '/Users/testuser/readonly/test.png' },
     })
     const data = parseContent(result) as { error: string }
 
@@ -403,12 +411,66 @@ describe('save_screenshot', () => {
 
     const result = await client.callTool({
       name: 'save_screenshot',
-      arguments: { window_id: 1, file_path: '/tmp/test.png' },
+      arguments: { window_id: 1, file_path: '/Users/testuser/test.png' },
     })
     const data = parseContent(result) as { error: string }
 
     expect(result.isError).toBe(true)
     expect(data.error).toContain('Connection refused')
+  })
+
+  it('should reject path traversal attempts', async () => {
+    const base64Data = Buffer.from('fake-png-data').toString('base64')
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ data: base64Data, mimeType: 'image/png' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'save_screenshot',
+      arguments: { window_id: 1, file_path: '/Users/testuser/../../etc/passwd.png' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('file_path must be an absolute path within the home directory')
+  })
+
+  it('should reject paths outside home directory', async () => {
+    const base64Data = Buffer.from('fake-png-data').toString('base64')
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ data: base64Data, mimeType: 'image/png' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'save_screenshot',
+      arguments: { window_id: 1, file_path: '/etc/screenshots/test.png' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('file_path must be an absolute path within the home directory')
+  })
+
+  it('should reject non-PNG file extensions', async () => {
+    const base64Data = Buffer.from('fake-png-data').toString('base64')
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ data: base64Data, mimeType: 'image/png' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'save_screenshot',
+      arguments: { window_id: 1, file_path: '/Users/testuser/test.jpg' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('file_path must end with .png')
   })
 })
 
