@@ -111,6 +111,7 @@ function Chat({
           onSubmit={onSubmit}
           isLoading={isLoading}
           toolbarControls={inputToolbarControls}
+          projectId={ctx?.projectId ?? undefined}
           onStop={!pendingPermission && ctx?.kombuseSessionId ? () => wsSend({ type: 'agent.stop', kombuseSessionId: ctx.kombuseSessionId! }) : undefined}
         />
       </div>

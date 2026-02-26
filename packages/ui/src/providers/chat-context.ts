@@ -37,6 +37,8 @@ export interface ChatContextValue {
   agentName: string | null
   /** Pending permission request awaiting user response */
   pendingPermission: SerializedAgentPermissionRequestEvent | null
+  /** Project ID for scoping autocomplete and lookups */
+  projectId: string | null
   /** Send a message (with optional image files) to the agent */
   send: (message: string, files?: File[]) => void | Promise<void>
   /** Respond to a permission request */
