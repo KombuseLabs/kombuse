@@ -41,6 +41,7 @@ const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
 const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
 const NOTIFICATIONS_SCOPE_SETTING_KEY = 'notifications.scope_to_project'
+const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
@@ -54,6 +55,7 @@ export function Settings() {
   const { data: maxChainDepthSetting } = useProfileSetting(USER_PROFILE_ID, AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY)
   const { data: backendTimeoutSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY)
   const { data: notificationScopeSetting } = useProfileSetting(USER_PROFILE_ID, NOTIFICATIONS_SCOPE_SETTING_KEY)
+  const { data: mcpAnonWriteSetting } = useProfileSetting(USER_PROFILE_ID, MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const { data: claudeCodeMcpStatus, isLoading: claudeCodeMcpStatusLoading } = useClaudeCodeMcpStatus()
@@ -72,6 +74,7 @@ export function Settings() {
   const { availableBackends, isAvailable, noneAvailable } = useAvailableBackends()
   const codexMcpEnabled = codexMcpStatus?.enabled === true
   const claudeCodeMcpEnabled = claudeCodeMcpStatus?.enabled === true
+  const mcpAnonymousWriteAllowed = mcpAnonWriteSetting?.setting_value === 'allowed'
 
   useEffect(() => {
     setMaxChainDepthValue(maxChainDepthSetting?.setting_value ?? '')
@@ -410,6 +413,33 @@ export function Settings() {
             <p className="text-sm text-muted-foreground">
               Writes to{' '}
               <code>{claudeCodeMcpStatus?.config_path ?? '~/.claude/settings.local.json'}</code>.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* MCP Security */}
+        <Card>
+          <CardHeader>
+            <CardTitle>MCP Security</CardTitle>
+            <CardDescription>Control access for external MCP connections.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="mcp-anonymous-write" className="font-normal">Allow anonymous write access</Label>
+              <Switch
+                id="mcp-anonymous-write"
+                checked={mcpAnonymousWriteAllowed}
+                onCheckedChange={(checked) => {
+                  upsertSetting.mutate({
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+                    setting_value: checked ? 'allowed' : 'denied',
+                  })
+                }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              When enabled, external tools connected via MCP can create and modify tickets, comments, and agents without authentication. When disabled, MCP connections are read-only.
             </p>
           </CardContent>
         </Card>
