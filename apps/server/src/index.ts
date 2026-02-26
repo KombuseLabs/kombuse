@@ -109,17 +109,33 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   fastify.addHook("preSerialization", createResponseValidationHook());
   fastify.addHook("preHandler", resolveProjectSlug);
 
+  // Host header validation — primary defense against DNS rebinding.
+  // A malicious page at evil.com that rebinds DNS to 127.0.0.1 still sends
+  // Host: evil.com, which this hook rejects before any route handler runs.
+  const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+  fastify.addHook("onRequest", async (request, reply) => {
+    const host = request.headers.host;
+    if (!host) {
+      return reply.code(403).send({ error: "Missing Host header" });
+    }
+    // Strip port to get just the hostname. IPv6 brackets are preserved.
+    const hostname = host.startsWith("[")
+      ? host.slice(0, host.indexOf("]") + 1)
+      : (host.split(":")[0] ?? host);
+    if (!ALLOWED_HOSTS.has(hostname)) {
+      return reply.code(403).send({ error: "Forbidden" });
+    }
+  });
+
   // Enable CORS for web app
   // app:// is the Electron production origin (registered as privileged scheme)
-  // 192.168.* allows LAN access from mobile devices during development
   await fastify.register(cors, {
     origin: (origin, cb) => {
       if (
         !origin ||
         origin === "app://." ||
         origin.startsWith("http://localhost:") ||
-        origin.startsWith("http://127.0.0.1:") ||
-        origin.startsWith("http://192.168.")
+        origin.startsWith("http://127.0.0.1:")
       ) {
         cb(null, true);
       } else {
@@ -215,7 +231,7 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   });
 
   return {
-    listen: () => fastify.listen({ port, host: "0.0.0.0" }),
+    listen: () => fastify.listen({ port, host: "127.0.0.1" }),
     close: () => {
       clearInterval(orphanInterval);
       stopAllActiveBackends();
