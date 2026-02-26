@@ -34,6 +34,17 @@ function createAgentProfile(id: string, name: string) {
   profilesRepository.create({ id, type: 'agent', name })
 }
 
+function allowAnonymousWrites() {
+  if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+    profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+  }
+  profileSettingsRepository.upsert({
+    profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+    setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+    setting_value: 'allowed',
+  })
+}
+
 beforeEach(async () => {
   const setup = setupTestDb()
   cleanup = setup.cleanup
@@ -100,6 +111,8 @@ describe('list_agents', () => {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 describe('create_agent', () => {
+  beforeEach(() => { allowAnonymousWrites() })
+
   it('should create an agent with required fields', async () => {
     const result = await client.callTool({
       name: 'create_agent',
@@ -243,6 +256,8 @@ describe('create_agent', () => {
 })
 
 describe('update_agent', () => {
+  beforeEach(() => { allowAnonymousWrites() })
+
   it('should update system_prompt', async () => {
     createAgentProfile('upd-agent', 'Update Agent')
     agentsRepository.create({ id: 'upd-agent', name: 'Test Agent', description: 'Test', system_prompt: 'Old prompt' })
@@ -360,7 +375,7 @@ describe('permission enforcement', () => {
     return sessionId
   }
 
-  it('should allow non-agent callers (no kombuse_session_id) freely', async () => {
+  it('should deny non-agent callers by default (no anonymous write opt-in)', async () => {
     const result = await client.callTool({
       name: 'create_agent',
       arguments: {
@@ -370,7 +385,9 @@ describe('permission enforcement', () => {
       },
     })
 
-    expect(result.isError).toBeFalsy()
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
   })
 
   it('should deny agents with empty permissions from creating agents', async () => {

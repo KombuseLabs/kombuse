@@ -125,8 +125,8 @@ export function readMcpAnonymousWriteAccess(
   profileId: string = DEFAULT_PREFERENCE_PROFILE_ID
 ): 'allowed' | 'denied' {
   const setting = profileSettingsRepository.get(profileId, MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY)
-  if (setting?.setting_value === 'denied') return 'denied'
-  return 'allowed'
+  if (setting?.setting_value === 'allowed') return 'allowed'
+  return 'denied'
 }
 
 export type NotificationScope = 'project' | 'all'

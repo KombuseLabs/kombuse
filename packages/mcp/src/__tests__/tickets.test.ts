@@ -77,6 +77,17 @@ function writeTestFile(storagePath: string, data: Buffer) {
   writeFileSync(join(mockUploadsRoot, storagePath), data)
 }
 
+function allowAnonymousWrites() {
+  if (!profilesRepository.get(DEFAULT_PREFERENCE_PROFILE_ID)) {
+    profilesRepository.create({ id: DEFAULT_PREFERENCE_PROFILE_ID, type: 'user', name: 'Default User' })
+  }
+  profileSettingsRepository.upsert({
+    profile_id: DEFAULT_PREFERENCE_PROFILE_ID,
+    setting_key: MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY,
+    setting_value: 'allowed',
+  })
+}
+
 describe('get_ticket', () => {
   it('should return ticket with comments by default and no image sections', async () => {
     const ticket = ticketsRepository.create({
@@ -964,6 +975,8 @@ describe('list_labels', () => {
 })
 
 describe('update_ticket', () => {
+  beforeEach(() => { allowAnonymousWrites() })
+
   it('should return error for non-existent ticket', async () => {
     const result = await client.callTool({
       name: 'update_ticket',
@@ -1146,7 +1159,7 @@ describe('permission enforcement', () => {
 
   // -- update_ticket --
 
-  it('should allow non-agent callers (no kombuse_session_id) to update freely', async () => {
+  it('should deny non-agent callers by default (no anonymous write opt-in)', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
@@ -1158,9 +1171,9 @@ describe('permission enforcement', () => {
       arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, status: 'closed' },
     })
 
-    expect(result.isError).toBeFalsy()
-    const data = parseContent(result) as { ticket: { status: string } }
-    expect(data.ticket.status).toBe('closed')
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
   })
 
   it('should deny agents with empty permissions from updating tickets', async () => {
@@ -1535,7 +1548,7 @@ describe('permission enforcement', () => {
 
   // -- update_comment --
 
-  it('should allow non-agent callers (no kombuse_session_id) to update comments freely', async () => {
+  it('should deny non-agent callers from updating comments by default', async () => {
     const ticket = ticketsRepository.create({
       title: 'Test ticket',
       project_id: TEST_PROJECT_ID,
@@ -1552,10 +1565,9 @@ describe('permission enforcement', () => {
       arguments: { comment_id: comment.id, body: 'Updated body' },
     })
 
-    expect(result.isError).toBeFalsy()
-    const data = parseContent(result) as { body: string; is_edited: boolean }
-    expect(data.body).toBe('Updated body')
-    expect(data.is_edited).toBe(true)
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('Permission denied')
   })
 
   it('should return error when updating non-existent comment', async () => {
