@@ -961,9 +961,9 @@ export function startAgentChatSession(
   const effectiveProjectPath = projectPathOverride ?? dependencies.resolveProjectPath()
   const agentsMdContent = readAgentsMd(effectiveProjectPath)
   if (agentsMdContent) {
-    const agentsMdSection = `## Project Agent Instructions (AGENTS.md)\n${agentsMdContent}`
+    const agentsMdSection = `<project-instructions>\n${agentsMdContent}\n</project-instructions>`
     resolvedSystemPrompt = resolvedSystemPrompt
-      ? `${agentsMdSection}\n\n${resolvedSystemPrompt}`
+      ? `${agentsMdSection}\n\n<agent-instructions>\n${resolvedSystemPrompt}\n</agent-instructions>`
       : agentsMdSection
   }
 
@@ -1165,7 +1165,7 @@ export function startAgentChatSession(
       const conversationHistory = buildConversationSummary(priorEvents)
       if (conversationHistory) {
         fallbackSystemPrompt = (fallbackSystemPrompt ?? '') +
-          `\n\n## Prior Conversation\nThe following is the conversation history from a previous session. Use this context to maintain continuity.\n\n${conversationHistory}`
+          `\n\n<prior-conversation>\n## Prior Conversation\nThe following is the conversation history from a previous session. Use this context to maintain continuity.\n\n${conversationHistory}\n</prior-conversation>`
       }
 
       const retryBackend = dependencies.createBackend(resolvedBackendType)

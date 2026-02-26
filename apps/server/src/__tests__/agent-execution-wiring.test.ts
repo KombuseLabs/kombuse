@@ -4309,7 +4309,8 @@ describe('AGENTS.md system prompt injection', () => {
     await waitForBackendStart(backend)
 
     const startCall = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
-    expect(startCall.systemPrompt).toContain('## Project Agent Instructions (AGENTS.md)')
+    expect(startCall.systemPrompt).toContain('<project-instructions>')
+    expect(startCall.systemPrompt).toContain('</project-instructions>')
     expect(startCall.systemPrompt).toContain('# Custom Agent Instructions')
     expect(startCall.systemPrompt).toContain('Do not modify production data.')
   })
@@ -4352,11 +4353,16 @@ describe('AGENTS.md system prompt injection', () => {
 
     const startCall = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
     const prompt = startCall.systemPrompt!
-    const agentsMdIndex = prompt.indexOf('## Project Agent Instructions (AGENTS.md)')
+    const projectTagIndex = prompt.indexOf('<project-instructions>')
+    const agentTagIndex = prompt.indexOf('<agent-instructions>')
     const agentPromptIndex = prompt.indexOf('You are a helpful agent.')
-    expect(agentsMdIndex).toBeGreaterThanOrEqual(0)
+    expect(projectTagIndex).toBeGreaterThanOrEqual(0)
+    expect(agentTagIndex).toBeGreaterThan(0)
     expect(agentPromptIndex).toBeGreaterThan(0)
-    expect(agentsMdIndex).toBeLessThan(agentPromptIndex)
+    expect(projectTagIndex).toBeLessThan(agentTagIndex)
+    expect(agentTagIndex).toBeLessThan(agentPromptIndex)
+    expect(prompt).toContain('</project-instructions>')
+    expect(prompt).toContain('</agent-instructions>')
   })
 
   it('does not inject anything when AGENTS.md does not exist', async () => {
@@ -4378,7 +4384,7 @@ describe('AGENTS.md system prompt injection', () => {
     await waitForBackendStart(backend)
 
     const startCall = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
-    expect(startCall.systemPrompt ?? '').not.toContain('AGENTS.md')
+    expect(startCall.systemPrompt ?? '').not.toContain('<project-instructions>')
   })
 
   it('does not inject anything when AGENTS.md is empty', async () => {
@@ -4408,6 +4414,6 @@ describe('AGENTS.md system prompt injection', () => {
     await waitForBackendStart(backend)
 
     const startCall = (backend.start as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as StartOptions
-    expect(startCall.systemPrompt ?? '').not.toContain('AGENTS.md')
+    expect(startCall.systemPrompt ?? '').not.toContain('<project-instructions>')
   })
 })
