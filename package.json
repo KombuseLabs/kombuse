@@ -8,11 +8,13 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "publish-plugin": "bun run scripts/publish-plugin.ts"
   },
   "devDependencies": {
     "prettier": "^3.7.4",
     "tailwindcss": "^4.1.18",
+    "tar": "^7.4.3",
     "turbo": "^2.8.3",
     "typescript": "5.9.2",
     "vitest": "^3.0.0",
