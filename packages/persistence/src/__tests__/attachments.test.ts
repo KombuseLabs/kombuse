@@ -16,7 +16,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
-import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
+import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID, TEST_PROJECT_2_ID, seedSecondProject } from '../test-utils'
 import { attachmentsRepository } from '../attachments.repository'
 import { ticketsRepository } from '../tickets.repository'
 import { commentsRepository } from '../comments.repository'
@@ -384,6 +384,46 @@ describe('attachmentsRepository', () => {
         attachmentsRepository.get(attachment.id),
         'Attachment should be cascade-deleted with comment'
       ).toBeNull()
+    })
+  })
+
+  /*
+   * CROSS-PROJECT ISOLATION
+   * Verify that attachment queries don't leak data across projects
+   */
+  describe('cross-project isolation', () => {
+    it('should not return attachments from other projects when listing by ticket', () => {
+      seedSecondProject(db)
+
+      // Create a ticket and attachment in project-2
+      const p2Ticket = ticketsRepository.create({
+        project_id: TEST_PROJECT_2_ID,
+        author_id: TEST_USER_ID,
+        title: 'Project 2 ticket',
+      })
+      attachmentsRepository.create({
+        ticket_id: p2Ticket.id,
+        filename: 'project-2-file.png',
+        mime_type: 'image/png',
+        size_bytes: 200,
+        storage_path: '2026/02/project-2-file.png',
+        uploaded_by_id: TEST_USER_ID,
+      })
+
+      // Create an attachment in project-1
+      const p1Attachment = attachmentsRepository.create({
+        ticket_id: testTicketId,
+        filename: 'project-1-file.png',
+        mime_type: 'image/png',
+        size_bytes: 100,
+        storage_path: '2026/02/project-1-file.png',
+        uploaded_by_id: TEST_USER_ID,
+      })
+
+      // Listing by project-1 ticket should only return project-1 attachments
+      const attachments = attachmentsRepository.getByTicket(testTicketId)
+      expect(attachments).toHaveLength(1)
+      expect(attachments[0]!.id).toBe(p1Attachment.id)
     })
   })
 })

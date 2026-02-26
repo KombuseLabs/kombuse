@@ -53,6 +53,7 @@ docs/architecture/*
 !docs/architecture/websocket.md
 !docs/database.md
 !docs/real-time.md
+!docs/testing.md
 .mcp.json
 .claude
 kombuse.db

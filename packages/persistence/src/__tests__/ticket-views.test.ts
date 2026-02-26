@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
-import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID } from '../test-utils'
+import { setupTestDb, TEST_USER_ID, TEST_PROJECT_ID, TEST_PROJECT_2_ID, seedSecondProject } from '../test-utils'
 import { ticketViewsRepository } from '../ticket-views.repository'
 import { ticketsRepository } from '../tickets.repository'
 import { labelsRepository } from '../labels.repository'
@@ -351,5 +351,31 @@ describe('tickets list with viewer_id (has_unread)', () => {
     expect(tickets).toHaveLength(1)
     expect(tickets[0]?.id).toBe(ticket.id)
     expect((tickets[0] as any).has_unread).toBe(1)
+  })
+
+  /*
+   * CROSS-PROJECT ISOLATION
+   * Verify that ticket list with viewer_id is scoped by project
+   */
+  it('should only return has_unread for target project tickets when project_id is specified', () => {
+    seedSecondProject(db)
+
+    // Create tickets in both projects
+    ticketsRepository.create(TEST_TICKET)
+    ticketsRepository.create({
+      title: 'Project 2 ticket',
+      project_id: TEST_PROJECT_2_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const tickets = ticketsRepository.list({
+      project_id: TEST_PROJECT_ID,
+      viewer_id: TEST_USER_ID,
+    })
+
+    expect(
+      tickets.every((t) => t.project_id === TEST_PROJECT_ID),
+      'Should only return tickets from the target project'
+    ).toBe(true)
   })
 })
