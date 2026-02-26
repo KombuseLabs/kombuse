@@ -143,8 +143,8 @@ const modelCatalogResponseSchema = z.object({
 const updateInfoSchema = z.object({
   version: z.string().min(1),
   downloadUrl: z.string().min(1),
-  checksumUrl: z.string().min(1),
-  releaseUrl: z.string().min(1),
+  checksumUrl: z.string().min(1).optional(),
+  releaseUrl: z.string().min(1).optional(),
   releaseNotes: z.string().nullable(),
   publishedAt: z.string().min(1),
 })

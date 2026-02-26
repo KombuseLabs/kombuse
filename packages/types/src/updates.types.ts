@@ -8,8 +8,8 @@
 export interface UpdateInfo {
   version: string
   downloadUrl: string
-  checksumUrl: string
-  releaseUrl: string
+  checksumUrl?: string
+  releaseUrl?: string
   releaseNotes: string | null
   publishedAt: string
 }

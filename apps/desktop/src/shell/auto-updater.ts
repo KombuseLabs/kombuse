@@ -6,7 +6,7 @@
  */
 
 import { join } from "node:path";
-import { PackageManager, UpdateApiFeed } from "@kombuse/pkg";
+import { PackageManager, HttpFeed } from "@kombuse/pkg";
 import type { DownloadProgress } from "@kombuse/pkg";
 import type { UpdateInfo, UpdateStatus, UpdateCheckResult, UpdateState } from "@kombuse/types";
 import { installPackage, listPackages } from "./updater";
@@ -32,7 +32,7 @@ export class AutoUpdater {
 
   constructor() {
     this.packageManager = new PackageManager();
-    this.packageManager.addFeed(new UpdateApiFeed({ baseUrl: UPDATE_API_BASE }));
+    this.packageManager.addFeed(new HttpFeed({ baseUrl: UPDATE_API_BASE }));
     this.initCurrentVersion();
   }
 
@@ -86,7 +86,7 @@ export class AutoUpdater {
     this.setState("checking", { error: null });
 
     try {
-      const result = await this.packageManager.checkForUpdates("kombuse", this.status.currentVersion);
+      const result = await this.packageManager.checkForUpdates("kombuse/kombuse", this.status.currentVersion);
       console.log(`[AutoUpdater] Check result: hasUpdate=${result.hasUpdate}, latest=${result.latest?.version ?? "none"}`);
 
       if (!result.hasUpdate || !result.latest) {
@@ -95,14 +95,11 @@ export class AutoUpdater {
       }
 
       const latest = result.latest;
-      const metadata = latest.manifest.metadata;
 
       const updateInfo: UpdateInfo = {
         version: latest.version,
         downloadUrl: latest.downloadUrl ?? "",
-        checksumUrl: (metadata?.checksumUrl as string) ?? "",
-        releaseUrl: (metadata?.releaseUrl as string) ?? "",
-        releaseNotes: (metadata?.releaseNotes as string | null) ?? null,
+        releaseNotes: latest.manifest.release_notes ?? null,
         publishedAt: latest.publishedAt ?? "",
       };
 
@@ -128,7 +125,7 @@ export class AutoUpdater {
       this.setState("downloading", { downloadProgress: 0 });
       console.log(`[AutoUpdater] Installing version ${updateInfo.version}`);
 
-      const result = await this.packageManager.install("kombuse", updateInfo.version, (progress: DownloadProgress) => {
+      const result = await this.packageManager.install("kombuse/kombuse", updateInfo.version, (progress: DownloadProgress) => {
         if (progress.phase === "downloading") {
           this.setState("downloading", {
             downloadProgress: progress.percent >= 0 ? progress.percent : 0,
