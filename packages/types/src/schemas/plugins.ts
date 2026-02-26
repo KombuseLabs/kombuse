@@ -13,7 +13,6 @@ const kombusePluginManifestSchema = z.object({
   description: z.string().optional(),
   kombuse: z.object({
     plugin_system_version: z.literal('kombuse-plugin-v1'),
-    project_id: z.string().min(1),
     exported_at: z.string().min(1),
     labels: z.array(exportedLabelSchema),
   }),

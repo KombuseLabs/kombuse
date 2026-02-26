@@ -42,7 +42,6 @@ function createTestPlugin(overrides?: {
       version: '1.0.0',
       kombuse: {
         plugin_system_version: 'kombuse-plugin-v1',
-        project_id: TEST_PROJECT_ID,
         exported_at: new Date().toISOString(),
         labels: [],
       },
@@ -100,7 +99,7 @@ function writePluginManifest(
   pluginName: string,
   manifest?: Partial<KombusePluginManifest>
 ): void {
-  const pluginDir = join(dir, pluginName, '.claude-plugin')
+  const pluginDir = join(dir, pluginName, '.kombuse-plugin')
   mkdirSync(pluginDir, { recursive: true })
   writeFileSync(
     join(pluginDir, 'plugin.json'),
@@ -109,7 +108,6 @@ function writePluginManifest(
       version: '1.0.0',
       kombuse: {
         plugin_system_version: 'kombuse-plugin-v1',
-        project_id: TEST_PROJECT_ID,
         exported_at: new Date().toISOString(),
         labels: [],
       },
@@ -329,7 +327,7 @@ describe('pluginLifecycleService', () => {
       // Create a plugin package on disk for the import service
       const tempDir = mkdtempSync(join(tmpdir(), 'lifecycle-reinstall-'))
       const agentSlug = `reinstall-agent-${Date.now()}`
-      const pluginDir = join(tempDir, '.claude-plugin')
+      const pluginDir = join(tempDir, '.kombuse-plugin')
       mkdirSync(pluginDir, { recursive: true })
       writeFileSync(
         join(pluginDir, 'plugin.json'),
@@ -338,7 +336,6 @@ describe('pluginLifecycleService', () => {
           version: '1.0.0',
           kombuse: {
             plugin_system_version: 'kombuse-plugin-v1',
-            project_id: TEST_PROJECT_ID,
             exported_at: new Date().toISOString(),
             labels: [],
           },
@@ -467,7 +464,6 @@ describe('pluginLifecycleService', () => {
           version: '1.0.0',
           kombuse: {
             plugin_system_version: 'kombuse-plugin-v1',
-            project_id: TEST_PROJECT_ID,
             exported_at: new Date().toISOString(),
             labels: [],
           },
@@ -489,7 +485,7 @@ describe('pluginLifecycleService', () => {
 
       const pluginsDir = join(tempDir, '.kombuse', 'plugins')
 
-      // Valid plugin (has both manifest.json and .claude-plugin/plugin.json)
+      // Valid plugin (has both manifest.json and .kombuse-plugin/plugin.json)
       writePluginManifest(pluginsDir, 'valid-plugin')
 
       // Invalid plugin — no manifest.json at root
@@ -580,7 +576,6 @@ describe('pluginLifecycleService', () => {
           version: '1.0.0',
           kombuse: {
             plugin_system_version: 'kombuse-plugin-v1',
-            project_id: TEST_PROJECT_ID,
             exported_at: new Date().toISOString(),
             labels: [],
           },
@@ -617,7 +612,6 @@ describe('pluginLifecycleService', () => {
           version: '1.0.0',
           kombuse: {
             plugin_system_version: 'kombuse-plugin-v1',
-            project_id: TEST_PROJECT_ID,
             exported_at: new Date().toISOString(),
             labels: [],
           },

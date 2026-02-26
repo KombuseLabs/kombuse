@@ -34,7 +34,6 @@ function createManifest(
     version: '1.0.0',
     kombuse: {
       plugin_system_version: 'kombuse-plugin-v1',
-      project_id: TEST_PROJECT_ID,
       exported_at: new Date().toISOString(),
       labels: [],
     },
@@ -43,7 +42,7 @@ function createManifest(
 }
 
 function writeManifest(dir: string, manifest: KombusePluginManifest): void {
-  const metaDir = join(dir, '.claude-plugin')
+  const metaDir = join(dir, '.kombuse-plugin')
   mkdirSync(metaDir, { recursive: true })
   writeFileSync(join(metaDir, 'plugin.json'), JSON.stringify(manifest))
 }
@@ -143,7 +142,6 @@ describe('pluginImportService', () => {
             name: 'my-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [{ name: 'Bug', color: '#d73a4a', description: null }],
             },
@@ -319,7 +317,6 @@ describe('pluginImportService', () => {
             name: 'label-merge-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [{ name: 'Bug', color: '#d73a4a', description: null }],
             },
@@ -349,7 +346,6 @@ describe('pluginImportService', () => {
             name: 'label-create-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [
                 { name: 'NewLabel', color: '#00ff00', description: null },
@@ -386,7 +382,6 @@ describe('pluginImportService', () => {
             name: 'desc-merge-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [{ name: 'Bug', color: '#ff0000', description: 'Something is broken' }],
             },
@@ -424,7 +419,6 @@ describe('pluginImportService', () => {
             name: 'preserve-desc-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [{ name: 'Feature', color: '#00ff00', description: null }],
             },
@@ -677,7 +671,6 @@ describe('pluginImportService', () => {
             name: 'label-resolve-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [{ name: 'Bug', color: '#d73a4a', description: null }],
             },
@@ -764,7 +757,6 @@ describe('pluginImportService', () => {
             name: 'new-label-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [{ name: 'NewLabel', color: '#00ff00', description: null }],
             },
@@ -925,7 +917,6 @@ describe('pluginImportService', () => {
             name: 'label-preserve-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [
                 { name: 'Bug', color: '#d73a4a', description: null },
@@ -987,7 +978,6 @@ describe('pluginImportService', () => {
             name: 'shrinking-label-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [
                 { name: 'Bug', color: '#d73a4a', description: null },
@@ -1022,7 +1012,6 @@ describe('pluginImportService', () => {
             name: 'shrinking-label-plugin',
             kombuse: {
               plugin_system_version: 'kombuse-plugin-v1',
-              project_id: TEST_PROJECT_ID,
               exported_at: new Date().toISOString(),
               labels: [
                 { name: 'Bug', color: '#d73a4a', description: null },
@@ -1207,7 +1196,7 @@ describe('pluginImportService', () => {
 
     it('should throw InvalidManifestError when manifest has no name', () => {
       const dir = trackDir(mkdtempSync(join(tmpdir(), 'no-name-')))
-      const metaDir = join(dir, '.claude-plugin')
+      const metaDir = join(dir, '.kombuse-plugin')
       mkdirSync(metaDir, { recursive: true })
       writeFileSync(
         join(metaDir, 'plugin.json'),
@@ -1227,7 +1216,7 @@ describe('pluginImportService', () => {
 
     it('should throw InvalidManifestError when manifest has no plugin_system_version', () => {
       const dir = trackDir(mkdtempSync(join(tmpdir(), 'no-version-')))
-      const metaDir = join(dir, '.claude-plugin')
+      const metaDir = join(dir, '.kombuse-plugin')
       mkdirSync(metaDir, { recursive: true })
       writeFileSync(
         join(metaDir, 'plugin.json'),
@@ -1244,7 +1233,7 @@ describe('pluginImportService', () => {
 
     it('should throw InvalidManifestError when plugin.json is invalid JSON', () => {
       const dir = trackDir(mkdtempSync(join(tmpdir(), 'bad-json-')))
-      const metaDir = join(dir, '.claude-plugin')
+      const metaDir = join(dir, '.kombuse-plugin')
       mkdirSync(metaDir, { recursive: true })
       writeFileSync(join(metaDir, 'plugin.json'), '{not valid json}}}')
 

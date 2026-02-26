@@ -10,7 +10,6 @@ export interface KombusePluginManifest {
   description?: string
   kombuse: {
     plugin_system_version: 'kombuse-plugin-v1'
-    project_id: string
     exported_at: string
     labels: ExportedLabel[]
   }

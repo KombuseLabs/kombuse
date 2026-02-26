@@ -482,13 +482,13 @@ describe('pluginExportService', () => {
       expect(result.package_name).toBe('my-plugin')
       expect(result.agent_count).toBe(1)
       expect(result.files).toContain('manifest.json')
-      expect(result.files).toContain('.claude-plugin/plugin.json')
+      expect(result.files).toContain('.kombuse-plugin/plugin.json')
       expect(result.files).toContain('agents/pkg-agent.md')
 
       // Verify files on disk
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'my-plugin')
       expect(existsSync(join(pluginDir, 'manifest.json'))).toBe(true)
-      expect(existsSync(join(pluginDir, '.claude-plugin', 'plugin.json'))).toBe(true)
+      expect(existsSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'))).toBe(true)
       expect(existsSync(join(pluginDir, 'agents', 'pkg-agent.md'))).toBe(true)
 
       // Verify manifest.json has correct PkgManifest format
@@ -507,7 +507,7 @@ describe('pluginExportService', () => {
       })
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'test-pack')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'), 'utf-8'))
       expect(manifest.name).toBe('test-pack')
     })
 
@@ -520,7 +520,7 @@ describe('pluginExportService', () => {
       })
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'version-test')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'), 'utf-8'))
       expect(manifest.kombuse.plugin_system_version).toBe('kombuse-plugin-v1')
     })
 
@@ -533,7 +533,7 @@ describe('pluginExportService', () => {
       })
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'time-test')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'), 'utf-8'))
       const date = new Date(manifest.kombuse.exported_at)
       expect(date.toISOString()).toBe(manifest.kombuse.exported_at)
     })
@@ -547,7 +547,7 @@ describe('pluginExportService', () => {
       })
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'default-ver')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'), 'utf-8'))
       expect(manifest.version).toBe('1.0.0')
     })
 
@@ -561,7 +561,7 @@ describe('pluginExportService', () => {
       })
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'desc-test')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'), 'utf-8'))
       expect(manifest.description).toBe('A great plugin')
     })
 
@@ -587,7 +587,7 @@ describe('pluginExportService', () => {
       expect(result.label_count).toBe(1)
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'label-auto')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'), 'utf-8'))
       expect(manifest.kombuse.labels).toHaveLength(1)
       expect(manifest.kombuse.labels[0].name).toBe('Bug')
       expect(manifest.kombuse.labels[0].color).toBe('#d73a4a')
@@ -614,7 +614,7 @@ describe('pluginExportService', () => {
       expect(result.label_count).toBe(2)
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'all-labels')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'), 'utf-8'))
       expect(manifest.kombuse.labels).toHaveLength(2)
       const labelNames = manifest.kombuse.labels.map((l: { name: string }) => l.name).sort()
       expect(labelNames).toEqual(['Bug', 'Enhancement'])
@@ -642,7 +642,7 @@ describe('pluginExportService', () => {
       expect(result.label_count).toBe(1)
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'cross-proj')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
+      const manifest = JSON.parse(readFileSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'), 'utf-8'))
       expect(manifest.kombuse.labels).toHaveLength(1)
       expect(manifest.kombuse.labels[0].name).toBe('Ours')
     })
@@ -706,10 +706,10 @@ describe('pluginExportService', () => {
       })
 
       expect(result.agent_count).toBe(0)
-      expect(result.files).toContain('.claude-plugin/plugin.json')
+      expect(result.files).toContain('.kombuse-plugin/plugin.json')
 
       const pluginDir = join(tempDir, '.kombuse', 'plugins', 'empty-pkg')
-      expect(existsSync(join(pluginDir, '.claude-plugin', 'plugin.json'))).toBe(true)
+      expect(existsSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'))).toBe(true)
     })
 
     it('should throw PackageExistsError when directory exists without overwrite', () => {
@@ -745,18 +745,6 @@ describe('pluginExportService', () => {
       expect(result.agent_count).toBe(1)
     })
 
-    it('should set project_id in manifest kombuse metadata', () => {
-      createTestAgent({ id: 'proj-agent' })
-
-      pluginExportService.exportPackage({
-        package_name: 'proj-test',
-        project_id: 'test-project',
-      })
-
-      const pluginDir = join(tempDir, '.kombuse', 'plugins', 'proj-test')
-      const manifest = JSON.parse(readFileSync(join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf-8'))
-      expect(manifest.kombuse.project_id).toBe('test-project')
-    })
   })
 })
 

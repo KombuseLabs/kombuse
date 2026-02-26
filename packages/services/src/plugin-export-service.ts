@@ -148,7 +148,6 @@ export class PluginExportService implements IPluginExportService {
       ...(description ? { description } : {}),
       kombuse: {
         plugin_system_version: 'kombuse-plugin-v1',
-        project_id,
         exported_at: new Date().toISOString(),
         labels: exportedLabels,
       },
@@ -160,7 +159,7 @@ export class PluginExportService implements IPluginExportService {
     }
 
     const agentsDir = join(directory, 'agents')
-    const pluginMetaDir = join(directory, '.claude-plugin')
+    const pluginMetaDir = join(directory, '.kombuse-plugin')
     mkdirSync(agentsDir, { recursive: true })
     mkdirSync(pluginMetaDir, { recursive: true })
 
@@ -183,7 +182,7 @@ export class PluginExportService implements IPluginExportService {
     writeFileSync(join(directory, 'manifest.json'), JSON.stringify(pkgManifest, null, 2), 'utf-8')
 
     // Write agent files
-    const writtenFiles: string[] = ['manifest.json', '.claude-plugin/plugin.json']
+    const writtenFiles: string[] = ['manifest.json', '.kombuse-plugin/plugin.json']
     for (const file of processedFiles) {
       writeFileSync(join(agentsDir, file.filename), file.content, 'utf-8')
       writtenFiles.push(`agents/${file.filename}`)

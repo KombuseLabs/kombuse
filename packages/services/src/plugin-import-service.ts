@@ -389,7 +389,7 @@ export class PluginImportService implements IPluginImportService {
   }
 
   private readManifest(packagePath: string): KombusePluginManifest {
-    const manifestPath = join(packagePath, '.claude-plugin', 'plugin.json')
+    const manifestPath = join(packagePath, '.kombuse-plugin', 'plugin.json')
 
     if (!existsSync(manifestPath)) {
       throw new InvalidManifestError(

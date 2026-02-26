@@ -12,7 +12,6 @@ const SAMPLE_MANIFEST = JSON.stringify({
   description: 'A test plugin',
   kombuse: {
     plugin_system_version: 'kombuse-plugin-v1',
-    project_id: TEST_PROJECT_ID,
     exported_at: '2026-01-01T00:00:00.000Z',
     labels: [{ name: 'Bug', color: '#ff0000', description: null }],
   },
