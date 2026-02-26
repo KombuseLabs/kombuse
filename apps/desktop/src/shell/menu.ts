@@ -11,6 +11,7 @@ export interface MenuConfig {
 interface RecentProject {
   id: string;
   name: string;
+  slug: string;
 }
 
 let currentConfig: MenuConfig | null = null;
@@ -41,7 +42,7 @@ export function buildAppMenu(
     recentProjects && recentProjects.length > 0
       ? recentProjects.map((project) => ({
           label: project.name,
-          click: () => config.createWindow(`/projects/${project.id}/tickets`),
+          click: () => config.createWindow(`/projects/${project.slug}/tickets`),
         }))
       : [{ label: "No Recent Projects", enabled: false }];
 
@@ -63,7 +64,7 @@ export function buildAppMenu(
         click: () => {
           const win = BrowserWindow.getFocusedWindow();
           if (win) {
-            win.webContents.loadURL(`${config.webUrl}/profile`);
+            win.webContents.loadURL(new URL("/profile", config.webUrl).href);
           }
         },
       },

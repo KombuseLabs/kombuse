@@ -159,7 +159,7 @@ function createWindow(path?: string): BrowserWindow {
     mainWindow.show();
   });
 
-  const loadUrl = path ? `${webUrl}${path}` : webUrl;
+  const loadUrl = path ? new URL(path, webUrl).href : webUrl;
   mainWindow.loadURL(loadUrl);
 
   return mainWindow;
