@@ -1,17 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ProjectFilters, CreateProjectInput, UpdateProjectInput } from '@kombuse/types'
 import { projectsApi } from '../lib/api'
+import { projectKeys } from '../lib/query-keys'
 
 export function useProjects(filters?: ProjectFilters) {
   return useQuery({
-    queryKey: ['projects', filters],
+    queryKey: projectKeys.list(filters),
     queryFn: () => projectsApi.list(filters),
   })
 }
 
 export function useProject(id: string) {
   return useQuery({
-    queryKey: ['projects', id],
+    queryKey: projectKeys.detail(id),
     queryFn: () => projectsApi.get(id),
     enabled: !!id,
   })
@@ -22,7 +23,7 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: (input: CreateProjectInput) => projectsApi.create(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
     },
   })
 }
@@ -33,7 +34,7 @@ export function useUpdateProject() {
     mutationFn: ({ id, input }: { id: string; input: UpdateProjectInput }) =>
       projectsApi.update(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
     },
   })
 }
@@ -43,7 +44,7 @@ export function useDeleteProject() {
   return useMutation({
     mutationFn: (id: string) => projectsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
     },
   })
 }
@@ -53,7 +54,7 @@ export function useInitProject() {
   return useMutation({
     mutationFn: (id: string) => projectsApi.initProject(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
     },
   })
 }

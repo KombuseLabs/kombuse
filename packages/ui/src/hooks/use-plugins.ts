@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PluginExportInput, PluginInstallInput, PluginRemoteInstallInput } from '@kombuse/types'
 import { pluginFilesApi, pluginsApi } from '../lib/api'
+import { pluginKeys, pluginFileKeys, agentKeys, labelKeys } from '../lib/query-keys'
 
 export function useExportPlugin() {
   return useMutation({
@@ -10,7 +11,7 @@ export function useExportPlugin() {
 
 export function useInstalledPlugins(projectId: string) {
   return useQuery({
-    queryKey: ['plugins', 'installed', projectId],
+    queryKey: pluginKeys.installed(projectId),
     queryFn: () => pluginsApi.list(projectId),
     enabled: !!projectId,
   })
@@ -18,7 +19,7 @@ export function useInstalledPlugins(projectId: string) {
 
 export function useAvailablePlugins(projectId: string) {
   return useQuery({
-    queryKey: ['plugins', 'available', projectId],
+    queryKey: pluginKeys.available(projectId),
     queryFn: () => pluginsApi.available(projectId),
     enabled: !!projectId,
   })
@@ -29,9 +30,9 @@ export function useInstallPlugin() {
   return useMutation({
     mutationFn: (input: PluginInstallInput) => pluginsApi.install(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      queryClient.invalidateQueries({ queryKey: ['labels'] })
+      queryClient.invalidateQueries({ queryKey: pluginKeys.all })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
+      queryClient.invalidateQueries({ queryKey: labelKeys.all })
     },
   })
 }
@@ -42,9 +43,9 @@ export function useUpdatePlugin() {
     mutationFn: ({ id, input }: { id: string; input: { is_enabled?: boolean } }) =>
       pluginsApi.update(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      queryClient.invalidateQueries({ queryKey: ['labels'] })
+      queryClient.invalidateQueries({ queryKey: pluginKeys.all })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
+      queryClient.invalidateQueries({ queryKey: labelKeys.all })
     },
   })
 }
@@ -55,14 +56,14 @@ export function useUninstallPlugin() {
     mutationFn: ({ id, mode }: { id: string; mode?: 'orphan' | 'delete' }) =>
       pluginsApi.uninstall(id, mode),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: pluginKeys.all })
     },
   })
 }
 
 export function usePluginFiles(pluginId: string | null | undefined) {
   return useQuery({
-    queryKey: ['plugin-files', pluginId],
+    queryKey: pluginFileKeys.list(pluginId),
     queryFn: () => pluginFilesApi.list(pluginId!),
     enabled: !!pluginId,
   })
@@ -74,14 +75,14 @@ export function useUpdatePluginFile() {
     mutationFn: ({ pluginId, fileId, content }: { pluginId: string; fileId: number; content: string }) =>
       pluginFilesApi.update(pluginId, fileId, { content }),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['plugin-files', variables.pluginId] })
+      queryClient.invalidateQueries({ queryKey: pluginFileKeys.list(variables.pluginId) })
     },
   })
 }
 
 export function useCheckPluginUpdates(pluginId: string | null | undefined) {
   return useQuery({
-    queryKey: ['plugins', 'check-updates', pluginId],
+    queryKey: pluginKeys.checkUpdates(pluginId),
     queryFn: () => pluginsApi.checkUpdates(pluginId!),
     enabled: !!pluginId,
     staleTime: 5 * 60 * 1000,
@@ -93,9 +94,9 @@ export function useInstallRemotePlugin() {
   return useMutation({
     mutationFn: (input: PluginRemoteInstallInput) => pluginsApi.installRemote(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      queryClient.invalidateQueries({ queryKey: ['labels'] })
+      queryClient.invalidateQueries({ queryKey: pluginKeys.all })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
+      queryClient.invalidateQueries({ queryKey: labelKeys.all })
     },
   })
 }
@@ -105,9 +106,9 @@ export function usePullPluginUpdate() {
   return useMutation({
     mutationFn: (pluginId: string) => pluginsApi.pull(pluginId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      queryClient.invalidateQueries({ queryKey: ['labels'] })
+      queryClient.invalidateQueries({ queryKey: pluginKeys.all })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
+      queryClient.invalidateQueries({ queryKey: labelKeys.all })
     },
   })
 }

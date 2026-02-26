@@ -5,6 +5,7 @@ import type {
   UpdateAgentTriggerInput,
 } from '@kombuse/types'
 import { triggersApi, labelsApi } from '../lib/api'
+import { triggerKeys } from '../lib/query-keys'
 import { useAppContext } from './use-app-context'
 
 function useRefreshSmartLabels() {
@@ -20,7 +21,7 @@ function useRefreshSmartLabels() {
 
 export function useTriggers(agentId: string) {
   return useQuery({
-    queryKey: ['triggers', agentId],
+    queryKey: triggerKeys.byAgent(agentId),
     queryFn: () => triggersApi.list(agentId),
     enabled: !!agentId,
   })
@@ -28,7 +29,7 @@ export function useTriggers(agentId: string) {
 
 export function useTrigger(id: number) {
   return useQuery({
-    queryKey: ['triggers', 'detail', id],
+    queryKey: triggerKeys.detail(id),
     queryFn: () => triggersApi.get(id),
     enabled: !!id,
   })
@@ -46,7 +47,7 @@ export function useCreateTrigger() {
       input: Omit<CreateAgentTriggerInput, 'agent_id'>
     }) => triggersApi.create(agentId, input),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['triggers', variables.agentId] })
+      queryClient.invalidateQueries({ queryKey: triggerKeys.byAgent(variables.agentId) })
       refreshSmartLabels()
     },
   })
@@ -59,7 +60,7 @@ export function useUpdateTrigger() {
     mutationFn: ({ id, input }: { id: number; input: UpdateAgentTriggerInput }) =>
       triggersApi.update(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['triggers'] })
+      queryClient.invalidateQueries({ queryKey: triggerKeys.all })
       refreshSmartLabels()
     },
   })
@@ -71,7 +72,7 @@ export function useDeleteTrigger() {
   return useMutation({
     mutationFn: (id: number) => triggersApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['triggers'] })
+      queryClient.invalidateQueries({ queryKey: triggerKeys.all })
       refreshSmartLabels()
     },
   })
@@ -84,7 +85,7 @@ export function useToggleTrigger() {
     mutationFn: ({ id, is_enabled }: { id: number; is_enabled: boolean }) =>
       triggersApi.update(id, { is_enabled }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['triggers'] })
+      queryClient.invalidateQueries({ queryKey: triggerKeys.all })
       refreshSmartLabels()
     },
   })
@@ -92,7 +93,7 @@ export function useToggleTrigger() {
 
 export function useTriggersByLabel(labelId: number) {
   return useQuery({
-    queryKey: ['triggers', 'label', labelId],
+    queryKey: triggerKeys.byLabel(labelId),
     queryFn: () => triggersApi.listByLabel(labelId),
     enabled: labelId > 0,
   })

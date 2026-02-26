@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { WebSocketEvent, EventType, ServerMessage } from '@kombuse/types'
 import { EVENT_TYPES } from '@kombuse/types'
 import { useWebSocket } from './use-websocket'
+import { ticketKeys, commentKeys, ticketTimelineKeys, labelKeys } from '../lib/query-keys'
 
 interface UseRealtimeUpdatesOptions {
   projectId?: string
@@ -49,16 +50,16 @@ export function useRealtimeUpdates({
         case EVENT_TYPES.TICKET_UNCLAIMED:
           // Invalidate ticket list queries (with any filters)
           queryClient.invalidateQueries({
-            queryKey: ['tickets'],
+            queryKey: ticketKeys.all,
             exact: false,
           })
           // Invalidate specific ticket query and its timeline
           if (event.project_id && event.ticket_number) {
             queryClient.invalidateQueries({
-              queryKey: ['tickets', 'by-number', event.project_id, event.ticket_number],
+              queryKey: ticketKeys.byNumber(event.project_id, event.ticket_number),
             })
             queryClient.invalidateQueries({
-              queryKey: ['ticket-timeline', event.project_id, event.ticket_number],
+              queryKey: ticketTimelineKeys.detail(event.project_id, event.ticket_number),
             })
           }
           break
@@ -69,11 +70,11 @@ export function useRealtimeUpdates({
           // Invalidate comments and timeline for the ticket
           if (event.project_id && event.ticket_number) {
             queryClient.invalidateQueries({
-              queryKey: ['comments', event.project_id, event.ticket_number],
+              queryKey: commentKeys.list(event.project_id, event.ticket_number),
               exact: false,
             })
             queryClient.invalidateQueries({
-              queryKey: ['ticket-timeline', event.project_id, event.ticket_number],
+              queryKey: ticketTimelineKeys.detail(event.project_id, event.ticket_number),
             })
           }
           break
@@ -83,19 +84,19 @@ export function useRealtimeUpdates({
           // Invalidate ticket labels
           if (event.project_id && event.ticket_number) {
             queryClient.invalidateQueries({
-              queryKey: ['labels', 'ticket', event.project_id, event.ticket_number],
+              queryKey: labelKeys.ticket(event.project_id, event.ticket_number),
             })
             // Invalidate ticket list queries (with any filters) so label badges refresh
             queryClient.invalidateQueries({
-              queryKey: ['tickets'],
+              queryKey: ticketKeys.all,
               exact: false,
             })
             // Also refresh the ticket itself and timeline since labels might be shown inline
             queryClient.invalidateQueries({
-              queryKey: ['tickets', 'by-number', event.project_id, event.ticket_number],
+              queryKey: ticketKeys.byNumber(event.project_id, event.ticket_number),
             })
             queryClient.invalidateQueries({
-              queryKey: ['ticket-timeline', event.project_id, event.ticket_number],
+              queryKey: ticketTimelineKeys.detail(event.project_id, event.ticket_number),
             })
           }
           break
@@ -141,13 +142,13 @@ export function useRealtimeUpdates({
     wasConnectedRef.current = isConnected
 
     if (!wasConnected && isConnected) {
-      queryClient.invalidateQueries({ queryKey: ['tickets'], exact: false })
-      queryClient.invalidateQueries({ queryKey: ['comments'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all, exact: false })
+      queryClient.invalidateQueries({ queryKey: commentKeys.all, exact: false })
       queryClient.invalidateQueries({
-        queryKey: ['ticket-timeline'],
+        queryKey: ticketTimelineKeys.all,
         exact: false,
       })
-      queryClient.invalidateQueries({ queryKey: ['labels'], exact: false })
+      queryClient.invalidateQueries({ queryKey: labelKeys.all, exact: false })
     }
   }, [isConnected, queryClient])
 

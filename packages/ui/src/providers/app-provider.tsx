@@ -17,6 +17,7 @@ import { BACKEND_TYPES } from '@kombuse/types'
 import { AppCtx } from './app-context'
 import { useWebSocket } from '../hooks/use-websocket'
 import { syncApi, labelsApi } from '../lib/api'
+import { sessionKeys, ticketKeys } from '../lib/query-keys'
 
 interface AppProviderProps {
   children: ReactNode
@@ -206,7 +207,7 @@ export function AppProvider({
             appliedModel: message.appliedModel,
             startedAt: message.startedAt ?? new Date().toISOString(),
           })
-          void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+          void queryClient.invalidateQueries({ queryKey: sessionKeys.all })
           break
         }
         case 'agent.permission_pending': {
@@ -230,7 +231,7 @@ export function AppProvider({
         case 'agent.complete': {
           clearPendingPermissionsForSession(message.kombuseSessionId)
           removeActiveSession(message.kombuseSessionId)
-          void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+          void queryClient.invalidateQueries({ queryKey: sessionKeys.all })
           break
         }
         case 'ticket.agent_status': {
@@ -326,7 +327,7 @@ export function AppProvider({
           return next
         })
         // Invalidate ticket queries as a fallback for missed WebSocket events
-        queryClient.invalidateQueries({ queryKey: ['tickets'], exact: false })
+        queryClient.invalidateQueries({ queryKey: ticketKeys.all, exact: false })
       }).catch(() => {})
     }, 30_000)
     return () => clearInterval(interval)

@@ -2,10 +2,11 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import type { Attachment } from '@kombuse/types'
 import { attachmentsApi } from '../lib/api'
 import { useMemo } from 'react'
+import { attachmentKeys } from '../lib/query-keys'
 
 export function useCommentAttachments(commentId: number) {
   return useQuery({
-    queryKey: ['comment-attachments', commentId],
+    queryKey: attachmentKeys.comment(commentId),
     queryFn: () => attachmentsApi.listByComment(commentId),
     enabled: commentId > 0,
   })
@@ -16,7 +17,7 @@ export function useCommentsAttachments(commentIds: number[]) {
 
   const queries = useQueries({
     queries: stableIds.map((id) => ({
-      queryKey: ['comment-attachments', id],
+      queryKey: attachmentKeys.comment(id),
       queryFn: () => attachmentsApi.listByComment(id),
       enabled: id > 0,
     })),
@@ -43,7 +44,7 @@ export function useUploadAttachment() {
       uploadedById: string
     }) => attachmentsApi.uploadToComment(commentId, file, uploadedById),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['comment-attachments', variables.commentId] })
+      queryClient.invalidateQueries({ queryKey: attachmentKeys.comment(variables.commentId) })
     },
   })
 }
@@ -53,14 +54,14 @@ export function useDeleteAttachment() {
   return useMutation({
     mutationFn: ({ id }: { id: number; commentId: number }) => attachmentsApi.delete(id),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['comment-attachments', variables.commentId] })
+      queryClient.invalidateQueries({ queryKey: attachmentKeys.comment(variables.commentId) })
     },
   })
 }
 
 export function useTicketAttachments(projectId: string, ticketNumber: number) {
   return useQuery({
-    queryKey: ['ticket-attachments', projectId, ticketNumber],
+    queryKey: attachmentKeys.ticket(projectId, ticketNumber),
     queryFn: () => attachmentsApi.listByTicket(projectId, ticketNumber),
     enabled: !!projectId && ticketNumber > 0,
   })
@@ -76,7 +77,7 @@ export function useUploadTicketAttachment() {
       uploadedById: string
     }) => attachmentsApi.uploadToTicket(projectId, ticketNumber, file, uploadedById),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['ticket-attachments', variables.projectId, variables.ticketNumber] })
+      queryClient.invalidateQueries({ queryKey: attachmentKeys.ticket(variables.projectId, variables.ticketNumber) })
     },
   })
 }

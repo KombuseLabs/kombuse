@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { codexApi } from '../lib/api'
+import { codexKeys } from '../lib/query-keys'
 
 export function useCodexMcpStatus() {
   return useQuery({
-    queryKey: ['codex-mcp-status'],
+    queryKey: codexKeys.mcpStatus,
     queryFn: () => codexApi.getMcpStatus(),
   })
 }
@@ -15,7 +16,7 @@ export function useSetCodexMcpEnabled() {
     mutationFn: (enabled: boolean) => codexApi.setMcpEnabled(enabled),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['codex-mcp-status'],
+        queryKey: codexKeys.mcpStatus,
       })
     },
   })

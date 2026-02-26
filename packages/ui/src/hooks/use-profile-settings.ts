@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { profileSettingsApi } from '../lib/api'
 import type { UpsertProfileSettingInput } from '@kombuse/types'
+import { profileSettingKeys } from '../lib/query-keys'
 
 export function useProfileSetting(profileId: string, key: string) {
   return useQuery({
-    queryKey: ['profile-settings', profileId, key],
+    queryKey: profileSettingKeys.detail(profileId, key),
     queryFn: () => profileSettingsApi.get(profileId, key),
     enabled: !!profileId && !!key,
     retry: false,
@@ -13,7 +14,7 @@ export function useProfileSetting(profileId: string, key: string) {
 
 export function useProfileSettings(profileId: string) {
   return useQuery({
-    queryKey: ['profile-settings', profileId],
+    queryKey: profileSettingKeys.all(profileId),
     queryFn: () => profileSettingsApi.getAll(profileId),
     enabled: !!profileId,
   })
@@ -26,10 +27,10 @@ export function useUpsertProfileSetting() {
       profileSettingsApi.upsert(input),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: ['profile-settings', data.profile_id, data.setting_key],
+        queryKey: profileSettingKeys.detail(data.profile_id, data.setting_key),
       })
       queryClient.invalidateQueries({
-        queryKey: ['profile-settings', data.profile_id],
+        queryKey: profileSettingKeys.all(data.profile_id),
         exact: true,
       })
     },

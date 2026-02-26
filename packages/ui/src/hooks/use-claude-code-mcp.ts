@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { claudeCodeMcpApi } from '../lib/api'
+import { claudeCodeKeys } from '../lib/query-keys'
 
 export function useClaudeCodeMcpStatus() {
   return useQuery({
-    queryKey: ['claude-code-mcp-status'],
+    queryKey: claudeCodeKeys.mcpStatus,
     queryFn: () => claudeCodeMcpApi.getMcpStatus(),
   })
 }
@@ -15,7 +16,7 @@ export function useSetClaudeCodeMcpEnabled() {
     mutationFn: (enabled: boolean) => claudeCodeMcpApi.setMcpEnabled(enabled),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['claude-code-mcp-status'],
+        queryKey: claudeCodeKeys.mcpStatus,
       })
     },
   })

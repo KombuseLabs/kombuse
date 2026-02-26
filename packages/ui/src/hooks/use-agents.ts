@@ -5,17 +5,18 @@ import type {
   UpdateProfileInput,
 } from '@kombuse/types'
 import { agentsApi, profilesApi } from '../lib/api'
+import { agentKeys, profileKeys } from '../lib/query-keys'
 
 export function useAgents(filters?: AgentFilters) {
   return useQuery({
-    queryKey: ['agents', filters],
+    queryKey: agentKeys.list(filters),
     queryFn: () => agentsApi.list(filters),
   })
 }
 
 export function useAgent(id: string) {
   return useQuery({
-    queryKey: ['agents', id],
+    queryKey: agentKeys.detail(id),
     queryFn: () => agentsApi.get(id),
     enabled: !!id,
   })
@@ -23,7 +24,7 @@ export function useAgent(id: string) {
 
 export function useAgentWithProfile(id: string) {
   return useQuery({
-    queryKey: ['agents', id, 'with-profile'],
+    queryKey: agentKeys.withProfile(id),
     queryFn: async () => {
       const [agent, profile] = await Promise.all([
         agentsApi.get(id),
@@ -37,7 +38,7 @@ export function useAgentWithProfile(id: string) {
 
 export function useAgentProfiles() {
   return useQuery({
-    queryKey: ['profiles', { type: 'agent' }],
+    queryKey: profileKeys.agentProfiles(),
     queryFn: () => profilesApi.list({ type: 'agent' }),
   })
 }
@@ -68,8 +69,8 @@ export function useCreateAgent() {
       return agent
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
+      queryClient.invalidateQueries({ queryKey: profileKeys.all })
     },
   })
 }
@@ -80,7 +81,7 @@ export function useUpdateAgent() {
     mutationFn: ({ id, input }: { id: string; input: UpdateAgentInput }) =>
       agentsApi.update(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
     },
   })
 }
@@ -91,8 +92,8 @@ export function useUpdateProfile() {
     mutationFn: ({ id, input }: { id: string; input: UpdateProfileInput }) =>
       profilesApi.update(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
+      queryClient.invalidateQueries({ queryKey: profileKeys.all })
     },
   })
 }
@@ -103,7 +104,7 @@ export function useToggleAgent() {
     mutationFn: ({ id, is_enabled }: { id: string; is_enabled: boolean }) =>
       agentsApi.update(id, { is_enabled }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
     },
   })
 }
@@ -113,8 +114,8 @@ export function useDeleteAgent() {
   return useMutation({
     mutationFn: (id: string) => agentsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: agentKeys.all })
+      queryClient.invalidateQueries({ queryKey: profileKeys.all })
     },
   })
 }

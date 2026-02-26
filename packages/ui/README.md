@@ -141,6 +141,23 @@ Props:
 - `ResizableCardPanel`: split-layout wrapper with explicit top/bottom insets (`pt-3`/`pb-6`) and side-aware gutters (`side="list" | "detail"`) so list/detail cards align with the rail sidebar and remain evenly spaced
 - `ResizableCardHandle`: transparent split-layout handle for card-separated panes (no extra visible divider line)
 
+### Query Keys
+
+Central query key registry for React Query cache management. All query keys are defined as typed factory objects — never use inline string arrays.
+
+```typescript
+import { ticketKeys, sessionKeys, commentKeys } from '@kombuse/ui/lib/query-keys'
+
+// In useQuery
+queryKey: ticketKeys.list(filters)
+queryKey: ticketKeys.byNumber(projectId, ticketNumber)
+
+// In invalidateQueries (prefix-based)
+queryClient.invalidateQueries({ queryKey: ticketKeys.all })
+```
+
+See `src/lib/query-keys.ts` for the full list of 24 key groups: `ticketKeys`, `commentKeys`, `ticketTimelineKeys`, `labelKeys`, `agentKeys`, `profileKeys`, `sessionKeys`, `projectKeys`, `milestoneKeys`, `triggerKeys`, `analyticsKeys`, `pluginKeys`, `pluginFileKeys`, `pluginSourceKeys`, `permissionKeys`, `eventKeys`, `databaseKeys`, `modelKeys`, `profileSettingKeys`, `backendStatusKeys`, `updateKeys`, `claudeCodeKeys`, `codexKeys`, `attachmentKeys`.
+
 ### Hooks
 
 ```typescript

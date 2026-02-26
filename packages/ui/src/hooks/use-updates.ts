@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UpdateStatus, UpdateCheckResult, ServerMessage } from '@kombuse/types'
 import { useWebSocket } from './use-websocket'
 import { getServerPort } from '../lib/api'
+import { updateKeys } from '../lib/query-keys'
 
 const API_BASE = `http://localhost:${getServerPort()}/api`
 
@@ -44,7 +45,7 @@ export function useUpdates(): UseUpdatesReturn {
     (message: ServerMessage) => {
       if (message.type === 'update:status') {
         setStatus(message.status)
-        queryClient.invalidateQueries({ queryKey: ['updates', 'status'] })
+        queryClient.invalidateQueries({ queryKey: updateKeys.status })
       }
     },
     [queryClient]
@@ -58,7 +59,7 @@ export function useUpdates(): UseUpdatesReturn {
 
   // Initial status fetch
   const { data: initialStatus } = useQuery({
-    queryKey: ['updates', 'status'],
+    queryKey: updateKeys.status,
     queryFn: async () => {
       try {
         const response = await fetch(`${API_BASE}/updates/status`)

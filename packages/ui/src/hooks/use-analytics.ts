@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { analyticsApi } from '../lib/api'
+import { analyticsKeys } from '../lib/query-keys'
 
 export function useSessionsPerDay(projectId: string, days?: number) {
   return useQuery({
-    queryKey: ['analytics', 'sessions-per-day', projectId, days],
+    queryKey: analyticsKeys.sessionsPerDay(projectId, days),
     queryFn: () => analyticsApi.sessionsPerDay(projectId, days),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
@@ -13,7 +14,7 @@ export function useSessionsPerDay(projectId: string, days?: number) {
 
 export function useDurationPercentiles(projectId: string, days?: number) {
   return useQuery({
-    queryKey: ['analytics', 'duration-percentiles', projectId, days],
+    queryKey: analyticsKeys.durationPercentiles(projectId, days),
     queryFn: () => analyticsApi.durationPercentiles(projectId, days),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
@@ -23,7 +24,7 @@ export function useDurationPercentiles(projectId: string, days?: number) {
 
 export function usePipelineStageDuration(projectId: string, days?: number) {
   return useQuery({
-    queryKey: ['analytics', 'pipeline-stage-duration', projectId, days],
+    queryKey: analyticsKeys.pipelineStageDuration(projectId, days),
     queryFn: () => analyticsApi.pipelineStageDuration(projectId, days),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
@@ -33,7 +34,7 @@ export function usePipelineStageDuration(projectId: string, days?: number) {
 
 export function useMostFrequentReads(projectId: string, days?: number, limit?: number) {
   return useQuery({
-    queryKey: ['analytics', 'most-frequent-reads', projectId, days, limit],
+    queryKey: analyticsKeys.mostFrequentReads(projectId, days, limit),
     queryFn: () => analyticsApi.mostFrequentReads(projectId, days, limit),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
@@ -43,7 +44,7 @@ export function useMostFrequentReads(projectId: string, days?: number, limit?: n
 
 export function useToolCallsPerSession(projectId: string, days?: number, agentId?: string) {
   return useQuery({
-    queryKey: ['analytics', 'tool-calls-per-session', projectId, days, agentId],
+    queryKey: analyticsKeys.toolCallsPerSession(projectId, days, agentId),
     queryFn: () => analyticsApi.toolCallsPerSession(projectId, days, agentId),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
@@ -53,7 +54,7 @@ export function useToolCallsPerSession(projectId: string, days?: number, agentId
 
 export function useSlowestTools(projectId: string, days?: number) {
   return useQuery({
-    queryKey: ['analytics', 'slowest-tools', projectId, days],
+    queryKey: analyticsKeys.slowestTools(projectId, days),
     queryFn: () => analyticsApi.slowestTools(projectId, days),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
@@ -63,7 +64,7 @@ export function useSlowestTools(projectId: string, days?: number) {
 
 export function useToolCallVolume(projectId: string, days?: number) {
   return useQuery({
-    queryKey: ['analytics', 'tool-call-volume', projectId, days],
+    queryKey: analyticsKeys.toolCallVolume(projectId, days),
     queryFn: () => analyticsApi.toolCallVolume(projectId, days),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
@@ -78,7 +79,7 @@ export function useTicketBurndown(
   labelId?: number,
 ) {
   return useQuery({
-    queryKey: ['analytics', 'ticket-burndown', projectId, days, milestoneId, labelId],
+    queryKey: analyticsKeys.ticketBurndown(projectId, days, milestoneId, labelId),
     queryFn: () => analyticsApi.ticketBurndown(projectId, days, milestoneId, labelId),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
@@ -88,7 +89,7 @@ export function useTicketBurndown(
 
 export function useAgentRuntimePerTicket(projectId: string, limit?: number) {
   return useQuery({
-    queryKey: ['analytics', 'agent-runtime-per-ticket', projectId, limit],
+    queryKey: analyticsKeys.agentRuntimePerTicket(projectId, limit),
     queryFn: () => analyticsApi.agentRuntimePerTicket(projectId, limit),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,

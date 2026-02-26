@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { SessionFilters } from '@kombuse/types'
 import { sessionsApi } from '../lib/api'
+import { sessionKeys } from '../lib/query-keys'
 
 export interface SessionEventsFilters {
   since_seq?: number
@@ -10,7 +11,7 @@ export interface SessionEventsFilters {
 
 export function useSessions(filters?: SessionFilters) {
   return useQuery({
-    queryKey: ['sessions', filters],
+    queryKey: sessionKeys.list(filters),
     queryFn: () => sessionsApi.list(filters),
     enabled: !!filters,
   })
@@ -18,7 +19,7 @@ export function useSessions(filters?: SessionFilters) {
 
 export function useSessionByKombuseId(kombuseSessionId: string | null) {
   return useQuery({
-    queryKey: ['sessions', 'by-kombuse', kombuseSessionId],
+    queryKey: sessionKeys.byKombuse(kombuseSessionId),
     queryFn: () => sessionsApi.get(kombuseSessionId!),
     enabled: !!kombuseSessionId,
     staleTime: 5 * 60 * 1000,
@@ -30,7 +31,7 @@ export function useSessionEvents(
   filters?: SessionEventsFilters
 ) {
   return useQuery({
-    queryKey: ['sessions', kombuseSessionId, 'events', filters],
+    queryKey: sessionKeys.events(kombuseSessionId, filters),
     queryFn: () => sessionsApi.getEvents(kombuseSessionId!, filters),
     enabled: !!kombuseSessionId,
   })
@@ -41,7 +42,7 @@ export function useCreateSession() {
   return useMutation({
     mutationFn: sessionsApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all })
     },
   })
 }
@@ -51,7 +52,7 @@ export function useDeleteSession() {
   return useMutation({
     mutationFn: (kombuseSessionId: string) => sessionsApi.delete(kombuseSessionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all })
     },
   })
 }

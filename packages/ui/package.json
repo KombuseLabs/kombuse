@@ -12,6 +12,7 @@
     "./lib/utils": "./src/lib/utils.ts",
     "./lib/api": "./src/lib/api.ts",
     "./lib/backend-utils": "./src/lib/backend-utils.ts",
+    "./lib/query-keys": "./src/lib/query-keys.ts",
     "./globals.css": "./src/globals.css",
     "./tailwind.config": "./tailwind.config.ts"
   },

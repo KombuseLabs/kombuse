@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ticketsApi } from '../lib/api'
+import { ticketKeys } from '../lib/query-keys'
 
 function useDebouncedValue(value: string, delay: number): string {
   const [debounced, setDebounced] = useState(value)
@@ -21,7 +22,7 @@ export function useTicketSearch(
   const debouncedQuery = useDebouncedValue(query, 200)
 
   return useQuery({
-    queryKey: ['tickets', 'search', debouncedQuery, options?.projectId ?? null],
+    queryKey: ticketKeys.search(debouncedQuery, options?.projectId ?? null),
     queryFn: () =>
       ticketsApi.list({
         ...(debouncedQuery ? { search: debouncedQuery } : {}),

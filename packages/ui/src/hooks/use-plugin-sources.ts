@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { PluginSourceConfig } from '@kombuse/types'
 import { pluginSourcesApi } from '../lib/api'
+import { pluginSourceKeys, pluginKeys } from '../lib/query-keys'
 
 export function usePluginSources(projectId: string) {
   return useQuery({
-    queryKey: ['plugin-sources', projectId],
+    queryKey: pluginSourceKeys.list(projectId),
     queryFn: () => pluginSourcesApi.get(projectId),
     enabled: !!projectId,
   })
@@ -22,9 +23,9 @@ export function useUpdatePluginSources() {
     }) => pluginSourcesApi.update(projectId, sources),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['plugin-sources', variables.projectId],
+        queryKey: pluginSourceKeys.list(variables.projectId),
       })
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: pluginKeys.all })
     },
   })
 }

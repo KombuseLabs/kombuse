@@ -18,6 +18,7 @@ import { useWebSocket } from '../hooks/use-websocket'
 import { useSessionByKombuseId, useSessionEvents } from '../hooks/use-sessions'
 import { useAppContext } from '../hooks/use-app-context'
 import { ChatCtx } from './chat-context'
+import { sessionKeys } from '../lib/query-keys'
 
 const INITIAL_SESSION_EVENTS_LIMIT = 1000
 
@@ -257,12 +258,12 @@ export function ChatProvider({
   }, [agentId, sessionId])
 
   const refreshSessions = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    void queryClient.invalidateQueries({ queryKey: sessionKeys.all })
   }, [queryClient])
 
   const updateSessionStatus = useCallback(
     (sessionId: string, status: PublicSession['status']) => {
-      queryClient.setQueriesData({ queryKey: ['sessions'] }, (data) => {
+      queryClient.setQueriesData({ queryKey: sessionKeys.all }, (data) => {
         if (!Array.isArray(data)) {
           return data
         }

@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { profilesApi } from '../lib/api'
+import { profileKeys } from '../lib/query-keys'
 
 export function useProfile(id: string) {
   return useQuery({
-    queryKey: ['profiles', id],
+    queryKey: profileKeys.detail(id),
     queryFn: () => profilesApi.get(id),
     enabled: !!id,
   })

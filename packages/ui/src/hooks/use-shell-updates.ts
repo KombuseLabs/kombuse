@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UpdateStatus, UpdateCheckResult, ServerMessage } from '@kombuse/types'
 import { useWebSocket } from './use-websocket'
 import { getServerPort } from '../lib/api'
+import { updateKeys } from '../lib/query-keys'
 
 const API_BASE = `http://localhost:${getServerPort()}/api`
 
@@ -35,7 +36,7 @@ export function useShellUpdates(): UseShellUpdatesReturn {
     (message: ServerMessage) => {
       if (message.type === 'shell-update:status') {
         setStatus(message.status)
-        queryClient.invalidateQueries({ queryKey: ['shell-updates', 'status'] })
+        queryClient.invalidateQueries({ queryKey: updateKeys.shellStatus })
       }
     },
     [queryClient]
@@ -47,7 +48,7 @@ export function useShellUpdates(): UseShellUpdatesReturn {
   })
 
   const { data: initialStatus } = useQuery({
-    queryKey: ['shell-updates', 'status'],
+    queryKey: updateKeys.shellStatus,
     queryFn: async () => {
       try {
         const response = await fetch(`${API_BASE}/shell-updates/status`)

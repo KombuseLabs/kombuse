@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { profilesApi } from '../lib/api'
+import { profileKeys } from '../lib/query-keys'
 
 function useDebouncedValue(value: string, delay: number): string {
   const [debounced, setDebounced] = useState(value)
@@ -19,7 +20,7 @@ export function useProfileSearch(query: string, options?: { enabled?: boolean; p
   const debouncedQuery = useDebouncedValue(query, 200)
 
   return useQuery({
-    queryKey: ['profiles', 'search', debouncedQuery, projectId],
+    queryKey: profileKeys.search(debouncedQuery, projectId),
     queryFn: () =>
       profilesApi.list({
         ...(debouncedQuery ? { search: debouncedQuery } : {}),
