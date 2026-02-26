@@ -26,7 +26,7 @@ const {
   mockScrollToTop: vi.fn(),
   mockScrollToBottom: vi.fn(),
   mockSelectedTicket: {
-    value: { id: 42, title: 'Ticket 42', status: 'open' },
+    value: { id: 42, ticket_number: 42, project_id: '1', title: 'Ticket 42', status: 'open' },
   },
   mockTimelineState: {
     data: {
@@ -107,7 +107,7 @@ vi.mock('@kombuse/ui/components', () => ({
     return (
       <div data-testid="ticket-list">
         {props.header}
-        <button type="button" onClick={() => props.onTicketClick?.({ id: 43 })}>
+        <button type="button" onClick={() => props.onTicketClick?.({ id: 43, ticket_number: 43, project_id: '1' })}>
           Open Ticket 43
         </button>
       </div>
@@ -159,6 +159,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
     isPending: false,
   }),
   useAppContext: () => ({
+    currentProjectId: '1',
     setCurrentTicket: mockSetCurrentTicket,
     setView: mockSetView,
   }),
@@ -264,7 +265,7 @@ function getLastTicketListProps() {
 
 beforeEach(() => {
   setScrollState(false, false)
-  mockSelectedTicket.value = { id: 42, title: 'Ticket 42', status: 'open' }
+  mockSelectedTicket.value = { id: 42, ticket_number: 42, project_id: '1', title: 'Ticket 42', status: 'open' }
   mockTimelineState.data = { total: 0, items: [] }
   mockTimelineState.isFetched = true
   mockUseScrollToComment.mockClear()
@@ -276,7 +277,7 @@ beforeEach(() => {
   mockScrollToBottom.mockReset()
   mockCreateTicketMutate.mockReset()
   mockCreateTicketMutate.mockImplementation((_input, options) => {
-    options?.onSuccess?.({ id: 99 })
+    options?.onSuccess?.({ id: 99, ticket_number: 99, project_id: '1' })
   })
   mockMarkViewed.mockReset()
   mockUploadAsync.mockReset()
@@ -374,7 +375,7 @@ describe('Tickets scroll controls', () => {
 
     expect(mockUseScrollToComment).toHaveBeenLastCalledWith({ isTimelineLoaded: false })
 
-    mockSelectedTicket.value = { id: 42, title: 'Ticket 42', status: 'open' }
+    mockSelectedTicket.value = { id: 42, ticket_number: 42, project_id: '1', title: 'Ticket 42', status: 'open' }
     view.rerender(ticketsRouteElement())
 
     expect(mockUseScrollToComment).toHaveBeenLastCalledWith({ isTimelineLoaded: true })

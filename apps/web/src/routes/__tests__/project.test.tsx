@@ -100,14 +100,7 @@ describe('ProjectPage', () => {
     expect(getByDisplayValue('Test Project')).toBeDefined()
     expect(getByDisplayValue('A test project')).toBeDefined()
     expect(getByDisplayValue('/home/user/projects/test')).toBeDefined()
-    expect(getByDisplayValue('testorg')).toBeDefined()
-    expect(getByDisplayValue('testrepo')).toBeDefined()
-  })
-
-  it('should render repo source select with correct value', () => {
-    const { getByTestId } = render(<ProjectPage />)
-    const select = getByTestId('select')
-    expect(select.getAttribute('data-value')).toBe('github')
+    // Repository section is hidden behind {false && (...)} — repo fields not rendered
   })
 
   it('should disable save button when no changes', () => {

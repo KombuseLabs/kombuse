@@ -82,6 +82,13 @@ vi.mock('../../../hooks', () => ({
   useUploadTicketAttachment: () => ({ mutateAsync: vi.fn() }),
 }))
 
+vi.mock('../../../hooks/use-app-context', () => ({
+  useSmartLabels: () => ({
+    smartLabelIds: new Set<number>(),
+    isSmartLabel: () => false,
+  }),
+}))
+
 vi.mock('../../../hooks/use-textarea-autocomplete', () => ({
   useTextareaAutocomplete: () => ({
     textareaProps: {

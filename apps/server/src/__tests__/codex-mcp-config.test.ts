@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   getCodexMcpStatus,
   setCodexMcpEnabled,
@@ -26,6 +26,11 @@ function withCodexHome(tempHome: string, run: () => void): void {
 describe('codex-mcp-config', () => {
   const tempRoots: string[] = []
   const previousBridgePathEnv = process.env.KOMBUSE_MCP_BRIDGE_PATH
+
+  beforeEach(() => {
+    // Ensure clean bridge env — tests that need a specific bridge path set it explicitly
+    delete process.env.KOMBUSE_MCP_BRIDGE_PATH
+  })
 
   afterEach(() => {
     for (const root of tempRoots.splice(0)) {

@@ -30,6 +30,7 @@ vi.mock('@kombuse/ui/base', () => ({
   Collapsible: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   CollapsibleContent: ({ children }: any) => <div>{children}</div>,
   CollapsibleTrigger: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Badge: ({ children, ...props }: any) => <span {...props}>{children}</span>,
   toast: vi.fn(),
 }))
 
@@ -106,6 +107,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
   useUpdatePlugin: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePluginFiles: () => ({ data: [], isLoading: false }),
   useUpdatePluginFile: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useInstallRemotePlugin: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 import { Agents } from '../agents'

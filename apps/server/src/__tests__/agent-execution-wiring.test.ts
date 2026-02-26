@@ -47,6 +47,7 @@ vi.mock('@kombuse/persistence', () => ({
     list: vi.fn(() => []),
     create: vi.fn((input: Record<string, unknown>) => ({ id: 100, ...input, status: 'pending', attempts: 0, max_attempts: 3, run_at: new Date().toISOString(), result: null, error: null, started_at: null, completed_at: null, created_at: new Date().toISOString() })),
     countRecentByTicketId: vi.fn(() => 0),
+    findActiveByAgentAndTicket: vi.fn(() => null),
     update: vi.fn(() => null),
     failBySessionId: vi.fn(() => 0),
   },
@@ -68,6 +69,7 @@ vi.mock('@kombuse/persistence', () => ({
   },
   projectsRepository: {
     get: vi.fn(() => null),
+    getByIdOrSlug: vi.fn(() => null),
   },
   sessionsRepository: {
     get: vi.fn(() => null),

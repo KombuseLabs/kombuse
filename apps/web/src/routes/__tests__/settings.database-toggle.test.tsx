@@ -23,6 +23,9 @@ vi.mock('@kombuse/ui/hooks', () => ({
   useUpsertProfileSetting: () => ({
     mutate: mockUpsertSetting,
   }),
+  useAvailableBackends: () => ({ availableBackends: [], isAvailable: () => false, noneAvailable: true }),
+  useClaudeCodeMcpStatus: () => ({ data: { enabled: false }, isLoading: false }),
+  useSetClaudeCodeMcpEnabled: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@kombuse/ui/base', () => ({
@@ -54,6 +57,10 @@ vi.mock('@kombuse/ui/base', () => ({
     />
   ),
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  Tabs: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  TabsContent: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  TabsList: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  TabsTrigger: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   toast: {
     error: vi.fn(),
   },
@@ -63,6 +70,15 @@ vi.mock('lucide-react', () => ({
   Sun: () => <span>sun</span>,
   Moon: () => <span>moon</span>,
   Monitor: () => <span>monitor</span>,
+}))
+
+vi.mock('@kombuse/ui/components', () => ({
+  ModelSelector: () => <div data-testid="model-selector" />,
+}))
+
+vi.mock('@kombuse/ui/lib/backend-utils', () => ({
+  backendLabel: (type: string) => type,
+  normalizeBackendType: (value?: string) => value ?? 'claude_code',
 }))
 
 import { Settings } from '../settings'

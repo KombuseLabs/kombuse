@@ -10,6 +10,14 @@ vi.mock('../../../base/popover', () => ({
   PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+// Mock useSmartLabels (requires AppProvider context)
+vi.mock('../../../hooks/use-app-context', () => ({
+  useSmartLabels: () => ({
+    smartLabelIds: new Set<number>(),
+    isSmartLabel: () => false,
+  }),
+}))
+
 // Mock Command components as simple pass-through elements
 vi.mock('../../../base/command', () => ({
   Command: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

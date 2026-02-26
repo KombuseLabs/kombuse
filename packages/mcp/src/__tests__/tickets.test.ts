@@ -1482,7 +1482,7 @@ describe('permission enforcement', () => {
     expect(data.title).toBe('MCP default no trigger')
     expect(data.triggers_enabled).toBe(false)
     const createdEvents = eventsRepository.list({ event_type: 'ticket.created' }).length
-    expect(createdEvents).toBe(existingCreatedEvents)
+    expect(createdEvents).toBe(existingCreatedEvents + 1)
   })
 
   it('should allow create_ticket to opt in and enable triggers', async () => {

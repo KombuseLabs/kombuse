@@ -414,6 +414,7 @@ describe('pluginLifecycleService', () => {
     })
 
     it('should find plugins in project directory', async () => {
+      process.env.HOME = join(tempDir, 'empty-home') // Isolate from real ~/.kombuse/plugins/
       const db = getDatabase()
       db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
         tempDir,
@@ -424,11 +425,12 @@ describe('pluginLifecycleService', () => {
       writePluginManifest(pluginsDir, 'project-plugin')
 
       const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const fsPlugins = available.filter((p) => p.source === 'filesystem')
 
-      expect(available).toHaveLength(1)
-      expect(available[0]!.name).toBe('project-plugin')
-      expect(available[0]!.source).toBe('filesystem')
-      expect(available[0]!.installed).toBe(false)
+      expect(fsPlugins).toHaveLength(1)
+      expect(fsPlugins[0]!.name).toBe('project-plugin')
+      expect(fsPlugins[0]!.source).toBe('filesystem')
+      expect(fsPlugins[0]!.installed).toBe(false)
     })
 
     it('should find plugins in global directory', async () => {
@@ -444,6 +446,7 @@ describe('pluginLifecycleService', () => {
     })
 
     it('should mark installed plugins', async () => {
+      process.env.HOME = join(tempDir, 'empty-home') // Isolate from real ~/.kombuse/plugins/
       const db = getDatabase()
       db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
         tempDir,
@@ -477,6 +480,7 @@ describe('pluginLifecycleService', () => {
     })
 
     it('should skip directories with invalid manifests', async () => {
+      process.env.HOME = join(tempDir, 'empty-home') // Isolate from real ~/.kombuse/plugins/
       const db = getDatabase()
       db.prepare('UPDATE projects SET local_path = ? WHERE id = ?').run(
         tempDir,
@@ -500,8 +504,9 @@ describe('pluginLifecycleService', () => {
       writeFileSync(join(pluginsDir, 'incomplete', 'manifest.json'), JSON.stringify({ version: '1.0.0' }))
 
       const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
-      expect(available).toHaveLength(1)
-      expect(available[0]!.name).toBe('valid-plugin')
+      const fsPlugins = available.filter((p) => p.source === 'filesystem')
+      expect(fsPlugins).toHaveLength(1)
+      expect(fsPlugins[0]!.name).toBe('valid-plugin')
     })
 
     it('should give project plugins precedence over global duplicates', async () => {
