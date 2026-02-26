@@ -43,8 +43,9 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
 
   const permissions = useMemo(() => {
     const all = [...pendingPermissions.values()]
-    if (!scopeToProject || !currentProjectId) return all
-    return all.filter((p) => !p.projectId || p.projectId === currentProjectId)
+    if (!scopeToProject) return all
+    if (!currentProjectId) return []
+    return all.filter((p) => p.projectId === currentProjectId)
   }, [pendingPermissions, scopeToProject, currentProjectId])
   const count = permissions.length
 

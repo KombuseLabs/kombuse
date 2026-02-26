@@ -31,9 +31,11 @@ function createPermission(permission: PendingPermission): PendingPermission {
 function TestProvider({
   children,
   initialPermissions,
+  currentProjectId = '1',
 }: {
   children: ReactNode
   initialPermissions?: PendingPermission[]
+  currentProjectId?: string | null
 }) {
   const [pendingPermissions, setPendingPermissions] = useState(
     new Map<string, PendingPermission>(
@@ -45,6 +47,7 @@ function TestProvider({
           toolName: 'Bash',
           input: { command: 'ls' },
           description: 'Permission A',
+          projectId: '1',
         }),
         createPermission({
           permissionKey: 'chat-beta:req-1',
@@ -53,6 +56,7 @@ function TestProvider({
           toolName: 'Bash',
           input: { command: 'pwd' },
           description: 'Permission B',
+          projectId: '1',
         }),
       ]).map((permission) => [permission.permissionKey, permission])
     )
@@ -60,7 +64,7 @@ function TestProvider({
 
   const value = useMemo<AppContextValue>(() => ({
     currentTicket: null,
-    currentProjectId: '1',
+    currentProjectId,
     view: null,
     isGenerating: false,
     currentSession: null,
@@ -113,7 +117,7 @@ function TestProvider({
     removeActiveSession: () => {},
     setDefaultBackendType: () => {},
     setSmartLabelIds: () => {},
-  }), [pendingPermissions])
+  }), [pendingPermissions, currentProjectId])
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
 }
@@ -208,6 +212,7 @@ describe('NotificationBell permission key handling', () => {
             },
             description: 'Needs user input',
             ticketNumber: 42,
+            projectId: '1',
           }),
         ]}
       >
@@ -241,6 +246,7 @@ describe('NotificationBell permission key handling', () => {
               ],
             },
             description: 'Needs user input',
+            projectId: '1',
           }),
         ]}
       >
@@ -333,7 +339,7 @@ describe('NotificationBell project scoping', () => {
     expect(screen.getByText('Other project')).toBeDefined()
   })
 
-  it('shows permissions without projectId regardless of scope', () => {
+  it('hides permissions without projectId when scope is project', () => {
     render(
       <TestProvider
         initialPermissions={[
@@ -353,6 +359,31 @@ describe('NotificationBell project scoping', () => {
 
     fireEvent.click(screen.getByRole('button'))
 
-    expect(screen.getByText('No project set')).toBeDefined()
+    expect(screen.queryByText('No project set')).toBeNull()
+  })
+
+  it('shows empty state when currentProjectId is null and scope is project', () => {
+    render(
+      <TestProvider
+        currentProjectId={null}
+        initialPermissions={[
+          createPermission({
+            permissionKey: 'sess-d:req-1',
+            sessionId: 'sess-d',
+            requestId: 'req-1',
+            toolName: 'Bash',
+            input: { command: 'ls' },
+            description: 'Should be hidden',
+            projectId: '1',
+          }),
+        ]}
+      >
+        <NotificationBell />
+      </TestProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(screen.queryByText('Should be hidden')).toBeNull()
   })
 })

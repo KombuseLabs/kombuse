@@ -62,8 +62,9 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
 
   const sessions = useMemo(() => {
     const all = [...activeSessions.values()]
-    if (!scopeToProject || !currentProjectId) return all
-    return all.filter((s) => !s.projectId || s.projectId === currentProjectId)
+    if (!scopeToProject) return all
+    if (!currentProjectId) return []
+    return all.filter((s) => s.projectId === currentProjectId)
   }, [activeSessions, scopeToProject, currentProjectId])
   const count = sessions.length
 

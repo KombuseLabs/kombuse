@@ -26,6 +26,11 @@ import { ProjectPage } from "./routes/project";
 import { ProjectLayout } from "./layouts/project-layout";
 import { useScrollbarActivity } from "./hooks/use-scrollbar-activity";
 
+function extractProjectIdFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/projects\/([^/]+)/)
+  return match?.[1] ?? null
+}
+
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error) => {
@@ -134,7 +139,7 @@ export function App() {
         disableTransitionOnChange
       >
         <WebSocketProvider url={getWsUrl()}>
-          <AppProvider>
+          <AppProvider initialProjectId={extractProjectIdFromPath(window.location.pathname)}>
             <CommandSetup>
               <AppContent />
             </CommandSetup>

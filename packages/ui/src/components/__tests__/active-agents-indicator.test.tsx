@@ -33,13 +33,15 @@ const mockedUseBackendStatus = vi.mocked(backendStatusHooks.useBackendStatus)
 function TestProvider({
   children,
   sessions,
+  currentProjectId = '1',
 }: {
   children: ReactNode
   sessions: ActiveSessionInfo[]
+  currentProjectId?: string | null
 }) {
   const value = useMemo<AppContextValue>(() => ({
     currentTicket: null,
-    currentProjectId: '1',
+    currentProjectId,
     view: null,
     isGenerating: false,
     currentSession: null,
@@ -62,14 +64,14 @@ function TestProvider({
     removeActiveSession: () => {},
     setDefaultBackendType: () => {},
     setSmartLabelIds: () => {},
-  }), [sessions])
+  }), [sessions, currentProjectId])
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
 }
 
-function renderIndicator(sessions: ActiveSessionInfo[], onNavigate?: (path: string) => void) {
+function renderIndicator(sessions: ActiveSessionInfo[], onNavigate?: (path: string) => void, currentProjectId: string | null = '1') {
   render(
-    <TestProvider sessions={sessions}>
+    <TestProvider sessions={sessions} currentProjectId={currentProjectId}>
       <ActiveAgentsIndicator onNavigate={onNavigate} />
     </TestProvider>
   )
@@ -92,6 +94,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
         ticketTitle: 'Show title snippet in Active Agents indicator',
         effectiveBackend: 'claude-code',
         appliedModel: 'claude-sonnet-4-5',
+        projectId: '1',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ])
@@ -111,6 +114,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
         agentName: 'Coding Agent',
         ticketNumber: 289,
         effectiveBackend: 'codex',
+        projectId: '1',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ])
@@ -128,6 +132,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
         agentName: 'Coding Agent',
         effectiveBackend: 'mock',
         appliedModel: 'mock-model',
+        projectId: '1',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ])
@@ -142,6 +147,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
       {
         kombuseSessionId: 'session-unknown',
         agentName: 'Coding Agent',
+        projectId: '1',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ])
@@ -158,6 +164,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
         kombuseSessionId: 'session-4',
         agentName: 'Coding Agent',
         ticketNumber: 290,
+        projectId: '1',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ], onNavigate)
@@ -173,6 +180,7 @@ describe('ActiveAgentsIndicator ticket context rendering', () => {
       {
         kombuseSessionId: 'session-5',
         agentName: 'Coding Agent',
+        projectId: '1',
         startedAt: '2026-02-14T10:00:00.000Z',
       },
     ], onNavigate)
@@ -322,7 +330,7 @@ describe('ActiveAgentsIndicator project scoping', () => {
     expect(screen.getByText('Agent B')).toBeDefined()
   })
 
-  it('shows sessions without projectId regardless of scope', () => {
+  it('hides sessions without projectId when scope is project', () => {
     renderIndicator([
       {
         kombuseSessionId: 'session-no-project',
@@ -332,7 +340,21 @@ describe('ActiveAgentsIndicator project scoping', () => {
       },
     ])
 
-    expect(screen.getByText('Agent C')).toBeDefined()
+    expect(screen.queryByText('Agent C')).toBeNull()
+  })
+
+  it('shows empty state when currentProjectId is null and scope is project', () => {
+    renderIndicator([
+      {
+        kombuseSessionId: 'session-proj1',
+        agentName: 'Agent D',
+        projectId: '1',
+        effectiveBackend: 'claude-code',
+        startedAt: '2026-02-14T10:00:00.000Z',
+      },
+    ], undefined, null)
+
+    expect(screen.queryByText('Agent D')).toBeNull()
   })
 })
 
