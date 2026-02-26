@@ -510,6 +510,22 @@ import { FindBar } from '@kombuse/ui/components'
 - Supports previous/next navigation (Enter/Shift+Enter), match count display, and Escape to close
 - In the regular web app, returns `null` and browser-native find works as usual
 
+### UpdateStatusDialog
+
+```typescript
+import { UpdateStatusDialog } from '@kombuse/ui/components'
+
+// Mount once in app root — self-contained, manages its own open state
+<UpdateStatusDialog />
+```
+
+- Opens via Electron menu "Check for Updates..." (IPC) or Cmd+K command palette
+- Shows two rows: **Package** (server+web) and **App** (shell/Electron)
+- Each row displays current version, status badge, and context-sensitive action button
+- Status badges: Up to date, Checking, Update available, Downloading (with progress bar), Verifying, Ready to install, Error
+- Auto-triggers update checks when opened
+- "Check All" button re-checks both channels simultaneously
+
 ### Sidebar Components
 
 ```typescript

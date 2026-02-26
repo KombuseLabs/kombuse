@@ -49,6 +49,13 @@ export function buildAppMenu(
     label: app.name,
     submenu: [
       { role: "about" },
+      {
+        label: "Check for Updates...",
+        click: () => {
+          const win = BrowserWindow.getFocusedWindow();
+          if (win) win.webContents.send("app:check-for-updates");
+        },
+      },
       { type: "separator" },
       {
         label: "Settings...",
@@ -138,6 +145,14 @@ export function buildAppMenu(
   const helpMenu: MenuItemConstructorOptions = {
     label: "Help",
     submenu: [
+      {
+        label: "Check for Updates...",
+        click: () => {
+          const win = BrowserWindow.getFocusedWindow();
+          if (win) win.webContents.send("app:check-for-updates");
+        },
+      },
+      { type: "separator" },
       {
         label: "Learn More",
         click: () => shell.openExternal("https://kombuse.dev"),

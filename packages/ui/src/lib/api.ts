@@ -80,6 +80,7 @@ declare global {
       shellUpdate?: {
         quitAndInstall: () => Promise<void>
       }
+      onCheckForUpdates?: (callback: () => void) => () => void
       findInPage?: {
         find: (text: string) => Promise<void>
         findNext: (text: string) => Promise<void>
@@ -96,11 +97,18 @@ export function getServerPort(): number {
   return window.electron?.serverPort ?? 3331
 }
 
-export function getWsUrl(): string {
-  return `ws://${window.location.hostname}:${getServerPort()}/ws`
+function getServerHost(): string {
+  // In Electron, the embedded server always runs on localhost.
+  // window.location.hostname is unreliable under custom protocols (app://).
+  if (window.electron) return 'localhost'
+  return window.location.hostname || 'localhost'
 }
 
-const API_BASE = `http://${window.location.hostname}:${getServerPort()}/api`
+export function getWsUrl(): string {
+  return `ws://${getServerHost()}:${getServerPort()}/ws`
+}
+
+const API_BASE = `http://${getServerHost()}:${getServerPort()}/api`
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {

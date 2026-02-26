@@ -121,6 +121,15 @@ export function CommandSetup({ children }: CommandSetupProps) {
         },
       }),
       registry.register({
+        id: "app.checkForUpdates",
+        title: "Check for Updates",
+        category: "General",
+        icon: "RefreshCw",
+        handler: () => {
+          window.dispatchEvent(new CustomEvent("app:check-for-updates"));
+        },
+      }),
+      registry.register({
         id: "profile.view",
         title: "View Profile",
         category: "General",

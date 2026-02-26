@@ -37,6 +37,15 @@ contextBridge.exposeInMainWorld("electron", {
   },
 
   /**
+   * Listen for "Check for Updates" triggered from the app menu.
+   */
+  onCheckForUpdates: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on("app:check-for-updates", handler);
+    return () => { ipcRenderer.removeListener("app:check-for-updates", handler); };
+  },
+
+  /**
    * Find in page controls (Cmd+F / Ctrl+F).
    */
   findInPage: {
