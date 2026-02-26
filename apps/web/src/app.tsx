@@ -108,6 +108,7 @@ function AppContent() {
                 <Route path="permissions" element={<Permissions />} />
                 <Route path="database" element={<DatabasePage />} />
                 <Route path="plugins" element={<PluginsPage />} />
+                <Route path="plugins/:pluginName" element={<PluginsPage />} />
                 <Route path="analytics" element={<Analytics />} />
               </Route>
 

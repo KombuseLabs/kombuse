@@ -1009,9 +1009,17 @@ export const pluginFilesApi = {
   },
 }
 
+export interface DefaultSource {
+  type: string
+  path?: string
+  base_url?: string
+  label: string
+}
+
 export interface PluginSourcesResponse {
   global_sources: PluginSourceConfig[]
   project_sources: PluginSourceConfig[]
+  default_sources: DefaultSource[]
 }
 
 export const pluginSourcesApi = {

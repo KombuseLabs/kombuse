@@ -33,9 +33,17 @@ export const putPluginSourcesBodySchema = z.object({
   sources: z.array(pluginSourceConfigSchema),
 })
 
+const defaultSourceSchema = z.object({
+  type: z.enum(['filesystem', 'http']),
+  path: z.string().optional(),
+  base_url: z.string().optional(),
+  label: z.string(),
+})
+
 export const pluginSourcesResponseSchema = z.object({
   global_sources: z.array(pluginSourceConfigSchema),
   project_sources: z.array(pluginSourceConfigSchema),
+  default_sources: z.array(defaultSourceSchema),
 })
 
 export type PluginSourcesQuery = z.infer<typeof pluginSourcesQuerySchema>

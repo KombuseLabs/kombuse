@@ -1,7 +1,30 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { useAppContext } from '@kombuse/ui/hooks'
-import { Puzzle, Package, Download, Upload, Trash2, Power, PowerOff, Settings, FolderOpen, Globe, Plus, Pencil } from 'lucide-react'
+import { useState, useCallback, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import {
+  Badge,
+  Button,
+  Input,
+  Label,
+  Checkbox,
+  Switch,
+  toast,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  ResizableCardHandle,
+  ResizableCardPanel,
+  ResizablePanelGroup,
+  ResizablePanel,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@kombuse/ui/base'
+import { MobileListDetail } from '@kombuse/ui/components'
 import {
   useAgents,
   useAgentProfiles,
@@ -10,201 +33,89 @@ import {
   useInstalledPlugins,
   useAvailablePlugins,
   useInstallPlugin,
+  useInstallRemotePlugin,
   useUpdatePlugin,
   useUninstallPlugin,
   usePluginSources,
   useUpdatePluginSources,
+  useAppContext,
+  useIsMobile,
 } from '@kombuse/ui/hooks'
-import { Button, Input, Label, Checkbox, toast, Tooltip, TooltipTrigger, TooltipContent } from '@kombuse/ui/base'
 import { cn } from '@kombuse/ui/lib/utils'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
 import type { Plugin as PluginType, AvailablePlugin, PluginSourceConfig } from '@kombuse/types'
+import {
+  Package,
+  Download,
+  Upload,
+  Trash2,
+  Settings,
+  FolderOpen,
+  Globe,
+  Plus,
+  Pencil,
+  X,
+} from 'lucide-react'
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 const PACKAGE_NAME_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/
+const PLUGINS_PANEL_LAYOUT_KEY = 'plugins-panel-layout'
 
-function InstalledPlugins({ projectId }: { projectId: string }) {
-  const { data: plugins = [], isLoading } = useInstalledPlugins(projectId)
-  const updatePlugin = useUpdatePlugin()
-  const uninstallPlugin = useUninstallPlugin()
-
-  const handleToggleEnabled = (plugin: PluginType) => {
-    updatePlugin.mutate(
-      { id: plugin.id, input: { is_enabled: !plugin.is_enabled } },
-      {
-        onSuccess: (updated) => {
-          toast.success(
-            `Plugin "${updated.name}" ${updated.is_enabled ? 'enabled' : 'disabled'}`
-          )
-        },
-        onError: (error) => {
-          toast.error(error.message ?? 'Failed to update plugin')
-        },
-      }
-    )
-  }
-
-  const handleUninstall = (plugin: PluginType) => {
-    if (!window.confirm(`Uninstall "${plugin.name}"?`)) {
-      return
-    }
-
-    uninstallPlugin.mutate(
-      { id: plugin.id, mode: 'orphan' },
-      {
-        onSuccess: () => {
-          toast.success(`Plugin "${plugin.name}" uninstalled`)
-        },
-        onError: (error) => {
-          toast.error(error.message ?? 'Failed to uninstall plugin')
-        },
-      }
-    )
-  }
-
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground py-4">Loading installed plugins...</p>
-  }
-
-  if (plugins.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground py-4">
-        No plugins installed yet. Install one from the Available section below, or export agents as a new plugin.
-      </p>
-    )
-  }
-
-  return (
-    <div className="border rounded-md divide-y">
-      {plugins.map((plugin) => (
-        <div key={plugin.id} className="flex items-center gap-4 px-4 py-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{plugin.name}</span>
-              <span className="text-xs text-muted-foreground">v{plugin.version}</span>
-              {!plugin.is_enabled && (
-                <span className="text-xs bg-muted px-1.5 py-0.5 rounded">disabled</span>
-              )}
-            </div>
-            {plugin.description && (
-              <p className="text-sm text-muted-foreground truncate">{plugin.description}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Installed {new Date(plugin.installed_at).toLocaleDateString()}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleToggleEnabled(plugin)}
-              disabled={updatePlugin.isPending}
-              title={plugin.is_enabled ? 'Disable plugin' : 'Enable plugin'}
-            >
-              {plugin.is_enabled ? (
-                <PowerOff className="size-4" />
-              ) : (
-                <Power className="size-4" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleUninstall(plugin)}
-              disabled={uninstallPlugin.isPending}
-              title="Uninstall plugin"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
+const SOURCE_TYPE_LABELS: Record<PluginSourceConfig['type'], string> = {
+  filesystem: 'Filesystem',
+  github: 'GitHub',
+  http: 'HTTP',
 }
 
-function AvailablePluginsList({ projectId }: { projectId: string }) {
-  const { data: available = [], isLoading } = useAvailablePlugins(projectId)
-  const installPlugin = useInstallPlugin()
-
-  const handleInstall = (plugin: AvailablePlugin, overwrite?: boolean) => {
-    installPlugin.mutate(
-      {
-        package_path: plugin.directory,
-        project_id: projectId,
-        overwrite,
-      },
-      {
-        onSuccess: (result) => {
-          toast.success(
-            `Installed "${result.plugin_name}": ${result.agents_created} created, ${result.agents_updated} updated, ${result.labels_created} labels created, ${result.labels_merged} labels merged`
-          )
-        },
-        onError: (error) => {
-          if (error.message === 'plugin_already_installed') {
-            const confirmed = window.confirm(
-              `Plugin "${plugin.name}" is already installed. ${plugin.has_update ? 'Update' : 'Reinstall'} it?`
-            )
-            if (confirmed) {
-              handleInstall(plugin, true)
-            }
-          } else {
-            toast.error(error.message ?? 'Install failed')
-          }
-        },
-      }
-    )
-  }
-
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground py-4">Scanning for available plugins...</p>
-  }
-
-  if (available.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground py-4">
-        No available plugins found. Export agents as a plugin first, then they'll appear here.
-      </p>
-    )
-  }
-
-  return (
-    <div className="border rounded-md divide-y">
-      {available.map((plugin) => (
-        <div key={plugin.directory} className="flex items-center gap-4 px-4 py-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{plugin.name}</span>
-              <span className="text-xs text-muted-foreground">v{plugin.version}</span>
-              <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{plugin.source}</span>
-              {plugin.installed && (
-                <span className={cn(
-                  "text-xs px-1.5 py-0.5 rounded",
-                  plugin.has_update
-                    ? "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
-                    : "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
-                )}>
-                  {plugin.has_update ? 'update available' : 'installed'}
-                </span>
-              )}
-            </div>
-            {plugin.description && (
-              <p className="text-sm text-muted-foreground truncate">{plugin.description}</p>
-            )}
-            <p className="text-xs text-muted-foreground truncate">{plugin.directory}</p>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => handleInstall(plugin)}
-            disabled={installPlugin.isPending}
-          >
-            <Download className="size-4 mr-1" />
-            {!plugin.installed ? 'Install' : plugin.has_update ? 'Update' : 'Reinstall'}
-          </Button>
-        </div>
-      ))}
-    </div>
-  )
+const SOURCE_TYPE_ICONS: Record<PluginSourceConfig['type'], typeof FolderOpen> = {
+  filesystem: FolderOpen,
+  github: Globe,
+  http: Globe,
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function sourceIdentifier(source: PluginSourceConfig): string {
+  switch (source.type) {
+    case 'filesystem':
+      return source.path
+    case 'github':
+      return source.repo
+    case 'http':
+      return source.base_url
+  }
+}
+
+function tokenDisplay(source: PluginSourceConfig): string | null {
+  if (source.type === 'filesystem') return null
+  if (!source.token) return null
+  return source.token.startsWith('$') ? `env: ${source.token}` : 'configured'
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface UnifiedPlugin {
+  name: string
+  version: string
+  description?: string | null
+  source?: AvailablePlugin['source']
+  directory?: string
+  installed: boolean
+  installedPlugin?: PluginType
+  availablePlugin?: AvailablePlugin
+  has_update?: boolean
+}
+
+// ---------------------------------------------------------------------------
+// ExportSection (unchanged)
+// ---------------------------------------------------------------------------
 
 function ExportSection({ projectId }: { projectId: string }) {
   const { data: agents = [], isLoading: isLoadingAgents } = useAgents({ project_id: projectId })
@@ -430,34 +341,9 @@ function ExportSection({ projectId }: { projectId: string }) {
   )
 }
 
-const SOURCE_TYPE_LABELS: Record<PluginSourceConfig['type'], string> = {
-  filesystem: 'Filesystem',
-  github: 'GitHub',
-  http: 'HTTP',
-}
-
-const SOURCE_TYPE_ICONS: Record<PluginSourceConfig['type'], typeof FolderOpen> = {
-  filesystem: FolderOpen,
-  github: Globe,
-  http: Globe,
-}
-
-function sourceIdentifier(source: PluginSourceConfig): string {
-  switch (source.type) {
-    case 'filesystem':
-      return source.path
-    case 'github':
-      return source.repo
-    case 'http':
-      return source.base_url
-  }
-}
-
-function tokenDisplay(source: PluginSourceConfig): string | null {
-  if (source.type === 'filesystem') return null
-  if (!source.token) return null
-  return source.token.startsWith('$') ? `env: ${source.token}` : 'configured'
-}
+// ---------------------------------------------------------------------------
+// Source components (unchanged)
+// ---------------------------------------------------------------------------
 
 function SourceRow({
   source,
@@ -797,56 +683,622 @@ function SourcesSection({ projectId }: { projectId: string }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// New: PluginListItem
+// ---------------------------------------------------------------------------
+
+function PluginListItem({
+  plugin,
+  isSelected,
+  onClick,
+}: {
+  plugin: UnifiedPlugin
+  isSelected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full text-left px-3 py-2.5 rounded-lg transition-colors',
+        isSelected ? 'bg-accent' : 'hover:bg-muted/50',
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <span className="font-medium truncate">{plugin.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">v{plugin.version}</span>
+        {plugin.source && (
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+            {plugin.source}
+          </Badge>
+        )}
+        {plugin.installed && !plugin.has_update && (
+          <Badge
+            variant="secondary"
+            className="text-[10px] px-1.5 py-0 shrink-0 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+          >
+            installed
+          </Badge>
+        )}
+        {plugin.has_update && (
+          <Badge
+            variant="secondary"
+            className="text-[10px] px-1.5 py-0 shrink-0 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
+          >
+            update
+          </Badge>
+        )}
+        {plugin.installedPlugin && !plugin.installedPlugin.is_enabled && (
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+            disabled
+          </Badge>
+        )}
+      </div>
+      {plugin.description && (
+        <p className="text-sm text-muted-foreground truncate mt-0.5">{plugin.description}</p>
+      )}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// New: PluginDetail
+// ---------------------------------------------------------------------------
+
+function PluginDetail({
+  plugin,
+  projectId,
+  onClose,
+}: {
+  plugin: UnifiedPlugin
+  projectId: string
+  onClose: () => void
+}) {
+  const navigate = useNavigate()
+  const { data: agents = [] } = useAgents({ project_id: projectId })
+  const { data: profiles = [] } = useAgentProfiles()
+  const updatePlugin = useUpdatePlugin()
+  const uninstallPlugin = useUninstallPlugin()
+  const installPlugin = useInstallPlugin()
+  const installRemotePlugin = useInstallRemotePlugin()
+
+  const ip = plugin.installedPlugin
+  const ap = plugin.availablePlugin
+
+  const pluginAgents = ip ? agents.filter((a) => a.plugin_id === ip.id) : []
+  const profileMap = new Map(profiles.map((p) => [p.id, p]))
+
+  const manifestLabels = (ip?.manifest as { kombuse?: { labels?: Array<{ name: string; color: string; description?: string | null }> } })?.kombuse?.labels ?? []
+
+  const handleInstall = (target: AvailablePlugin, overwrite?: boolean) => {
+    const callbacks = {
+      onSuccess: (result: { plugin_name: string; agents_created: number; agents_updated: number; labels_created: number; labels_merged: number }) => {
+        toast.success(
+          `Installed "${result.plugin_name}": ${result.agents_created} created, ${result.agents_updated} updated, ${result.labels_created} labels created, ${result.labels_merged} labels merged`,
+        )
+      },
+      onError: (error: Error) => {
+        if (error.message === 'plugin_already_installed') {
+          const confirmed = window.confirm(
+            `Plugin "${target.name}" is already installed. ${target.has_update ? 'Update' : 'Reinstall'} it?`,
+          )
+          if (confirmed) {
+            handleInstall(target, true)
+          }
+        } else {
+          toast.error(error.message ?? 'Install failed')
+        }
+      },
+    }
+
+    if (target.directory) {
+      installPlugin.mutate(
+        { package_path: target.directory, project_id: projectId, overwrite },
+        callbacks,
+      )
+    } else {
+      installRemotePlugin.mutate(
+        { name: target.name, version: target.version, project_id: projectId, overwrite },
+        callbacks,
+      )
+    }
+  }
+
+  const handleUninstall = () => {
+    if (!ip) return
+    if (!window.confirm(`Uninstall "${ip.name}"?`)) return
+
+    uninstallPlugin.mutate(
+      { id: ip.id, mode: 'orphan' },
+      {
+        onSuccess: () => {
+          toast.success(`Plugin "${ip.name}" uninstalled`)
+          navigate(`/projects/${projectId}/plugins`)
+        },
+        onError: (error) => {
+          toast.error(error.message ?? 'Failed to uninstall plugin')
+        },
+      },
+    )
+  }
+
+  const handleToggleEnabled = () => {
+    if (!ip) return
+    updatePlugin.mutate(
+      { id: ip.id, input: { is_enabled: !ip.is_enabled } },
+      {
+        onSuccess: (updated) => {
+          toast.success(`Plugin "${updated.name}" ${updated.is_enabled ? 'enabled' : 'disabled'}`)
+        },
+        onError: (error) => {
+          toast.error(error.message ?? 'Failed to update plugin')
+        },
+      },
+    )
+  }
+
+  const isInstalling = installPlugin.isPending || installRemotePlugin.isPending
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 border-b p-4 shrink-0">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold truncate">{plugin.name}</h2>
+          <p className="text-sm text-muted-foreground">v{plugin.version}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {ip && (
+            <Switch
+              checked={ip.is_enabled}
+              onCheckedChange={handleToggleEnabled}
+              disabled={updatePlugin.isPending}
+            />
+          )}
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="size-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-6">
+        {/* Description */}
+        {plugin.description && <p className="text-sm">{plugin.description}</p>}
+
+        {/* Source info */}
+        <div className="space-y-1 text-sm">
+          {plugin.source && (
+            <p className="flex items-center gap-2">
+              Source: <Badge variant="outline">{plugin.source}</Badge>
+            </p>
+          )}
+          {plugin.directory && (
+            <p className="text-muted-foreground truncate">Path: {plugin.directory}</p>
+          )}
+          {ip && (
+            <p className="text-muted-foreground">
+              Installed {new Date(ip.installed_at).toLocaleDateString()}
+            </p>
+          )}
+          {plugin.has_update && ap?.latest_version && (
+            <p className="text-amber-600 dark:text-amber-400">
+              Update available: v{ip?.version ?? plugin.version} → v{ap.latest_version}
+            </p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2">
+          {!plugin.installed && ap && (
+            <Button onClick={() => handleInstall(ap)} disabled={isInstalling}>
+              <Download className="size-4 mr-1" />
+              {isInstalling ? 'Installing...' : 'Install'}
+            </Button>
+          )}
+          {plugin.has_update && ap && (
+            <Button onClick={() => handleInstall(ap, true)} disabled={isInstalling}>
+              <Download className="size-4 mr-1" />
+              {isInstalling ? 'Updating...' : 'Update'}
+            </Button>
+          )}
+          {plugin.installed && !plugin.has_update && ap && (
+            <Button variant="outline" onClick={() => handleInstall(ap, true)} disabled={isInstalling}>
+              {isInstalling ? 'Reinstalling...' : 'Reinstall'}
+            </Button>
+          )}
+          {ip && (
+            <Button
+              variant="ghost"
+              onClick={handleUninstall}
+              disabled={uninstallPlugin.isPending}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="size-4 mr-1" />
+              Uninstall
+            </Button>
+          )}
+        </div>
+
+        {/* Agents */}
+        {pluginAgents.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Agents ({pluginAgents.length})</h3>
+            <div className="border rounded-md divide-y">
+              {pluginAgents.map((agent) => {
+                const profile = profileMap.get(agent.id)
+                return (
+                  <div key={agent.id} className="flex items-center gap-3 px-4 py-2">
+                    <span className="font-medium text-sm truncate">
+                      {profile?.name ?? agent.slug ?? agent.id}
+                    </span>
+                    {!agent.is_enabled && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                        disabled
+                      </Badge>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Labels */}
+        {manifestLabels.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Labels ({manifestLabels.length})</h3>
+            <div className="flex flex-wrap gap-2">
+              {manifestLabels.map((label) => {
+                const pill = (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border">
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: label.color }}
+                    />
+                    {label.name}
+                  </span>
+                )
+                if (label.description) {
+                  return (
+                    <Tooltip key={label.name}>
+                      <TooltipTrigger asChild>{pill}</TooltipTrigger>
+                      <TooltipContent>{label.description}</TooltipContent>
+                    </Tooltip>
+                  )
+                }
+                return <span key={label.name}>{pill}</span>
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Placeholder for uninstalled plugins */}
+        {!ip && pluginAgents.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Install this plugin to see included agents and labels.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// New: SourcesPopover
+// ---------------------------------------------------------------------------
+
+function SourcesPopover({
+  projectId,
+  onManage,
+}: {
+  projectId: string
+  onManage: () => void
+}) {
+  const { data } = usePluginSources(projectId)
+  const defaultSources = data?.default_sources ?? []
+  const globalSources = data?.global_sources ?? []
+  const projectSources = data?.project_sources ?? []
+  const totalCount = defaultSources.length + globalSources.length + projectSources.length
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Settings className="size-4" />
+          Sources ({totalCount})
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="end">
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm">Plugin Sources</h4>
+
+          {defaultSources.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-medium">Default</p>
+              {defaultSources.map((s, i) => (
+                <p key={i} className="text-xs text-muted-foreground truncate">
+                  {s.label}: {s.path ?? s.base_url}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {globalSources.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-medium">
+                Global ({globalSources.length})
+              </p>
+              {globalSources.map((s, i) => (
+                <p key={i} className="text-xs text-muted-foreground truncate">
+                  {sourceIdentifier(s)}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {projectSources.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-medium">
+                Project ({projectSources.length})
+              </p>
+              {projectSources.map((s, i) => (
+                <p key={i} className="text-xs text-muted-foreground truncate">
+                  {sourceIdentifier(s)}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <Button variant="link" size="sm" className="px-0 h-auto" onClick={onManage}>
+            Manage sources...
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main: PluginsPage
+// ---------------------------------------------------------------------------
+
 export function PluginsPage() {
-  const { projectId } = useParams<{ projectId: string }>()
+  const { projectId, pluginName: rawPluginName } = useParams<{
+    projectId: string
+    pluginName?: string
+  }>()
   const { currentProjectId } = useAppContext()
-  const [activeTab, setActiveTab] = useState<'installed' | 'available' | 'export' | 'sources'>('installed')
+  const navigate = useNavigate()
+  const isMobile = useIsMobile()
+
+  const [exportOpen, setExportOpen] = useState(false)
+  const [sourcesDialogOpen, setSourcesDialogOpen] = useState(false)
 
   if (!projectId) {
     return <p className="p-6 text-muted-foreground">No project selected.</p>
   }
 
   const resolvedId = currentProjectId ?? projectId
+  const pluginName = rawPluginName ? decodeURIComponent(rawPluginName) : undefined
+  const basePath = `/projects/${projectId}/plugins`
+  const showDetailPanel = pluginName !== undefined
 
+  // Data hooks
+  const { data: installed = [], isLoading: isLoadingInstalled } = useInstalledPlugins(resolvedId)
+  const { data: available = [], isLoading: isLoadingAvailable } = useAvailablePlugins(resolvedId)
+
+  // Unified plugin list
+  const unifiedPlugins = useMemo(() => {
+    const map = new Map<string, UnifiedPlugin>()
+
+    for (const ap of available) {
+      map.set(ap.name, {
+        name: ap.name,
+        version: ap.version,
+        description: ap.description,
+        source: ap.source,
+        directory: ap.directory,
+        installed: ap.installed,
+        availablePlugin: ap,
+        has_update: ap.has_update,
+      })
+    }
+
+    for (const ip of installed) {
+      const existing = map.get(ip.name)
+      if (existing) {
+        existing.installedPlugin = ip
+        existing.installed = true
+      } else {
+        map.set(ip.name, {
+          name: ip.name,
+          version: ip.version,
+          description: ip.description,
+          installed: true,
+          installedPlugin: ip,
+        })
+      }
+    }
+
+    return [...map.values()].sort((a, b) => {
+      if (a.installed !== b.installed) return a.installed ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+  }, [available, installed])
+
+  const selectedPlugin = pluginName
+    ? unifiedPlugins.find((p) => p.name === pluginName)
+    : undefined
+
+  // Panel layout persistence
+  const [defaultLayout] = useState<Record<string, number> | undefined>(() => {
+    const stored = localStorage.getItem(PLUGINS_PANEL_LAYOUT_KEY)
+    if (stored) {
+      try { return JSON.parse(stored) } catch { return undefined }
+    }
+    return undefined
+  })
+
+  const handleLayoutChanged = useCallback((layout: Record<string, number>) => {
+    localStorage.setItem(PLUGINS_PANEL_LAYOUT_KEY, JSON.stringify(layout))
+  }, [])
+
+  // Navigation
+  const handlePluginClick = (plugin: UnifiedPlugin) => {
+    navigate(`${basePath}/${encodeURIComponent(plugin.name)}`)
+  }
+
+  const handleCloseDetail = () => {
+    navigate(basePath)
+  }
+
+  const isLoading = isLoadingInstalled || isLoadingAvailable
+
+  // ---------------------------------------------------------------------------
+  // List content
+  // ---------------------------------------------------------------------------
+  const pluginListContent = (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
+        <h1 className="text-2xl font-bold">Plugins</h1>
+        <div className="flex items-center gap-2">
+          <SourcesPopover projectId={resolvedId} onManage={() => setSourcesDialogOpen(true)} />
+          <Button onClick={() => setExportOpen(true)}>
+            <Upload className="size-4" />
+            Export
+          </Button>
+        </div>
+      </div>
+
+      {/* Plugin list */}
+      {isLoading ? (
+        <div className="text-center py-8 text-muted-foreground">Loading plugins...</div>
+      ) : unifiedPlugins.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          No plugins found. Export agents as a plugin or configure a source to get started.
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          <div className="space-y-1">
+            {unifiedPlugins.map((plugin) => (
+              <PluginListItem
+                key={plugin.name}
+                plugin={plugin}
+                isSelected={plugin.name === pluginName}
+                onClick={() => handlePluginClick(plugin)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // ---------------------------------------------------------------------------
+  // Detail content
+  // ---------------------------------------------------------------------------
+  const pluginDetailContent = selectedPlugin ? (
+    <PluginDetail
+      plugin={selectedPlugin}
+      projectId={resolvedId}
+      onClose={handleCloseDetail}
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center text-muted-foreground">
+      Plugin not found
+    </div>
+  )
+
+  // ---------------------------------------------------------------------------
+  // Dialogs
+  // ---------------------------------------------------------------------------
+  const dialogs = (
+    <>
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Export Plugin</DialogTitle>
+            <DialogDescription>
+              Export agents and labels as a reusable plugin package.
+            </DialogDescription>
+          </DialogHeader>
+          <ExportSection projectId={resolvedId} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sourcesDialogOpen} onOpenChange={setSourcesDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Plugin Sources</DialogTitle>
+            <DialogDescription>
+              Configure where to discover and install plugins from.
+            </DialogDescription>
+          </DialogHeader>
+          <SourcesSection projectId={resolvedId} />
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+
+  // ---------------------------------------------------------------------------
+  // Mobile layout
+  // ---------------------------------------------------------------------------
+  if (isMobile) {
+    return (
+      <>
+        <MobileListDetail
+          hasSelection={showDetailPanel}
+          onBack={handleCloseDetail}
+          backLabel="Plugins"
+          list={
+            <div className="h-full min-h-0 px-3 pt-2 pb-2">
+              {pluginListContent}
+            </div>
+          }
+          detail={pluginDetailContent}
+        />
+        {dialogs}
+      </>
+    )
+  }
+
+  // ---------------------------------------------------------------------------
+  // Desktop layout
+  // ---------------------------------------------------------------------------
   return (
-    <main className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-6 border-b">
-        <div className="flex items-center gap-4">
-          <Puzzle className="size-6" />
-          <h1 className="text-2xl font-bold">Plugins</h1>
-          <span className="text-sm text-muted-foreground">Manage plugin packages</span>
-        </div>
-      </div>
-
-      <div className="border-b px-6">
-        <div className="flex gap-1">
-          {(['installed', 'available', 'export', 'sources'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab
-                  ? 'border-foreground text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+    <>
+      <div className="flex h-full min-h-0">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {showDetailPanel ? (
+            <ResizablePanelGroup
+              orientation="horizontal"
+              defaultLayout={defaultLayout}
+              onLayoutChanged={handleLayoutChanged}
             >
-              {tab === 'installed' && <span className="flex items-center gap-1.5"><Puzzle className="size-3.5" /> Installed</span>}
-              {tab === 'available' && <span className="flex items-center gap-1.5"><Download className="size-3.5" /> Available</span>}
-              {tab === 'export' && <span className="flex items-center gap-1.5"><Upload className="size-3.5" /> Export</span>}
-              {tab === 'sources' && <span className="flex items-center gap-1.5"><Settings className="size-3.5" /> Sources</span>}
-            </button>
-          ))}
-        </div>
-      </div>
+              <ResizablePanel id="list" defaultSize={50} minSize={25}>
+                <ResizableCardPanel side="list">
+                  {pluginListContent}
+                </ResizableCardPanel>
+              </ResizablePanel>
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-2xl">
-          {activeTab === 'installed' && <InstalledPlugins projectId={resolvedId} />}
-          {activeTab === 'available' && <AvailablePluginsList projectId={resolvedId} />}
-          {activeTab === 'export' && <ExportSection projectId={resolvedId} />}
-          {activeTab === 'sources' && <SourcesSection projectId={resolvedId} />}
+              <ResizableCardHandle />
+
+              <ResizablePanel id="detail" defaultSize={50} minSize={25}>
+                <ResizableCardPanel side="detail">
+                  {pluginDetailContent}
+                </ResizableCardPanel>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <div className="w-full h-full min-h-0 pt-3 px-6 pb-6">
+              {pluginListContent}
+            </div>
+          )}
         </div>
       </div>
-    </main>
+      {dialogs}
+    </>
   )
 }

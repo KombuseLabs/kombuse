@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { projectService } from '@kombuse/services'
+import { projectService, resolvePluginConfig } from '@kombuse/services'
 import { loadKombuseConfig, loadProjectConfig, saveProjectConfig } from '@kombuse/persistence'
 import {
   pluginSourcesQuerySchema,
@@ -24,9 +24,16 @@ export async function pluginSourceRoutes(fastify: FastifyInstance) {
       ? loadProjectConfig(project.local_path)
       : {}
 
+    const { projectPluginsDir, globalPluginsDir } = resolvePluginConfig(project_id)
+
     return {
       global_sources: globalConfig.plugins?.sources ?? [],
       project_sources: projectConfig.plugins?.sources ?? [],
+      default_sources: [
+        ...(projectPluginsDir ? [{ type: 'filesystem' as const, path: projectPluginsDir, label: 'Project plugins' }] : []),
+        { type: 'filesystem' as const, path: globalPluginsDir, label: 'Global plugins' },
+        { type: 'http' as const, base_url: 'https://kombuse.dev', label: 'Kombuse Registry' },
+      ],
     }
   })
 
@@ -74,9 +81,15 @@ export async function pluginSourceRoutes(fastify: FastifyInstance) {
     }
 
     const globalConfig = loadKombuseConfig()
+    const { projectPluginsDir, globalPluginsDir } = resolvePluginConfig(project_id)
     return {
       global_sources: globalConfig.plugins?.sources ?? [],
       project_sources: sources,
+      default_sources: [
+        ...(projectPluginsDir ? [{ type: 'filesystem' as const, path: projectPluginsDir, label: 'Project plugins' }] : []),
+        { type: 'filesystem' as const, path: globalPluginsDir, label: 'Global plugins' },
+        { type: 'http' as const, base_url: 'https://kombuse.dev', label: 'Kombuse Registry' },
+      ],
     }
   })
 }
