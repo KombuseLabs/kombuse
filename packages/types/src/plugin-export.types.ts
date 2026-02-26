@@ -24,6 +24,7 @@ export interface PluginExportInput {
   agent_ids?: string[]
   description?: string
   overwrite?: boolean
+  archive_format?: 'tar.gz'
 }
 
 export interface PluginExportResult {
@@ -33,6 +34,11 @@ export interface PluginExportResult {
   label_count: number
   file_count: number
   files: string[]
+  archive?: {
+    path: string
+    checksum: string
+    size: number
+  }
 }
 
 export interface PluginPublishInput {

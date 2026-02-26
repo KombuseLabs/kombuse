@@ -80,3 +80,25 @@ export interface InstallResult {
   cachePath: string
   manifest: PkgManifest
 }
+
+export interface PackOptions {
+  /** Directory whose contents will be packed into the archive. */
+  sourceDir: string
+  /** Path for the output .tar.gz file. */
+  outputPath: string
+  /**
+   * Prefix directory inside the archive.
+   * - `'.'` creates a flat archive with no prefix (default, matches publish flow)
+   * - `'package'` creates a `package/` subdirectory (compatible with PackageManager.install())
+   */
+  prefix?: string
+}
+
+export interface PackResult {
+  /** Absolute path to the created .tar.gz file. */
+  archivePath: string
+  /** SHA-256 hex digest (lowercase) of the archive file. */
+  checksum: string
+  /** Size of the archive file in bytes. */
+  size: number
+}

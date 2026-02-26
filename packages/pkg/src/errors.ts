@@ -34,3 +34,10 @@ export class CacheError extends PkgError {
     this.name = 'CacheError'
   }
 }
+
+export class PackError extends PkgError {
+  constructor(message: string) {
+    super(message)
+    this.name = 'PackError'
+  }
+}

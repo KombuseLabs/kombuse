@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { create as createTar } from 'tar'
+import { pack } from '@kombuse/pkg'
 import type { PluginPublishInput, PluginPublishResult } from '@kombuse/types'
 import { pluginExportService } from './plugin-export-service'
 
@@ -31,7 +31,7 @@ export class PluginPublishService {
     } = input
 
     // Export plugin to directory
-    const exportResult = pluginExportService.exportPackage({
+    const exportResult = await pluginExportService.exportPackage({
       package_name,
       project_id,
       agent_ids,
@@ -59,14 +59,10 @@ export class PluginPublishService {
       )
 
       // Create .tar.gz archive from the exported directory
-      await createTar(
-        {
-          gzip: true,
-          file: archivePath,
-          cwd: exportResult.directory,
-        },
-        ['.']
-      )
+      await pack({
+        sourceDir: exportResult.directory,
+        outputPath: archivePath,
+      })
 
       // Read the archive as a buffer
       const archiveBuffer = await readFile(archivePath)

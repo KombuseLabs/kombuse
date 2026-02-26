@@ -6,6 +6,7 @@ export const pluginExportSchema = z.object({
   agent_ids: z.array(z.string().min(1)).optional(),
   description: z.string().optional(),
   overwrite: z.boolean().optional(),
+  archive_format: z.enum(['tar.gz']).optional(),
 })
 
 export const pluginExportResultSchema = z.object({
@@ -15,6 +16,11 @@ export const pluginExportResultSchema = z.object({
   label_count: z.number().int().nonnegative(),
   file_count: z.number().int().nonnegative(),
   files: z.array(z.string()),
+  archive: z.object({
+    path: z.string(),
+    checksum: z.string(),
+    size: z.number().int().nonnegative(),
+  }).optional(),
 })
 
 export type PluginExportBody = z.infer<typeof pluginExportSchema>

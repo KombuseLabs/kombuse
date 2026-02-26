@@ -9,6 +9,8 @@ export type {
   PackageManagerOptions,
   UpdateCheckResult,
   InstallResult,
+  PackOptions,
+  PackResult,
 } from './types'
 
 // Re-export shared types for convenience
@@ -21,6 +23,7 @@ export {
   FeedError,
   VersionNotFoundError,
   CacheError,
+  PackError,
 } from './errors'
 
 // Implementation
@@ -30,3 +33,4 @@ export { VersionResolver } from './version/resolver'
 export { PackageManager } from './manager'
 export { isNewerVersion } from './version/semver'
 export { HttpFeed, type HttpFeedOptions } from './feed/http-feed'
+export { pack } from './packer'

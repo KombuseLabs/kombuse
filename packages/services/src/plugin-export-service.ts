@@ -1,5 +1,6 @@
 import { mkdirSync, existsSync, writeFileSync, rmSync } from 'node:fs'
 import { join, dirname } from 'node:path'
+import { pack } from '@kombuse/pkg'
 import * as yaml from 'js-yaml'
 import type {
   Agent,
@@ -44,7 +45,7 @@ export interface IPluginExportService {
   serializeOne(agentId: string): AgentExportFile | null
   serializeMany(agentIds: string[]): AgentExportFile[]
   writeAgentsToDirectory(directory: string, agentIds?: string[]): AgentExportResult
-  exportPackage(input: PluginExportInput): PluginExportResult
+  exportPackage(input: PluginExportInput): Promise<PluginExportResult>
 }
 
 /** Well-known config keys that are promoted to top-level frontmatter fields. */
@@ -101,7 +102,7 @@ export class PluginExportService implements IPluginExportService {
     }
   }
 
-  exportPackage(input: PluginExportInput): PluginExportResult {
+  async exportPackage(input: PluginExportInput): Promise<PluginExportResult> {
     const { package_name, project_id, author, version, agent_ids, description, overwrite } = input
 
     if (!PACKAGE_NAME_REGEX.test(package_name)) {
@@ -205,6 +206,21 @@ export class PluginExportService implements IPluginExportService {
       }
     }
 
+    // Optionally create archive
+    let archive: PluginExportResult['archive']
+    if (input.archive_format === 'tar.gz') {
+      const archivePath = `${directory}.tar.gz`
+      const packResult = await pack({
+        sourceDir: directory,
+        outputPath: archivePath,
+      })
+      archive = {
+        path: packResult.archivePath,
+        checksum: packResult.checksum,
+        size: packResult.size,
+      }
+    }
+
     return {
       package_name,
       directory,
@@ -212,6 +228,7 @@ export class PluginExportService implements IPluginExportService {
       label_count: exportedLabels.length,
       file_count: pluginFileCount,
       files: writtenFiles,
+      ...(archive ? { archive } : {}),
     }
   }
 

@@ -32,7 +32,7 @@ export async function pluginRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const result = pluginExportService.exportPackage(parseResult.data)
+      const result = await pluginExportService.exportPackage(parseResult.data)
       return result
     } catch (error) {
       if (error instanceof PackageExistsError) {

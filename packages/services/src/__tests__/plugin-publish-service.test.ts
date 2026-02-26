@@ -9,8 +9,12 @@ vi.mock('../plugin-export-service', () => ({
   },
 }))
 
-vi.mock('tar', () => ({
-  create: vi.fn().mockResolvedValue(undefined),
+vi.mock('@kombuse/pkg', () => ({
+  pack: vi.fn().mockResolvedValue({
+    archivePath: '/tmp/mock-archive.tar.gz',
+    checksum: 'abc123',
+    size: 1024,
+  }),
 }))
 
 vi.mock('node:fs/promises', async () => {
@@ -51,7 +55,7 @@ describe('PluginPublishService', () => {
     service = new PluginPublishService()
     fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    vi.mocked(pluginExportService.exportPackage).mockReturnValue(mockExportResult)
+    vi.mocked(pluginExportService.exportPackage).mockResolvedValue(mockExportResult)
   })
 
   afterEach(() => {

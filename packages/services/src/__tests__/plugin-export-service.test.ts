@@ -471,10 +471,10 @@ describe('pluginExportService', () => {
       }
     })
 
-    it('should generate correct directory structure', () => {
+    it('should generate correct directory structure', async () => {
       createTestAgent({ id: 'pkg-agent', system_prompt: 'Hello' })
 
-      const result = pluginExportService.exportPackage({
+      const result = await pluginExportService.exportPackage({
         package_name: 'my-plugin',
         project_id: 'test-project',
       })
@@ -498,10 +498,10 @@ describe('pluginExportService', () => {
       expect(pkgManifest.type).toBe('plugin')
     })
 
-    it('should generate manifest with correct name', () => {
+    it('should generate manifest with correct name', async () => {
       createTestAgent({ id: 'manifest-agent' })
 
-      pluginExportService.exportPackage({
+      await pluginExportService.exportPackage({
         package_name: 'test-pack',
         project_id: 'test-project',
       })
@@ -511,10 +511,10 @@ describe('pluginExportService', () => {
       expect(manifest.name).toBe('test-pack')
     })
 
-    it('should set kombuse.plugin_system_version to kombuse-plugin-v1', () => {
+    it('should set kombuse.plugin_system_version to kombuse-plugin-v1', async () => {
       createTestAgent({ id: 'version-agent' })
 
-      pluginExportService.exportPackage({
+      await pluginExportService.exportPackage({
         package_name: 'version-test',
         project_id: 'test-project',
       })
@@ -524,10 +524,10 @@ describe('pluginExportService', () => {
       expect(manifest.kombuse.plugin_system_version).toBe('kombuse-plugin-v1')
     })
 
-    it('should set exported_at as valid ISO 8601', () => {
+    it('should set exported_at as valid ISO 8601', async () => {
       createTestAgent({ id: 'time-agent' })
 
-      pluginExportService.exportPackage({
+      await pluginExportService.exportPackage({
         package_name: 'time-test',
         project_id: 'test-project',
       })
@@ -538,10 +538,10 @@ describe('pluginExportService', () => {
       expect(date.toISOString()).toBe(manifest.kombuse.exported_at)
     })
 
-    it('should default version to 1.0.0 when not specified', () => {
+    it('should default version to 1.0.0 when not specified', async () => {
       createTestAgent({ id: 'default-ver-agent' })
 
-      pluginExportService.exportPackage({
+      await pluginExportService.exportPackage({
         package_name: 'default-ver',
         project_id: 'test-project',
       })
@@ -551,10 +551,10 @@ describe('pluginExportService', () => {
       expect(manifest.version).toBe('1.0.0')
     })
 
-    it('should include description in manifest when provided', () => {
+    it('should include description in manifest when provided', async () => {
       createTestAgent({ id: 'desc-agent' })
 
-      pluginExportService.exportPackage({
+      await pluginExportService.exportPackage({
         package_name: 'desc-test',
         project_id: 'test-project',
         description: 'A great plugin',
@@ -565,7 +565,7 @@ describe('pluginExportService', () => {
       expect(manifest.description).toBe('A great plugin')
     })
 
-    it('should auto-include labels from trigger conditions', () => {
+    it('should auto-include labels from trigger conditions', async () => {
       const label = labelsRepository.create({
         project_id: 'test-project',
         name: 'Bug',
@@ -579,7 +579,7 @@ describe('pluginExportService', () => {
         priority: 0,
       })
 
-      const result = pluginExportService.exportPackage({
+      const result = await pluginExportService.exportPackage({
         package_name: 'label-auto',
         project_id: 'test-project',
       })
@@ -593,7 +593,7 @@ describe('pluginExportService', () => {
       expect(manifest.kombuse.labels[0].color).toBe('#d73a4a')
     })
 
-    it('should include all project labels in manifest', () => {
+    it('should include all project labels in manifest', async () => {
       labelsRepository.create({
         project_id: 'test-project',
         name: 'Enhancement',
@@ -606,7 +606,7 @@ describe('pluginExportService', () => {
       })
       createTestAgent({ id: 'all-labels-agent' })
 
-      const result = pluginExportService.exportPackage({
+      const result = await pluginExportService.exportPackage({
         package_name: 'all-labels',
         project_id: 'test-project',
       })
@@ -620,7 +620,7 @@ describe('pluginExportService', () => {
       expect(labelNames).toEqual(['Bug', 'Enhancement'])
     })
 
-    it('should not include labels from other projects', () => {
+    it('should not include labels from other projects', async () => {
       projectsRepository.create({ id: 'other-project', name: 'Other', owner_id: TEST_USER_ID })
       labelsRepository.create({
         project_id: 'test-project',
@@ -634,7 +634,7 @@ describe('pluginExportService', () => {
       })
       createTestAgent({ id: 'cross-proj-agent' })
 
-      const result = pluginExportService.exportPackage({
+      const result = await pluginExportService.exportPackage({
         package_name: 'cross-proj',
         project_id: 'test-project',
       })
@@ -647,7 +647,7 @@ describe('pluginExportService', () => {
       expect(manifest.kombuse.labels[0].name).toBe('Ours')
     })
 
-    it('should replace label_id with label_name in agent files', () => {
+    it('should replace label_id with label_name in agent files', async () => {
       const label = labelsRepository.create({
         project_id: 'test-project',
         name: 'Cook it',
@@ -661,7 +661,7 @@ describe('pluginExportService', () => {
         priority: 0,
       })
 
-      pluginExportService.exportPackage({
+      await pluginExportService.exportPackage({
         package_name: 'label-replace',
         project_id: 'test-project',
       })
@@ -672,35 +672,35 @@ describe('pluginExportService', () => {
       expect(agentContent).not.toContain(`label_id: ${label.id}`)
     })
 
-    it('should throw for invalid package name with spaces', () => {
-      expect(() =>
+    it('should throw for invalid package name with spaces', async () => {
+      await expect(
         pluginExportService.exportPackage({
           package_name: 'my plugin',
           project_id: 'test-project',
         })
-      ).toThrow(/Invalid package name/)
+      ).rejects.toThrow(/Invalid package name/)
     })
 
-    it('should throw for invalid package name with uppercase', () => {
-      expect(() =>
+    it('should throw for invalid package name with uppercase', async () => {
+      await expect(
         pluginExportService.exportPackage({
           package_name: 'MyPlugin',
           project_id: 'test-project',
         })
-      ).toThrow(/Invalid package name/)
+      ).rejects.toThrow(/Invalid package name/)
     })
 
-    it('should throw for invalid package name with special chars', () => {
-      expect(() =>
+    it('should throw for invalid package name with special chars', async () => {
+      await expect(
         pluginExportService.exportPackage({
           package_name: 'my_plugin!',
           project_id: 'test-project',
         })
-      ).toThrow(/Invalid package name/)
+      ).rejects.toThrow(/Invalid package name/)
     })
 
-    it('should generate manifest even with no agents', () => {
-      const result = pluginExportService.exportPackage({
+    it('should generate manifest even with no agents', async () => {
+      const result = await pluginExportService.exportPackage({
         package_name: 'empty-pkg',
         project_id: 'test-project',
       })
@@ -712,37 +712,66 @@ describe('pluginExportService', () => {
       expect(existsSync(join(pluginDir, '.kombuse-plugin', 'plugin.json'))).toBe(true)
     })
 
-    it('should throw PackageExistsError when directory exists without overwrite', () => {
+    it('should throw PackageExistsError when directory exists without overwrite', async () => {
       createTestAgent({ id: 'exists-agent' })
 
-      pluginExportService.exportPackage({
+      await pluginExportService.exportPackage({
         package_name: 'exists-test',
         project_id: 'test-project',
       })
 
-      expect(() =>
+      await expect(
         pluginExportService.exportPackage({
           package_name: 'exists-test',
           project_id: 'test-project',
         })
-      ).toThrow(PackageExistsError)
+      ).rejects.toThrow(PackageExistsError)
     })
 
-    it('should succeed when directory exists with overwrite: true', () => {
+    it('should succeed when directory exists with overwrite: true', async () => {
       createTestAgent({ id: 'overwrite-agent' })
 
-      pluginExportService.exportPackage({
+      await pluginExportService.exportPackage({
         package_name: 'overwrite-test',
         project_id: 'test-project',
       })
 
-      const result = pluginExportService.exportPackage({
+      const result = await pluginExportService.exportPackage({
         package_name: 'overwrite-test',
         project_id: 'test-project',
         overwrite: true,
       })
 
       expect(result.agent_count).toBe(1)
+    })
+
+    it('should produce archive when archive_format is tar.gz', async () => {
+      createTestAgent({ id: 'archive-agent', system_prompt: 'Archive me' })
+
+      const result = await pluginExportService.exportPackage({
+        package_name: 'archive-test',
+        project_id: 'test-project',
+        archive_format: 'tar.gz',
+        overwrite: true,
+      })
+
+      expect(result.archive).toBeDefined()
+      expect(result.archive!.path).toMatch(/\.tar\.gz$/)
+      expect(result.archive!.checksum).toMatch(/^[0-9a-f]{64}$/)
+      expect(result.archive!.size).toBeGreaterThan(0)
+      expect(existsSync(result.archive!.path)).toBe(true)
+    })
+
+    it('should not include archive when archive_format is not set', async () => {
+      createTestAgent({ id: 'no-archive-agent' })
+
+      const result = await pluginExportService.exportPackage({
+        package_name: 'no-archive-test',
+        project_id: 'test-project',
+        overwrite: true,
+      })
+
+      expect(result.archive).toBeUndefined()
     })
 
   })
