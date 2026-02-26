@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useContext } from 'react'
+import { useMemo, useContext, useState, useEffect } from 'react'
 import { Bot, ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '../base/button'
 import { Badge } from '../base/badge'
@@ -66,6 +66,13 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
     return all.filter((s) => !s.projectId || s.projectId === currentProjectId)
   }, [activeSessions, scopeToProject, currentProjectId])
   const count = sessions.length
+
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (count === 0) return
+    const id = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(id)
+  }, [count])
 
   const getNavigationPath = (session: ActiveSessionInfo) => {
     if (session.ticketNumber && currentProjectId) {
