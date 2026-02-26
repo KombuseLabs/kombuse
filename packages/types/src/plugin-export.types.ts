@@ -7,6 +7,7 @@ export interface ExportedLabel {
 export interface KombusePluginManifest {
   name: string
   version: string
+  author?: string
   description?: string
   kombuse: {
     plugin_system_version: 'kombuse-plugin-v1'
@@ -18,6 +19,8 @@ export interface KombusePluginManifest {
 export interface PluginExportInput {
   package_name: string
   project_id: string
+  author?: string
+  version?: string
   agent_ids?: string[]
   description?: string
   overwrite?: boolean
@@ -30,4 +33,25 @@ export interface PluginExportResult {
   label_count: number
   file_count: number
   files: string[]
+}
+
+export interface PluginPublishInput {
+  package_name: string
+  project_id: string
+  author: string
+  registry_url: string
+  token: string
+  agent_ids?: string[]
+  channel?: string
+  version?: string
+  description?: string
+  overwrite?: boolean
+}
+
+export interface PluginPublishResult {
+  author: string
+  name: string
+  version: string
+  channel: string
+  download_url: string
 }

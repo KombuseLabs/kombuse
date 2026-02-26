@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { agentExportResultSchema } from './agents.schema'
-import { pluginExportResultSchema, pluginInstallResultSchema } from './plugins.schema'
+import { pluginExportResultSchema, pluginInstallResultSchema, pluginPublishResultSchema } from './plugins.schema'
 import { pluginSourcesResponseSchema } from './plugin-sources.schema'
 import { initProjectResultSchema } from '@kombuse/types/schemas'
 import {
@@ -276,6 +276,7 @@ registerSuccessSchema('GET', '/api/plugins/:id', pluginSchema)
 registerSuccessSchema('POST', '/api/plugins/install', pluginInstallResultSchema)
 registerSuccessSchema('PATCH', '/api/plugins/:id', pluginSchema)
 registerSuccessSchema('POST', '/api/plugins/export', pluginExportResultSchema)
+registerSuccessSchema('POST', '/api/plugins/publish', pluginPublishResultSchema)
 registerSuccessSchema('GET', '/api/plugins/:pluginId/files', z.array(pluginFileSchema))
 registerSuccessSchema('GET', '/api/plugins/:pluginId/files/:fileId', pluginFileSchema)
 registerSuccessSchema('PATCH', '/api/plugins/:pluginId/files/:fileId', pluginFileSchema)

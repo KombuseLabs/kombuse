@@ -7,6 +7,8 @@ import {
   InvalidManifestError,
   pluginLifecycleService,
   PluginNotFoundError,
+  pluginPublishService,
+  PluginPublishError,
 } from '@kombuse/services'
 import { pluginFilesRepository, pluginsRepository } from '@kombuse/persistence'
 import {
@@ -18,6 +20,7 @@ import {
   availablePluginsSchema,
   pluginUninstallQuerySchema,
   updatePluginFileSchema,
+  pluginPublishSchema,
 } from '../schemas/plugins.schema'
 
 export async function pluginRoutes(fastify: FastifyInstance) {
@@ -47,6 +50,30 @@ export async function pluginRoutes(fastify: FastifyInstance) {
       ) {
         return reply.status(403).send({
           error: `Cannot write to directory: ${message}`,
+        })
+      }
+      throw error
+    }
+  })
+
+  // Publish a plugin to a remote registry
+  fastify.post('/plugins/publish', async (request, reply) => {
+    const parseResult = pluginPublishSchema.safeParse(request.body)
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: parseResult.error.issues })
+    }
+
+    try {
+      const result = await pluginPublishService.publish(parseResult.data)
+      return reply.status(201).send(result)
+    } catch (error) {
+      if (error instanceof PluginPublishError) {
+        return reply.status(error.statusCode).send({ error: error.message })
+      }
+      if (error instanceof PackageExistsError) {
+        return reply.status(409).send({
+          error: 'package_exists',
+          directory: error.directory,
         })
       }
       throw error

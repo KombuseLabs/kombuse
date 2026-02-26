@@ -156,6 +156,8 @@ export type {
   KombusePluginManifest,
   PluginExportInput,
   PluginExportResult,
+  PluginPublishInput,
+  PluginPublishResult,
 } from './plugin-export.types'
 export type {
   Plugin,

@@ -4,6 +4,8 @@ export interface PkgManifest {
   name: string
   version: string
   type: PackageType
+  author?: string
+  channel?: string
   description?: string
   checksum?: string
   minRuntimeVersion?: string

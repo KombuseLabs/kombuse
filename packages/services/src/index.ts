@@ -27,6 +27,8 @@ export type { IAgentService, TriggerMatchResult } from './agent-service'
 export { PluginExportService, pluginExportService, PackageExistsError } from './plugin-export-service'
 export type { IPluginExportService } from './plugin-export-service'
 
+export { PluginPublishService, pluginPublishService, PluginPublishError } from './plugin-publish-service'
+
 export { PluginImportService, pluginImportService, PluginAlreadyInstalledError, InvalidManifestError } from './plugin-import-service'
 export type { IPluginImportService } from './plugin-import-service'
 

@@ -60,6 +60,27 @@ export const pluginRemoteInstallSchema = z.object({
   overwrite: z.boolean().optional(),
 })
 
+export const pluginPublishInputSchema = z.object({
+  package_name: z.string().min(1).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+  project_id: z.string().min(1),
+  author: z.string().min(1).regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/),
+  registry_url: z.string().url(),
+  token: z.string().min(1),
+  agent_ids: z.array(z.string().min(1)).optional(),
+  channel: z.string().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/).optional(),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
+  description: z.string().optional(),
+  overwrite: z.boolean().optional(),
+})
+
+export const pluginPublishResultSchema = z.object({
+  author: z.string(),
+  name: z.string(),
+  version: z.string(),
+  channel: z.string(),
+  download_url: z.string(),
+})
+
 export const pluginFileSchema = z.object({
   id: z.number().int().positive(),
   plugin_id: z.string().min(1),

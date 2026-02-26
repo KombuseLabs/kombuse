@@ -102,7 +102,7 @@ export class PluginExportService implements IPluginExportService {
   }
 
   exportPackage(input: PluginExportInput): PluginExportResult {
-    const { package_name, project_id, agent_ids, description, overwrite } = input
+    const { package_name, project_id, author, version, agent_ids, description, overwrite } = input
 
     if (!PACKAGE_NAME_REGEX.test(package_name)) {
       throw new Error(`Invalid package name "${package_name}". Must be lowercase kebab-case (e.g. "my-plugin").`)
@@ -142,9 +142,11 @@ export class PluginExportService implements IPluginExportService {
     }))
 
     // Build manifest
+    const resolvedVersion = version ?? '1.0.0'
     const manifest: KombusePluginManifest = {
       name: package_name,
-      version: '1.0.0',
+      version: resolvedVersion,
+      ...(author ? { author } : {}),
       ...(description ? { description } : {}),
       kombuse: {
         plugin_system_version: 'kombuse-plugin-v1',
@@ -170,8 +172,9 @@ export class PluginExportService implements IPluginExportService {
     // Write PkgManifest at plugin root for @kombuse/pkg discovery
     const pkgManifest: PkgManifest = {
       name: package_name,
-      version: '1.0.0',
+      version: resolvedVersion,
       type: 'plugin',
+      ...(author ? { author } : {}),
       ...(description ? { description } : {}),
       metadata: {
         plugin_system_version: 'kombuse-plugin-v1',

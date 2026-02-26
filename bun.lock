@@ -228,6 +228,7 @@
         "@kombuse/types": "*",
         "js-yaml": "^4.1.0",
         "nunjucks": "^3.2.4",
+        "tar": "^7.4.3",
       },
       "devDependencies": {
         "@repo/eslint-config": "*",

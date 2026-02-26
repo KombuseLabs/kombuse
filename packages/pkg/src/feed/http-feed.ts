@@ -1,5 +1,4 @@
 import { valid, rcompare } from 'semver'
-import type { PkgManifest } from '@kombuse/types'
 import type {
   FeedProvider,
   PackageVersionInfo,
@@ -15,21 +14,34 @@ export interface HttpFeedOptions {
   cacheTtlMs?: number
 }
 
-export interface HttpPackageIndex {
-  packages: Record<
-    string,
-    {
-      versions: Record<
-        string,
-        {
-          url: string
-          checksum?: string
-          manifest: PkgManifest
-          publishedAt?: string
-        }
-      >
-    }
-  >
+/** Response from GET /api/plugins */
+interface PluginListResponse {
+  plugins: Array<{
+    id: string
+    author: string
+    name: string
+    created_at: string
+    updated_at: string
+    latest_version: string | null
+  }>
+}
+
+/** Response from GET /api/plugins/{author}/{name}/versions */
+interface PluginVersionsResponse {
+  versions: Array<{
+    version: string
+    channel: string
+    type: string
+    archive_size: number
+    manifest: { author: string; name: string; version: string; type: string; channel?: string }
+    published_at: string
+    download_url: string
+  }>
+}
+
+interface CacheEntry<T> {
+  data: T
+  cachedAt: number
 }
 
 export class HttpFeed implements FeedProvider {
@@ -38,8 +50,8 @@ export class HttpFeed implements FeedProvider {
   private readonly baseUrl: string
   private readonly auth?: FeedAuth
   private readonly cacheTtlMs?: number
-  private cachedIndex: HttpPackageIndex | null = null
-  private cachedAt: number = 0
+  private cachedPluginList: CacheEntry<PackageVersionInfo[]> | null = null
+  private cachedVersions = new Map<string, CacheEntry<PackageVersionInfo[]>>()
 
   constructor(options: HttpFeedOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, '')
@@ -50,51 +62,74 @@ export class HttpFeed implements FeedProvider {
   }
 
   async listPackages(): Promise<PackageVersionInfo[]> {
-    const index = await this.fetchIndex()
+    if (this.cachedPluginList && this.isCacheValid(this.cachedPluginList.cachedAt)) {
+      return this.cachedPluginList.data
+    }
+
+    const response = await this.fetch(`${this.baseUrl}/api/plugins`)
+    const body = (await response.json()) as PluginListResponse
+
     const results: PackageVersionInfo[] = []
+    for (const plugin of body.plugins) {
+      if (!plugin.latest_version || !valid(plugin.latest_version)) continue
 
-    for (const [name, pkg] of Object.entries(index.packages)) {
-      const versions = Object.entries(pkg.versions)
-        .filter(([v]) => valid(v) !== null)
-        .sort(([a], [b]) => rcompare(a, b))
-
-      const latest = versions[0]
-      if (!latest) continue
-
-      const [version, info] = latest
+      const compoundName = `${plugin.author}/${plugin.name}`
       results.push({
-        name,
-        version,
-        manifest: info.manifest,
-        downloadUrl: info.url,
-        checksum: info.checksum,
-        publishedAt: info.publishedAt,
+        name: compoundName,
+        version: plugin.latest_version,
+        manifest: {
+          name: plugin.name,
+          version: plugin.latest_version,
+          type: 'plugin',
+          author: plugin.author,
+        },
+        archiveFormat: 'tar.gz',
       })
     }
 
+    this.cachedPluginList = { data: results, cachedAt: Date.now() }
     return results
   }
 
   async getVersions(packageName: string): Promise<PackageVersionInfo[]> {
-    const index = await this.fetchIndex()
-    const pkg = index.packages[packageName]
-    if (!pkg) return []
+    const cached = this.cachedVersions.get(packageName)
+    if (cached && this.isCacheValid(cached.cachedAt)) {
+      return cached.data
+    }
 
-    const versions: PackageVersionInfo[] = []
-    for (const [version, info] of Object.entries(pkg.versions)) {
-      if (!valid(version)) continue
-      versions.push({
+    const { author, name } = this.splitPackageName(packageName)
+    const response = await this.fetch(
+      `${this.baseUrl}/api/plugins/${encodeURIComponent(author)}/${encodeURIComponent(name)}/versions`
+    )
+    const body = (await response.json()) as PluginVersionsResponse
+
+    const results: PackageVersionInfo[] = []
+    for (const entry of body.versions) {
+      if (!valid(entry.version)) continue
+
+      const downloadUrl = entry.download_url.startsWith('http')
+        ? entry.download_url
+        : `${this.baseUrl}${entry.download_url}`
+
+      results.push({
         name: packageName,
-        version,
-        manifest: info.manifest,
-        downloadUrl: info.url,
-        checksum: info.checksum,
-        publishedAt: info.publishedAt,
+        version: entry.version,
+        manifest: {
+          name,
+          version: entry.version,
+          type: 'plugin',
+          author,
+          channel: entry.channel,
+        },
+        downloadUrl,
+        publishedAt: entry.published_at,
+        archiveFormat: 'tar.gz',
       })
     }
 
-    versions.sort((a, b) => rcompare(a.version, b.version))
-    return versions
+    results.sort((a, b) => rcompare(a.version, b.version))
+    this.cachedVersions.set(packageName, { data: results, cachedAt: Date.now() })
+    return results
   }
 
   async getVersion(
@@ -118,19 +153,30 @@ export class HttpFeed implements FeedProvider {
   }
 
   clearCache(): void {
-    this.cachedIndex = null
-    this.cachedAt = 0
+    this.cachedPluginList = null
+    this.cachedVersions.clear()
   }
 
-  private async fetchIndex(): Promise<HttpPackageIndex> {
-    if (this.cachedIndex) {
-      if (!this.cacheTtlMs || Date.now() - this.cachedAt < this.cacheTtlMs) {
-        return this.cachedIndex
-      }
-      this.cachedIndex = null
-    }
+  private isCacheValid(cachedAt: number): boolean {
+    if (!this.cacheTtlMs) return true
+    return Date.now() - cachedAt < this.cacheTtlMs
+  }
 
-    const url = `${this.baseUrl}/index.json`
+  private splitPackageName(packageName: string): { author: string; name: string } {
+    const slashIndex = packageName.indexOf('/')
+    if (slashIndex === -1) {
+      throw new FeedError(
+        this.id,
+        `Invalid package name "${packageName}": expected "{author}/{name}" format`
+      )
+    }
+    return {
+      author: packageName.slice(0, slashIndex),
+      name: packageName.slice(slashIndex + 1),
+    }
+  }
+
+  private async fetch(url: string): Promise<Response> {
     const headers: Record<string, string> = {}
     if (this.auth) {
       headers['Authorization'] = `${this.auth.type ?? 'Bearer'} ${this.auth.token}`
@@ -144,8 +190,6 @@ export class HttpFeed implements FeedProvider {
       )
     }
 
-    this.cachedIndex = (await response.json()) as HttpPackageIndex
-    this.cachedAt = Date.now()
-    return this.cachedIndex
+    return response
   }
 }

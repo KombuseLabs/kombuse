@@ -74,5 +74,13 @@ export function buildPluginPackageManager(
     }
   }
 
+  // Built-in kombuse.dev registry (public reads, no auth needed)
+  pm.addFeed(
+    new HttpFeed({
+      baseUrl: 'https://kombuse.dev',
+      cacheTtlMs: 5 * 60 * 1000,
+    })
+  )
+
   return pm
 }
