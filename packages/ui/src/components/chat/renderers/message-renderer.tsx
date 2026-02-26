@@ -4,6 +4,7 @@ import { cn } from '../../../lib/utils'
 import { Markdown } from '../../markdown'
 import { useCurrentProject } from '../../../hooks/use-app-context'
 import { EventCard } from './event-card'
+import { ChatImageGallery } from './chat-image-gallery'
 
 export interface MessageRendererProps {
   event: SerializedAgentMessageEvent
@@ -16,8 +17,10 @@ const roleIcon = {
 } as const
 
 export function MessageRenderer({ event }: MessageRendererProps) {
-  const { role, content, timestamp } = event
+  const { role, content, images, timestamp } = event
   const { currentProjectId } = useCurrentProject()
+  const hasText = content.trim().length > 0
+  const hasImages = images && images.length > 0
 
   return (
     <EventCard
@@ -34,7 +37,8 @@ export function MessageRenderer({ event }: MessageRendererProps) {
         </span>
       }
     >
-      <Markdown projectId={currentProjectId}>{content}</Markdown>
+      {hasText && <Markdown projectId={currentProjectId}>{content}</Markdown>}
+      {hasImages && <ChatImageGallery images={images} />}
     </EventCard>
   )
 }

@@ -84,6 +84,7 @@ export interface AgentMessageEvent extends AgentEventBase {
   type: 'message'
   role: AgentMessageRole
   content: string
+  images?: ImageAttachment[]
   raw?: unknown
 }
 

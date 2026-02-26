@@ -1,4 +1,5 @@
 export { BashRenderer, type BashRendererProps } from './bash-renderer'
+export { ChatImageGallery, type ChatImageGalleryProps } from './chat-image-gallery'
 export { AskUserRenderer, type AskUserRendererProps } from './ask-user-renderer'
 export { CompleteRenderer, type CompleteRendererProps } from './complete-renderer'
 export { EditRenderer, type EditRendererProps } from './edit-renderer'

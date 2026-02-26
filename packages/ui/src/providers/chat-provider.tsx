@@ -471,18 +471,13 @@ export function ChatProvider({
         }
       }
 
-      // Build display content with placeholders for images
-      const placeholders = images
-        ? images.map((img) => `[image: ${img.mediaType}]`)
-        : []
-      const displayContent = [message, ...placeholders].filter(Boolean).join('\n')
-
       // Add user message as a proper event
       const userEvent: SerializedAgentMessageEvent = {
         type: 'message',
         eventId: crypto.randomUUID(),
         role: 'user',
-        content: displayContent,
+        content: message || '',
+        images: images ?? undefined,
         backend: 'mock',
         timestamp: Date.now(),
       }
