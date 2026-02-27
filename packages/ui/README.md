@@ -659,6 +659,7 @@ import {
 />
 
 // Single-select dropdown for picking one label (used in trigger conditions)
+// Shows Zap icon on labels with active agent triggers (smart labels)
 <LabelPicker
   availableLabels={projectLabels}
   selectedLabelId={selectedId}

@@ -14,7 +14,9 @@ import {
   CommandItem,
   CommandSeparator,
 } from '../../base/command'
-import { Check, ChevronsUpDown, Tag, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown, Tag, Plus, Zap } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
+import { useSmartLabels } from '../../hooks/use-app-context'
 import { LabelForm } from './label-form'
 
 interface LabelPickerProps {
@@ -40,6 +42,7 @@ function LabelPicker({
 }: LabelPickerProps) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'select' | 'create'>('select')
+  const { isSmartLabel } = useSmartLabels()
   // Store newly created label temporarily until query refetches
   const [pendingLabel, setPendingLabel] = useState<Label | null>(null)
 
@@ -99,6 +102,9 @@ function LabelPicker({
                   style={{ backgroundColor: selectedLabel.color }}
                 />
                 <span className="truncate">{selectedLabel.name}</span>
+                {isSmartLabel(selectedLabel.id) && (
+                  <Zap className="size-3 text-muted-foreground shrink-0" />
+                )}
               </>
             ) : (
               <>
@@ -129,6 +135,14 @@ function LabelPicker({
                       style={{ backgroundColor: label.color }}
                     />
                     <span className="flex-1 truncate">{label.name}</span>
+                    {isSmartLabel(label.id) && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex"><Zap className="size-3 text-muted-foreground shrink-0" /></span>
+                        </TooltipTrigger>
+                        <TooltipContent>Triggers an agent</TooltipContent>
+                      </Tooltip>
+                    )}
                     {selectedLabelId === label.id && (
                       <Check className="size-4 text-primary shrink-0" />
                     )}
