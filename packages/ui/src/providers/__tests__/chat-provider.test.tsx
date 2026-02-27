@@ -10,6 +10,7 @@ import type {
   ActiveSessionInfo,
   ServerMessage,
   SerializedAgentEvent,
+  BackendType,
 } from '@kombuse/types'
 import { ChatProvider } from '../chat-provider'
 import { ChatCtx, type ChatContextValue } from '../chat-context'
@@ -119,7 +120,7 @@ function makeSerializedEvent(seq: number): Extract<SerializedAgentEvent, { type:
 }
 
 /** Renders ChatProvider and captures the context value via a consumer child. */
-function renderProvider(props: { sessionId?: string | null; agentId?: string; projectId?: string | null } = {}) {
+function renderProvider(props: { sessionId?: string | null; agentId?: string; projectId?: string | null; backendType?: BackendType } = {}) {
   let ctx: ChatContextValue | null = null
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -141,19 +142,19 @@ function renderProvider(props: { sessionId?: string | null; agentId?: string; pr
   }
 
   const utils = render(
-    <ChatProvider sessionId={resolvedSessionId} agentId={props.agentId} projectId={props.projectId}>
+    <ChatProvider sessionId={resolvedSessionId} agentId={props.agentId} projectId={props.projectId} backendType={props.backendType}>
       <Consumer />
     </ChatProvider>,
     { wrapper: Wrapper }
   )
 
-  function rerenderProvider(nextProps: { sessionId?: string | null; agentId?: string; projectId?: string | null } = {}) {
+  function rerenderProvider(nextProps: { sessionId?: string | null; agentId?: string; projectId?: string | null; backendType?: BackendType } = {}) {
     const nextResolvedSessionId = Object.prototype.hasOwnProperty.call(nextProps, 'sessionId')
       ? nextProps.sessionId
       : 'sess-1'
 
     utils.rerender(
-      <ChatProvider sessionId={nextResolvedSessionId} agentId={nextProps.agentId} projectId={nextProps.projectId}>
+      <ChatProvider sessionId={nextResolvedSessionId} agentId={nextProps.agentId} projectId={nextProps.projectId} backendType={nextProps.backendType}>
         <Consumer />
       </ChatProvider>
     )
@@ -600,5 +601,88 @@ describe('ChatProvider agent.started project filtering', () => {
 
     // Session guard should reject — different kombuseSessionId
     expect(getCtx().sessionStatus).toBe('running')
+  })
+})
+
+describe('ChatProvider synthetic event backend type', () => {
+  beforeEach(() => {
+    mockSessionData = undefined
+    mockSessionEventsData = undefined
+    mockPendingPermissions = new Map()
+    mockActiveSessions = new Map()
+    mockWebSocketOnMessage = undefined
+    mockWebSocketSend.mockReset()
+    mockUseSessionByKombuseId.mockClear()
+    mockUseSessionEvents.mockClear()
+  })
+
+  it('uses effective_backend from session data in synthetic error events', async () => {
+    const sessionId = 'chat-00000000-0000-0000-0000-000000000001' as KombuseSessionId
+    mockSessionData = makeSession({
+      kombuse_session_id: sessionId,
+      status: 'running',
+      effective_backend: 'codex',
+    })
+    mockActiveSessions = new Map([
+      [sessionId, { kombuseSessionId: sessionId, agentName: 'Test', startedAt: new Date().toISOString() }],
+    ])
+
+    const { getCtx } = renderProvider()
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'agent.complete',
+        kombuseSessionId: sessionId,
+        status: 'failed',
+        errorMessage: 'Something went wrong',
+      })
+    })
+
+    await waitFor(() => {
+      const errorEvents = getCtx().events.filter((e) => e.type === 'error')
+      expect(errorEvents).toHaveLength(1)
+      expect(errorEvents[0]!.backend).toBe('codex')
+    })
+  })
+
+  it('falls back to backendType prop when session data is not loaded', async () => {
+    mockSessionData = undefined
+
+    const { getCtx } = renderProvider({ backendType: 'codex' })
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'error',
+        message: 'Server error',
+      })
+    })
+
+    await waitFor(() => {
+      const errorEvents = getCtx().events.filter((e) => e.type === 'error')
+      expect(errorEvents).toHaveLength(1)
+      expect(errorEvents[0]!.backend).toBe('codex')
+    })
+  })
+
+  it('falls back to claude-code when neither session data nor prop provides backend', async () => {
+    mockSessionData = undefined
+
+    const { getCtx } = renderProvider({})
+    expect(mockWebSocketOnMessage).toBeDefined()
+
+    act(() => {
+      mockWebSocketOnMessage?.({
+        type: 'error',
+        message: 'Server error',
+      })
+    })
+
+    await waitFor(() => {
+      const errorEvents = getCtx().events.filter((e) => e.type === 'error')
+      expect(errorEvents).toHaveLength(1)
+      expect(errorEvents[0]!.backend).toBe('claude-code')
+    })
   })
 })

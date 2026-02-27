@@ -17,7 +17,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Database as DatabaseType } from 'better-sqlite3'
-import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID } from '../test-utils'
+import { setupTestDb, TEST_USER_ID, TEST_AGENT_ID, TEST_PROJECT_ID, TEST_PROJECT_2_ID, seedSecondProject } from '../test-utils'
 import { commentsRepository } from '../comments.repository'
 import { ticketsRepository } from '../tickets.repository'
 import { mentionsRepository } from '../mentions.repository'
@@ -767,6 +767,110 @@ describe('commentsRepository', () => {
           return p.mention_type === 'ticket_cross_reference'
         })
         expect(target2CrossRefs, 'Newly added mention should create cross-reference').toHaveLength(1)
+      })
+
+      it('should resolve ticket mentions by ticket_number not internal id on update', () => {
+        // Create filler tickets in another project to push internal IDs ahead
+        seedSecondProject(db)
+        ticketsRepository.create({ title: 'Filler 1', project_id: TEST_PROJECT_2_ID, author_id: TEST_USER_ID })
+        ticketsRepository.create({ title: 'Filler 2', project_id: TEST_PROJECT_2_ID, author_id: TEST_USER_ID })
+        ticketsRepository.create({ title: 'Filler 3', project_id: TEST_PROJECT_2_ID, author_id: TEST_USER_ID })
+
+        const targetTicket = ticketsRepository.create({
+          title: 'Target by ticket_number',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+
+        // Ensure ticket_number differs from internal id
+        expect(targetTicket.id).not.toBe(targetTicket.ticket_number)
+
+        const comment = commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: 'Initial body',
+        })
+
+        // Update comment to mention the target by ticket_number
+        commentsRepository.update(comment.id, {
+          body: `See #${targetTicket.ticket_number}`,
+        })
+
+        const mentions = mentionsRepository.getByComment(comment.id)
+        const ticketMentions = mentions.filter((m) => m.mention_type === 'ticket')
+
+        expect(ticketMentions).toHaveLength(1)
+        expect(ticketMentions[0]?.mentioned_ticket_id).toBe(targetTicket.id)
+        expect(ticketMentions[0]?.mention_text).toBe(`#${targetTicket.ticket_number}`)
+      })
+
+      it('should create cross-reference events with correct resolved ticket id on update', () => {
+        // Create filler tickets to ensure ticket_number != id
+        seedSecondProject(db)
+        ticketsRepository.create({ title: 'Filler', project_id: TEST_PROJECT_2_ID, author_id: TEST_USER_ID })
+        ticketsRepository.create({ title: 'Filler', project_id: TEST_PROJECT_2_ID, author_id: TEST_USER_ID })
+
+        const targetTicket = ticketsRepository.create({
+          title: 'Cross-ref target',
+          project_id: TEST_PROJECT_ID,
+          author_id: TEST_USER_ID,
+        })
+
+        expect(targetTicket.id).not.toBe(targetTicket.ticket_number)
+
+        const comment = commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: 'No mentions yet',
+        })
+
+        db.prepare('DELETE FROM events').run()
+
+        commentsRepository.update(comment.id, {
+          body: `Now mentioning #${targetTicket.ticket_number}`,
+        })
+
+        const crossRefEvents = eventsRepository.getByTicket(targetTicket.id).filter((e) => {
+          const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload
+          return p.mention_type === 'ticket_cross_reference'
+        })
+
+        expect(crossRefEvents).toHaveLength(1)
+      })
+
+      it('should not resolve ticket mentions from other projects on update', () => {
+        // Create multiple tickets in TEST_PROJECT_2_ID so that the last one
+        // has a ticket_number that doesn't exist in TEST_PROJECT_ID
+        seedSecondProject(db)
+        ticketsRepository.create({ title: 'P2 filler 1', project_id: TEST_PROJECT_2_ID, author_id: TEST_USER_ID })
+        const otherProjectTicket = ticketsRepository.create({
+          title: 'Other project ticket',
+          project_id: TEST_PROJECT_2_ID,
+          author_id: TEST_USER_ID,
+        })
+
+        // Verify the ticket_number we'll mention doesn't exist in TEST_PROJECT_ID
+        const existsInTestProject = db
+          .prepare('SELECT 1 FROM tickets WHERE project_id = ? AND ticket_number = ?')
+          .get(TEST_PROJECT_ID, otherProjectTicket.ticket_number)
+        expect(existsInTestProject, 'ticket_number should not exist in test project').toBeUndefined()
+
+        const comment = commentsRepository.create({
+          ticket_id: testTicketId,
+          author_id: TEST_USER_ID,
+          body: 'Initial body',
+        })
+
+        commentsRepository.update(comment.id, {
+          body: `See #${otherProjectTicket.ticket_number}`,
+        })
+
+        const mentions = mentionsRepository.getByComment(comment.id)
+        const ticketMentions = mentions.filter((m) => m.mention_type === 'ticket')
+
+        // The ticket_number exists in TEST_PROJECT_2_ID but not in TEST_PROJECT_ID,
+        // so it should not resolve
+        expect(ticketMentions).toHaveLength(0)
       })
 
       it('should NOT create a cross-reference event for non-existent ticket mentions', () => {

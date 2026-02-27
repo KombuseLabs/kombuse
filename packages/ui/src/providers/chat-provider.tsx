@@ -11,9 +11,9 @@ import type {
   PublicSession,
   PendingPermission,
   JsonObject,
-  BackendType,
   ImageAttachment,
 } from '@kombuse/types'
+import { BACKEND_TYPES, type BackendType } from '@kombuse/types'
 import { useWebSocket } from '../hooks/use-websocket'
 import { useSessionByKombuseId, useSessionEvents } from '../hooks/use-sessions'
 import { useAppContext } from '../hooks/use-app-context'
@@ -58,11 +58,14 @@ interface ChatProviderProps {
 }
 
 /** Convert a global PendingPermission into a SerializedAgentPermissionRequestEvent for ChatProvider */
-function pendingPermissionToEvent(perm: PendingPermission): SerializedAgentPermissionRequestEvent {
+function pendingPermissionToEvent(
+  perm: PendingPermission,
+  backend: BackendType = BACKEND_TYPES.CLAUDE_CODE,
+): SerializedAgentPermissionRequestEvent {
   return {
     type: 'permission_request',
     eventId: `restored-${perm.requestId}`,
-    backend: 'claude-code',
+    backend,
     timestamp: Date.now(),
     requestId: perm.requestId,
     toolName: perm.toolName,
@@ -118,6 +121,9 @@ export function ChatProvider({
 
   // Fetch session metadata — URL now contains kombuse_session_id
   const { data: sessionData } = useSessionByKombuseId(sessionId ?? null)
+
+  const effectiveBackend = sessionData?.effective_backend ?? sessionData?.backend_type ?? null
+  const syntheticBackend: BackendType = effectiveBackend ?? backendType ?? BACKEND_TYPES.CLAUDE_CODE
 
   const sessionEventFilters = useMemo(() => ({
     limit: INITIAL_SESSION_EVENTS_LIMIT,
@@ -204,9 +210,9 @@ export function ChatProvider({
   useEffect(() => {
     if (pendingPermission) return
     if (globalPermForSession) {
-      setPendingPermission(pendingPermissionToEvent(globalPermForSession))
+      setPendingPermission(pendingPermissionToEvent(globalPermForSession, syntheticBackend))
     }
-  }, [globalPermForSession, pendingPermission])
+  }, [globalPermForSession, pendingPermission, syntheticBackend])
 
   // Reset events when switching modes
   useEffect(() => {
@@ -324,7 +330,7 @@ export function ChatProvider({
             type: 'error',
             eventId: crypto.randomUUID(),
             message: completionMessage,
-            backend: 'mock',
+            backend: syntheticBackend,
             timestamp: Date.now(),
           }
           setEvents((prev) => [...prev, errorEvent])
@@ -344,14 +350,14 @@ export function ChatProvider({
           type: 'error',
           eventId: crypto.randomUUID(),
           message: message.message,
-          backend: 'mock',
+          backend: syntheticBackend,
           timestamp: Date.now(),
         }
         setEvents((prev) => [...prev, errorEvent])
         break
       }
     }
-  }, [effectiveKombuseSessionId, projectId, refreshSessions, updateSessionStatus])
+  }, [effectiveKombuseSessionId, projectId, refreshSessions, updateSessionStatus, syntheticBackend])
 
   const sessionTopics = useMemo(() => {
     if (effectiveKombuseSessionId) {
@@ -373,7 +379,7 @@ export function ChatProvider({
           type: 'error',
           eventId: crypto.randomUUID(),
           message: 'WebSocket is not connected',
-          backend: 'mock',
+          backend: syntheticBackend,
           timestamp: Date.now(),
         }
         setEvents((prev) => [...prev, errorEvent])
@@ -390,7 +396,7 @@ export function ChatProvider({
             type: 'error',
             eventId: crypto.randomUUID(),
             message: 'Unable to create a chat session',
-            backend: 'mock',
+            backend: syntheticBackend,
             timestamp: Date.now(),
           }
           setEvents((prev) => [...prev, errorEvent])
@@ -409,7 +415,7 @@ export function ChatProvider({
               error instanceof Error
                 ? error.message
                 : 'Failed to create a chat session',
-            backend: 'mock',
+            backend: syntheticBackend,
             timestamp: Date.now(),
           }
           setEvents((prev) => [...prev, errorEvent])
@@ -427,7 +433,7 @@ export function ChatProvider({
             type: 'error',
             eventId: crypto.randomUUID(),
             message: 'Could not attach images. The message will be sent without them.',
-            backend: 'mock',
+            backend: syntheticBackend,
             timestamp: Date.now(),
           }
           setEvents((prev) => [...prev, warningEvent])
@@ -441,7 +447,7 @@ export function ChatProvider({
         role: 'user',
         content: message || '',
         images: images ?? undefined,
-        backend: 'mock',
+        backend: syntheticBackend,
         timestamp: Date.now(),
       }
       setEvents((prev) => [...prev, userEvent])
@@ -472,6 +478,7 @@ export function ChatProvider({
       isLoading,
       wsSend,
       onEnsureSession,
+      syntheticBackend,
     ]
   )
 
@@ -507,7 +514,6 @@ export function ChatProvider({
   }, [])
 
   const backendSessionId = sessionData?.backend_session_id ?? null
-  const effectiveBackend = sessionData?.effective_backend ?? sessionData?.backend_type ?? null
   const appliedModel = sessionData?.applied_model ?? null
   const sessionModelPreference = sessionData?.model_preference ?? null
   const agentName = sessionData?.agent_name ?? null

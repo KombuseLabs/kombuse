@@ -632,10 +632,14 @@ export const commentsRepository = {
         }
 
         // Create new ticket mention records
-        for (const mentionedTicketId of mentions.ticketIds) {
-          const mentionedTicket = db
-            .prepare('SELECT id FROM tickets WHERE id = ?')
-            .get(mentionedTicketId) as { id: number } | undefined
+        // Resolve by ticket_number within the parent ticket's project (matching create())
+        for (const mentionedNumber of mentions.ticketIds) {
+          let mentionedTicket: { id: number; project_id: string; ticket_number: number } | undefined
+          if (ticket?.project_id) {
+            mentionedTicket = db
+              .prepare('SELECT id, project_id, ticket_number FROM tickets WHERE project_id = ? AND ticket_number = ?')
+              .get(ticket.project_id, mentionedNumber) as { id: number; project_id: string; ticket_number: number } | undefined
+          }
 
           if (!mentionedTicket) {
             continue
@@ -644,8 +648,8 @@ export const commentsRepository = {
           mentionsRepository.create({
             comment_id: id,
             mention_type: MENTION_TYPES.TICKET,
-            mentioned_ticket_id: mentionedTicketId,
-            mention_text: `#${mentionedTicketId}`,
+            mentioned_ticket_id: mentionedTicket.id,
+            mention_text: `#${mentionedNumber}`,
           })
         }
 
@@ -655,15 +659,17 @@ export const commentsRepository = {
 
         // Cross-reference events for newly added ticket mentions (deduplicated per source→target pair)
         if (comment) {
-          for (const mentionedTicketId of mentions.ticketIds) {
-            if (oldTicketMentionIds.has(mentionedTicketId)) continue
-            if (mentionedTicketId === comment.ticket_id) continue
-
-            const mentionedTicketInfo = db
-              .prepare('SELECT id, project_id, ticket_number FROM tickets WHERE id = ?')
-              .get(mentionedTicketId) as { id: number; project_id: string; ticket_number: number } | undefined
+          for (const mentionedNumber of mentions.ticketIds) {
+            let mentionedTicketInfo: { id: number; project_id: string; ticket_number: number } | undefined
+            if (ticket?.project_id) {
+              mentionedTicketInfo = db
+                .prepare('SELECT id, project_id, ticket_number FROM tickets WHERE project_id = ? AND ticket_number = ?')
+                .get(ticket.project_id, mentionedNumber) as { id: number; project_id: string; ticket_number: number } | undefined
+            }
 
             if (!mentionedTicketInfo) continue
+            if (oldTicketMentionIds.has(mentionedTicketInfo.id)) continue
+            if (mentionedTicketInfo.id === comment.ticket_id) continue
 
             const existingCrossRef = db
               .prepare(
@@ -674,14 +680,14 @@ export const commentsRepository = {
                    AND json_extract(payload, '$.source_ticket_id') = ?
                  LIMIT 1`
               )
-              .get(mentionedTicketId, comment.ticket_id)
+              .get(mentionedTicketInfo.id, comment.ticket_id)
 
             if (existingCrossRef) continue
 
             eventsRepository.create({
               event_type: EVENT_TYPES.MENTION_CREATED,
               project_id: mentionedTicketInfo.project_id,
-              ticket_id: mentionedTicketId,
+              ticket_id: mentionedTicketInfo.id,
               comment_id: id,
               actor_id: existingRow.author_id,
               actor_type: editActorType,
