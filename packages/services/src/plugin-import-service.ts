@@ -59,6 +59,22 @@ export class PluginImportService implements IPluginImportService {
     // Step 1: Read and validate manifest
     const manifest = this.readManifest(package_path)
 
+    // Step 1b: Reject non-plugin package types
+    const pkgJsonPath = join(package_path, 'package.json')
+    if (existsSync(pkgJsonPath)) {
+      try {
+        const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8')) as { type?: string }
+        if (pkgJson.type && pkgJson.type !== 'plugin') {
+          throw new InvalidManifestError(
+            `Package type "${pkgJson.type}" is not installable as a plugin`
+          )
+        }
+      } catch (error) {
+        if (error instanceof InvalidManifestError) throw error
+        // If package.json is unreadable/malformed, proceed — the plugin manifest is the authority
+      }
+    }
+
     // Step 2: Check for existing install
     const existing = pluginsRepository.getByName(project_id, manifest.name)
     if (existing && !overwrite) {

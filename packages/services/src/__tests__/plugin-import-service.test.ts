@@ -1261,6 +1261,45 @@ describe('pluginImportService', () => {
         })
       ).toThrow(InvalidManifestError)
     })
+
+    it('should throw InvalidManifestError when package.json type is "app"', () => {
+      const pkg = trackDir(createPluginPackage({ manifest: { name: 'app-pkg' } }))
+      writeFileSync(
+        join(pkg, 'package.json'),
+        JSON.stringify({ name: 'app-pkg', version: '1.0.0', type: 'app' }),
+      )
+
+      expect(() =>
+        pluginImportService.installPackage({
+          package_path: pkg,
+          project_id: TEST_PROJECT_ID,
+        })
+      ).toThrow(InvalidManifestError)
+    })
+
+    it('should allow install when package.json type is "plugin"', () => {
+      const pkg = trackDir(createPluginPackage({ manifest: { name: 'typed-plugin' } }))
+      writeFileSync(
+        join(pkg, 'package.json'),
+        JSON.stringify({ name: 'typed-plugin', version: '1.0.0', type: 'plugin' }),
+      )
+
+      const result = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(result.plugin_name).toBe('typed-plugin')
+    })
+
+    it('should allow install when no package.json exists', () => {
+      const pkg = trackDir(createPluginPackage({ manifest: { name: 'no-pkg-json' } }))
+
+      const result = pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+      expect(result.plugin_name).toBe('no-pkg-json')
+    })
   })
 
   describe('agent config reconstruction', () => {

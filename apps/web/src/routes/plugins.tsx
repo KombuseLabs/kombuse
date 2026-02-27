@@ -101,7 +101,7 @@ function tokenDisplay(source: PluginSourceConfig): string | null {
 // Types
 // ---------------------------------------------------------------------------
 
-interface UnifiedPlugin {
+export interface UnifiedPlugin {
   name: string
   version: string
   description?: string | null
@@ -111,6 +111,51 @@ interface UnifiedPlugin {
   installedPlugin?: PluginType
   availablePlugin?: AvailablePlugin
   has_update?: boolean
+}
+
+export function mergePluginLists(
+  available: AvailablePlugin[],
+  installed: PluginType[],
+): UnifiedPlugin[] {
+  const map = new Map<string, UnifiedPlugin>()
+
+  for (const ap of available) {
+    map.set(ap.name, {
+      name: ap.name,
+      version: ap.version,
+      description: ap.description,
+      source: ap.source,
+      directory: ap.directory,
+      installed: ap.installed,
+      availablePlugin: ap,
+      has_update: ap.has_update,
+    })
+  }
+
+  for (const ip of installed) {
+    const existing = map.get(ip.name)
+    if (existing) {
+      existing.installedPlugin = ip
+      existing.installed = true
+    } else {
+      // Skip installed entries without a valid plugin manifest (e.g. legacy "app" type packages)
+      const m = ip.manifest as unknown as { kombuse?: { plugin_system_version?: string } }
+      if (!m.kombuse?.plugin_system_version) continue
+
+      map.set(ip.name, {
+        name: ip.name,
+        version: ip.version,
+        description: ip.description,
+        installed: true,
+        installedPlugin: ip,
+      })
+    }
+  }
+
+  return [...map.values()].sort((a, b) => {
+    if (a.installed !== b.installed) return a.installed ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -1086,43 +1131,10 @@ export function PluginsPage() {
   const { data: available = [], isLoading: isLoadingAvailable } = useAvailablePlugins(resolvedId)
 
   // Unified plugin list
-  const unifiedPlugins = useMemo(() => {
-    const map = new Map<string, UnifiedPlugin>()
-
-    for (const ap of available) {
-      map.set(ap.name, {
-        name: ap.name,
-        version: ap.version,
-        description: ap.description,
-        source: ap.source,
-        directory: ap.directory,
-        installed: ap.installed,
-        availablePlugin: ap,
-        has_update: ap.has_update,
-      })
-    }
-
-    for (const ip of installed) {
-      const existing = map.get(ip.name)
-      if (existing) {
-        existing.installedPlugin = ip
-        existing.installed = true
-      } else {
-        map.set(ip.name, {
-          name: ip.name,
-          version: ip.version,
-          description: ip.description,
-          installed: true,
-          installedPlugin: ip,
-        })
-      }
-    }
-
-    return [...map.values()].sort((a, b) => {
-      if (a.installed !== b.installed) return a.installed ? -1 : 1
-      return a.name.localeCompare(b.name)
-    })
-  }, [available, installed])
+  const unifiedPlugins = useMemo(
+    () => mergePluginLists(available, installed),
+    [available, installed],
+  )
 
   const selectedPlugin = pluginName
     ? unifiedPlugins.find((p) => p.name === pluginName)
