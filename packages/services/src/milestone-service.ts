@@ -7,17 +7,7 @@ import type {
 } from '@kombuse/types'
 import { milestonesRepository } from '@kombuse/persistence'
 
-export interface IMilestoneService {
-  list(filters?: MilestoneFilters): Milestone[]
-  listWithStats(filters?: MilestoneFilters): MilestoneWithStats[]
-  get(id: number): Milestone | null
-  getWithStats(id: number): MilestoneWithStats | null
-  create(input: CreateMilestoneInput): Milestone
-  update(id: number, input: UpdateMilestoneInput): Milestone
-  delete(id: number): void
-}
-
-export class MilestoneService implements IMilestoneService {
+export class MilestoneService {
   list(filters?: MilestoneFilters): Milestone[] {
     return milestonesRepository.list(filters)
   }

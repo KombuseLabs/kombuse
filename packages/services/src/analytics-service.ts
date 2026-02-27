@@ -10,19 +10,7 @@ import type {
   AgentRuntimeSegment,
 } from '@kombuse/types'
 
-export interface IAnalyticsService {
-  sessionsPerDay(projectId: string, days?: number): Array<{ date: string; count: number }>
-  durationPercentiles(projectId: string, days?: number): SessionDurationPercentile[]
-  pipelineStageDuration(projectId: string, days?: number): PipelineStageDuration[]
-  mostFrequentReads(projectId: string, days?: number, limit?: number): ToolReadFrequency[]
-  toolCallsPerSession(projectId: string, days?: number, agentId?: string): ToolCallsPerSession[]
-  slowestTools(projectId: string, days?: number): ToolDurationPercentile[]
-  toolCallVolume(projectId: string, days?: number): ToolCallVolume[]
-  ticketBurndown(projectId: string, days?: number, milestoneId?: number, labelId?: number): BurndownEntry[]
-  agentRuntimePerTicket(projectId: string, limit?: number): AgentRuntimeSegment[]
-}
-
-export class AnalyticsService implements IAnalyticsService {
+export class AnalyticsService {
   sessionsPerDay(projectId: string, days?: number): Array<{ date: string; count: number }> {
     return analyticsRepository.sessionsPerDay(projectId, days)
   }

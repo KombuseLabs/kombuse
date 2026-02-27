@@ -5,9 +5,9 @@ import type {
 import { attachmentsRepository, resolveTicketId } from '@kombuse/persistence'
 import {
   fileStorage,
+  type FileStorage,
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
-  type IFileStorage,
 } from './file-storage-service'
 
 export interface UploadParams {
@@ -21,26 +21,10 @@ export interface UploadParams {
   uploadedById: string
 }
 
-/**
- * Service interface for attachment operations
- */
-export interface IAttachmentService {
-  list(filters?: AttachmentFilters): Attachment[]
-  get(id: number): Attachment | null
-  getByTicket(projectId: string, ticketNumber: number): Attachment[]
-  getByComment(commentId: number): Attachment[]
-  upload(params: UploadParams): Promise<Attachment>
-  delete(id: number): void
-  getFilePath(id: number): string | null
-}
+export class AttachmentService {
+  private storage: FileStorage
 
-/**
- * Attachment service implementation with file storage and validation
- */
-export class AttachmentService implements IAttachmentService {
-  private storage: IFileStorage
-
-  constructor(storage?: IFileStorage) {
+  constructor(storage?: FileStorage) {
     this.storage = storage ?? fileStorage
   }
 

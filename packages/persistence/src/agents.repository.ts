@@ -214,6 +214,27 @@ export const agentsRepository = {
 
     return this.get(id)
   },
+
+  enableByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare("UPDATE agents SET is_enabled = 1, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
+  },
+
+  disableByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare("UPDATE agents SET is_enabled = 0, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
+  },
+
+  orphanByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare("UPDATE agents SET plugin_id = NULL, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
+  },
+
+  listIdsByPlugin(pluginId: string): string[] {
+    const db = getDatabase()
+    const rows = db.prepare('SELECT id FROM agents WHERE plugin_id = ?').all(pluginId) as { id: string }[]
+    return rows.map((r) => r.id)
+  },
 }
 
 /**
@@ -410,6 +431,21 @@ export const agentTriggersRepository = {
       )
       .all(projectId ?? null) as { label_id: number }[]
     return rows.map((r) => r.label_id)
+  },
+
+  enableByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare("UPDATE agent_triggers SET is_enabled = 1, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
+  },
+
+  disableByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare("UPDATE agent_triggers SET is_enabled = 0, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
+  },
+
+  orphanByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare("UPDATE agent_triggers SET plugin_id = NULL, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
   },
 }
 

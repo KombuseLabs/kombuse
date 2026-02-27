@@ -140,7 +140,7 @@ describe('pluginLifecycleService', () => {
     cleanup()
   })
 
-  describe('enablePlugin', () => {
+  describe('setPluginEnabled', () => {
     it('should enable plugin and cascade to agents, triggers, and labels', () => {
       const pluginId = createTestPlugin({ is_enabled: false })
       const agentId = createLinkedAgent(pluginId)
@@ -153,7 +153,7 @@ describe('pluginLifecycleService', () => {
       db.prepare('UPDATE agent_triggers SET is_enabled = 0 WHERE id = ?').run(triggerId)
       db.prepare('UPDATE labels SET is_enabled = 0 WHERE id = ?').run(labelId)
 
-      const result = pluginLifecycleService.enablePlugin(pluginId)
+      const result = pluginLifecycleService.setPluginEnabled(pluginId, true)
 
       expect(result.is_enabled).toBe(true)
 
@@ -167,20 +167,12 @@ describe('pluginLifecycleService', () => {
       expect(label!.is_enabled).toBe(1)
     })
 
-    it('should throw PluginNotFoundError for non-existent plugin', () => {
-      expect(() =>
-        pluginLifecycleService.enablePlugin('non-existent-id')
-      ).toThrow(PluginNotFoundError)
-    })
-  })
-
-  describe('disablePlugin', () => {
     it('should disable plugin and cascade to agents and triggers', () => {
       const pluginId = createTestPlugin()
       const agentId = createLinkedAgent(pluginId)
       createLinkedTrigger(agentId, pluginId)
 
-      const result = pluginLifecycleService.disablePlugin(pluginId)
+      const result = pluginLifecycleService.setPluginEnabled(pluginId, false)
 
       expect(result.is_enabled).toBe(false)
 
@@ -198,12 +190,9 @@ describe('pluginLifecycleService', () => {
       const agentA = createLinkedAgent(pluginA, 'agent-a')
       const agentB = createLinkedAgent(pluginB, 'agent-b')
 
-      pluginLifecycleService.disablePlugin(pluginA)
+      pluginLifecycleService.setPluginEnabled(pluginA, false)
 
-      // Plugin A's agent should be disabled
       expect(agentsRepository.get(agentA)!.is_enabled).toBe(false)
-
-      // Plugin B's agent should still be enabled
       expect(agentsRepository.get(agentB)!.is_enabled).toBe(true)
     })
 
@@ -211,7 +200,7 @@ describe('pluginLifecycleService', () => {
       const pluginId = createTestPlugin()
       const labelId = createLinkedLabel(pluginId)
 
-      pluginLifecycleService.disablePlugin(pluginId)
+      pluginLifecycleService.setPluginEnabled(pluginId, false)
 
       const label = labelsRepository.get(labelId)
       expect(label).not.toBeNull()
@@ -225,7 +214,7 @@ describe('pluginLifecycleService', () => {
       const labelA = createLinkedLabel(pluginA)
       const labelB = createLinkedLabel(pluginB)
 
-      pluginLifecycleService.disablePlugin(pluginA)
+      pluginLifecycleService.setPluginEnabled(pluginA, false)
 
       expect(labelsRepository.get(labelA)!.is_enabled).toBe(0)
       expect(labelsRepository.get(labelB)!.is_enabled).toBe(1)
@@ -233,7 +222,11 @@ describe('pluginLifecycleService', () => {
 
     it('should throw PluginNotFoundError for non-existent plugin', () => {
       expect(() =>
-        pluginLifecycleService.disablePlugin('non-existent-id')
+        pluginLifecycleService.setPluginEnabled('non-existent-id', true)
+      ).toThrow(PluginNotFoundError)
+
+      expect(() =>
+        pluginLifecycleService.setPluginEnabled('non-existent-id', false)
       ).toThrow(PluginNotFoundError)
     })
   })

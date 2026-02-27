@@ -1292,4 +1292,110 @@ describe('labelsRepository', () => {
       expect(found).toBeNull()
     })
   })
+
+  describe('enableByPlugin / disableByPlugin / orphanByPlugin / listByPlugin', () => {
+    let pluginId: string
+
+    beforeEach(() => {
+      const plugin = pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: `label-plugin-${Date.now()}`,
+        version: '1.0.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+      pluginId = plugin.id
+    })
+
+    it('should enable all labels by plugin', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Disabled Label',
+        plugin_id: pluginId,
+      })
+      // Manually disable via raw SQL since create defaults to enabled
+      db.prepare('UPDATE labels SET is_enabled = 0 WHERE id = ?').run(label.id)
+      expect(labelsRepository.get(label.id)!.is_enabled).toBe(0)
+
+      labelsRepository.enableByPlugin(pluginId)
+
+      expect(labelsRepository.get(label.id)!.is_enabled).toBe(1)
+    })
+
+    it('should disable all labels by plugin', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Enabled Label',
+        plugin_id: pluginId,
+      })
+
+      labelsRepository.disableByPlugin(pluginId)
+
+      expect(labelsRepository.get(label.id)!.is_enabled).toBe(0)
+    })
+
+    it('should not affect labels from other plugins', () => {
+      const otherPlugin = pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: `other-label-plugin-${Date.now()}`,
+        version: '1.0.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+
+      const l1 = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Plugin A Label',
+        plugin_id: pluginId,
+      })
+      const l2 = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Plugin B Label',
+        plugin_id: otherPlugin.id,
+      })
+
+      labelsRepository.disableByPlugin(pluginId)
+
+      expect(labelsRepository.get(l1.id)!.is_enabled).toBe(0)
+      expect(labelsRepository.get(l2.id)!.is_enabled).toBe(1)
+    })
+
+    it('should orphan labels by plugin', () => {
+      const label = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Orphan Label',
+        plugin_id: pluginId,
+      })
+
+      labelsRepository.orphanByPlugin(pluginId)
+
+      expect(labelsRepository.get(label.id)!.plugin_id).toBeNull()
+    })
+
+    it('should list labels by plugin', () => {
+      const l1 = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Plugin Label 1',
+        plugin_id: pluginId,
+      })
+      const l2 = labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'Plugin Label 2',
+        plugin_id: pluginId,
+      })
+      labelsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'No Plugin Label',
+      })
+
+      const result = labelsRepository.listByPlugin(pluginId)
+
+      expect(result).toHaveLength(2)
+      expect(result.map((l) => l.id).sort()).toEqual([l1.id, l2.id].sort())
+    })
+
+    it('should return empty array for non-existent plugin', () => {
+      expect(labelsRepository.listByPlugin('non-existent')).toEqual([])
+    })
+  })
 })

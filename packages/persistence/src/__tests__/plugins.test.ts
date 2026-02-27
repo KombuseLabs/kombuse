@@ -257,4 +257,26 @@ describe('pluginsRepository', () => {
       expect(labelAfter!.plugin_id).toBeNull()
     })
   })
+
+  describe('enable / disable', () => {
+    it('should enable a disabled plugin', () => {
+      const plugin = pluginsRepository.create(pluginInput({ is_enabled: false }))
+      expect(plugin.is_enabled).toBe(false)
+
+      pluginsRepository.enable(plugin.id)
+
+      const updated = pluginsRepository.get(plugin.id)
+      expect(updated!.is_enabled).toBe(true)
+    })
+
+    it('should disable an enabled plugin', () => {
+      const plugin = pluginsRepository.create(pluginInput())
+      expect(plugin.is_enabled).toBe(true)
+
+      pluginsRepository.disable(plugin.id)
+
+      const updated = pluginsRepository.get(plugin.id)
+      expect(updated!.is_enabled).toBe(false)
+    })
+  })
 })

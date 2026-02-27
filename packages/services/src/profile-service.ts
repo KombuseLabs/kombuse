@@ -6,21 +6,7 @@ import type {
 } from '@kombuse/types'
 import { profilesRepository } from '@kombuse/persistence'
 
-/**
- * Service interface for profile operations
- */
-export interface IProfileService {
-  list(filters?: ProfileFilters): Profile[]
-  get(id: string): Profile | null
-  create(input: CreateProfileInput): Profile
-  update(id: string, input: UpdateProfileInput): Profile
-  delete(id: string): void
-}
-
-/**
- * Profile service implementation with business logic
- */
-export class ProfileService implements IProfileService {
+export class ProfileService {
   list(filters?: ProfileFilters): Profile[] {
     return profilesRepository.list(filters)
   }

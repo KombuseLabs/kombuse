@@ -154,51 +154,31 @@ export class SessionPersistenceService implements ISessionPersistenceService {
     })
   }
 
-  /**
-   * Mark session as completed with optional backend session ID.
-   */
   completeSession(sessionId: string, backendSessionId?: string): void {
     const now = new Date().toISOString()
-    sessionsRepository.update(sessionId, {
-      status: 'completed',
-      backend_session_id: backendSessionId,
-      completed_at: now,
-      failed_at: null,
-      aborted_at: null,
-    })
-    if (backendSessionId) {
-      this.sessionsWithBackendId.add(sessionId)
-    }
+    this.finishSession(sessionId, 'completed', { completed_at: now, failed_at: null, aborted_at: null }, backendSessionId)
   }
 
-  /**
-   * Mark session as failed with optional backend session ID.
-   */
   failSession(sessionId: string, backendSessionId?: string): void {
     const now = new Date().toISOString()
-    sessionsRepository.update(sessionId, {
-      status: 'failed',
-      backend_session_id: backendSessionId,
-      completed_at: null,
-      failed_at: now,
-      aborted_at: null,
-    })
-    if (backendSessionId) {
-      this.sessionsWithBackendId.add(sessionId)
-    }
+    this.finishSession(sessionId, 'failed', { completed_at: null, failed_at: now, aborted_at: null }, backendSessionId)
   }
 
-  /**
-   * Mark session as aborted with optional backend session ID.
-   */
   abortSession(sessionId: string, backendSessionId?: string): void {
     const now = new Date().toISOString()
+    this.finishSession(sessionId, 'aborted', { completed_at: null, failed_at: null, aborted_at: now }, backendSessionId)
+  }
+
+  private finishSession(
+    sessionId: string,
+    status: 'completed' | 'failed' | 'aborted',
+    timestamps: { completed_at: string | null; failed_at: string | null; aborted_at: string | null },
+    backendSessionId?: string,
+  ): void {
     sessionsRepository.update(sessionId, {
-      status: 'aborted',
+      status,
       backend_session_id: backendSessionId,
-      completed_at: null,
-      failed_at: now,
-      aborted_at: now,
+      ...timestamps,
     })
     if (backendSessionId) {
       this.sessionsWithBackendId.add(sessionId)

@@ -19,7 +19,6 @@ import {
   agentTriggersRepository,
   labelsRepository,
   profilesRepository,
-  getDatabase,
 } from '@kombuse/persistence'
 import { buildPluginPackageManager, resolvePluginConfig } from './plugin-feed-builder'
 
@@ -47,12 +46,7 @@ function isFieldCustomized(currentValue: unknown, oldBaseValue: unknown): boolea
   return currentValue !== oldBaseValue
 }
 
-export interface IPluginImportService {
-  installPackage(input: PluginInstallInput): PluginInstallResult
-  installFromRemote(input: PluginRemoteInstallInput): Promise<PluginInstallResult>
-}
-
-export class PluginImportService implements IPluginImportService {
+export class PluginImportService {
   installPackage(input: PluginInstallInput): PluginInstallResult {
     const { package_path, project_id, overwrite } = input
 
@@ -83,15 +77,9 @@ export class PluginImportService implements IPluginImportService {
     let oldPluginAgentIds = new Set<string>()
     let oldLabelsBySlug = new Map<string, number>()
     if (existing && overwrite) {
-      const db = getDatabase()
-      const oldAgents = db
-        .prepare('SELECT id FROM agents WHERE plugin_id = ?')
-        .all(existing.id) as { id: string }[]
-      oldPluginAgentIds = new Set(oldAgents.map((a) => a.id))
-      const oldLabels = db
-        .prepare('SELECT id, slug FROM labels WHERE plugin_id = ?')
-        .all(existing.id) as { id: number; slug: string }[]
-      oldLabelsBySlug = new Map(oldLabels.map((l) => [l.slug, l.id]))
+      oldPluginAgentIds = new Set(agentsRepository.listIdsByPlugin(existing.id))
+      const oldLabels = labelsRepository.listByPlugin(existing.id)
+      oldLabelsBySlug = new Map(oldLabels.filter((l) => l.slug != null).map((l) => [l.slug!, l.id]))
     }
 
     // Step 3: Create or update plugin row

@@ -143,10 +143,8 @@ export async function pluginRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      if (parseResult.data.is_enabled === true) {
-        return pluginLifecycleService.enablePlugin(id)
-      } else if (parseResult.data.is_enabled === false) {
-        return pluginLifecycleService.disablePlugin(id)
+      if (parseResult.data.is_enabled !== undefined) {
+        return pluginLifecycleService.setPluginEnabled(id, parseResult.data.is_enabled)
       }
 
       const plugin = pluginsRepository.get(id)

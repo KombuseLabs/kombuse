@@ -147,4 +147,14 @@ export const pluginsRepository = {
     const result = db.prepare('DELETE FROM plugins WHERE id = ?').run(id)
     return result.changes > 0
   },
+
+  enable(id: string): void {
+    const db = getDatabase()
+    db.prepare("UPDATE plugins SET is_enabled = 1, updated_at = datetime('now') WHERE id = ?").run(id)
+  },
+
+  disable(id: string): void {
+    const db = getDatabase()
+    db.prepare("UPDATE plugins SET is_enabled = 0, updated_at = datetime('now') WHERE id = ?").run(id)
+  },
 }

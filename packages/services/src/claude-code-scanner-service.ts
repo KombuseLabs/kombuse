@@ -21,13 +21,7 @@ interface SessionsIndex {
 
 export { type SessionEntry }
 
-export interface IClaudeCodeScanner {
-  scan(): ClaudeCodeProject[]
-  listSessions(projectPath: string): SessionEntry[]
-  getSessionContent(projectPath: string, sessionId: string): Record<string, unknown>[]
-}
-
-export class ClaudeCodeScanner implements IClaudeCodeScanner {
+export class ClaudeCodeScanner {
   private getProjectsDir(): string {
     return join(homedir(), '.claude', 'projects')
   }

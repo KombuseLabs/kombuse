@@ -1,46 +1,31 @@
 // Business logic services for REST and MCP handlers
 
 export { TicketService, ticketService } from './ticket-service'
-export type { ITicketService } from './ticket-service'
 
 export { CommentService, commentService } from './comment-service'
-export type { ICommentService } from './comment-service'
 
 export { EventService, eventService } from './event-service'
-export type { IEventService } from './event-service'
 
 export { LabelService, labelService } from './label-service'
-export type { ILabelService } from './label-service'
 
 export { MilestoneService, milestoneService } from './milestone-service'
-export type { IMilestoneService } from './milestone-service'
 
 export { ProfileService, profileService } from './profile-service'
-export type { IProfileService } from './profile-service'
 
 export { ProjectService, projectService } from './project-service'
-export type { IProjectService } from './project-service'
 
 export { AgentService, agentService } from './agent-service'
-export type { IAgentService, TriggerMatchResult } from './agent-service'
+export type { TriggerMatchResult } from './agent-service'
 
 export { PluginExportService, pluginExportService, PackageExistsError } from './plugin-export-service'
-export type { IPluginExportService } from './plugin-export-service'
 
 export { PluginPublishService, pluginPublishService, PluginPublishError } from './plugin-publish-service'
 
 export { PluginImportService, pluginImportService, PluginAlreadyInstalledError, InvalidManifestError } from './plugin-import-service'
-export type { IPluginImportService } from './plugin-import-service'
 
 export { PluginLifecycleService, pluginLifecycleService, PluginNotFoundError } from './plugin-lifecycle-service'
-export type { IPluginLifecycleService } from './plugin-lifecycle-service'
 
 export { buildPluginPackageManager, resolvePluginConfig } from './plugin-feed-builder'
-export type {
-  PermissionContext,
-  PermissionCheckRequest,
-  PermissionCheckResult,
-} from '@kombuse/types'
 
 export {
   SessionPersistenceService,
@@ -53,13 +38,12 @@ export type {
 } from './session-persistence-service'
 
 export { AttachmentService, attachmentService } from './attachment-service'
-export type { IAttachmentService, UploadParams } from './attachment-service'
+export type { UploadParams } from './attachment-service'
 
 export { FileStorage, fileStorage, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from './file-storage-service'
-export type { IFileStorage } from './file-storage-service'
 
 export { ClaudeCodeScanner, claudeCodeScanner } from './claude-code-scanner-service'
-export type { IClaudeCodeScanner, SessionEntry } from './claude-code-scanner-service'
+export type { SessionEntry } from './claude-code-scanner-service'
 
 export { SessionStateMachine } from './session-state-machine-service'
 export type {
@@ -116,4 +100,3 @@ export { getTypePreset, getEffectivePreset, presetToAllowedTools, shouldAutoAppr
 export type { AgentTypePreset } from './agent-type-preset-service'
 
 export { AnalyticsService, analyticsService } from './analytics-service'
-export type { IAnalyticsService } from './analytics-service'

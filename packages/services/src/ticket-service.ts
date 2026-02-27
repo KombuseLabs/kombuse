@@ -13,29 +13,7 @@ import type {
 import { ticketsRepository, ticketViewsRepository, agentInvocationsRepository } from '@kombuse/persistence'
 import { readUserDefaultMaxChainDepth, MAX_CHAIN_DEPTH } from './session-preferences-service'
 
-/**
- * Service interface for ticket operations
- */
-export interface ITicketService {
-  list(filters?: TicketFilters): Ticket[]
-  listWithLabels(filters?: TicketFilters): TicketWithLabels[]
-  listWithRelations(filters?: TicketFilters): TicketWithRelations[]
-  getByNumber(projectId: string, ticketNumber: number): Ticket | null
-  getByNumberWithRelations(projectId: string, ticketNumber: number): TicketWithRelations | null
-  create(input: CreateTicketInput): Ticket
-  update(projectId: string, ticketNumber: number, input: UpdateTicketInput, updatedById?: string): Ticket
-  delete(projectId: string, ticketNumber: number): void
-  claim(projectId: string, ticketNumber: number, input: Omit<ClaimTicketInput, 'ticket_id'>): ClaimResult
-  unclaim(projectId: string, ticketNumber: number, requesterId?: string, force?: boolean): ClaimResult
-  extendClaim(projectId: string, ticketNumber: number, additionalMinutes: number): ClaimResult
-  countByStatus(projectId: string): TicketStatusCounts
-  markViewed(projectId: string, ticketNumber: number, profileId: string): TicketView
-}
-
-/**
- * Ticket service implementation with business logic
- */
-export class TicketService implements ITicketService {
+export class TicketService {
   list(filters?: TicketFilters): Ticket[] {
     return ticketsRepository.list(filters)
   }

@@ -404,4 +404,24 @@ export const labelsRepository = {
     const ticketId = resolveTicketId(projectId, ticketNumber)
     return this.getTicketLabels(ticketId)
   },
+
+  enableByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare('UPDATE labels SET is_enabled = 1 WHERE plugin_id = ?').run(pluginId)
+  },
+
+  disableByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare('UPDATE labels SET is_enabled = 0 WHERE plugin_id = ?').run(pluginId)
+  },
+
+  orphanByPlugin(pluginId: string): void {
+    const db = getDatabase()
+    db.prepare('UPDATE labels SET plugin_id = NULL WHERE plugin_id = ?').run(pluginId)
+  },
+
+  listByPlugin(pluginId: string): Label[] {
+    const db = getDatabase()
+    return db.prepare('SELECT * FROM labels WHERE plugin_id = ?').all(pluginId) as Label[]
+  },
 }

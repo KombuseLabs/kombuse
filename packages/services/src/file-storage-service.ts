@@ -14,17 +14,7 @@ export const ALLOWED_MIME_TYPES = [
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
 
-export interface IFileStorage {
-  save(
-    filename: string,
-    data: Buffer
-  ): Promise<{ storagePath: string; sizeBytes: number }>
-  delete(storagePath: string): void
-  getAbsolutePath(storagePath: string): string
-  createReadStream(storagePath: string): ReadStream
-}
-
-export class FileStorage implements IFileStorage {
+export class FileStorage {
   private uploadsRoot: string
 
   constructor(uploadsRoot?: string) {

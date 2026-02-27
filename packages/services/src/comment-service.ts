@@ -7,24 +7,7 @@ import type {
 } from '@kombuse/types'
 import { commentsRepository, mentionsRepository, resolveTicketId } from '@kombuse/persistence'
 
-/**
- * Service interface for comment operations
- */
-export interface ICommentService {
-  list(filters?: CommentFilters): CommentWithAuthor[]
-  get(id: number): CommentWithAuthor | null
-  getByTicket(projectId: string, ticketNumber: number): CommentWithAuthor[]
-  create(input: CreateCommentInput): CommentWithAuthor
-  update(id: number, input: UpdateCommentInput): CommentWithAuthor
-  delete(id: number): void
-  getReplyCount(id: number): number
-  getMentions(commentId: number): Mention[]
-}
-
-/**
- * Comment service implementation with business logic
- */
-export class CommentService implements ICommentService {
+export class CommentService {
   list(filters?: CommentFilters): CommentWithAuthor[] {
     return commentsRepository.list(filters)
   }

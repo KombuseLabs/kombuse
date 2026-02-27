@@ -33,54 +33,21 @@ export interface TriggerMatchResult {
 }
 
 /**
- * Service interface for agent operations
- */
-export interface IAgentService {
-  // Agent CRUD
-  listAgents(filters?: AgentFilters): Agent[]
-  getAgent(id: string): Agent | null
-  getAgentBySlug(slug: string): Agent | null
-  getAgentBySlugAndPlugin(slug: string, pluginId: string): Agent | null
-  createAgent(input: CreateAgentInput): Agent
-  updateAgent(id: string, input: UpdateAgentInput): Agent
-  deleteAgent(id: string): void
-  resetAgentToPluginDefaults(agentId: string): Agent
-
-  // Trigger CRUD
-  listTriggers(agentId: string): AgentTrigger[]
-  listTriggersByLabelId(labelId: number): AgentTrigger[]
-  listSmartLabelIds(projectId?: string): number[]
-  getTrigger(id: number): AgentTrigger | null
-  createTrigger(input: CreateAgentTriggerInput): AgentTrigger
-  updateTrigger(id: number, input: UpdateAgentTriggerInput): AgentTrigger
-  deleteTrigger(id: number): void
-
-  // Invocation management
-  listInvocations(filters?: AgentInvocationFilters): AgentInvocation[]
-  getInvocation(id: number): AgentInvocation | null
-
-  // Core operations
-  findMatchingTriggers(event: Event): TriggerMatchResult[]
-  checkPermission(
-    agent: Agent,
-    request: PermissionCheckRequest,
-    context: PermissionContext
-  ): PermissionCheckResult
-  invokeAgent(trigger: AgentTrigger, event: Event): AgentInvocation
-}
-
-/**
  * Check if a string matches a glob pattern
  * Supports: * (any chars), ? (single char)
  */
-function matchGlob(pattern: string, value: string): boolean {
-  // Convert glob to regex
-  const regexPattern = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape regex special chars
-    .replace(/\*/g, '.*') // * matches any chars
-    .replace(/\?/g, '.') // ? matches single char
+const globRegexCache = new Map<string, RegExp>()
 
-  const regex = new RegExp(`^${regexPattern}$`)
+function matchGlob(pattern: string, value: string): boolean {
+  let regex = globRegexCache.get(pattern)
+  if (!regex) {
+    const regexPattern = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.')
+    regex = new RegExp(`^${regexPattern}$`)
+    globRegexCache.set(pattern, regex)
+  }
   return regex.test(value)
 }
 
@@ -178,7 +145,7 @@ function checkAllowedInvokers(
 /**
  * Agent service implementation
  */
-export class AgentService implements IAgentService {
+export class AgentService {
   // ============================================
   // Agent CRUD
   // ============================================

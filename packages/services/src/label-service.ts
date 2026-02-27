@@ -6,24 +6,7 @@ import type {
 } from '@kombuse/types'
 import { labelsRepository } from '@kombuse/persistence'
 
-/**
- * Service interface for label operations
- */
-export interface ILabelService {
-  list(filters?: LabelFilters): Label[]
-  get(id: number): Label | null
-  create(input: CreateLabelInput): Label
-  update(id: number, input: UpdateLabelInput): Label
-  delete(id: number): void
-  addToTicket(projectId: string, ticketNumber: number, labelId: number, addedById?: string): void
-  removeFromTicket(projectId: string, ticketNumber: number, labelId: number, removedById?: string): void
-  getTicketLabels(projectId: string, ticketNumber: number): Label[]
-}
-
-/**
- * Label service implementation with business logic
- */
-export class LabelService implements ILabelService {
+export class LabelService {
   list(filters?: LabelFilters): Label[] {
     return labelsRepository.list(filters)
   }

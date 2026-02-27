@@ -6,22 +6,7 @@ import type {
 } from '@kombuse/types'
 import { projectsRepository } from '@kombuse/persistence'
 
-/**
- * Service interface for project operations
- */
-export interface IProjectService {
-  list(filters?: ProjectFilters): Project[]
-  get(id: string): Project | null
-  getByIdOrSlug(identifier: string): Project | null
-  create(input: CreateProjectInput): Project
-  update(id: string, input: UpdateProjectInput): Project
-  delete(id: string): void
-}
-
-/**
- * Project service implementation with business logic
- */
-export class ProjectService implements IProjectService {
+export class ProjectService {
   list(filters?: ProjectFilters): Project[] {
     return projectsRepository.list(filters)
   }

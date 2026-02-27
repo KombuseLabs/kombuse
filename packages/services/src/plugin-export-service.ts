@@ -40,18 +40,10 @@ export class PackageExistsError extends Error {
   }
 }
 
-export interface IPluginExportService {
-  serializeAll(): AgentExportFile[]
-  serializeOne(agentId: string): AgentExportFile | null
-  serializeMany(agentIds: string[]): AgentExportFile[]
-  writeAgentsToDirectory(directory: string, agentIds?: string[]): AgentExportResult
-  exportPackage(input: PluginExportInput): Promise<PluginExportResult>
-}
-
 /** Well-known config keys that are promoted to top-level frontmatter fields. */
 const PROMOTED_CONFIG_KEYS = ['type', 'model', 'backend_type', 'enabled_for_chat']
 
-export class PluginExportService implements IPluginExportService {
+export class PluginExportService {
   serializeAll(): AgentExportFile[] {
     const agents = agentsRepository.list({ limit: Number.MAX_SAFE_INTEGER })
     const files: AgentExportFile[] = []

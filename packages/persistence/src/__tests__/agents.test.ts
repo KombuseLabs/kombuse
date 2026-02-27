@@ -601,6 +601,79 @@ describe('agentsRepository', () => {
       expect(result).toBeNull()
     })
   })
+
+  describe('enableByPlugin / disableByPlugin / orphanByPlugin / listIdsByPlugin', () => {
+    let pluginId: string
+
+    beforeEach(() => {
+      const plugin = pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: `test-plugin-${Date.now()}`,
+        version: '1.0.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+      pluginId = plugin.id
+    })
+
+    it('should enable all agents by plugin', () => {
+      const id = createAgentProfile()
+      agentsRepository.create(agentInput({ id, system_prompt: 'Test', plugin_id: pluginId, is_enabled: false }))
+
+      agentsRepository.enableByPlugin(pluginId)
+
+      expect(agentsRepository.get(id)!.is_enabled).toBe(true)
+    })
+
+    it('should disable all agents by plugin', () => {
+      const id = createAgentProfile()
+      agentsRepository.create(agentInput({ id, system_prompt: 'Test', plugin_id: pluginId }))
+
+      agentsRepository.disableByPlugin(pluginId)
+
+      expect(agentsRepository.get(id)!.is_enabled).toBe(false)
+    })
+
+    it('should not affect agents from other plugins', () => {
+      const id1 = createAgentProfile()
+      const id2 = createAgentProfile()
+      agentsRepository.create(agentInput({ id: id1, system_prompt: 'Test', plugin_id: pluginId }))
+      agentsRepository.create(agentInput({ id: id2, system_prompt: 'Test' }))
+
+      agentsRepository.disableByPlugin(pluginId)
+
+      expect(agentsRepository.get(id1)!.is_enabled).toBe(false)
+      expect(agentsRepository.get(id2)!.is_enabled).toBe(true)
+    })
+
+    it('should orphan agents by plugin', () => {
+      const id = createAgentProfile()
+      agentsRepository.create(agentInput({ id, system_prompt: 'Test', plugin_id: pluginId }))
+
+      agentsRepository.orphanByPlugin(pluginId)
+
+      expect(agentsRepository.get(id)!.plugin_id).toBeNull()
+    })
+
+    it('should list agent IDs by plugin', () => {
+      const id1 = createAgentProfile()
+      const id2 = createAgentProfile()
+      const id3 = createAgentProfile()
+      agentsRepository.create(agentInput({ id: id1, system_prompt: 'Test', plugin_id: pluginId }))
+      agentsRepository.create(agentInput({ id: id2, system_prompt: 'Test', plugin_id: pluginId }))
+      agentsRepository.create(agentInput({ id: id3, system_prompt: 'Test' }))
+
+      const ids = agentsRepository.listIdsByPlugin(pluginId)
+
+      expect(ids).toHaveLength(2)
+      expect(ids).toContain(id1)
+      expect(ids).toContain(id2)
+    })
+
+    it('should return empty array for non-existent plugin', () => {
+      expect(agentsRepository.listIdsByPlugin('non-existent')).toEqual([])
+    })
+  })
 })
 
 describe('agentTriggersRepository', () => {
@@ -1125,6 +1198,88 @@ describe('agentTriggersRepository', () => {
           slug: 'ticket-created',
         })
       ).toThrow()
+    })
+  })
+
+  describe('enableByPlugin / disableByPlugin / orphanByPlugin', () => {
+    let pluginId: string
+
+    beforeEach(() => {
+      const plugin = pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: `trigger-plugin-${Date.now()}`,
+        version: '1.0.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+      pluginId = plugin.id
+    })
+
+    it('should enable all triggers by plugin', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        plugin_id: pluginId,
+        is_enabled: false,
+      })
+
+      agentTriggersRepository.enableByPlugin(pluginId)
+
+      const updated = agentTriggersRepository.get(trigger.id)
+      expect(updated!.is_enabled).toBe(true)
+    })
+
+    it('should disable all triggers by plugin', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        plugin_id: pluginId,
+        is_enabled: true,
+      })
+
+      agentTriggersRepository.disableByPlugin(pluginId)
+
+      const updated = agentTriggersRepository.get(trigger.id)
+      expect(updated!.is_enabled).toBe(false)
+    })
+
+    it('should orphan triggers by plugin', () => {
+      const trigger = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        plugin_id: pluginId,
+      })
+
+      agentTriggersRepository.orphanByPlugin(pluginId)
+
+      const updated = agentTriggersRepository.get(trigger.id)
+      expect(updated!.plugin_id).toBeNull()
+    })
+
+    it('should not affect triggers from other plugins', () => {
+      const otherPlugin = pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: `other-plugin-${Date.now()}`,
+        version: '1.0.0',
+        directory: '/tmp/test',
+        manifest: '{}',
+      })
+
+      const t1 = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.created',
+        plugin_id: pluginId,
+      })
+      const t2 = agentTriggersRepository.create({
+        agent_id: agentId,
+        event_type: 'ticket.updated',
+        plugin_id: otherPlugin.id,
+      })
+
+      agentTriggersRepository.disableByPlugin(pluginId)
+
+      expect(agentTriggersRepository.get(t1.id)!.is_enabled).toBe(false)
+      expect(agentTriggersRepository.get(t2.id)!.is_enabled).toBe(true)
     })
   })
 })

@@ -6,8 +6,9 @@ import type {
 import {
   pluginsRepository,
   agentsRepository,
+  agentTriggersRepository,
+  labelsRepository,
   profilesRepository,
-  getDatabase,
 } from '@kombuse/persistence'
 import { isNewerVersion } from '@kombuse/pkg'
 import { buildPluginPackageManager, resolvePluginConfig } from './plugin-feed-builder'
@@ -19,39 +20,22 @@ export class PluginNotFoundError extends Error {
   }
 }
 
-export interface IPluginLifecycleService {
-  enablePlugin(pluginId: string): Plugin
-  disablePlugin(pluginId: string): Plugin
-  uninstallPlugin(pluginId: string, mode: 'orphan' | 'delete'): void
-  getAvailablePlugins(projectId: string): Promise<AvailablePlugin[]>
-  checkForUpdates(pluginId: string): Promise<PluginUpdateCheckResult>
-}
-
-export class PluginLifecycleService implements IPluginLifecycleService {
-  enablePlugin(pluginId: string): Plugin {
+export class PluginLifecycleService {
+  setPluginEnabled(pluginId: string, enabled: boolean): Plugin {
     const plugin = pluginsRepository.get(pluginId)
     if (!plugin) throw new PluginNotFoundError(pluginId)
 
-    const db = getDatabase()
-
-    db.prepare("UPDATE plugins SET is_enabled = 1, updated_at = datetime('now') WHERE id = ?").run(pluginId)
-    db.prepare("UPDATE agents SET is_enabled = 1, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
-    db.prepare("UPDATE agent_triggers SET is_enabled = 1, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
-    db.prepare('UPDATE labels SET is_enabled = 1 WHERE plugin_id = ?').run(pluginId)
-
-    return pluginsRepository.get(pluginId)!
-  }
-
-  disablePlugin(pluginId: string): Plugin {
-    const plugin = pluginsRepository.get(pluginId)
-    if (!plugin) throw new PluginNotFoundError(pluginId)
-
-    const db = getDatabase()
-
-    db.prepare("UPDATE plugins SET is_enabled = 0, updated_at = datetime('now') WHERE id = ?").run(pluginId)
-    db.prepare("UPDATE agents SET is_enabled = 0, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
-    db.prepare("UPDATE agent_triggers SET is_enabled = 0, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
-    db.prepare('UPDATE labels SET is_enabled = 0 WHERE plugin_id = ?').run(pluginId)
+    if (enabled) {
+      pluginsRepository.enable(pluginId)
+      agentsRepository.enableByPlugin(pluginId)
+      agentTriggersRepository.enableByPlugin(pluginId)
+      labelsRepository.enableByPlugin(pluginId)
+    } else {
+      pluginsRepository.disable(pluginId)
+      agentsRepository.disableByPlugin(pluginId)
+      agentTriggersRepository.disableByPlugin(pluginId)
+      labelsRepository.disableByPlugin(pluginId)
+    }
 
     return pluginsRepository.get(pluginId)!
   }
@@ -60,23 +44,19 @@ export class PluginLifecycleService implements IPluginLifecycleService {
     const plugin = pluginsRepository.get(pluginId)
     if (!plugin) throw new PluginNotFoundError(pluginId)
 
-    const db = getDatabase()
-
     if (mode === 'delete') {
-      const agentIds = db
-        .prepare('SELECT id FROM agents WHERE plugin_id = ?')
-        .all(pluginId) as { id: string }[]
+      const agentIds = agentsRepository.listIdsByPlugin(pluginId)
 
-      for (const { id } of agentIds) {
+      for (const id of agentIds) {
         agentsRepository.delete(id)
         profilesRepository.delete(id)
       }
 
-      db.prepare('UPDATE labels SET plugin_id = NULL WHERE plugin_id = ?').run(pluginId)
+      labelsRepository.orphanByPlugin(pluginId)
     } else {
-      db.prepare("UPDATE agents SET plugin_id = NULL, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
-      db.prepare("UPDATE agent_triggers SET plugin_id = NULL, updated_at = datetime('now') WHERE plugin_id = ?").run(pluginId)
-      db.prepare('UPDATE labels SET plugin_id = NULL WHERE plugin_id = ?').run(pluginId)
+      agentsRepository.orphanByPlugin(pluginId)
+      agentTriggersRepository.orphanByPlugin(pluginId)
+      labelsRepository.orphanByPlugin(pluginId)
     }
 
     pluginsRepository.delete(pluginId)
@@ -105,7 +85,7 @@ export class PluginLifecycleService implements IPluginLifecycleService {
         name: pkg.name,
         version: pkg.version,
         description: pkg.manifest.description,
-        directory: pkg.localPath ?? '',
+        directory: pkg.localPath || undefined,
         source: this.inferSource(pkg.feedId ?? ''),
         source_feed_id: pkg.feedId,
         installed: !!existingInstall,
