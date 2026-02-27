@@ -22,6 +22,6 @@ export function remarkTicketLinks(options: RemarkTicketLinksOptions) {
           return link
         },
       ],
-    ], { ignore: ['link', 'linkReference'] })
+    ], { ignore: ['link', 'linkReference', 'code', 'inlineCode'] })
   }
 }

@@ -34,6 +34,7 @@ function extractProjectIdFromPath(pathname: string): string | null {
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
+      if (query.meta?.silent) return;
       if (import.meta.env.DEV) {
         console.warn("[React Query] Query failed:", query.queryKey, error);
       }

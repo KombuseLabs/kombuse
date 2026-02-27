@@ -15,6 +15,8 @@ export function useTicketByNumber(projectId: string | undefined, ticketNumber: n
     queryKey: ticketKeys.byNumber(projectId, ticketNumber),
     queryFn: () => ticketsApi.getByNumber(projectId!, ticketNumber),
     enabled: !!projectId && ticketNumber > 0,
+    retry: false,
+    meta: { silent: true },
   })
 }
 
