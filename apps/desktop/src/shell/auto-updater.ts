@@ -10,6 +10,7 @@ import { PackageManager, HttpFeed } from "@kombuse/pkg";
 import type { DownloadProgress } from "@kombuse/pkg";
 import type { UpdateInfo, UpdateStatus, UpdateCheckResult, UpdateState } from "@kombuse/types";
 import { installPackage, listPackages } from "./updater";
+import { getPackageManifest, getBundledPackagePath } from "./package-loader";
 
 type StatusListener = (status: UpdateStatus) => void;
 
@@ -44,7 +45,14 @@ export class AutoUpdater {
         this.status.currentVersion = current.version;
         console.log(`[AutoUpdater] Current version from installed packages: ${current.version}`);
       } else {
-        console.log(`[AutoUpdater] No installed packages found, using default version: ${this.status.currentVersion}`);
+        // Fallback: read version from the bundled package manifest
+        try {
+          const bundledManifest = getPackageManifest(getBundledPackagePath());
+          this.status.currentVersion = bundledManifest.version;
+          console.log(`[AutoUpdater] Current version from bundled package: ${bundledManifest.version}`);
+        } catch {
+          console.log(`[AutoUpdater] No installed or bundled package found, using default: ${this.status.currentVersion}`);
+        }
       }
     } catch (err) {
       console.log(`[AutoUpdater] Error reading packages: ${err}`);

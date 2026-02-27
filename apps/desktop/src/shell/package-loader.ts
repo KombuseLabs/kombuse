@@ -99,11 +99,43 @@ export function getPackageManifest(packagePath: string): PackageManifest {
 }
 
 /**
+ * Compare two version strings (major.minor.patch), ignoring pre-release/build metadata.
+ * Returns true if version `a` is strictly less than version `b`.
+ */
+function isVersionLessThan(a: string, b: string): boolean {
+  const pa = (a.split(/[-+]/)[0] ?? a).split(".").map(Number);
+  const pb = (b.split(/[-+]/)[0] ?? b).split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) < (pb[i] ?? 0);
+  }
+  return false;
+}
+
+/**
  * Get full package info including paths to server bundle and web root.
  */
 export function getPackageInfo(): PackageInfo {
   const path = getPackagePath();
   const manifest = getPackageManifest(path);
+
+  // If installed package requires a newer shell, fall back to bundled
+  if (path !== getBundledPackagePath() && manifest.minShellVersion) {
+    const shellVersion = app.getVersion();
+    if (isVersionLessThan(shellVersion, manifest.minShellVersion)) {
+      console.warn(
+        `[Package] Installed package requires shell >=${manifest.minShellVersion}, ` +
+          `current shell is ${shellVersion}. Falling back to bundled package.`
+      );
+      const bundledPath = getBundledPackagePath();
+      const bundledManifest = getPackageManifest(bundledPath);
+      return {
+        path: bundledPath,
+        manifest: bundledManifest,
+        webRoot: join(bundledPath, bundledManifest.files.web),
+        serverBundle: join(bundledPath, bundledManifest.files.server),
+      };
+    }
+  }
 
   return {
     path,
