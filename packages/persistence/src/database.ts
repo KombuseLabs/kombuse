@@ -810,6 +810,14 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX idx_events_project_actor ON events(project_id, actor_type, created_at DESC)`)
     },
   },
+  {
+    name: '012_session_events_request_id',
+    run: (db: DatabaseType) => {
+      // Virtual generated column for indexed permission request/response matching
+      db.exec(`ALTER TABLE session_events ADD COLUMN request_id TEXT GENERATED ALWAYS AS (json_extract(payload, '$.requestId')) VIRTUAL`)
+      db.exec(`CREATE INDEX idx_session_events_request_id ON session_events(request_id) WHERE request_id IS NOT NULL`)
+    },
+  },
 ]
 
 /**

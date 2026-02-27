@@ -329,7 +329,7 @@ export const sessionEventsRepository = {
           t.ticket_number,
           t.title as ticket_title,
           req.created_at as requested_at,
-          json_extract(req.payload, '$.requestId') as request_id,
+          req.request_id,
           json_extract(req.payload, '$.toolName') as tool_name,
           json_extract(req.payload, '$.description') as description,
           json_extract(req.payload, '$.input') as input,
@@ -343,7 +343,7 @@ export const sessionEventsRepository = {
         LEFT JOIN session_events res
           ON res.session_id = req.session_id
           AND res.event_type = 'permission_response'
-          AND json_extract(res.payload, '$.requestId') = json_extract(req.payload, '$.requestId')
+          AND res.request_id = req.request_id
         ${whereClause}
         ORDER BY req.created_at DESC
         LIMIT ? OFFSET ?
