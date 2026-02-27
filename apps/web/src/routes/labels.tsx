@@ -13,6 +13,7 @@ import {
   Input,
   Switch,
   ResizableCardHandle,
+  toast,
   ResizableCardPanel,
   ResizablePanelGroup,
   ResizablePanel,
@@ -121,7 +122,7 @@ export function Labels() {
       sections.push({ pluginId: null, plugin: null, labels: custom });
     }
 
-    return sections;
+    return sections.filter((s) => s.labels.length > 0);
   }, [filteredLabels, installedPlugins]);
 
   const LABEL_SECTIONS_STORAGE_KEY = `label-plugin-sections-${projectId}`;
@@ -261,10 +262,13 @@ export function Labels() {
                           <Switch
                             checked={section.plugin.is_enabled}
                             onCheckedChange={(checked) => {
-                              updatePlugin.mutate({ id: section.plugin!.id, input: { is_enabled: checked } });
+                              updatePlugin.mutate(
+                                { id: section.plugin!.id, input: { is_enabled: checked } },
+                                { onError: (err: Error) => toast.error(`Failed to update plugin: ${err.message}`) }
+                              );
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            disabled={updatePlugin.isPending}
+                            disabled={updatePlugin.isPending && updatePlugin.variables?.id === section.plugin!.id}
                           />
                         )}
                       </div>

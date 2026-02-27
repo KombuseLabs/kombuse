@@ -44,6 +44,7 @@ import {
   useAvailablePlugins,
   useInstalledPlugins,
   useInstallPlugin,
+  useInstallRemotePlugin,
   useUpdatePlugin,
   usePluginFiles,
   useUpdatePluginFile,
@@ -89,6 +90,7 @@ export function Agents() {
   const { data: availablePlugins } = useAvailablePlugins(currentProjectId ?? "");
   const { data: installedPlugins } = useInstalledPlugins(currentProjectId ?? "");
   const installPlugin = useInstallPlugin();
+  const installRemotePlugin = useInstallRemotePlugin();
   const updatePlugin = useUpdatePlugin();
   const selectedPluginId = selectedAgentData?.agent.plugin_id ?? null;
   const { data: pluginFiles, isLoading: isLoadingPluginFiles } = usePluginFiles(selectedPluginId);
@@ -154,20 +156,29 @@ export function Agents() {
     });
   }, [SECTIONS_STORAGE_KEY]);
 
-  const handleInstallPlugin = (directory: string) => {
-    installPlugin.mutate(
-      { package_path: directory, project_id: currentProjectId ?? "" },
-      {
-        onSuccess: (result) => {
-          toast.success(
-            `Installed "${result.plugin_name}": ${result.agents_created} created, ${result.agents_updated} updated, ${result.labels_created} labels`
-          );
-        },
-        onError: (err) => {
-          toast.error(`Failed to install plugin: ${err.message}`);
-        },
-      }
-    );
+  const handleInstallPlugin = (plugin: { name: string; version: string; directory?: string }) => {
+    const callbacks = {
+      onSuccess: (result: { plugin_name: string; agents_created: number; agents_updated: number; labels_created: number }) => {
+        toast.success(
+          `Installed "${result.plugin_name}": ${result.agents_created} created, ${result.agents_updated} updated, ${result.labels_created} labels`
+        );
+      },
+      onError: (err: Error) => {
+        toast.error(`Failed to install plugin: ${err.message}`);
+      },
+    };
+
+    if (plugin.directory) {
+      installPlugin.mutate(
+        { package_path: plugin.directory, project_id: currentProjectId ?? "" },
+        callbacks
+      );
+    } else {
+      installRemotePlugin.mutate(
+        { name: plugin.name, version: plugin.version, project_id: currentProjectId ?? "" },
+        callbacks
+      );
+    }
   };
 
   const handleDismissOnboarding = () => {
@@ -324,11 +335,11 @@ export function Agents() {
                   {uninstalledPlugins.map((plugin) => (
                     <Button
                       key={plugin.name}
-                      onClick={() => handleInstallPlugin(plugin.directory)}
-                      disabled={installPlugin.isPending}
+                      onClick={() => handleInstallPlugin(plugin)}
+                      disabled={installPlugin.isPending || installRemotePlugin.isPending}
                     >
                       <Package className="size-4" />
-                      {installPlugin.isPending ? "Installing..." : `Install ${plugin.name}`}
+                      {(installPlugin.isPending || installRemotePlugin.isPending) ? "Installing..." : `Install ${plugin.name}`}
                     </Button>
                   ))}
                 </div>
@@ -373,10 +384,13 @@ export function Agents() {
                             <Switch
                               checked={section.plugin.is_enabled}
                               onCheckedChange={(checked) => {
-                                updatePlugin.mutate({ id: section.plugin!.id, input: { is_enabled: checked } });
+                                updatePlugin.mutate(
+                                  { id: section.plugin!.id, input: { is_enabled: checked } },
+                                  { onError: (err: Error) => toast.error(`Failed to update plugin: ${err.message}`) }
+                                );
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              disabled={updatePlugin.isPending}
+                              disabled={updatePlugin.isPending && updatePlugin.variables?.id === section.plugin!.id}
                             />
                           )}
                         </div>
