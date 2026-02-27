@@ -74,8 +74,8 @@ describe('HttpFeed', () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
           makePackageListResponse([
-            { author: 'acme', name: 'pkg-a', latest_version: '2.0.0' },
-            { author: 'acme', name: 'pkg-b', latest_version: '1.0.0' },
+            { author: 'acme', name: 'pkg-a', latest_version: '2.0.0', type: 'plugin' },
+            { author: 'acme', name: 'pkg-b', latest_version: '1.0.0', type: 'plugin' },
           ])
         )
       )
@@ -93,8 +93,8 @@ describe('HttpFeed', () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
           makePackageListResponse([
-            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
-            { author: 'acme', name: 'pkg-b', latest_version: null },
+            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0', type: 'plugin' },
+            { author: 'acme', name: 'pkg-b', latest_version: null, type: 'plugin' },
           ])
         )
       )
@@ -109,8 +109,8 @@ describe('HttpFeed', () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
           makePackageListResponse([
-            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
-            { author: 'acme', name: 'pkg-b', latest_version: 'latest' },
+            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0', type: 'plugin' },
+            { author: 'acme', name: 'pkg-b', latest_version: 'latest', type: 'plugin' },
           ])
         )
       )
@@ -124,7 +124,7 @@ describe('HttpFeed', () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
           makePackageListResponse([
-            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
+            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0', type: 'plugin' },
           ])
         )
       )
@@ -138,7 +138,7 @@ describe('HttpFeed', () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
           makePackageListResponse([
-            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0' },
+            { author: 'acme', name: 'pkg-a', latest_version: '1.0.0', type: 'plugin' },
           ])
         )
       )
@@ -163,7 +163,7 @@ describe('HttpFeed', () => {
       expect(packages[0]!.manifest.type).toBe('app')
     })
 
-    it('should default to plugin type when response has no type', async () => {
+    it('should skip packages without a type field', async () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse(
           makePackageListResponse([
@@ -174,7 +174,28 @@ describe('HttpFeed', () => {
 
       const packages = await feed.listPackages()
 
-      expect(packages[0]!.manifest.type).toBe('plugin')
+      expect(packages).toHaveLength(0)
+    })
+
+    it('should skip packages with explicit null type', async () => {
+      const response = {
+        packages: [
+          {
+            id: 'id-0',
+            author: 'acme',
+            name: 'pkg-a',
+            type: null,
+            created_at: '2026-01-01T00:00:00Z',
+            updated_at: '2026-01-01T00:00:00Z',
+            latest_version: '1.0.0',
+          },
+        ],
+      }
+      fetchMock.mockResolvedValue(mockJsonResponse(response))
+
+      const packages = await feed.listPackages()
+
+      expect(packages).toHaveLength(0)
     })
 
     it('should call GET /api/pkg', async () => {
@@ -314,6 +335,27 @@ describe('HttpFeed', () => {
       const versions = await feed.getVersions('acme/pkg')
 
       expect(versions[0]!.manifest.type).toBe('app')
+    })
+
+    it('should skip versions where both manifest and entry lack type', async () => {
+      const response = {
+        versions: [
+          {
+            version: '1.0.0',
+            channel: 'stable',
+            type: undefined as unknown as string,
+            archive_size: 1024,
+            manifest: { author: 'acme', name: 'pkg', version: '1.0.0', type: undefined as unknown as string },
+            published_at: '2026-01-01T00:00:00Z',
+            download_url: '/dl/1',
+          },
+        ],
+      }
+      fetchMock.mockResolvedValue(mockJsonResponse(response))
+
+      const versions = await feed.getVersions('acme/pkg')
+
+      expect(versions).toHaveLength(0)
     })
 
     it('should extract checksum from version entries', async () => {

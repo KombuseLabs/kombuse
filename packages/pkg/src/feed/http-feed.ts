@@ -77,6 +77,7 @@ export class HttpFeed implements FeedProvider {
     const results: PackageVersionInfo[] = []
     for (const pkg of body.packages) {
       if (!pkg.latest_version || !valid(pkg.latest_version)) continue
+      if (!pkg.type) continue
 
       const compoundName = `${pkg.author}/${pkg.name}`
       results.push({
@@ -85,7 +86,7 @@ export class HttpFeed implements FeedProvider {
         manifest: {
           name: pkg.name,
           version: pkg.latest_version,
-          type: (pkg.type as PackageVersionInfo['manifest']['type']) ?? 'plugin',
+          type: pkg.type as PackageVersionInfo['manifest']['type'],
           author: pkg.author,
         },
         archiveFormat: 'tar.gz',
@@ -112,6 +113,9 @@ export class HttpFeed implements FeedProvider {
     for (const entry of body.versions) {
       if (!valid(entry.version)) continue
 
+      const resolvedType = entry.manifest?.type ?? entry.type
+      if (!resolvedType) continue
+
       const downloadUrl = entry.download_url.startsWith('http')
         ? entry.download_url
         : `${this.baseUrl}${entry.download_url}`
@@ -122,7 +126,7 @@ export class HttpFeed implements FeedProvider {
         manifest: {
           name,
           version: entry.version,
-          type: (entry.manifest?.type ?? entry.type ?? 'plugin') as PackageVersionInfo['manifest']['type'],
+          type: resolvedType as PackageVersionInfo['manifest']['type'],
           author,
           channel: entry.channel,
           release_notes: entry.release_notes,
