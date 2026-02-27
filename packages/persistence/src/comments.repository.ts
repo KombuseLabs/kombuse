@@ -7,6 +7,7 @@ import type {
   Profile,
   UpdateCommentInput,
 } from '@kombuse/types'
+import { EVENT_TYPES, MENTION_TYPES } from '@kombuse/types'
 import { getDatabase } from './database'
 import { mentionsRepository } from './mentions.repository'
 import { profilesRepository } from './profiles.repository'
@@ -350,14 +351,14 @@ export const commentsRepository = {
         if (profile) {
           mentionsRepository.create({
             comment_id: commentId,
-            mention_type: 'profile',
+            mention_type: MENTION_TYPES.PROFILE,
             mentioned_profile_id: profile.id,
             mention_text: `@${profile.name}`,
           })
 
           if (canInvokeAgents) {
             eventsRepository.create({
-              event_type: 'mention.created',
+              event_type: EVENT_TYPES.MENTION_CREATED,
               project_id: ticket?.project_id,
               ticket_id: payload.ticket_id,
               comment_id: commentId,
@@ -365,7 +366,7 @@ export const commentsRepository = {
               actor_type: actorType,
               kombuse_session_id: payload.kombuse_session_id,
               payload: {
-                mention_type: 'profile',
+                mention_type: MENTION_TYPES.PROFILE,
                 mentioned_profile_id: profile.id,
                 mention_text: `@${profile.name}`,
                 comment_body: payload.body,
@@ -383,14 +384,14 @@ export const commentsRepository = {
         if (profile) {
           mentionsRepository.create({
             comment_id: commentId,
-            mention_type: 'profile',
+            mention_type: MENTION_TYPES.PROFILE,
             mentioned_profile_id: profile.id,
             mention_text: `@${name}`,
           })
 
           if (canInvokeAgents) {
             eventsRepository.create({
-              event_type: 'mention.created',
+              event_type: EVENT_TYPES.MENTION_CREATED,
               project_id: ticket?.project_id,
               ticket_id: payload.ticket_id,
               comment_id: commentId,
@@ -398,7 +399,7 @@ export const commentsRepository = {
               actor_type: actorType,
               kombuse_session_id: payload.kombuse_session_id,
               payload: {
-                mention_type: 'profile',
+                mention_type: MENTION_TYPES.PROFILE,
                 mentioned_profile_id: profile.id,
                 mention_text: `@${name}`,
                 comment_body: payload.body,
@@ -428,13 +429,13 @@ export const commentsRepository = {
 
         mentionsRepository.create({
           comment_id: commentId,
-          mention_type: 'ticket',
+          mention_type: MENTION_TYPES.TICKET,
           mentioned_ticket_id: mentionedTicketId,
           mention_text: `#${mentionedNumber}`,
         })
 
         eventsRepository.create({
-          event_type: 'mention.created',
+          event_type: EVENT_TYPES.MENTION_CREATED,
           project_id: ticket?.project_id,
           ticket_id: payload.ticket_id,
           comment_id: commentId,
@@ -442,7 +443,7 @@ export const commentsRepository = {
           actor_type: actorType,
           kombuse_session_id: payload.kombuse_session_id,
           payload: {
-            mention_type: 'ticket',
+            mention_type: MENTION_TYPES.TICKET,
             mentioned_ticket_id: mentionedTicketId,
             mentioned_ticket_project_id: mentionedTicket.project_id,
             mentioned_ticket_number: mentionedTicket.ticket_number,
@@ -456,9 +457,9 @@ export const commentsRepository = {
           const existingCrossRef = db
             .prepare(
               `SELECT 1 FROM events
-               WHERE event_type = 'mention.created'
+               WHERE event_type = '${EVENT_TYPES.MENTION_CREATED}'
                  AND ticket_id = ?
-                 AND json_extract(payload, '$.mention_type') = 'ticket_cross_reference'
+                 AND json_extract(payload, '$.mention_type') = '${MENTION_TYPES.TICKET_CROSS_REFERENCE}'
                  AND json_extract(payload, '$.source_ticket_id') = ?
                LIMIT 1`
             )
@@ -466,7 +467,7 @@ export const commentsRepository = {
 
           if (!existingCrossRef) {
             eventsRepository.create({
-              event_type: 'mention.created',
+              event_type: EVENT_TYPES.MENTION_CREATED,
               project_id: mentionedTicket.project_id,
               ticket_id: mentionedTicketId,
               comment_id: commentId,
@@ -474,7 +475,7 @@ export const commentsRepository = {
               actor_type: actorType,
               kombuse_session_id: payload.kombuse_session_id,
               payload: {
-                mention_type: 'ticket_cross_reference',
+                mention_type: MENTION_TYPES.TICKET_CROSS_REFERENCE,
                 source_ticket_id: payload.ticket_id,
                 source_ticket_project_id: ticket?.project_id,
                 source_ticket_number: ticket?.ticket_number,
@@ -488,7 +489,7 @@ export const commentsRepository = {
 
       // 5. Create comment.added event
       eventsRepository.create({
-        event_type: 'comment.added',
+        event_type: EVENT_TYPES.COMMENT_ADDED,
         project_id: ticket?.project_id,
         ticket_id: payload.ticket_id,
         comment_id: commentId,
@@ -584,7 +585,7 @@ export const commentsRepository = {
           if (profile) {
             mentionsRepository.create({
               comment_id: id,
-              mention_type: 'profile',
+              mention_type: MENTION_TYPES.PROFILE,
               mentioned_profile_id: profile.id,
               mention_text: `@${profile.name}`,
             })
@@ -599,7 +600,7 @@ export const commentsRepository = {
           if (profile) {
             mentionsRepository.create({
               comment_id: id,
-              mention_type: 'profile',
+              mention_type: MENTION_TYPES.PROFILE,
               mentioned_profile_id: profile.id,
               mention_text: `@${name}`,
             })
@@ -618,7 +619,7 @@ export const commentsRepository = {
 
           mentionsRepository.create({
             comment_id: id,
-            mention_type: 'ticket',
+            mention_type: MENTION_TYPES.TICKET,
             mentioned_ticket_id: mentionedTicketId,
             mention_text: `#${mentionedTicketId}`,
           })
@@ -643,9 +644,9 @@ export const commentsRepository = {
             const existingCrossRef = db
               .prepare(
                 `SELECT 1 FROM events
-                 WHERE event_type = 'mention.created'
+                 WHERE event_type = '${EVENT_TYPES.MENTION_CREATED}'
                    AND ticket_id = ?
-                   AND json_extract(payload, '$.mention_type') = 'ticket_cross_reference'
+                   AND json_extract(payload, '$.mention_type') = '${MENTION_TYPES.TICKET_CROSS_REFERENCE}'
                    AND json_extract(payload, '$.source_ticket_id') = ?
                  LIMIT 1`
               )
@@ -654,7 +655,7 @@ export const commentsRepository = {
             if (existingCrossRef) continue
 
             eventsRepository.create({
-              event_type: 'mention.created',
+              event_type: EVENT_TYPES.MENTION_CREATED,
               project_id: mentionedTicketInfo.project_id,
               ticket_id: mentionedTicketId,
               comment_id: id,
@@ -662,7 +663,7 @@ export const commentsRepository = {
               actor_type: editActorType,
               kombuse_session_id: existingRow.kombuse_session_id ?? undefined,
               payload: {
-                mention_type: 'ticket_cross_reference',
+                mention_type: MENTION_TYPES.TICKET_CROSS_REFERENCE,
                 source_ticket_id: comment.ticket_id,
                 source_ticket_project_id: ticket?.project_id,
                 source_ticket_number: ticket?.ticket_number,
@@ -676,7 +677,7 @@ export const commentsRepository = {
         // Create comment.edited event
         if (comment && ticket) {
           eventsRepository.create({
-            event_type: 'comment.edited',
+            event_type: EVENT_TYPES.COMMENT_EDITED,
             project_id: ticket.project_id,
             ticket_id: comment.ticket_id,
             comment_id: id,
@@ -717,7 +718,7 @@ export const commentsRepository = {
 
       if (result.changes > 0) {
         eventsRepository.create({
-          event_type: 'comment.deleted',
+          event_type: EVENT_TYPES.COMMENT_DELETED,
           project_id: ticket?.project_id,
           ticket_id: existingRow.ticket_id,
           actor_id: existingRow.author_id,

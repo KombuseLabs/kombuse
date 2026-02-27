@@ -78,6 +78,7 @@ export type {
   UpdateCommentInput,
   CommentFilters,
 } from './comments.types'
+export { MENTION_TYPES } from './mentions.types'
 export type {
   MentionType,
   ProfileMention,

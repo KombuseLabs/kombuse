@@ -5,6 +5,12 @@ import type { Profile } from './profiles.types'
  */
 export type MentionType = 'profile' | 'ticket'
 
+export const MENTION_TYPES = {
+  PROFILE: 'profile',
+  TICKET: 'ticket',
+  TICKET_CROSS_REFERENCE: 'ticket_cross_reference',
+} as const
+
 interface MentionBase {
   id: number
   comment_id: number
