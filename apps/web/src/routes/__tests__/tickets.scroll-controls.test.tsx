@@ -459,9 +459,9 @@ describe('Tickets scroll controls', () => {
     expect(getLastTicketListProps()?.sortBy).toBe('closed_at')
   })
 
-  it('falls back to created_at sortBy when closed_at is disallowed by status', () => {
+  it('falls back to last_activity_at sortBy when closed_at is disallowed by status', () => {
     renderTicketsRoute('/projects/1/tickets/42?status=open&sort_by=closed_at')
 
-    expect(getLastTicketListProps()?.sortBy).toBe('created_at')
+    expect(getLastTicketListProps()?.sortBy).toBe('last_activity_at')
   })
 })

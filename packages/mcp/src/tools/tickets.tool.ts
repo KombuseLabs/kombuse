@@ -1050,7 +1050,7 @@ export function registerTicketTools(server: McpServer): void {
           .optional()
           .describe('Filter by label IDs (all specified labels must match)'),
         sort_by: z
-          .enum(['created_at', 'updated_at', 'last_activity_at'])
+          .enum(['created_at', 'updated_at', 'last_activity_at', 'priority'])
           .optional()
           .describe('Field to sort by (default: updated_at)'),
         sort_order: z

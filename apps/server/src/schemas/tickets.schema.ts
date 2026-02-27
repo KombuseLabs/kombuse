@@ -72,7 +72,7 @@ export const ticketFiltersSchema = z.object({
   milestone_id: z.coerce.number().int().positive().optional(),
   viewer_id: z.string().optional(),
   search: z.string().max(200).optional(),
-  sort_by: z.enum(['created_at', 'updated_at', 'closed_at', 'opened_at', 'last_activity_at']).optional(),
+  sort_by: z.enum(['created_at', 'updated_at', 'closed_at', 'opened_at', 'last_activity_at', 'priority']).optional(),
   sort_order: z.enum(['asc', 'desc']).optional(),
   label_ids: z
     .string()

@@ -98,14 +98,14 @@ export function Tickets() {
   });
   const { data: projectMilestones } = useProjectMilestones(currentProjectId ?? "");
 
-  const validSortByValues = new Set<TicketFilters["sort_by"]>(["created_at", "updated_at", "closed_at", "opened_at", "last_activity_at"]);
+  const validSortByValues = new Set<TicketFilters["sort_by"]>(["created_at", "updated_at", "closed_at", "opened_at", "last_activity_at", "priority"]);
   const showClosedSort = statusFilter === "all" || statusFilter === "closed";
   const rawSortBy = searchParams.get("sort_by");
   const parsedSortBy = rawSortBy && validSortByValues.has(rawSortBy as TicketFilters["sort_by"])
     ? (rawSortBy as NonNullable<TicketFilters["sort_by"]>)
-    : "created_at";
+    : "last_activity_at";
   const sortBy: NonNullable<TicketFilters["sort_by"]> = parsedSortBy === "closed_at" && !showClosedSort
-    ? "created_at"
+    ? "last_activity_at"
     : parsedSortBy;
 
   const rawSortOrder = searchParams.get("sort_order");
@@ -612,7 +612,7 @@ export function Tickets() {
   const activeFilterCount = (statusFilter !== "open" ? 1 : 0)
     + selectedLabelIds.length
     + (selectedMilestoneId !== null ? 1 : 0)
-    + (sortBy !== "created_at" ? 1 : 0)
+    + (sortBy !== "last_activity_at" ? 1 : 0)
     + (sortOrder !== "desc" ? 1 : 0);
 
   const mobileFilterTrigger = isMobile ? (
@@ -713,7 +713,7 @@ export function Tickets() {
                   <span className="text-sm text-muted-foreground">Sort:</span>
                   <Select
                     value={sortBy}
-                    onValueChange={(value) => updateSearchParams({ sort_by: value === "created_at" ? null : value })}
+                    onValueChange={(value) => updateSearchParams({ sort_by: value === "last_activity_at" ? null : value })}
                   >
                     <SelectTrigger className="w-36">
                       <SelectValue placeholder="Sort by" />
@@ -723,6 +723,7 @@ export function Tickets() {
                       <SelectItem value="updated_at">Updated</SelectItem>
                       <SelectItem value="opened_at">Opened</SelectItem>
                       <SelectItem value="last_activity_at">Activity</SelectItem>
+                      <SelectItem value="priority">Priority</SelectItem>
                       {showClosedSort && (
                         <SelectItem value="closed_at">Closed</SelectItem>
                       )}

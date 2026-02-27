@@ -242,6 +242,7 @@ const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_tickets_closed_at ON tickets(closed_at DESC) WHERE closed_at IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_tickets_last_activity ON tickets(project_id, last_activity_at DESC);
       CREATE INDEX IF NOT EXISTS idx_tickets_milestone ON tickets(milestone_id) WHERE milestone_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_tickets_priority ON tickets(project_id, priority DESC) WHERE priority IS NOT NULL;
 
       -- 8. ticket_labels
       CREATE TABLE IF NOT EXISTS ticket_labels (

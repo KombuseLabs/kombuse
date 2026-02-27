@@ -6,6 +6,7 @@ import { StatusIndicator } from '../status-indicator'
 import { useTicketAgentStatus } from '../../hooks'
 
 type TicketSortBy = NonNullable<TicketFilters['sort_by']>
+type DateSortBy = Exclude<TicketSortBy, 'priority'>
 
 interface TicketListProps {
   tickets: TicketWithLabels[]
@@ -32,7 +33,7 @@ interface TicketItemProps {
   sortBy: TicketSortBy
 }
 
-const sortDateFieldMap: Record<TicketSortBy, 'created_at' | 'updated_at' | 'opened_at' | 'last_activity_at' | 'closed_at'> = {
+const sortDateFieldMap: Record<DateSortBy, 'created_at' | 'updated_at' | 'opened_at' | 'last_activity_at' | 'closed_at'> = {
   created_at: 'created_at',
   updated_at: 'updated_at',
   opened_at: 'opened_at',
@@ -40,11 +41,11 @@ const sortDateFieldMap: Record<TicketSortBy, 'created_at' | 'updated_at' | 'open
   closed_at: 'closed_at',
 }
 
-const missingDateLabels: Partial<Record<TicketSortBy, string>> = {
+const missingDateLabels: Partial<Record<DateSortBy, string>> = {
   closed_at: 'Not closed',
 }
 
-const sortDateLabelPrefixes: Record<TicketSortBy, string> = {
+const sortDateLabelPrefixes: Record<DateSortBy, string> = {
   created_at: 'Created',
   updated_at: 'Updated',
   opened_at: 'Opened',
@@ -63,6 +64,11 @@ function formatDateTime(dateValue: string): string {
 }
 
 function getTicketDateLabel(ticket: TicketWithLabels, sortBy: TicketSortBy) {
+  if (sortBy === 'priority') {
+    if (ticket.priority == null) return 'No priority'
+    return `Priority: ${priorityLabels[ticket.priority] ?? 'Unknown'}`
+  }
+
   const dateField = sortDateFieldMap[sortBy]
   const dateValue = ticket[dateField]
 

@@ -838,20 +838,23 @@ describe('ticketsRepository', () => {
    * Verify dynamic sorting of ticket list queries
    */
   describe('sort_by and sort_order', () => {
-    it('should default to created_at DESC when no sort specified', () => {
-      ticketsRepository.create({ ...TEST_TICKET, title: 'First' })
-      ticketsRepository.create({ ...TEST_TICKET, title: 'Second' })
-      ticketsRepository.create({ ...TEST_TICKET, title: 'Third' })
+    it('should default to last_activity_at DESC when no sort specified', () => {
+      const t1 = ticketsRepository.create({ ...TEST_TICKET, title: 'First' })
+      const t2 = ticketsRepository.create({ ...TEST_TICKET, title: 'Second' })
+      const t3 = ticketsRepository.create({ ...TEST_TICKET, title: 'Third' })
+
+      // Manually set different last_activity_at values
+      const db = getDatabase()
+      db.prepare("UPDATE tickets SET last_activity_at = '2025-01-01 00:00:00' WHERE id = ?").run(t1.id)
+      db.prepare("UPDATE tickets SET last_activity_at = '2025-01-03 00:00:00' WHERE id = ?").run(t2.id)
+      db.prepare("UPDATE tickets SET last_activity_at = '2025-01-02 00:00:00' WHERE id = ?").run(t3.id)
 
       const tickets = ticketsRepository.list()
 
       expect(tickets).toHaveLength(3)
-      // Verify descending order by created_at
-      for (let i = 1; i < tickets.length; i++) {
-        const prevTime = new Date(tickets[i - 1]!.created_at).getTime()
-        const currTime = new Date(tickets[i]!.created_at).getTime()
-        expect(prevTime).toBeGreaterThanOrEqual(currTime)
-      }
+      expect(tickets[0]?.title).toBe('Second')
+      expect(tickets[1]?.title).toBe('Third')
+      expect(tickets[2]?.title).toBe('First')
     })
 
     it('should sort by opened_at DESC', () => {
@@ -1250,6 +1253,34 @@ describe('ticketsRepository', () => {
 
       expect(tickets[0]?.title, 'Ticket with earlier last_activity_at should sort first').toBe('First')
       expect(tickets[1]?.title).toBe('Second')
+    })
+  })
+
+  describe('sort by priority', () => {
+    it('should sort by priority DESC with NULLs last', () => {
+      const t1 = ticketsRepository.create({ ...TEST_TICKET, title: 'High', priority: 3 })
+      const t2 = ticketsRepository.create({ ...TEST_TICKET, title: 'Low', priority: 1 })
+      const t3 = ticketsRepository.create({ ...TEST_TICKET, title: 'No priority' })
+
+      const tickets = ticketsRepository.list({ sort_by: 'priority', sort_order: 'desc' })
+
+      expect(tickets).toHaveLength(3)
+      expect(tickets[0]?.title).toBe('High')
+      expect(tickets[1]?.title).toBe('Low')
+      expect(tickets[2]?.title).toBe('No priority')
+    })
+
+    it('should sort by priority ASC with NULLs last', () => {
+      const t1 = ticketsRepository.create({ ...TEST_TICKET, title: 'High', priority: 3 })
+      const t2 = ticketsRepository.create({ ...TEST_TICKET, title: 'Low', priority: 1 })
+      const t3 = ticketsRepository.create({ ...TEST_TICKET, title: 'No priority' })
+
+      const tickets = ticketsRepository.list({ sort_by: 'priority', sort_order: 'asc' })
+
+      expect(tickets).toHaveLength(3)
+      expect(tickets[0]?.title).toBe('Low')
+      expect(tickets[1]?.title).toBe('High')
+      expect(tickets[2]?.title).toBe('No priority')
     })
   })
 

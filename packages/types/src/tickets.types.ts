@@ -98,7 +98,7 @@ export interface TicketFilters {
   milestone_id?: number
   label_ids?: number[]
   search?: string
-  sort_by?: 'created_at' | 'updated_at' | 'closed_at' | 'opened_at' | 'last_activity_at'
+  sort_by?: 'created_at' | 'updated_at' | 'closed_at' | 'opened_at' | 'last_activity_at' | 'priority'
   sort_order?: 'asc' | 'desc'
   limit?: number
   offset?: number

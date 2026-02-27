@@ -126,6 +126,7 @@ function TicketFilterSheet({
                   <SelectItem value="updated_at">Updated</SelectItem>
                   <SelectItem value="opened_at">Opened</SelectItem>
                   <SelectItem value="last_activity_at">Activity</SelectItem>
+                  <SelectItem value="priority">Priority</SelectItem>
                   {showClosedSort && (
                     <SelectItem value="closed_at">Closed</SelectItem>
                   )}

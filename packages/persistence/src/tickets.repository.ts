@@ -301,7 +301,7 @@ export const ticketsRepository = {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
-    const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'closed_at', 'opened_at', 'last_activity_at'] as const
+    const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'closed_at', 'opened_at', 'last_activity_at', 'priority'] as const
     let orderByClause: string
     const orderByParams: unknown[] = []
     if (useRelevanceSort && !filters?.sort_by) {
@@ -314,9 +314,13 @@ export const ticketsRepository = {
     } else {
       const sortBy = filters?.sort_by && ALLOWED_SORT_COLUMNS.includes(filters.sort_by)
         ? filters.sort_by
-        : 'created_at'
+        : 'last_activity_at'
       const sortOrder = filters?.sort_order === 'asc' ? 'ASC' : 'DESC'
-      orderByClause = `ORDER BY ${sortBy} ${sortOrder}`
+      if (sortBy === 'priority') {
+        orderByClause = `ORDER BY CASE WHEN tickets.priority IS NULL THEN 1 ELSE 0 END, tickets.priority ${sortOrder}`
+      } else {
+        orderByClause = `ORDER BY ${sortBy} ${sortOrder}`
+      }
     }
 
     const limit = filters?.limit || 100
