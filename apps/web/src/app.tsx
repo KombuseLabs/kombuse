@@ -1,5 +1,5 @@
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
 import { Header, UpdateNotification, ShellUpdateNotification, UpdateStatusDialog, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
@@ -32,6 +32,17 @@ function extractProjectIdFromPath(pathname: string): string | null {
 }
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      if (import.meta.env.DEV) {
+        console.warn("[React Query] Query failed:", query.queryKey, error);
+      }
+      const msg =
+        (query.meta?.errorMessage as string) ??
+        `Failed to load data: ${error.message}`;
+      toast.error(msg);
+    },
+  }),
   mutationCache: new MutationCache({
     onError: (error) => {
       toast.error(error.message || "An error occurred");
