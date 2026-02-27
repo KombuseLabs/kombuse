@@ -192,7 +192,7 @@ export function ChatProvider({
   }, [activeSessions, sessionData])
 
   // Restore pendingPermission from AppProvider's global map when loading a session.
-  // This enables the interactive AskUserBar/PlanApprovalBar to render when navigating
+  // This enables the interactive AskUserDialog/PlanApprovalBar to render when navigating
   // to a chat with a pending permission (e.g. via the notification bell).
   const globalPermForSession = useMemo(() => {
     if (!effectiveKombuseSessionId) return undefined

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, type ReactElement } from 'react'
-import type { SerializedAgentEvent, SerializedAgentPermissionRequestEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
+import type { SerializedAgentEvent, SerializedAgentPermissionRequestEvent, SerializedAgentPermissionResponseEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
@@ -78,11 +78,12 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
   })
 
   // Build maps for tool_use events, track which ones have results, and index permission requests
-  const { toolUseMap, toolUseIdsWithResults, permissionRequestMap, toolResultByToolUseId } = useMemo(() => {
+  const { toolUseMap, toolUseIdsWithResults, permissionRequestMap, toolResultByToolUseId, permResponseByRequestId } = useMemo(() => {
     const useMap = new Map<string, SerializedAgentToolUseEvent>()
     const idsWithResults = new Set<string>()
     const permReqMap = new Map<string, SerializedAgentPermissionRequestEvent>()
     const resultByToolUseId = new Map<string, SerializedAgentToolResultEvent>()
+    const permRespByReqId = new Map<string, SerializedAgentPermissionResponseEvent>()
 
     for (const event of events) {
       if (event.type === 'tool_use') {
@@ -92,10 +93,12 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
         resultByToolUseId.set(event.toolUseId, event)
       } else if (event.type === 'permission_request') {
         permReqMap.set(event.requestId, event)
+      } else if (event.type === 'permission_response') {
+        permRespByReqId.set(event.requestId, event)
       }
     }
 
-    return { toolUseMap: useMap, toolUseIdsWithResults: idsWithResults, permissionRequestMap: permReqMap, toolResultByToolUseId: resultByToolUseId }
+    return { toolUseMap: useMap, toolUseIdsWithResults: idsWithResults, permissionRequestMap: permReqMap, toolResultByToolUseId: resultByToolUseId, permResponseByRequestId: permRespByReqId }
   }, [events])
 
   const visibleEvents = useMemo(() => {
@@ -190,7 +193,15 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
 
         if (event.type === 'permission_request') {
           if (event.toolName === 'AskUserQuestion' && isValidAskUserInput(event.input as Record<string, unknown>)) {
-            return <AskUserRenderer key={event.eventId} event={event} />
+            let askUserAnswer: string | undefined
+            const matchedResp = permResponseByRequestId.get(event.requestId)
+            if (matchedResp?.behavior === 'allow') {
+              const result = toolResultByToolUseId.get(event.toolUseId)
+              if (result && typeof result.content === 'string') {
+                askUserAnswer = result.content
+              }
+            }
+            return <AskUserRenderer key={event.eventId} event={event} userAnswer={askUserAnswer} />
           }
           if (event.toolName === 'ExitPlanMode') {
             return <PlanPermissionRenderer key={event.eventId} event={event} />

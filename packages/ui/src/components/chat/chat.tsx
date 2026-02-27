@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils'
 import { ChatCtx } from '../../providers/chat-context'
 import { useWebSocket } from '../../hooks/use-websocket'
 import { ChatInput } from '../chat-input/chat-input'
-import { AskUserBar } from './ask-user-bar'
+import { AskUserDialog } from './ask-user-dialog'
 import { isValidAskUserInput } from './ask-user-types'
 import { PlanApprovalBar } from './plan-approval-bar'
 import { PermissionBar } from './permission-bar'
@@ -82,15 +82,8 @@ function Chat({
         agentName={ctx?.agentName}
       />
       <SessionViewer events={events} isLoading={isLoading} emptyMessage={emptyMessage} viewMode={viewMode} className="flex-1 min-h-0" />
-      {pendingPermission && respondToPermission && (
-        pendingPermission.toolName === 'AskUserQuestion' && isValidAskUserInput(pendingPermission.input as Record<string, unknown>) ? (
-          <AskUserBar
-            permission={pendingPermission}
-            onRespond={(updatedInput) =>
-              respondToPermission(pendingPermission.requestId, 'allow', undefined, updatedInput)
-            }
-          />
-        ) : pendingPermission.toolName === 'ExitPlanMode' ? (
+      {pendingPermission && respondToPermission && pendingPermission.toolName !== 'AskUserQuestion' && (
+        pendingPermission.toolName === 'ExitPlanMode' ? (
           <PlanApprovalBar
             permission={pendingPermission}
             onRespond={(behavior, message) =>
@@ -115,6 +108,20 @@ function Chat({
           onStop={!pendingPermission && ctx?.kombuseSessionId ? () => wsSend({ type: 'agent.stop', kombuseSessionId: ctx.kombuseSessionId! }) : undefined}
         />
       </div>
+      {respondToPermission && (
+        <AskUserDialog
+          permission={
+            pendingPermission?.toolName === 'AskUserQuestion' &&
+            isValidAskUserInput(pendingPermission.input as Record<string, unknown>)
+              ? pendingPermission
+              : null
+          }
+          onRespond={(updatedInput) =>
+            respondToPermission(pendingPermission!.requestId, 'allow', undefined, updatedInput)
+          }
+          onDeny={() => respondToPermission(pendingPermission!.requestId, 'deny')}
+        />
+      )}
     </div>
   )
 }

@@ -17,8 +17,8 @@ export {
 } from './agents'
 export { ChatInput, type ChatInputProps, type ReplyTarget } from './chat-input/chat-input'
 export {
-  AskUserBar,
-  type AskUserBarProps,
+  AskUserDialog,
+  type AskUserDialogProps,
   SessionViewer,
   type SessionViewerProps,
   SessionHeader,

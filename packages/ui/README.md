@@ -1375,14 +1375,24 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Shows success/failure status, reason badge, and optional exit code
 - Shows optional failure details (`errorMessage`, `resumeFailed`) when present
 
-`AskUserBar` props:
-- `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request with `toolName: 'AskUserQuestion'`
+`AskUserDialog` props:
+- `permission`: `SerializedAgentPermissionRequestEvent | null` — the pending permission request (dialog opens when non-null)
 - `onRespond`: `(updatedInput: Record<string, unknown>) => void` — callback with the original input plus populated `answers` map
-- Renders structured questions with selectable option cards (single-select and multi-select), an "Other" free-text option, and a submit button
-- Returns `null` if `input.questions` is malformed (falls back to `PermissionBar` in `Chat`)
+- `onDeny`: `() => void` — callback when user dismisses the dialog without answering
+- Modal dialog (Radix Dialog) replacing the former inline `AskUserBar` bottom-bar
+- **Compact mode** (1–2 questions): All questions on a single dialog page
+- **Wizard mode** (3+ questions): Step-by-step navigation with progress indicator ("Step N of M"), Back/Next buttons, and a final Review step where users can click any answer to edit it
+- **"Your call"** button per question: delegates to the agent by setting `AGENT_CHOICE_SENTINEL` (`"__agent_choice__"`) as the answer
+- **"Skip all — agent decides"** global button: fills all unanswered questions with the sentinel and jumps to review
+- **Other...** free-text input option per question
+- **Multi-select** and **single-select** question support
+- **Keyboard**: `Enter` advances/submits, `Escape` goes back or closes (with confirmation if answers exist)
+- Returns `null` if `input.questions` is malformed or `permission` is null
 
 `AskUserRenderer` (in `renderers/`):
 - Read-only renderer for historical `AskUserQuestion` permission request events in the session timeline
+- Optional `userAnswer` prop: when present, highlights the selected option per question with a check icon
+- Displays "Agent decides" badge when the answer is the `AGENT_CHOICE_SENTINEL`
 - Falls back to `PermissionRequestRenderer` if `input.questions` is malformed
 
 `ChatImageGallery` (in `renderers/`):
