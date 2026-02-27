@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
 import type { JsonObject, JsonValue, SerializedAgentCompleteEvent, SerializedAgentErrorEvent, SerializedAgentEvent, SerializedAgentPermissionRequestEvent, SerializedAgentPermissionResponseEvent, SerializedAgentRawEvent, SerializedAgentToolResultEvent, SerializedAgentToolUseEvent } from '@kombuse/types'
 import { SessionViewer } from '../session-viewer'
-import { KNOWN_KOMBUSE_TOOL_NAMES, getKombuseToolConfig } from '../renderers'
+import { KNOWN_KOMBUSE_TOOL_NAMES, getKombuseToolConfig, parseUserAnswers } from '../renderers'
 
 function makeToolUseEvent({
   id,
@@ -631,5 +631,189 @@ describe('SessionViewer kombuse renderers', () => {
     expect(container.textContent).toContain('Rate limit exceeded')
     expect(container.textContent).toContain('Retry after 30s')
     expect(container.querySelector('.border-l-amber-500')).not.toBeNull()
+  })
+})
+
+describe('parseUserAnswers', () => {
+  it('parses a single question/answer pair', () => {
+    const result = parseUserAnswers('User has answered your questions: "Language"="Python"')
+    expect(result).toEqual([{ question: 'Language', answer: 'Python' }])
+  })
+
+  it('parses multiple question/answer pairs', () => {
+    const result = parseUserAnswers('User has answered your questions: "Language"="Python", "Style"="Async"')
+    expect(result).toEqual([
+      { question: 'Language', answer: 'Python' },
+      { question: 'Style', answer: 'Async' },
+    ])
+  })
+
+  it('returns null when prefix does not match', () => {
+    expect(parseUserAnswers('Some other content')).toBeNull()
+  })
+
+  it('returns null when prefix matches but no valid pairs found', () => {
+    expect(parseUserAnswers('User has answered your questions: no pairs here')).toBeNull()
+  })
+
+  it('handles empty answer values', () => {
+    const result = parseUserAnswers('User has answered your questions: "Question"=""')
+    expect(result).toEqual([{ question: 'Question', answer: '' }])
+  })
+})
+
+describe('AskUserQuestion suppression and answer display', () => {
+  it('suppresses AskUserQuestion tool_use and tool_result from rendering', () => {
+    const toolUse = makeToolUseEvent({
+      id: 'ask-use',
+      name: 'AskUserQuestion',
+      input: {
+        questions: [{
+          question: 'Which language?',
+          header: 'Language',
+          options: [{ label: 'Python' }, { label: 'TypeScript' }],
+        }],
+      },
+      timestamp: 10000,
+    })
+    const toolResult = makeToolResultEvent({
+      id: 'ask-result',
+      toolUseId: toolUse.id,
+      content: 'User has answered your questions: "Language"="Python"',
+      timestamp: 10001,
+    })
+
+    const { container } = render(<SessionViewer events={[toolUse, toolResult]} />)
+
+    expect(container.querySelector('pre')).toBeNull()
+    expect(container.textContent).not.toContain('AskUserQuestion')
+  })
+
+  it('renders permission_response for AskUserQuestion with parsed answer pills', () => {
+    const permissionRequest = makePermissionRequestEvent({
+      id: 'ask-perm',
+      requestId: 'req-ask',
+      toolName: 'AskUserQuestion',
+      timestamp: 10100,
+      input: {
+        questions: [{
+          question: 'Which language?',
+          header: 'Language',
+          options: [{ label: 'Python' }, { label: 'TypeScript' }],
+        }],
+      },
+    })
+    const toolUse = makeToolUseEvent({
+      id: 'ask-perm',
+      name: 'AskUserQuestion',
+      input: {
+        questions: [{
+          question: 'Which language?',
+          header: 'Language',
+          options: [{ label: 'Python' }, { label: 'TypeScript' }],
+        }],
+      },
+      timestamp: 10101,
+    })
+    const toolResult = makeToolResultEvent({
+      id: 'ask-perm-result',
+      toolUseId: toolUse.id,
+      content: 'User has answered your questions: "Language"="Python"',
+      timestamp: 10102,
+    })
+    const permissionResponse = makePermissionResponseEvent({
+      id: 'ask-perm-res',
+      requestId: 'req-ask',
+      behavior: 'allow',
+      timestamp: 10103,
+    })
+
+    const { container } = render(
+      <SessionViewer events={[permissionRequest, toolUse, toolResult, permissionResponse]} />
+    )
+
+    const texts = container.textContent ?? ''
+    expect(texts).toContain('Answered')
+    expect(texts).toContain('Language')
+    expect(texts).toContain('Python')
+    expect(texts).not.toContain('Allowed')
+  })
+
+  it('falls back to raw answer when SDK format is unparseable', () => {
+    const permissionRequest = makePermissionRequestEvent({
+      id: 'ask-raw',
+      requestId: 'req-raw',
+      toolName: 'AskUserQuestion',
+      timestamp: 10200,
+      input: {
+        questions: [{
+          question: 'Pick one',
+          header: 'Choice',
+          options: [{ label: 'A' }, { label: 'B' }],
+        }],
+      },
+    })
+    const toolUse = makeToolUseEvent({
+      id: 'ask-raw',
+      name: 'AskUserQuestion',
+      input: {
+        questions: [{
+          question: 'Pick one',
+          header: 'Choice',
+          options: [{ label: 'A' }, { label: 'B' }],
+        }],
+      },
+      timestamp: 10201,
+    })
+    const toolResult = makeToolResultEvent({
+      id: 'ask-raw-result',
+      toolUseId: toolUse.id,
+      content: 'unexpected format: chose A',
+      timestamp: 10202,
+    })
+    const permissionResponse = makePermissionResponseEvent({
+      id: 'ask-raw-res',
+      requestId: 'req-raw',
+      behavior: 'allow',
+      timestamp: 10203,
+    })
+
+    const { container } = render(
+      <SessionViewer events={[permissionRequest, toolUse, toolResult, permissionResponse]} />
+    )
+
+    const texts = container.textContent ?? ''
+    expect(texts).toContain('Answered')
+    expect(texts).toContain('unexpected format: chose A')
+  })
+
+  it('renders denied AskUserQuestion as standard Denied', () => {
+    const permissionRequest = makePermissionRequestEvent({
+      id: 'ask-deny',
+      requestId: 'req-deny',
+      toolName: 'AskUserQuestion',
+      timestamp: 10300,
+      input: {
+        questions: [{
+          question: 'Pick one',
+          header: 'Choice',
+          options: [{ label: 'A' }, { label: 'B' }],
+        }],
+      },
+    })
+    const permissionResponse = makePermissionResponseEvent({
+      id: 'ask-deny-res',
+      requestId: 'req-deny',
+      behavior: 'deny',
+      timestamp: 10301,
+    })
+
+    const { container } = render(
+      <SessionViewer events={[permissionRequest, permissionResponse]} />
+    )
+
+    const texts = container.textContent ?? ''
+    expect(texts).toContain('Denied')
+    expect(texts).not.toContain('Answered')
   })
 })

@@ -13,7 +13,7 @@ export interface PermissionResponseRendererProps {
  * "User has answered your questions: \"Q\"=\"A\", \"Q2\"=\"A2\""
  * Returns an array of { question, answer } pairs, or null if parsing fails.
  */
-function parseUserAnswers(content: string): Array<{ question: string; answer: string }> | null {
+export function parseUserAnswers(content: string): Array<{ question: string; answer: string }> | null {
   const prefix = 'User has answered your questions: '
   if (!content.startsWith(prefix)) return null
 
