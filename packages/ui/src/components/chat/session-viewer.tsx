@@ -55,6 +55,7 @@ const TOOL_RENDERERS: Record<string, MatchedToolRenderer> = {
   TodoWrite: ({ key, toolUse }) => (
     <TodoRenderer key={key} toolUse={toolUse} />
   ),
+  AskUserQuestion: () => null as unknown as ReactElement,
 }
 
 function renderMatchedTool(
@@ -77,22 +78,24 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
   })
 
   // Build maps for tool_use events, track which ones have results, and index permission requests
-  const { toolUseMap, toolUseIdsWithResults, permissionRequestMap } = useMemo(() => {
+  const { toolUseMap, toolUseIdsWithResults, permissionRequestMap, toolResultByToolUseId } = useMemo(() => {
     const useMap = new Map<string, SerializedAgentToolUseEvent>()
     const idsWithResults = new Set<string>()
     const permReqMap = new Map<string, SerializedAgentPermissionRequestEvent>()
+    const resultByToolUseId = new Map<string, SerializedAgentToolResultEvent>()
 
     for (const event of events) {
       if (event.type === 'tool_use') {
         useMap.set(event.id, event)
       } else if (event.type === 'tool_result') {
         idsWithResults.add(event.toolUseId)
+        resultByToolUseId.set(event.toolUseId, event)
       } else if (event.type === 'permission_request') {
         permReqMap.set(event.requestId, event)
       }
     }
 
-    return { toolUseMap: useMap, toolUseIdsWithResults: idsWithResults, permissionRequestMap: permReqMap }
+    return { toolUseMap: useMap, toolUseIdsWithResults: idsWithResults, permissionRequestMap: permReqMap, toolResultByToolUseId: resultByToolUseId }
   }, [events])
 
   const visibleEvents = useMemo(() => {
@@ -197,11 +200,19 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
 
         if (event.type === 'permission_response') {
           const matchedRequest = permissionRequestMap.get(event.requestId)
+          let userAnswer: string | undefined
+          if (matchedRequest?.toolName === 'AskUserQuestion') {
+            const result = toolResultByToolUseId.get(matchedRequest.toolUseId)
+            if (result && typeof result.content === 'string') {
+              userAnswer = result.content
+            }
+          }
           return (
             <PermissionResponseRenderer
               key={event.eventId}
               event={event}
               toolName={matchedRequest?.toolName}
+              userAnswer={userAnswer}
             />
           )
         }
@@ -213,6 +224,8 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           }
           const matched = renderMatchedTool(event.eventId, event)
           if (matched) return matched
+          // Registered renderer returned null — suppress fallback (e.g. AskUserQuestion)
+          if (TOOL_RENDERERS[event.name]) return null
           return <ToolUseRenderer key={event.eventId} event={event} />
         }
 
@@ -222,6 +235,8 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
           if (toolUse) {
             const matched = renderMatchedTool(event.eventId, toolUse, event)
             if (matched) return matched
+            // Registered renderer returned null — suppress fallback (e.g. AskUserQuestion)
+            if (TOOL_RENDERERS[toolUse.name]) return null
           }
           // Render with or without matching tool_use (orphaned results show output only)
           return (
