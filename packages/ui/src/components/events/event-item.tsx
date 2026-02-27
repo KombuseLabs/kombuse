@@ -1,4 +1,5 @@
 import type { EventWithActor, ActorType } from '@kombuse/types'
+import { EVENT_TYPES } from '@kombuse/types'
 import { cn } from '../../lib/utils'
 import { Badge } from '../../base/badge'
 import { AgentHoverCard } from '../agents'
@@ -32,72 +33,72 @@ const eventTypeConfig: Record<
   string,
   { icon: typeof Ticket; color: string; label: string }
 > = {
-  'ticket.created': {
+  [EVENT_TYPES.TICKET_CREATED]: {
     icon: Plus,
     color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
     label: 'Ticket Created',
   },
-  'ticket.updated': {
+  [EVENT_TYPES.TICKET_UPDATED]: {
     icon: Pencil,
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
     label: 'Ticket Updated',
   },
-  'ticket.closed': {
+  [EVENT_TYPES.TICKET_CLOSED]: {
     icon: CheckCircle,
     color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
     label: 'Ticket Closed',
   },
-  'ticket.reopened': {
+  [EVENT_TYPES.TICKET_REOPENED]: {
     icon: RotateCcw,
     color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
     label: 'Ticket Reopened',
   },
-  'ticket.claimed': {
+  [EVENT_TYPES.TICKET_CLAIMED]: {
     icon: UserPlus,
     color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
     label: 'Ticket Claimed',
   },
-  'ticket.unclaimed': {
+  [EVENT_TYPES.TICKET_UNCLAIMED]: {
     icon: UserMinus,
     color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
     label: 'Ticket Unclaimed',
   },
-  'comment.added': {
+  [EVENT_TYPES.COMMENT_ADDED]: {
     icon: MessageSquare,
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
     label: 'Comment Added',
   },
-  'comment.edited': {
+  [EVENT_TYPES.COMMENT_EDITED]: {
     icon: Pencil,
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
     label: 'Comment Edited',
   },
-  'label.added': {
+  [EVENT_TYPES.LABEL_ADDED]: {
     icon: Tag,
     color: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300',
     label: 'Label Added',
   },
-  'label.removed': {
+  [EVENT_TYPES.LABEL_REMOVED]: {
     icon: X,
     color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
     label: 'Label Removed',
   },
-  'mention.created': {
+  [EVENT_TYPES.MENTION_CREATED]: {
     icon: AtSign,
     color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
     label: 'Mention Created',
   },
-  'agent.started': {
+  [EVENT_TYPES.AGENT_STARTED]: {
     icon: Play,
     color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
     label: 'Agent Started',
   },
-  'agent.completed': {
+  [EVENT_TYPES.AGENT_COMPLETED]: {
     icon: CheckCircle2,
     color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
     label: 'Agent Completed',
   },
-  'agent.failed': {
+  [EVENT_TYPES.AGENT_FAILED]: {
     icon: XCircle,
     color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
     label: 'Agent Failed',

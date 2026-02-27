@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ActorType, AgentTrigger, AllowedInvoker, MentionType } from '@kombuse/types'
+import { EVENT_TYPES } from '@kombuse/types'
 import { Button } from '../../base/button'
 import { Input } from '../../base/input'
 import { Label } from '../../base/label'
@@ -81,9 +82,9 @@ function TriggerForm({ agentId, trigger, onSubmit, onCancel, isLoading }: Trigge
   const createLabelMutation = useCreateLabel(currentProjectId ?? '')
 
   // Check if this is a label-based or mention-based event type
-  const isLabelEvent = eventType === 'label.added' || eventType === 'label.removed'
-  const isMentionEvent = eventType === 'mention.created'
-  const isCommentEvent = eventType === 'comment.added' || eventType === 'comment.edited'
+  const isLabelEvent = eventType === EVENT_TYPES.LABEL_ADDED || eventType === EVENT_TYPES.LABEL_REMOVED
+  const isMentionEvent = eventType === EVENT_TYPES.MENTION_CREATED
+  const isCommentEvent = eventType === EVENT_TYPES.COMMENT_ADDED || eventType === EVENT_TYPES.COMMENT_EDITED
 
   useEffect(() => {
     if (isCommentEvent) {

@@ -1,5 +1,5 @@
 import type { EventWithActor } from '@kombuse/types'
-import { parseSessionId } from '@kombuse/types'
+import { EVENT_TYPES, parseSessionId } from '@kombuse/types'
 import { Link } from 'react-router-dom'
 import { Button } from '../../base/button'
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
@@ -37,20 +37,20 @@ interface TimelineEventItemProps {
 }
 
 const eventConfig: Record<string, { icon: LucideIcon; label: string }> = {
-  'ticket.created': { icon: Plus, label: 'created this ticket' },
-  'ticket.updated': { icon: Pencil, label: 'updated this ticket' },
-  'ticket.closed': { icon: CheckCircle, label: 'closed this ticket' },
-  'ticket.reopened': { icon: RotateCcw, label: 'reopened this ticket' },
-  'ticket.claimed': { icon: UserPlus, label: 'claimed this ticket' },
-  'ticket.unclaimed': { icon: UserMinus, label: 'unclaimed this ticket' },
-  'comment.added': { icon: MessageSquare, label: 'added a comment' },
-  'comment.edited': { icon: Pencil, label: 'edited a comment' },
-  'label.added': { icon: Tag, label: 'added a label' },
-  'label.removed': { icon: X, label: 'removed a label' },
-  'mention.created': { icon: AtSign, label: 'mentioned someone' },
-  'agent.started': { icon: Play, label: 'started processing' },
-  'agent.completed': { icon: CheckCircle2, label: 'completed processing' },
-  'agent.failed': { icon: XCircle, label: 'failed to process' },
+  [EVENT_TYPES.TICKET_CREATED]: { icon: Plus, label: 'created this ticket' },
+  [EVENT_TYPES.TICKET_UPDATED]: { icon: Pencil, label: 'updated this ticket' },
+  [EVENT_TYPES.TICKET_CLOSED]: { icon: CheckCircle, label: 'closed this ticket' },
+  [EVENT_TYPES.TICKET_REOPENED]: { icon: RotateCcw, label: 'reopened this ticket' },
+  [EVENT_TYPES.TICKET_CLAIMED]: { icon: UserPlus, label: 'claimed this ticket' },
+  [EVENT_TYPES.TICKET_UNCLAIMED]: { icon: UserMinus, label: 'unclaimed this ticket' },
+  [EVENT_TYPES.COMMENT_ADDED]: { icon: MessageSquare, label: 'added a comment' },
+  [EVENT_TYPES.COMMENT_EDITED]: { icon: Pencil, label: 'edited a comment' },
+  [EVENT_TYPES.LABEL_ADDED]: { icon: Tag, label: 'added a label' },
+  [EVENT_TYPES.LABEL_REMOVED]: { icon: X, label: 'removed a label' },
+  [EVENT_TYPES.MENTION_CREATED]: { icon: AtSign, label: 'mentioned someone' },
+  [EVENT_TYPES.AGENT_STARTED]: { icon: Play, label: 'started processing' },
+  [EVENT_TYPES.AGENT_COMPLETED]: { icon: CheckCircle2, label: 'completed processing' },
+  [EVENT_TYPES.AGENT_FAILED]: { icon: XCircle, label: 'failed to process' },
 }
 
 function TimelineEventItem({ event, projectId, ticketNumber, onSessionClick, isResumable, onResume, onRerun, className }: TimelineEventItemProps) {
@@ -74,11 +74,11 @@ function TimelineEventItem({ event, projectId, ticketNumber, onSessionClick, isR
   let eventLabel = config.label
   let eventSuffix: React.ReactNode = null
 
-  if (event.event_type === 'label.added' || event.event_type === 'label.removed') {
+  if (event.event_type === EVENT_TYPES.LABEL_ADDED || event.event_type === EVENT_TYPES.LABEL_REMOVED) {
     try {
       const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
       if (payload?.label_name) {
-        const action = event.event_type === 'label.added' ? 'added' : 'removed'
+        const action = event.event_type === EVENT_TYPES.LABEL_ADDED ? 'added' : 'removed'
         eventLabel = `${action} label ${payload.label_name}`
       }
     } catch {
@@ -86,7 +86,7 @@ function TimelineEventItem({ event, projectId, ticketNumber, onSessionClick, isR
     }
   }
 
-  if (event.event_type === 'mention.created') {
+  if (event.event_type === EVENT_TYPES.MENTION_CREATED) {
     try {
       const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
       if (payload?.mention_type === 'ticket_cross_reference' && payload?.source_ticket_project_id && payload?.source_ticket_number) {
@@ -187,7 +187,7 @@ function TimelineEventItem({ event, projectId, ticketNumber, onSessionClick, isR
       <span className="text-xs">
         {new Date(event.created_at).toLocaleString()}
       </span>
-      {isResumable && (event.event_type === 'agent.completed' || event.event_type === 'agent.failed') && (
+      {isResumable && (event.event_type === EVENT_TYPES.AGENT_COMPLETED || event.event_type === EVENT_TYPES.AGENT_FAILED) && (
         <span className="inline-flex items-center gap-1 ml-1">
           <Tooltip>
             <TooltipTrigger asChild>

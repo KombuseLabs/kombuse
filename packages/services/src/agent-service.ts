@@ -16,7 +16,7 @@ import type {
   PermissionCheckRequest,
   PermissionCheckResult,
 } from '@kombuse/types'
-import { toSlug, UUID_REGEX } from '@kombuse/types'
+import { EVENT_TYPES, toSlug, UUID_REGEX } from '@kombuse/types'
 import {
   agentsRepository,
   agentTriggersRepository,
@@ -268,9 +268,9 @@ export class AgentService {
     }
 
     // mention.created triggers require explicit conditions (e.g. mention_type)
-    if (input.event_type === 'mention.created' && !input.conditions) {
+    if (input.event_type === EVENT_TYPES.MENTION_CREATED && !input.conditions) {
       throw new Error(
-        'mention.created triggers require explicit conditions (e.g. { mention_type: "profile" })'
+        `${EVENT_TYPES.MENTION_CREATED} triggers require explicit conditions (e.g. { mention_type: "profile" })`
       )
     }
 
@@ -288,9 +288,9 @@ export class AgentService {
     const effectiveEventType = input.event_type ?? existing.event_type
     const effectiveConditions =
       input.conditions !== undefined ? input.conditions : existing.conditions
-    if (effectiveEventType === 'mention.created' && !effectiveConditions) {
+    if (effectiveEventType === EVENT_TYPES.MENTION_CREATED && !effectiveConditions) {
       throw new Error(
-        'mention.created triggers require explicit conditions (e.g. { mention_type: "profile" })'
+        `${EVENT_TYPES.MENTION_CREATED} triggers require explicit conditions (e.g. { mention_type: "profile" })`
       )
     }
 
@@ -354,7 +354,7 @@ export class AgentService {
     for (const trigger of triggers) {
       // mention.created triggers without conditions are skipped —
       // they must specify mention_type to avoid matching all mention kinds
-      if (event.event_type === 'mention.created' && !trigger.conditions) {
+      if (event.event_type === EVENT_TYPES.MENTION_CREATED && !trigger.conditions) {
         continue
       }
 
