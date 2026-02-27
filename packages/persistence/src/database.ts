@@ -790,6 +790,26 @@ const migrations: Migration[] = [
       db.pragma('foreign_keys = ON')
     },
   },
+  {
+    name: '011_persistence_optimizations',
+    run: (db: DatabaseType) => {
+      // Materialize ticket_id on agent_invocations for indexed lookups
+      db.exec(`ALTER TABLE agent_invocations ADD COLUMN ticket_id INTEGER`)
+
+      // Backfill from JSON context
+      db.exec(`
+        UPDATE agent_invocations
+        SET ticket_id = CAST(json_extract(context, '$.ticket_id') AS INTEGER)
+        WHERE json_extract(context, '$.ticket_id') IS NOT NULL
+      `)
+
+      // Composite index for loop protection / dedup queries
+      db.exec(`CREATE INDEX idx_agent_invocations_ticket_status ON agent_invocations(agent_id, ticket_id, status)`)
+
+      // Composite index for event listing with actor_type filter
+      db.exec(`CREATE INDEX idx_events_project_actor ON events(project_id, actor_type, created_at DESC)`)
+    },
+  },
 ]
 
 /**

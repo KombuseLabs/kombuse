@@ -110,14 +110,15 @@ export const agentsRepository = {
   create(input: CreateAgentInput): Agent {
     const db = getDatabase()
 
-    db.prepare(
+    const row = db.prepare(
       `
       INSERT INTO agents (
         id, slug, system_prompt, permissions, config, is_enabled, plugin_id, project_id, plugin_base
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
     `
-    ).run(
+    ).get(
       input.id,
       input.slug ?? null,
       input.system_prompt,
@@ -127,9 +128,9 @@ export const agentsRepository = {
       input.plugin_id ?? null,
       input.project_id ?? null,
       input.plugin_base ? JSON.stringify(input.plugin_base) : null
-    )
+    ) as RawAgent
 
-    return this.get(input.id!) as Agent
+    return mapAgent(row)
   },
 
   /**
@@ -175,11 +176,10 @@ export const agentsRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
-    db.prepare(`UPDATE agents SET ${fields.join(', ')} WHERE id = ?`).run(
+    const row = db.prepare(`UPDATE agents SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
       ...params
-    )
-
-    return this.get(id)
+    ) as RawAgent | undefined
+    return row ? mapAgent(row) : null
   },
 
   /**
@@ -196,7 +196,7 @@ export const agentsRepository = {
     if (!agent || !agent.plugin_base) return null
 
     const db = getDatabase()
-    db.prepare(`
+    const row = db.prepare(`
       UPDATE agents SET
         system_prompt = ?,
         permissions = ?,
@@ -204,15 +204,15 @@ export const agentsRepository = {
         is_enabled = ?,
         updated_at = datetime('now')
       WHERE id = ?
-    `).run(
+      RETURNING *
+    `).get(
       agent.plugin_base.system_prompt,
       JSON.stringify(agent.plugin_base.permissions),
       JSON.stringify(agent.plugin_base.config),
       agent.plugin_base.is_enabled ? 1 : 0,
       id
-    )
-
-    return this.get(id)
+    ) as RawAgent | undefined
+    return row ? mapAgent(row) : null
   },
 
   enableByPlugin(pluginId: string): void {
@@ -315,16 +315,17 @@ export const agentTriggersRepository = {
   create(input: CreateAgentTriggerInput): AgentTrigger {
     const db = getDatabase()
 
-    const result = db
+    const row = db
       .prepare(
         `
       INSERT INTO agent_triggers (
         agent_id, event_type, slug, project_id, conditions, is_enabled, priority, plugin_id, allowed_invokers
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
     `
       )
-      .run(
+      .get(
         input.agent_id,
         input.event_type,
         input.slug ?? null,
@@ -334,9 +335,9 @@ export const agentTriggersRepository = {
         input.priority ?? 0,
         input.plugin_id ?? null,
         input.allowed_invokers ? JSON.stringify(input.allowed_invokers) : null
-      )
+      ) as RawAgentTrigger
 
-    return this.get(result.lastInsertRowid as number) as AgentTrigger
+    return mapAgentTrigger(row)
   },
 
   /**
@@ -384,11 +385,10 @@ export const agentTriggersRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
-    db.prepare(
-      `UPDATE agent_triggers SET ${fields.join(', ')} WHERE id = ?`
-    ).run(...params)
-
-    return this.get(id)
+    const row = db.prepare(
+      `UPDATE agent_triggers SET ${fields.join(', ')} WHERE id = ? RETURNING *`
+    ).get(...params) as RawAgentTrigger | undefined
+    return row ? mapAgentTrigger(row) : null
   },
 
   /**
@@ -519,28 +519,31 @@ export const agentInvocationsRepository = {
    */
   create(input: CreateAgentInvocationInput): AgentInvocation {
     const db = getDatabase()
+    const ticketId = typeof input.context?.ticket_id === 'number' ? input.context.ticket_id : null
 
-    const result = db
+    const row = db
       .prepare(
         `
       INSERT INTO agent_invocations (
-        agent_id, trigger_id, event_id, session_id, project_id, max_attempts, run_at, context
+        agent_id, trigger_id, event_id, session_id, project_id, ticket_id, max_attempts, run_at, context
       )
-      VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?)
+      RETURNING *
     `
       )
-      .run(
+      .get(
         input.agent_id,
         input.trigger_id,
         input.event_id ?? null,
         input.session_id ?? null,
         input.project_id ?? null,
+        ticketId,
         input.max_attempts ?? 3,
         input.run_at ?? null,
         JSON.stringify(input.context)
-      )
+      ) as RawAgentInvocation
 
-    return this.get(result.lastInsertRowid as number) as AgentInvocation
+    return mapAgentInvocation(row)
   },
 
   /**
@@ -597,11 +600,10 @@ export const agentInvocationsRepository = {
 
     params.push(id)
 
-    db.prepare(
-      `UPDATE agent_invocations SET ${fields.join(', ')} WHERE id = ?`
-    ).run(...params)
-
-    return this.get(id)
+    const row = db.prepare(
+      `UPDATE agent_invocations SET ${fields.join(', ')} WHERE id = ? RETURNING *`
+    ).get(...params) as RawAgentInvocation | undefined
+    return row ? mapAgentInvocation(row) : null
   },
 
   /**
@@ -614,7 +616,7 @@ export const agentInvocationsRepository = {
       .prepare(
         `SELECT COUNT(*) as count FROM agent_invocations
          LEFT JOIN events ON events.id = agent_invocations.event_id
-         WHERE json_extract(agent_invocations.context, '$.ticket_id') = ?
+         WHERE agent_invocations.ticket_id = ?
            AND agent_invocations.created_at >= datetime('now', '-' || ? || ' hours')
            AND (agent_invocations.event_id IS NULL OR events.actor_type != 'user')
            AND (agent_invocations.error IS NULL OR agent_invocations.error NOT LIKE 'Chain depth limit%')`
@@ -633,7 +635,7 @@ export const agentInvocationsRepository = {
       .prepare(
         `SELECT * FROM agent_invocations
          WHERE agent_id = ?
-           AND json_extract(context, '$.ticket_id') = ?
+           AND ticket_id = ?
            AND status IN ('pending', 'running')
          ORDER BY created_at DESC
          LIMIT 1`
@@ -704,6 +706,7 @@ interface RawAgentInvocation {
   event_id: number | null
   session_id: string | null
   project_id: string | null
+  ticket_id: number | null
   kombuse_session_id: string | null
   status: string
   attempts: number

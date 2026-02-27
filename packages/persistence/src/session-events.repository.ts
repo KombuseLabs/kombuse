@@ -214,22 +214,23 @@ export const sessionEventsRepository = {
   create(input: CreateSessionEventInput): SessionEvent {
     const db = getDatabase()
 
-    const result = db
+    const row = db
       .prepare(
         `
         INSERT INTO session_events (session_id, kombuse_session_id, seq, event_type, payload)
         VALUES (?, ?, ?, ?, ?)
+        RETURNING *
       `
       )
-      .run(
+      .get(
         input.session_id,
         input.kombuse_session_id ?? null,
         input.seq,
         input.event_type,
         JSON.stringify(input.payload)
-      )
+      ) as RawSessionEvent
 
-    return this.get(result.lastInsertRowid as number) as SessionEvent
+    return mapSessionEvent(row)
   },
 
   /**

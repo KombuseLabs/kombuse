@@ -80,7 +80,7 @@ export const profileSettingsRepository = {
    */
   upsert(input: UpsertProfileSettingInput): ProfileSetting {
     const db = getDatabase()
-    db.prepare(
+    return db.prepare(
       `
       INSERT INTO profile_settings (profile_id, setting_key, setting_value)
       VALUES (?, ?, ?)
@@ -88,10 +88,9 @@ export const profileSettingsRepository = {
       DO UPDATE SET
         setting_value = excluded.setting_value,
         updated_at = datetime('now')
+      RETURNING *
     `
-    ).run(input.profile_id, input.setting_key, input.setting_value)
-
-    return this.get(input.profile_id, input.setting_key) as ProfileSetting
+    ).get(input.profile_id, input.setting_key, input.setting_value) as ProfileSetting
   },
 
   /**

@@ -105,19 +105,18 @@ export const milestonesRepository = {
   create(input: CreateMilestoneInput): Milestone {
     const db = getDatabase()
 
-    const result = db
+    const milestone = db
       .prepare(
         `INSERT INTO milestones (project_id, title, description, due_date)
-        VALUES (?, ?, ?, ?)`
+        VALUES (?, ?, ?, ?)
+        RETURNING *`
       )
-      .run(
+      .get(
         input.project_id,
         input.title,
         input.description ?? null,
         input.due_date ?? null
-      )
-
-    const milestone = this.get(result.lastInsertRowid as number) as Milestone
+      ) as Milestone
 
     eventsRepository.create({
       event_type: EVENT_TYPES.MILESTONE_CREATED,
@@ -160,11 +159,9 @@ export const milestonesRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
-    db.prepare(
-      `UPDATE milestones SET ${fields.join(', ')} WHERE id = ?`
-    ).run(...params)
-
-    const updated = this.get(id) as Milestone
+    const updated = db.prepare(
+      `UPDATE milestones SET ${fields.join(', ')} WHERE id = ? RETURNING *`
+    ).get(...params) as Milestone
 
     eventsRepository.create({
       event_type: EVENT_TYPES.MILESTONE_UPDATED,

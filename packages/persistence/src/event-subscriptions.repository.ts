@@ -73,16 +73,15 @@ export const eventSubscriptionsRepository = {
       return existing
     }
 
-    const result = db
+    return db
       .prepare(
         `
       INSERT INTO event_subscriptions (subscriber_id, event_type, project_id)
       VALUES (?, ?, ?)
+      RETURNING *
     `
       )
-      .run(input.subscriber_id, input.event_type, input.project_id ?? null)
-
-    return this.get(result.lastInsertRowid as number) as EventSubscription
+      .get(input.subscriber_id, input.event_type, input.project_id ?? null) as EventSubscription
   },
 
   /**

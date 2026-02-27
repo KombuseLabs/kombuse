@@ -159,6 +159,28 @@ function mapCommentWithAuthor(row: RawCommentWithAuthor): CommentWithAuthor {
   }
 }
 
+function buildCommentWithAuthor(raw: RawComment, author: Profile | null): CommentWithAuthor {
+  const comment = mapComment(raw)
+  return {
+    ...comment,
+    author: author ?? {
+      id: raw.author_id,
+      type: 'user' as const,
+      name: 'Unknown',
+      slug: null,
+      email: null,
+      description: null,
+      avatar_url: null,
+      external_source: null,
+      external_id: null,
+      plugin_id: null,
+      is_active: false,
+      created_at: raw.created_at,
+      updated_at: raw.created_at,
+    },
+  }
+}
+
 interface ParsedMentions {
   /** Profile IDs from new @[name](id) format */
   profileIds: string[]
@@ -298,6 +320,7 @@ export const commentsRepository = {
         external_source, external_id, is_edited
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+      RETURNING *
     `)
 
     // Get project_id from ticket for event logging
@@ -307,7 +330,7 @@ export const commentsRepository = {
 
     const createComment = db.transaction((payload: CreateCommentInput) => {
       // 1. Insert the comment
-      const result = insertComment.run(
+      const rawComment = insertComment.get(
         payload.ticket_id,
         payload.author_id,
         payload.parent_id ?? null,
@@ -315,8 +338,8 @@ export const commentsRepository = {
         payload.body,
         payload.external_source ?? null,
         payload.external_id ?? null
-      )
-      const commentId = result.lastInsertRowid as number
+      ) as RawComment
+      const commentId = rawComment.id
 
       // Update ticket's last_activity_at
       db.prepare("UPDATE tickets SET last_activity_at = datetime('now') WHERE id = ?").run(payload.ticket_id)
@@ -504,11 +527,11 @@ export const commentsRepository = {
         },
       })
 
-      return commentId
+      return { rawComment, authorProfile }
     })
 
-    const commentId = createComment(input)
-    return this.get(commentId) as CommentWithAuthor
+    const { rawComment: returnedComment, authorProfile: returnedAuthor } = createComment(input)
+    return buildCommentWithAuthor(returnedComment, returnedAuthor)
   },
 
   /**
@@ -537,10 +560,11 @@ export const commentsRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
+    let rawUpdated: RawComment | undefined
     const updateComment = db.transaction(() => {
-      db.prepare(`UPDATE comments SET ${fields.join(', ')} WHERE id = ?`).run(
+      rawUpdated = db.prepare(`UPDATE comments SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
         ...params
-      )
+      ) as RawComment
 
       // Update ticket's last_activity_at
       db.prepare("UPDATE tickets SET last_activity_at = datetime('now') WHERE id = ?").run(existingRow.ticket_id)
@@ -691,7 +715,9 @@ export const commentsRepository = {
     })
 
     updateComment()
-    return this.get(id)
+    if (!rawUpdated) return null
+    const authorProfile = profilesRepository.get(rawUpdated.author_id)
+    return buildCommentWithAuthor(rawUpdated, authorProfile)
   },
 
   /**

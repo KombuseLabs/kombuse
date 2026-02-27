@@ -454,6 +454,7 @@ export const ticketsRepository = {
         opened_at, closed_at, last_activity_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now'))
+      RETURNING *
     `)
 
     const insertTicketLabels = db.prepare(`
@@ -487,7 +488,7 @@ export const ticketsRepository = {
       const nextTicketNumber = ((maxRow?.max_num) ?? 0) + 1
 
       const status = payload.status ?? 'open'
-      const result = insertTicket.run(
+      const rawTicket = insertTicket.get(
         payload.project_id,
         payload.author_id,
         payload.assignee_id ?? null,
@@ -503,9 +504,9 @@ export const ticketsRepository = {
         payload.external_url ?? null,
         nextTicketNumber,
         status
-      )
+      ) as RawTicketRow
 
-      const ticketId = result.lastInsertRowid as number
+      const ticketId = rawTicket.id
 
       if (labelIds.length > 0) {
         const placeholders = labelIds.map(() => '?').join(', ')
@@ -524,11 +525,10 @@ export const ticketsRepository = {
         }
       }
 
-      return ticketId
+      return mapTicketRow(rawTicket)
     })
 
-    const ticketId = createTicket(input)
-    const ticket = this._getInternal(ticketId) as Ticket
+    const ticket = createTicket(input)
 
     // Always emit ticket.created event — trigger orchestrator handles
     // its own triggers_enabled check independently (trigger-orchestrator.ts:158)
@@ -633,9 +633,9 @@ export const ticketsRepository = {
       fields.push("last_activity_at = datetime('now')")
       params.push(id)
 
-      db.prepare(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ?`).run(
+      const rawUpdated = db.prepare(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
         ...params
-      )
+      ) as RawTicketRow
 
       if (updatedById) {
         ticketViewsRepository.upsert({
@@ -644,7 +644,7 @@ export const ticketsRepository = {
         })
       }
 
-      const updatedTicket = this._getInternal(id)
+      const updatedTicket = mapTicketRow(rawUpdated)
 
       // Emit appropriate event based on status change
       let eventType: string = EVENT_TYPES.TICKET_UPDATED
@@ -711,9 +711,10 @@ export const ticketsRepository = {
           claimed_by_id = ? OR
           (claim_expires_at IS NOT NULL AND claim_expires_at < datetime('now'))
         )
+      RETURNING *
     `)
 
-    const result = stmt.run(
+    const rawClaimed = stmt.get(
       claimerId,
       claimModifier,
       claimModifier,
@@ -721,10 +722,10 @@ export const ticketsRepository = {
       input.ticket_id,
       claimerId,
       claimerId
-    )
+    ) as RawTicketRow | undefined
 
-    if (result.changes > 0) {
-      const claimedTicket = this._getInternal(input.ticket_id)
+    if (rawClaimed) {
+      const claimedTicket = mapTicketRow(rawClaimed)
 
       // Emit ticket.claimed event
       const claimerProfile = claimerId ? profilesRepository.get(claimerId) : null
@@ -792,7 +793,7 @@ export const ticketsRepository = {
 
     const previousClaimerId = ticket.claimed_by_id
 
-    const stmt = db.prepare(`
+    const rawUnclaimed = db.prepare(`
       UPDATE tickets
       SET claimed_by_id = NULL,
           claimed_at = NULL,
@@ -800,11 +801,10 @@ export const ticketsRepository = {
           updated_at = datetime('now'),
           last_activity_at = datetime('now')
       WHERE id = ?
-    `)
+      RETURNING *
+    `).get(ticketId) as RawTicketRow
 
-    stmt.run(ticketId)
-
-    const unclaimedTicket = this._getInternal(ticketId)
+    const unclaimedTicket = mapTicketRow(rawUnclaimed)
 
     // Emit ticket.unclaimed event
     const requesterProfile = requesterId ? profilesRepository.get(requesterId) : null
@@ -836,17 +836,16 @@ export const ticketsRepository = {
       return { success: false, ticket, reason: 'Ticket is not claimed' }
     }
 
-    const stmt = db.prepare(`
+    const rawExtended = db.prepare(`
       UPDATE tickets
       SET claim_expires_at = datetime(COALESCE(claim_expires_at, datetime('now')), ?),
           updated_at = datetime('now'),
           last_activity_at = datetime('now')
       WHERE id = ?
-    `)
+      RETURNING *
+    `).get(`+${additionalMinutes} minutes`, ticketId) as RawTicketRow
 
-    stmt.run(`+${additionalMinutes} minutes`, ticketId)
-
-    return { success: true, ticket: this._getInternal(ticketId) }
+    return { success: true, ticket: mapTicketRow(rawExtended) }
   },
 
   /**

@@ -83,14 +83,15 @@ export const attachmentsRepository = {
   create(input: CreateAttachmentInput): Attachment {
     const db = getDatabase()
 
-    const result = db
+    return db
       .prepare(
         `
       INSERT INTO attachments (comment_id, ticket_id, filename, mime_type, size_bytes, storage_path, uploaded_by_id)
       VALUES (?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
     `
       )
-      .run(
+      .get(
         input.comment_id ?? null,
         input.ticket_id ?? null,
         input.filename,
@@ -98,9 +99,7 @@ export const attachmentsRepository = {
         input.size_bytes,
         input.storage_path,
         input.uploaded_by_id
-      )
-
-    return this.get(result.lastInsertRowid as number) as Attachment
+      ) as Attachment
   },
 
   /**

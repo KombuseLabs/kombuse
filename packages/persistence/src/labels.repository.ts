@@ -95,23 +95,22 @@ export const labelsRepository = {
     const db = getDatabase()
     const slug = input.slug ?? toSlug(input.name)
 
-    const result = db
+    return db
       .prepare(
         `
       INSERT INTO labels (project_id, name, slug, color, description, plugin_id)
       VALUES (?, ?, ?, ?, ?, ?)
+      RETURNING *
     `
       )
-      .run(
+      .get(
         input.project_id,
         input.name,
         slug,
         input.color ?? '#808080',
         input.description ?? null,
         input.plugin_id ?? null
-      )
-
-    return this.get(result.lastInsertRowid as number) as Label
+      ) as Label
   },
 
   /**
@@ -171,11 +170,10 @@ export const labelsRepository = {
 
     params.push(id)
 
-    db.prepare(`UPDATE labels SET ${fields.join(', ')} WHERE id = ?`).run(
+    const row = db.prepare(`UPDATE labels SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
       ...params
-    )
-
-    return this.get(id)
+    ) as Label | undefined
+    return row ?? null
   },
 
   /**

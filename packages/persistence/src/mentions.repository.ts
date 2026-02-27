@@ -98,24 +98,23 @@ export const mentionsRepository = {
     const db = getDatabase()
 
     const isProfileMention = input.mention_type === 'profile'
-    const result = db
+    return db
       .prepare(
         `
       INSERT INTO mentions (
         comment_id, mention_type, mentioned_profile_id, mentioned_ticket_id, mention_text
       )
       VALUES (?, ?, ?, ?, ?)
+      RETURNING *
     `
       )
-      .run(
+      .get(
         input.comment_id,
         input.mention_type,
         isProfileMention ? input.mentioned_profile_id : null,
         isProfileMention ? null : input.mentioned_ticket_id,
         input.mention_text
-      )
-
-    return this.get(result.lastInsertRowid as number) as Mention
+      ) as Mention
   },
 
   /**
@@ -130,27 +129,28 @@ export const mentionsRepository = {
         comment_id, mention_type, mentioned_profile_id, mentioned_ticket_id, mention_text
       )
       VALUES (?, ?, ?, ?, ?)
+      RETURNING *
     `)
 
-    const insertedIds: number[] = []
+    const mentions: Mention[] = []
 
     const batchInsert = db.transaction((items: CreateMentionInput[]) => {
       for (const item of items) {
         const isProfileMention = item.mention_type === 'profile'
-        const result = insertMention.run(
+        const row = insertMention.get(
           item.comment_id,
           item.mention_type,
           isProfileMention ? item.mentioned_profile_id : null,
           isProfileMention ? null : item.mentioned_ticket_id,
           item.mention_text
-        )
-        insertedIds.push(result.lastInsertRowid as number)
+        ) as Mention
+        mentions.push(row)
       }
     })
 
     batchInsert(inputs)
 
-    return insertedIds.map((id) => this.get(id) as Mention)
+    return mentions
   },
 
   /**

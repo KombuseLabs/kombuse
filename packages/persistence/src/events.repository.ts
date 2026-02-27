@@ -1,5 +1,6 @@
-import type { ActorType, EventWithActor, EventFilters, CreateEventInput } from '@kombuse/types'
+import type { ActorType, EventWithActor, EventFilters, CreateEventInput, Profile } from '@kombuse/types'
 import { getDatabase } from './database'
+import { profilesRepository } from './profiles.repository'
 
 // Raw event row with joined profile columns from LEFT JOIN
 interface RawEventWithActor {
@@ -71,6 +72,37 @@ function mapEventWithActor(row: RawEventWithActor): EventWithActor {
       created_at: row.actor_created_at!,
       updated_at: row.actor_updated_at!,
     } : null,
+  }
+}
+
+// Raw event row from RETURNING (no JOINed columns)
+interface RawEvent {
+  id: number
+  event_type: string
+  project_id: string | null
+  ticket_id: number | null
+  comment_id: number | null
+  actor_id: string | null
+  actor_type: string
+  kombuse_session_id: string | null
+  payload: string
+  created_at: string
+}
+
+function buildEventWithActor(row: RawEvent, actor: Profile | null, ticketNumber: number | null): EventWithActor {
+  return {
+    id: row.id,
+    event_type: row.event_type,
+    project_id: row.project_id,
+    ticket_id: row.ticket_id,
+    ticket_number: ticketNumber,
+    comment_id: row.comment_id,
+    actor_id: row.actor_id,
+    actor_type: row.actor_type as ActorType,
+    kombuse_session_id: row.kombuse_session_id,
+    payload: row.payload,
+    created_at: row.created_at,
+    actor: actor ?? null,
   }
 }
 
@@ -174,7 +206,7 @@ export const eventsRepository = {
   create(input: CreateEventInput): EventWithActor {
     const db = getDatabase()
 
-    const result = db
+    const row = db
       .prepare(
         `
       INSERT INTO events (
@@ -182,9 +214,10 @@ export const eventsRepository = {
         actor_id, actor_type, kombuse_session_id, payload
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
     `
       )
-      .run(
+      .get(
         input.event_type,
         input.project_id ?? null,
         input.ticket_id ?? null,
@@ -193,9 +226,17 @@ export const eventsRepository = {
         input.actor_type,
         input.kombuse_session_id ?? null,
         JSON.stringify(input.payload)
-      )
+      ) as RawEvent
 
-    const event = this.get(result.lastInsertRowid as number) as EventWithActor
+    // Resolve actor profile and ticket_number via targeted PK lookups
+    const actor = row.actor_id ? profilesRepository.get(row.actor_id) : null
+    let ticketNumber: number | null = null
+    if (row.ticket_id != null) {
+      const ticketRow = db.prepare('SELECT ticket_number FROM tickets WHERE id = ?').get(row.ticket_id) as { ticket_number: number } | undefined
+      ticketNumber = ticketRow?.ticket_number ?? null
+    }
+
+    const event = buildEventWithActor(row, actor, ticketNumber)
 
     // Notify listeners (for WebSocket broadcasting)
     for (const listener of listeners) {

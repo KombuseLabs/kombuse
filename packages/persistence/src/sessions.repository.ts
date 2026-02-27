@@ -23,6 +23,62 @@ function parseSessionRows(rows: Record<string, unknown>[]): Session[] {
   return rows.map(parseSessionRow)
 }
 
+function buildSessionFilters(filters?: SessionFilters, extraConditions?: string[], extraParams?: unknown[]): {
+  conditions: string[]
+  params: unknown[]
+} {
+  const conditions: string[] = [...(extraConditions ?? [])]
+  const params: unknown[] = [...(extraParams ?? [])]
+
+  if (filters?.ticket_id !== undefined) {
+    conditions.push('s.ticket_id = ?')
+    params.push(filters.ticket_id)
+  }
+  if (filters?.project_id !== undefined) {
+    conditions.push('s.project_id = ?')
+    params.push(filters.project_id)
+  }
+  if (filters?.status) {
+    conditions.push('s.status = ?')
+    params.push(filters.status)
+  }
+  if (filters?.terminal_reason) {
+    conditions.push("json_extract(s.metadata, '$.terminal_reason') = ?")
+    params.push(filters.terminal_reason)
+  }
+  if (filters?.has_backend_session_id === true) {
+    conditions.push("s.backend_session_id IS NOT NULL AND trim(s.backend_session_id) <> ''")
+  }
+  if (filters?.has_backend_session_id === false) {
+    conditions.push("(s.backend_session_id IS NULL OR trim(s.backend_session_id) = '')")
+  }
+  if (filters?.agent_id !== undefined) {
+    conditions.push('s.agent_id = ?')
+    params.push(filters.agent_id)
+  }
+
+  return { conditions, params }
+}
+
+const SESSION_LIST_SELECT = `
+  SELECT s.*,
+    COALESCE(
+      p_agent.name,
+      (SELECT p2.name FROM agent_invocations ai2
+       JOIN profiles p2 ON p2.id = ai2.agent_id
+       WHERE ai2.kombuse_session_id = s.kombuse_session_id
+       ORDER BY ai2.created_at DESC LIMIT 1)
+    ) AS agent_name,
+    (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
+     FROM session_events se
+     WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
+    ) AS prompt_preview,
+    t.ticket_number AS ticket_number
+  FROM sessions s
+  LEFT JOIN profiles p_agent ON p_agent.id = s.agent_id
+  LEFT JOIN tickets t ON t.id = s.ticket_id
+`
+
 /**
  * Data access layer for sessions
  */
@@ -32,36 +88,7 @@ export const sessionsRepository = {
    */
   list(filters?: SessionFilters): Session[] {
     const db = getDatabase()
-
-    const conditions: string[] = []
-    const params: unknown[] = []
-
-    if (filters?.ticket_id !== undefined) {
-      conditions.push('s.ticket_id = ?')
-      params.push(filters.ticket_id)
-    }
-    if (filters?.project_id !== undefined) {
-      conditions.push('s.project_id = ?')
-      params.push(filters.project_id)
-    }
-    if (filters?.status) {
-      conditions.push('s.status = ?')
-      params.push(filters.status)
-    }
-    if (filters?.terminal_reason) {
-      conditions.push("json_extract(s.metadata, '$.terminal_reason') = ?")
-      params.push(filters.terminal_reason)
-    }
-    if (filters?.has_backend_session_id === true) {
-      conditions.push("s.backend_session_id IS NOT NULL AND trim(s.backend_session_id) <> ''")
-    }
-    if (filters?.has_backend_session_id === false) {
-      conditions.push("(s.backend_session_id IS NULL OR trim(s.backend_session_id) = '')")
-    }
-    if (filters?.agent_id !== undefined) {
-      conditions.push('s.agent_id = ?')
-      params.push(filters.agent_id)
-    }
+    const { conditions, params } = buildSessionFilters(filters)
 
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
@@ -71,20 +98,7 @@ export const sessionsRepository = {
     const sortColumn = filters?.sort_by === 'created_at' ? 'created_at' : 'updated_at'
 
     const stmt = db.prepare(`
-      SELECT s.*,
-        COALESCE(
-          (SELECT p1.name FROM profiles p1 WHERE p1.id = s.agent_id),
-          (SELECT p2.name FROM agent_invocations ai2
-           JOIN profiles p2 ON p2.id = ai2.agent_id
-           WHERE ai2.kombuse_session_id = s.kombuse_session_id
-           ORDER BY ai2.created_at DESC LIMIT 1)
-        ) AS agent_name,
-        (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
-         FROM session_events se
-         WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
-        ) AS prompt_preview,
-        (SELECT t.ticket_number FROM tickets t WHERE t.id = s.ticket_id) AS ticket_number
-      FROM sessions s
+      ${SESSION_LIST_SELECT}
       ${whereClause}
       ORDER BY s.${sortColumn} DESC
       LIMIT ? OFFSET ?
@@ -112,14 +126,15 @@ export const sessionsRepository = {
     const id = input?.id || crypto.randomUUID()
     const metadata = input?.metadata ? JSON.stringify(input.metadata) : '{}'
 
-    db
+    const row = db
       .prepare(
         `
         INSERT INTO sessions (id, kombuse_session_id, backend_type, backend_session_id, ticket_id, project_id, agent_id, metadata)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING *
       `
       )
-      .run(
+      .get(
         id,
         input?.kombuse_session_id ?? null,
         input?.backend_type ?? null,
@@ -128,9 +143,9 @@ export const sessionsRepository = {
         input?.project_id ?? null,
         input?.agent_id ?? null,
         metadata
-      )
+      ) as Record<string, unknown>
 
-    return this.get(id) as Session
+    return parseSessionRow(row)
   },
 
   /**
@@ -139,9 +154,8 @@ export const sessionsRepository = {
   touch(id: string): Session | null {
     const db = getDatabase()
 
-    db.prepare("UPDATE sessions SET updated_at = datetime('now') WHERE id = ?").run(id)
-
-    return this.get(id)
+    const row = db.prepare("UPDATE sessions SET updated_at = datetime('now') WHERE id = ? RETURNING *").get(id) as Record<string, unknown> | undefined
+    return row ? parseSessionRow(row) : null
   },
 
   /**
@@ -208,11 +222,10 @@ export const sessionsRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
-    db.prepare(`UPDATE sessions SET ${fields.join(', ')} WHERE id = ?`).run(
+    const row = db.prepare(`UPDATE sessions SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
       ...params
-    )
-
-    return this.get(id)
+    ) as Record<string, unknown> | undefined
+    return row ? parseSessionRow(row) : null
   },
 
   /**
@@ -232,32 +245,7 @@ export const sessionsRepository = {
    */
   listByTicket(ticketId: number, filters?: SessionFilters): Session[] {
     const db = getDatabase()
-
-    const conditions: string[] = ['s.ticket_id = ?']
-    const params: unknown[] = [ticketId]
-
-    if (filters?.status) {
-      conditions.push('s.status = ?')
-      params.push(filters.status)
-    }
-    if (filters?.project_id !== undefined) {
-      conditions.push('s.project_id = ?')
-      params.push(filters.project_id)
-    }
-    if (filters?.terminal_reason) {
-      conditions.push("json_extract(s.metadata, '$.terminal_reason') = ?")
-      params.push(filters.terminal_reason)
-    }
-    if (filters?.has_backend_session_id === true) {
-      conditions.push("s.backend_session_id IS NOT NULL AND trim(s.backend_session_id) <> ''")
-    }
-    if (filters?.has_backend_session_id === false) {
-      conditions.push("(s.backend_session_id IS NULL OR trim(s.backend_session_id) = '')")
-    }
-    if (filters?.agent_id !== undefined) {
-      conditions.push('s.agent_id = ?')
-      params.push(filters.agent_id)
-    }
+    const { conditions, params } = buildSessionFilters(filters, ['s.ticket_id = ?'], [ticketId])
 
     const limit = filters?.limit || 100
     const offset = filters?.offset || 0
@@ -266,20 +254,7 @@ export const sessionsRepository = {
     const sortColumn = filters?.sort_by === 'created_at' ? 'created_at' : 'updated_at'
 
     const stmt = db.prepare(`
-      SELECT s.*,
-        COALESCE(
-          (SELECT p1.name FROM profiles p1 WHERE p1.id = s.agent_id),
-          (SELECT p2.name FROM agent_invocations ai2
-           JOIN profiles p2 ON p2.id = ai2.agent_id
-           WHERE ai2.kombuse_session_id = s.kombuse_session_id
-           ORDER BY ai2.created_at DESC LIMIT 1)
-        ) AS agent_name,
-        (SELECT substr(json_extract(se.payload, '$.content'), 1, 80)
-         FROM session_events se
-         WHERE se.session_id = s.id AND se.seq = 1 AND se.event_type = 'message'
-        ) AS prompt_preview,
-        (SELECT t.ticket_number FROM tickets t WHERE t.id = s.ticket_id) AS ticket_number
-      FROM sessions s
+      ${SESSION_LIST_SELECT}
       WHERE ${conditions.join(' AND ')}
       ORDER BY s.${sortColumn} DESC
       LIMIT ? OFFSET ?

@@ -40,14 +40,15 @@ export const pluginsRepository = {
     const db = getDatabase()
     const id = input.id ?? crypto.randomUUID()
 
-    db.prepare(
+    const row = db.prepare(
       `
       INSERT INTO plugins (
         id, project_id, name, version, description, directory, manifest, is_enabled
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
     `
-    ).run(
+    ).get(
       id,
       input.project_id,
       input.name,
@@ -56,9 +57,9 @@ export const pluginsRepository = {
       input.directory,
       input.manifest,
       input.is_enabled !== false ? 1 : 0
-    )
+    ) as RawPlugin
 
-    return this.get(id) as Plugin
+    return mapPlugin(row)
   },
 
   get(id: string): Plugin | null {
@@ -135,11 +136,10 @@ export const pluginsRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
-    db.prepare(`UPDATE plugins SET ${fields.join(', ')} WHERE id = ?`).run(
+    const row = db.prepare(`UPDATE plugins SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
       ...params
-    )
-
-    return this.get(id)
+    ) as RawPlugin | undefined
+    return row ? mapPlugin(row) : null
   },
 
   delete(id: string): boolean {

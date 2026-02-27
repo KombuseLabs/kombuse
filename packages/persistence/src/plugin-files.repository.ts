@@ -63,7 +63,7 @@ export const pluginFilesRepository = {
     const db = getDatabase()
     const contentHash = computeHash(input.content)
 
-    db.prepare(
+    const row = db.prepare(
       `
       INSERT INTO plugin_files (plugin_id, path, content, content_hash)
       VALUES (?, ?, ?, ?)
@@ -72,10 +72,12 @@ export const pluginFilesRepository = {
         content_hash = excluded.content_hash,
         updated_at = datetime('now')
       WHERE is_user_modified = 0
+      RETURNING *
     `
-    ).run(input.plugin_id, input.path, input.content, contentHash)
+    ).get(input.plugin_id, input.path, input.content, contentHash) as RawPluginFile | undefined
 
-    return this.get(input.plugin_id, input.path) as PluginFile
+    // RETURNING is empty when ON CONFLICT WHERE guard prevents the update
+    return row ? mapPluginFile(row) : this.get(input.plugin_id, input.path) as PluginFile
   },
 
   update(id: number, input: UpdatePluginFileInput): PluginFile | null {
@@ -104,11 +106,10 @@ export const pluginFilesRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
-    db.prepare(`UPDATE plugin_files SET ${fields.join(', ')} WHERE id = ?`).run(
+    const row = db.prepare(`UPDATE plugin_files SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
       ...params
-    )
-
-    return this.getById(id)
+    ) as RawPluginFile | undefined
+    return row ? mapPluginFile(row) : null
   },
 
   delete(id: number): boolean {

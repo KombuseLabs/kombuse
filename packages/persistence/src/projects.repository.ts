@@ -67,15 +67,16 @@ export const projectsRepository = {
     const id = input.id || crypto.randomUUID()
     const slug = input.slug || this._generateUniqueSlug(toSlug(input.name))
 
-    db.prepare(
+    return db.prepare(
       `
       INSERT INTO projects (
         id, name, slug, description, owner_id, local_path,
         repo_source, repo_owner, repo_name
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
     `
-    ).run(
+    ).get(
       id,
       input.name,
       slug,
@@ -85,9 +86,7 @@ export const projectsRepository = {
       input.repo_source ?? null,
       input.repo_owner ?? null,
       input.repo_name ?? null
-    )
-
-    return this.get(id) as Project
+    ) as Project
   },
 
   /**
@@ -133,11 +132,10 @@ export const projectsRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
-    db.prepare(`UPDATE projects SET ${fields.join(', ')} WHERE id = ?`).run(
+    const row = db.prepare(`UPDATE projects SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
       ...params
-    )
-
-    return this.get(id)
+    ) as Project | undefined
+    return row ?? null
   },
 
   /**

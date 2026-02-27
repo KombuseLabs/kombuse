@@ -115,6 +115,7 @@ const EXPECTED_MIGRATIONS = [
   '008_project_slugs',
   '009_plugin_files',
   '010_project_uuids',
+  '011_persistence_optimizations',
 ]
 
 describe('database', () => {

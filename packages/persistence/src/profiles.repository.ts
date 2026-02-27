@@ -146,15 +146,16 @@ export const profilesRepository = {
     const db = getDatabase()
     const id = input.id || crypto.randomUUID()
 
-    db.prepare(
+    const row = db.prepare(
       `
       INSERT INTO profiles (
         id, type, name, slug, email, description, avatar_url,
         external_source, external_id, plugin_id, is_active
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      RETURNING *
     `
-    ).run(
+    ).get(
       id,
       input.type,
       input.name,
@@ -165,9 +166,9 @@ export const profilesRepository = {
       input.external_source ?? null,
       input.external_id ?? null,
       input.plugin_id ?? null
-    )
+    ) as RawProfile
 
-    return this.get(id) as Profile
+    return mapProfile(row)
   },
 
   /**
@@ -213,11 +214,10 @@ export const profilesRepository = {
     fields.push("updated_at = datetime('now')")
     params.push(id)
 
-    db.prepare(`UPDATE profiles SET ${fields.join(', ')} WHERE id = ?`).run(
+    const row = db.prepare(`UPDATE profiles SET ${fields.join(', ')} WHERE id = ? RETURNING *`).get(
       ...params
-    )
-
-    return this.get(id)
+    ) as RawProfile | undefined
+    return row ? mapProfile(row) : null
   },
 
   /**
