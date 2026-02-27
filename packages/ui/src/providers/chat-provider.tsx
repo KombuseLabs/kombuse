@@ -101,7 +101,13 @@ function mergeEventsById(
       fallbackOrderById.set(incomingEvent.eventId, nextFallbackOrder)
       nextFallbackOrder += 1
     }
-    mergedByEventId.set(incomingEvent.eventId, incomingEvent)
+    const existing = mergedByEventId.get(incomingEvent.eventId)
+    if (existing && 'images' in existing && !('images' in incomingEvent)) {
+      // Preserve client-only fields not persisted to server
+      mergedByEventId.set(incomingEvent.eventId, { ...incomingEvent, images: (existing as any).images } as SerializedAgentEvent)
+    } else {
+      mergedByEventId.set(incomingEvent.eventId, incomingEvent)
+    }
   }
 
   return [...mergedByEventId.values()].sort((a, b) => {
