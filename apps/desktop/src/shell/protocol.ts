@@ -7,7 +7,7 @@ let webRoot: string;
 
 const CSP_POLICY = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
   "img-src 'self' data: blob: http://localhost:* http://127.0.0.1:*",
