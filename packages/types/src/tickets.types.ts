@@ -1,83 +1,20 @@
-import type { Label } from './labels.types'
-import type { Profile } from './profiles.types'
+import type { z } from 'zod'
+import type {
+  ticketStatusSchema,
+  ticketPrioritySchema,
+  ticketSchema,
+  ticketWithRelationsSchema,
+  ticketWithLabelsSchema,
+  ticketStatusCountsSchema,
+} from './schemas/entities'
 
-/**
- * Ticket status enum matching database CHECK constraint
- */
-export type TicketStatus = 'open' | 'closed' | 'in_progress' | 'blocked'
-
-/**
- * Priority levels 0-4 (0 = lowest, 4 = highest)
- */
-export type TicketPriority = 0 | 1 | 2 | 3 | 4
-
-/**
- * Core ticket entity matching database schema
- */
-export interface Ticket {
-  id: number
-  ticket_number: number
-  project_id: string
-  author_id: string
-  assignee_id: string | null
-  /** Current active claim holder (may differ from assignee_id) */
-  claimed_by_id: string | null
-  title: string
-  body: string | null
-  /** Whether agent triggers are enabled for this ticket */
-  triggers_enabled: boolean
-  /** Whether agent loop protection is enabled for this ticket */
-  loop_protection_enabled: boolean
-  /** Whether the loop guard has fired (invocation count >= maxDepth). Computed on each GET, not persisted. */
-  loop_protection_tripped?: boolean
-  status: TicketStatus
-  priority: TicketPriority | null
-  external_source: string | null
-  external_id: string | null
-  milestone_id: number | null
-  external_url: string | null
-  synced_at: string | null
-  /** Timestamp when the ticket was claimed by a claimer */
-  claimed_at: string | null
-  /** Optional expiration for the claim (for stale assignment cleanup) */
-  claim_expires_at: string | null
-  created_at: string
-  updated_at: string
-  /** Timestamp when the ticket was (re)opened */
-  opened_at: string
-  /** Timestamp when the ticket was closed (null if open) */
-  closed_at: string | null
-  /** Timestamp of the most recent activity on the ticket */
-  last_activity_at: string
-}
-
-/**
- * Ticket with related entities
- */
-export interface TicketWithRelations extends Ticket {
-  author: Profile
-  assignee: Profile | null
-  labels: Label[]
-  /** 1 if ticket has activity since the viewer last viewed it, 0 otherwise. Only present when viewer_id is provided. */
-  has_unread?: number
-  /** FTS snippet excerpt showing matched text. Only present when search filter is active. */
-  match_context?: string | null
-  /** Where the match was found. Only present when search filter is active. */
-  match_source?: 'title' | 'body' | 'comment' | null
-}
-
-/**
- * Ticket with labels only (for list views)
- */
-export interface TicketWithLabels extends Ticket {
-  labels: Label[]
-  /** 1 if ticket has activity since the viewer last viewed it, 0 otherwise. Only present when viewer_id is provided. */
-  has_unread?: number
-  /** FTS snippet excerpt showing matched text. Only present when search filter is active. */
-  match_context?: string | null
-  /** Where the match was found. Only present when search filter is active. */
-  match_source?: 'title' | 'body' | 'comment' | null
-}
+// Derived from Zod schemas (single source of truth)
+export type TicketStatus = z.infer<typeof ticketStatusSchema>
+export type TicketPriority = z.infer<typeof ticketPrioritySchema>
+export type Ticket = z.infer<typeof ticketSchema>
+export type TicketWithRelations = z.infer<typeof ticketWithRelationsSchema>
+export type TicketWithLabels = z.infer<typeof ticketWithLabelsSchema>
+export type TicketStatusCounts = z.infer<typeof ticketStatusCountsSchema>
 
 /**
  * Filters for listing tickets
@@ -169,11 +106,4 @@ export interface ClaimResult {
   ticket: Ticket | null
   /** Reason if claim failed (e.g., already claimed by another) */
   reason?: string
-}
-
-export interface TicketStatusCounts {
-  open: number
-  in_progress: number
-  blocked: number
-  closed: number
 }

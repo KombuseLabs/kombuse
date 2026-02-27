@@ -1,21 +1,14 @@
-export type MilestoneStatus = 'open' | 'closed'
+import type { z } from 'zod'
+import type {
+  milestoneStatusSchema,
+  milestoneSchema,
+  milestoneWithStatsSchema,
+} from './schemas/entities'
 
-export interface Milestone {
-  id: number
-  project_id: string
-  title: string
-  description: string | null
-  due_date: string | null
-  status: MilestoneStatus
-  created_at: string
-  updated_at: string
-}
-
-export interface MilestoneWithStats extends Milestone {
-  open_count: number
-  closed_count: number
-  total_count: number
-}
+// Derived from Zod schemas (single source of truth)
+export type MilestoneStatus = z.infer<typeof milestoneStatusSchema>
+export type Milestone = z.infer<typeof milestoneSchema>
+export type MilestoneWithStats = z.infer<typeof milestoneWithStatsSchema>
 
 export interface CreateMilestoneInput {
   project_id: string

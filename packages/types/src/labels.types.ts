@@ -1,18 +1,8 @@
-/**
- * Core label entity
- */
-export interface Label {
-  id: number
-  project_id: string
-  name: string
-  slug: string | null
-  color: string
-  description: string | null
-  plugin_id: string | null
-  is_enabled: boolean
-  usage_count?: number
-  created_at: string
-}
+import type { z } from 'zod'
+import type { labelSchema } from './schemas/entities'
+
+// Derived from Zod schemas (single source of truth)
+export type Label = z.infer<typeof labelSchema>
 
 export type LabelSortBy = 'name' | 'usage'
 export type LabelUsageScope = 'open'

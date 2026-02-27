@@ -1,12 +1,8 @@
-/**
- * Records when a user last viewed a ticket
- */
-export interface TicketView {
-  id: number
-  ticket_id: number
-  profile_id: string
-  last_viewed_at: string
-}
+import type { z } from 'zod'
+import type { ticketViewSchema } from './schemas/entities'
+
+// Derived from Zod schemas (single source of truth)
+export type TicketView = z.infer<typeof ticketViewSchema>
 
 /**
  * Input for upserting a ticket view

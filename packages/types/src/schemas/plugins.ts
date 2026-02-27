@@ -35,7 +35,7 @@ export const availablePluginSchema = z.object({
   name: z.string().min(1),
   version: z.string().min(1),
   description: z.string().optional(),
-  directory: z.string().min(1),
+  directory: z.string().min(1).optional(),
   source: z.enum(['project', 'global', 'filesystem', 'github', 'http']),
   source_feed_id: z.string().optional(),
   installed: z.boolean(),
@@ -92,5 +92,3 @@ export const pluginFileSchema = z.object({
   updated_at: timestampSchema,
 })
 
-export type PluginEntity = z.infer<typeof pluginSchema>
-export type AvailablePluginEntity = z.infer<typeof availablePluginSchema>

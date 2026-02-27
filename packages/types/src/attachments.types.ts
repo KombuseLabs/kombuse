@@ -1,27 +1,9 @@
-/**
- * Lightweight attachment metadata (excludes internal fields like storage_path)
- */
-export interface AttachmentMeta {
-  id: number
-  filename: string
-  mime_type: string
-  size_bytes: number
-}
+import type { z } from 'zod'
+import type { attachmentMetaSchema, attachmentSchema } from './schemas/entities'
 
-/**
- * Core attachment entity
- */
-export interface Attachment {
-  id: number
-  comment_id: number | null
-  ticket_id: number | null
-  filename: string
-  mime_type: string
-  size_bytes: number
-  storage_path: string
-  uploaded_by_id: string
-  created_at: string
-}
+// Derived from Zod schemas (single source of truth)
+export type AttachmentMeta = z.infer<typeof attachmentMetaSchema>
+export type Attachment = z.infer<typeof attachmentSchema>
 
 /**
  * Input for creating an attachment

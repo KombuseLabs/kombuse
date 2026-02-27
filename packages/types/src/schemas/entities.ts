@@ -54,7 +54,7 @@ export const labelSchema = z.object({
   slug: z.string().nullable(),
   color: z.string().min(1),
   description: z.string().nullable(),
-  plugin_id: z.string().nullable().optional(),
+  plugin_id: z.string().nullable(),
   is_enabled: z.union([z.boolean(), z.number().transform((v) => v === 1)]),
   usage_count: z.number().int().nonnegative().optional(),
   created_at: timestampSchema,
@@ -113,6 +113,7 @@ export const ticketSchema = z.object({
   opened_at: timestampSchema,
   closed_at: nullableTimestampSchema,
   last_activity_at: timestampSchema,
+  loop_protection_tripped: z.boolean().optional(),
 })
 
 export const ticketWithRelationsSchema = ticketSchema.extend({
@@ -302,23 +303,3 @@ export const databaseTableInfoSchema = z.object({
   type: databaseObjectTypeSchema,
 })
 
-export type ProfileEntity = z.infer<typeof profileSchema>
-export type ProjectEntity = z.infer<typeof projectSchema>
-export type LabelEntity = z.infer<typeof labelSchema>
-export type MilestoneEntity = z.infer<typeof milestoneSchema>
-export type TicketEntity = z.infer<typeof ticketSchema>
-export type TicketWithRelationsEntity = z.infer<typeof ticketWithRelationsSchema>
-export type TicketWithLabelsEntity = z.infer<typeof ticketWithLabelsSchema>
-export type TicketViewEntity = z.infer<typeof ticketViewSchema>
-export type CommentEntity = z.infer<typeof commentSchema>
-export type CommentWithAuthorEntity = z.infer<typeof commentWithAuthorSchema>
-export type AttachmentEntity = z.infer<typeof attachmentSchema>
-export type AttachmentMetaEntity = z.infer<typeof attachmentMetaSchema>
-export type EventEntity = z.infer<typeof eventSchema>
-export type EventWithActorEntity = z.infer<typeof eventWithActorSchema>
-export type EventSubscriptionEntity = z.infer<typeof eventSubscriptionSchema>
-export type SessionEntity = z.infer<typeof sessionSchema>
-export type PublicSessionEntity = z.infer<typeof publicSessionSchema>
-export type SessionEventEntity = z.infer<typeof sessionEventSchema>
-export type PermissionLogEntryEntity = z.infer<typeof permissionLogEntrySchema>
-export type ProfileSettingEntity = z.infer<typeof profileSettingSchema>

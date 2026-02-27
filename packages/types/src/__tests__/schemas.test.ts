@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { AgentConfig, AgentInvocation, Permission } from '../agents.types'
 import type { DatabaseQueryResponse } from '../database.types'
-import type { Profile } from '../profiles.types'
-import type { Project } from '../projects.types'
-import type { Ticket } from '../tickets.types'
 import type { TicketTimeline } from '../timeline.types'
 import {
   agentConfigSchema,
+  agentInvocationSchema,
   agentProcessEventResponseSchema,
   apiErrorSchema,
   claudeCodeSessionResponseSchema,
@@ -21,7 +18,7 @@ import {
 const ts = '2026-02-14 23:40:00'
 
 describe('shared agent schemas', () => {
-  it('parses permissions and matches Permission type', () => {
+  it('parses permissions correctly', () => {
     const parsed = permissionSchema.parse({
       type: 'resource',
       resource: 'ticket',
@@ -30,8 +27,7 @@ describe('shared agent schemas', () => {
       filter: 'project:proj-1',
     })
 
-    const typedPermission: Permission = parsed
-    expect(typedPermission.type).toBe('resource')
+    expect(parsed.type).toBe('resource')
   })
 
   it('keeps extra config keys while validating known fields', () => {
@@ -41,14 +37,13 @@ describe('shared agent schemas', () => {
       custom_setting: 'keep-me',
     })
 
-    const typedConfig: AgentConfig = parsed
-    expect(typedConfig.backend_type).toBe('codex')
-    expect((typedConfig as Record<string, unknown>).custom_setting).toBe('keep-me')
+    expect(parsed.backend_type).toBe('codex')
+    expect((parsed as Record<string, unknown>).custom_setting).toBe('keep-me')
   })
 })
 
 describe('shared entity schemas', () => {
-  it('parses profile/project/ticket payloads with type compatibility', () => {
+  it('parses profile/project/ticket payloads', () => {
     const profile = profileSchema.parse({
       id: 'user-1',
       type: 'user',
@@ -106,13 +101,9 @@ describe('shared entity schemas', () => {
       last_activity_at: ts,
     })
 
-    const typedProfile: Profile = profile
-    const typedProject: Project = project
-    const typedTicket: Ticket = ticket
-
-    expect(typedProfile.id).toBe('user-1')
-    expect(typedProject.id).toBe('proj-1')
-    expect(typedTicket.id).toBe(135)
+    expect(profile.id).toBe('user-1')
+    expect(project.id).toBe('proj-1')
+    expect(ticket.id).toBe(135)
   })
 })
 
@@ -169,7 +160,7 @@ describe('shared API schemas', () => {
   })
 
   it('validates agent process-event response shape', () => {
-    const invocation: AgentInvocation = {
+    const invocation = agentInvocationSchema.parse({
       id: 1,
       agent_id: 'planner',
       trigger_id: 10,
@@ -187,7 +178,7 @@ describe('shared API schemas', () => {
       started_at: null,
       completed_at: null,
       created_at: ts,
-    }
+    })
 
     const parsed = agentProcessEventResponseSchema.parse({
       event_id: 20,

@@ -11,14 +11,6 @@
     "./schemas": {
       "types": "./src/schemas/index.ts",
       "default": "./src/schemas/index.ts"
-    },
-    "./agent": {
-      "types": "./src/agent.types.ts",
-      "default": "./src/agent.types.ts"
-    },
-    "./commands": {
-      "types": "./src/commands.types.ts",
-      "default": "./src/commands.types.ts"
     }
   },
   "scripts": {

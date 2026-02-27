@@ -64,6 +64,12 @@ export const pluginBaseSchema = z.object({
   is_enabled: z.boolean(),
 })
 
+export const resolvedPresetSchema = z.object({
+  type: z.string(),
+  autoApprovedTools: z.array(z.string()),
+  autoApprovedBashCommands: z.array(z.string()),
+})
+
 export const agentSchema = z.object({
   id: z.string().min(1),
   slug: z.string().nullable(),
@@ -74,6 +80,7 @@ export const agentSchema = z.object({
   plugin_id: z.string().nullable(),
   project_id: z.string().nullable(),
   plugin_base: pluginBaseSchema.nullable(),
+  resolved_preset: resolvedPresetSchema.optional(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
 })
@@ -87,6 +94,7 @@ export const createAgentInputSchema = z.object({
   permissions: z.array(permissionSchema).optional(),
   config: agentConfigSchema.optional(),
   is_enabled: z.boolean().optional(),
+  plugin_id: z.string().nullable().optional(),
   plugin_base: pluginBaseSchema.nullable().optional(),
   project_id: z.string().nullable().optional(),
 })
@@ -96,6 +104,8 @@ export const updateAgentInputSchema = z.object({
   permissions: z.array(permissionSchema).optional(),
   config: agentConfigSchema.optional(),
   is_enabled: z.boolean().optional(),
+  plugin_id: z.string().nullable().optional(),
+  project_id: z.string().nullable().optional(),
   plugin_base: pluginBaseSchema.nullable().optional(),
 })
 
@@ -127,6 +137,7 @@ export const agentTriggerSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).nullable(),
   is_enabled: z.boolean(),
   priority: z.number().int().nonnegative(),
+  plugin_id: z.string().nullable(),
   allowed_invokers: z.array(allowedInvokerSchema).nullable(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
@@ -140,6 +151,7 @@ export const createTriggerInputSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).optional(),
   is_enabled: z.boolean().optional(),
   priority: z.number().int().nonnegative().optional(),
+  plugin_id: z.string().nullable().optional(),
   allowed_invokers: z.array(allowedInvokerSchema).optional(),
 })
 
@@ -149,6 +161,7 @@ export const updateTriggerInputSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).nullable().optional(),
   is_enabled: z.boolean().optional(),
   priority: z.number().int().nonnegative().optional(),
+  plugin_id: z.string().nullable().optional(),
   allowed_invokers: z.array(allowedInvokerSchema).nullable().optional(),
 })
 
@@ -189,15 +202,3 @@ export const processEventInputSchema = z.object({
   event_id: z.coerce.number().int().positive(),
 })
 
-export type PermissionSchema = z.infer<typeof permissionSchema>
-export type AgentConfigSchema = z.infer<typeof agentConfigSchema>
-export type AgentEntitySchema = z.infer<typeof agentSchema>
-export type CreateAgentInput = z.infer<typeof createAgentInputSchema>
-export type UpdateAgentInput = z.infer<typeof updateAgentInputSchema>
-export type AgentFilters = z.infer<typeof agentFiltersSchema>
-export type AgentTriggerEntity = z.infer<typeof agentTriggerSchema>
-export type CreateTriggerInput = z.infer<typeof createTriggerInputSchema>
-export type UpdateTriggerInput = z.infer<typeof updateTriggerInputSchema>
-export type AgentInvocationEntity = z.infer<typeof agentInvocationSchema>
-export type InvocationFilters = z.infer<typeof invocationFiltersSchema>
-export type ProcessEventInput = z.infer<typeof processEventInputSchema>

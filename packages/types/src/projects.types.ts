@@ -1,24 +1,9 @@
-/**
- * Repository source types
- */
-export type RepoSource = 'github' | 'gitlab' | 'bitbucket'
+import type { z } from 'zod'
+import type { projectRepoSourceSchema, projectSchema } from './schemas/entities'
 
-/**
- * Core project entity
- */
-export interface Project {
-  id: string
-  name: string
-  slug: string
-  description: string | null
-  owner_id: string
-  local_path: string | null
-  repo_source: RepoSource | null
-  repo_owner: string | null
-  repo_name: string | null
-  created_at: string
-  updated_at: string
-}
+// Derived from Zod schemas (single source of truth)
+export type RepoSource = z.infer<typeof projectRepoSourceSchema>
+export type Project = z.infer<typeof projectSchema>
 
 /**
  * Input for creating a project

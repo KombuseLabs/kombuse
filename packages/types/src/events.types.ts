@@ -1,33 +1,16 @@
-import type { Profile } from './profiles.types'
+import type { z } from 'zod'
+import type {
+  actorTypeSchema,
+  eventSchema,
+  eventWithActorSchema,
+  eventSubscriptionSchema,
+} from './schemas/entities'
 
-/**
- * Actor type for events
- */
-export type ActorType = 'user' | 'agent' | 'system'
-
-/**
- * Core event entity
- */
-export interface Event {
-  id: number
-  event_type: string
-  project_id: string | null
-  ticket_id: number | null
-  ticket_number: number | null
-  comment_id: number | null
-  actor_id: string | null
-  actor_type: ActorType
-  kombuse_session_id: string | null
-  payload: string // JSON string
-  created_at: string
-}
-
-/**
- * Event with resolved actor profile
- */
-export interface EventWithActor extends Event {
-  actor: Profile | null
-}
+// Derived from Zod schemas (single source of truth)
+export type ActorType = z.infer<typeof actorTypeSchema>
+export type Event = z.infer<typeof eventSchema>
+export type EventWithActor = z.infer<typeof eventWithActorSchema>
+export type EventSubscription = z.infer<typeof eventSubscriptionSchema>
 
 /**
  * Event with parsed payload
@@ -90,18 +73,6 @@ export const EVENT_TYPES = {
 } as const
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES]
-
-/**
- * Event subscription for tracking which events an agent has processed
- */
-export interface EventSubscription {
-  id: number
-  subscriber_id: string
-  event_type: string
-  project_id: string | null
-  last_processed_event_id: number | null
-  created_at: string
-}
 
 /**
  * Input for creating/updating an event subscription

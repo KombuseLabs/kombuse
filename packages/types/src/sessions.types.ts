@@ -1,14 +1,22 @@
+import type { z } from 'zod'
+import type {
+  sessionStatusSchema,
+  sessionSchema,
+  sessionEventSchema,
+  permissionLogEntrySchema,
+} from './schemas/entities'
 import type { KombuseSessionId } from './session-id.types'
 import type { BackendType } from './agent.types'
 
-/**
- * All possible session lifecycle states.
- */
-export type SessionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'aborted' | 'stopped'
+// Derived from Zod schemas (single source of truth)
+export type SessionStatus = z.infer<typeof sessionStatusSchema>
+export type SessionEvent = z.infer<typeof sessionEventSchema>
+export type PermissionLogEntry = z.infer<typeof permissionLogEntrySchema>
 
 /**
  * Persisted workflow state that survives process restarts.
  * Stored as JSON in sessions.metadata column.
+ * Kept hand-written because the Zod schema is z.record() (too loose).
  */
 export interface SessionMetadata {
   planCommentId?: number
@@ -39,35 +47,13 @@ export interface SessionMetadata {
 }
 
 /**
- * Session entity - stores agent conversation history
+ * Session entity - stores agent conversation history.
+ * Derived from sessionSchema with overrides for branded KombuseSessionId and rich SessionMetadata.
  */
-export interface Session {
-  id: string
+type SessionBase = z.infer<typeof sessionSchema>
+export type Session = Omit<SessionBase, 'kombuse_session_id' | 'metadata'> & {
   kombuse_session_id: KombuseSessionId | null
-  backend_type: BackendType | null
-  backend_session_id: string | null
-  ticket_id: number | null
-  project_id: string | null
-  agent_id: string | null
-  status: SessionStatus
   metadata: SessionMetadata
-  started_at: string
-  completed_at: string | null
-  failed_at: string | null
-  aborted_at: string | null
-  last_event_seq: number
-  created_at: string
-  updated_at: string
-  agent_name?: string | null
-  prompt_preview?: string | null
-  /** API convenience field, derived from backend_type/metadata (not stored column). */
-  effective_backend?: BackendType | null
-  /** API convenience field, derived from metadata (not stored column). */
-  model_preference?: string | null
-  /** API convenience field, derived from metadata (not stored column). */
-  applied_model?: string | null
-  /** API convenience field, resolved from tickets table (not stored column). */
-  ticket_number?: number | null
 }
 
 /**
@@ -122,19 +108,6 @@ export interface UpdateSessionInput {
 }
 
 /**
- * Session event entity - stores individual events within a session
- */
-export interface SessionEvent {
-  id: number
-  session_id: string
-  kombuse_session_id: string | null
-  seq: number
-  event_type: string
-  payload: Record<string, unknown>
-  created_at: string
-}
-
-/**
  * Input for creating a session event
  */
 export interface CreateSessionEventInput {
@@ -154,27 +127,6 @@ export interface SessionEventFilters {
   since_seq?: number
   limit?: number
   offset?: number
-}
-
-/**
- * A permission log entry combining a permission request with its response.
- */
-export interface PermissionLogEntry {
-  id: number
-  session_id: string
-  kombuse_session_id: string | null
-  project_id: string | null
-  ticket_number: number | null
-  ticket_title: string | null
-  requested_at: string
-  request_id: string
-  tool_name: string
-  description: string | null
-  input: Record<string, unknown>
-  auto_approved: boolean
-  behavior: 'allow' | 'deny' | null
-  deny_message: string | null
-  resolved_at: string | null
 }
 
 /**

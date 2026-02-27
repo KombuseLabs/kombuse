@@ -1,26 +1,9 @@
-/**
- * Profile type discriminator
- */
-export type ProfileType = 'user' | 'agent'
+import type { z } from 'zod'
+import type { profileTypeSchema, profileSchema } from './schemas/entities'
 
-/**
- * Core profile entity (users and agents)
- */
-export interface Profile {
-  id: string
-  type: ProfileType
-  name: string
-  slug: string | null
-  email: string | null
-  description: string | null
-  avatar_url: string | null
-  external_source: string | null
-  external_id: string | null
-  plugin_id: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
+// Derived from Zod schemas (single source of truth)
+export type ProfileType = z.infer<typeof profileTypeSchema>
+export type Profile = z.infer<typeof profileSchema>
 
 /**
  * Input for creating a profile
