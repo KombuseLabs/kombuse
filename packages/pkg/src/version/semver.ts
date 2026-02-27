@@ -1,4 +1,4 @@
-import { gt, valid, rcompare, maxSatisfying } from 'semver'
+import { gt, gte, valid, rcompare, maxSatisfying } from 'semver'
 
 export function isValidVersion(version: string): boolean {
   return valid(version) !== null
@@ -23,4 +23,9 @@ export function findMaxSatisfying(
   range: string
 ): string | null {
   return maxSatisfying(versions, range)
+}
+
+export function meetsMinimumVersion(installed: string, minimum: string): boolean {
+  if (!valid(installed) || !valid(minimum)) return false
+  return gte(installed, minimum)
 }

@@ -31,6 +31,8 @@ import {
   resolveConfiguredBackendType,
   resolveModelPreference,
 } from '@kombuse/services'
+import { checkAllBackendStatuses } from '../backend-status'
+import { meetsMinimumVersion } from '@kombuse/pkg'
 import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registry'
 import { buildPersistedContent } from './content-helpers'
 import { broadcastPermissionPending } from './permission-service'
@@ -584,6 +586,20 @@ export function startAgentChatSession(
     userDefaultBackendType,
     fallbackBackendType: BACKEND_TYPES.CLAUDE_CODE,
   })
+
+  // Per-agent minimum version gate
+  const agentMinVersion = (agent?.config as { min_backend_version?: string } | undefined)?.min_backend_version
+  if (agentMinVersion && resolvedBackendType !== BACKEND_TYPES.MOCK) {
+    const statuses = checkAllBackendStatuses()
+    const status = statuses.find(s => s.backendType === resolvedBackendType)
+    if (status?.version && !meetsMinimumVersion(status.version, agentMinVersion)) {
+      emit({
+        type: 'error',
+        message: `Backend ${resolvedBackendType} version ${status.version} does not meet minimum ${agentMinVersion} required by this agent. Please update your CLI.`,
+      })
+      return
+    }
+  }
 
   const persistedSessionModelPreference = normalizeModelPreference(
     existingSessionByKombuse?.metadata?.model_preference

@@ -5,6 +5,7 @@ import {
   sortVersionsDesc,
   findLatest,
   findMaxSatisfying,
+  meetsMinimumVersion,
 } from '../version/semver'
 
 describe('semver utilities', () => {
@@ -108,6 +109,37 @@ describe('semver utilities', () => {
           '>=1.5.0 <2.0.0'
         )
       ).toBe('1.9.0')
+    })
+  })
+
+  describe('meetsMinimumVersion', () => {
+    it('should return true when versions are equal', () => {
+      expect(meetsMinimumVersion('1.0.40', '1.0.40')).toBe(true)
+    })
+
+    it('should return true when installed is above minimum', () => {
+      expect(meetsMinimumVersion('1.1.0', '1.0.40')).toBe(true)
+      expect(meetsMinimumVersion('2.0.0', '1.0.40')).toBe(true)
+    })
+
+    it('should return false when installed is below minimum', () => {
+      expect(meetsMinimumVersion('1.0.39', '1.0.40')).toBe(false)
+      expect(meetsMinimumVersion('0.100.0', '1.0.40')).toBe(false)
+    })
+
+    it('should return false for pre-release below minimum (standard semver)', () => {
+      expect(meetsMinimumVersion('1.0.40-beta.1', '1.0.40')).toBe(false)
+    })
+
+    it('should return true for pre-release above minimum', () => {
+      expect(meetsMinimumVersion('1.0.41-beta.1', '1.0.40')).toBe(true)
+    })
+
+    it('should return false for invalid strings', () => {
+      expect(meetsMinimumVersion('bad', '1.0.0')).toBe(false)
+      expect(meetsMinimumVersion('1.0.0', 'bad')).toBe(false)
+      expect(meetsMinimumVersion('bad', 'bad')).toBe(false)
+      expect(meetsMinimumVersion('', '')).toBe(false)
     })
   })
 })

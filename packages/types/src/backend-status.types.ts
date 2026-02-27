@@ -5,4 +5,6 @@ export interface BackendStatus {
   available: boolean
   version: string | null
   path: string | null
+  meetsMinimum: boolean
+  minimumVersion: string | null
 }

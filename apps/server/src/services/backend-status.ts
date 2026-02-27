@@ -1,7 +1,13 @@
 import { execFileSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
 import { resolveClaudePath, resolveCodexPath } from '@kombuse/agent'
+import { meetsMinimumVersion } from '@kombuse/pkg'
 import { BACKEND_TYPES, type BackendType, type BackendStatus } from '@kombuse/types'
+
+export const MIN_SUPPORTED_VERSIONS: Record<string, string> = {
+  'claude-code': '1.0.40',
+  'codex': '0.100.0',
+}
 
 const CACHE_TTL_MS = 60_000
 let cache: { statuses: BackendStatus[]; fetchedAt: number } | null = null
@@ -31,9 +37,11 @@ function getVersion(binaryPath: string): string | null {
   }
 }
 
-function checkSingleBackend(backendType: BackendType): BackendStatus {
+export function checkSingleBackend(backendType: BackendType): BackendStatus {
+  const minimumVersion = MIN_SUPPORTED_VERSIONS[backendType] ?? null
+
   if (backendType === BACKEND_TYPES.MOCK) {
-    return { backendType, available: true, version: null, path: null }
+    return { backendType, available: true, version: null, path: null, meetsMinimum: true, minimumVersion: null }
   }
 
   const resolvedPath =
@@ -45,15 +53,21 @@ function checkSingleBackend(backendType: BackendType): BackendStatus {
 
   if (isReal) {
     const version = getVersion(resolvedPath)
-    return { backendType, available: true, version, path: resolvedPath }
+    const meets = version !== null && minimumVersion !== null
+      ? meetsMinimumVersion(version, minimumVersion)
+      : true
+    return { backendType, available: true, version, path: resolvedPath, meetsMinimum: meets, minimumVersion }
   }
 
   // Bare-name fallback — try PATH resolution via --version
   const version = getVersion(resolvedPath)
   if (version) {
-    return { backendType, available: true, version, path: null }
+    const meets = minimumVersion !== null
+      ? meetsMinimumVersion(version, minimumVersion)
+      : true
+    return { backendType, available: true, version, path: null, meetsMinimum: meets, minimumVersion }
   }
-  return { backendType, available: false, version: null, path: null }
+  return { backendType, available: false, version: null, path: null, meetsMinimum: false, minimumVersion }
 }
 
 export function checkAllBackendStatuses(): BackendStatus[] {

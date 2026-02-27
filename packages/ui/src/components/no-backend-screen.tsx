@@ -23,6 +23,8 @@ function NoBackendScreen() {
         available: false as const,
         version: null,
         path: null,
+        meetsMinimum: false,
+        minimumVersion: null,
       }));
 
   return (
@@ -55,6 +57,11 @@ function NoBackendScreen() {
               <code className="block rounded bg-muted px-3 py-2 text-xs font-mono">
                 {getInstallCommand(status.backendType)}
               </code>
+              {status.minimumVersion && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Minimum required version: {status.minimumVersion}
+                </p>
+              )}
             </div>
           ))}
         </div>

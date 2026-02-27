@@ -64,6 +64,7 @@
         "@kombuse/core": "*",
         "@kombuse/mcp": "*",
         "@kombuse/persistence": "*",
+        "@kombuse/pkg": "*",
         "@kombuse/services": "*",
         "@kombuse/types": "*",
         "@modelcontextprotocol/sdk": "^1.18.1",
@@ -229,7 +230,6 @@
         "@kombuse/types": "*",
         "js-yaml": "^4.1.0",
         "nunjucks": "^3.2.4",
-        "tar": "^7.4.3",
       },
       "devDependencies": {
         "@repo/eslint-config": "*",

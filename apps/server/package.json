@@ -30,6 +30,7 @@
     "@kombuse/core": "*",
     "@kombuse/mcp": "*",
     "@kombuse/persistence": "*",
+    "@kombuse/pkg": "*",
     "@kombuse/services": "*",
     "@kombuse/types": "*",
     "@modelcontextprotocol/sdk": "^1.18.1",

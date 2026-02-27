@@ -99,6 +99,9 @@ export interface AgentConfig {
   /** Override auto-approved bash command prefixes (replaces preset list when present) */
   auto_approved_bash_commands_override?: string[]
 
+  /** Minimum backend CLI version required (e.g. '1.0.50'). Rejects session start if not met. */
+  min_backend_version?: string
+
   /** Additional custom settings */
   [key: string]: unknown
 }

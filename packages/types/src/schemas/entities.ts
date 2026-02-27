@@ -6,6 +6,8 @@ export const backendStatusSchema = z.object({
   available: z.boolean(),
   version: z.string().nullable(),
   path: z.string().nullable(),
+  meetsMinimum: z.boolean(),
+  minimumVersion: z.string().nullable(),
 })
 
 export const timestampSchema = z.string().min(1)

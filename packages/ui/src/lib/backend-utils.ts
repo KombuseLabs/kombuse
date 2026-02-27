@@ -27,6 +27,10 @@ export function getInstallCommand(backendType: string): string {
   return ''
 }
 
+export function getUpdateCommand(backendType: string): string {
+  return getInstallCommand(backendType)
+}
+
 export type BackendChoice = 'global' | BackendType
 
 export function normalizeBackendChoice(value: unknown): BackendChoice {

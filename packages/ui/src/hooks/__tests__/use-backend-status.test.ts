@@ -23,12 +23,16 @@ const TEST_STATUSES: BackendStatus[] = [
     available: true,
     version: '1.0.16',
     path: '/usr/local/bin/claude',
+    meetsMinimum: false,
+    minimumVersion: '1.0.40',
   },
   {
     backendType: 'codex',
     available: false,
     version: null,
     path: null,
+    meetsMinimum: false,
+    minimumVersion: '0.100.0',
   },
 ]
 
@@ -79,12 +83,16 @@ describe('useRefreshBackendStatus', () => {
         available: true,
         version: '1.0.17',
         path: '/usr/local/bin/claude',
+        meetsMinimum: false,
+        minimumVersion: '1.0.40',
       },
       {
         backendType: 'codex',
         available: true,
         version: '0.3.2',
         path: '/usr/local/bin/codex',
+        meetsMinimum: false,
+        minimumVersion: '0.100.0',
       },
     ]
     mockRefreshStatus.mockResolvedValue(refreshedStatuses)
