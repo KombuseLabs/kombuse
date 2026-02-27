@@ -152,7 +152,7 @@ export const createTriggerInputSchema = z.object({
   is_enabled: z.boolean().optional(),
   priority: z.number().int().nonnegative().optional(),
   plugin_id: z.string().nullable().optional(),
-  allowed_invokers: z.array(allowedInvokerSchema).optional(),
+  allowed_invokers: z.array(allowedInvokerSchema).nullable().optional(),
 })
 
 export const updateTriggerInputSchema = z.object({

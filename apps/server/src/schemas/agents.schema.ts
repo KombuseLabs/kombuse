@@ -42,7 +42,7 @@ export const createTriggerSchema = z.object({
   conditions: z.record(z.string(), z.unknown()).optional(),
   is_enabled: z.boolean().optional(),
   priority: z.coerce.number().int().nonnegative().optional(),
-  allowed_invokers: z.array(allowedInvokerSchema).optional(),
+  allowed_invokers: z.array(allowedInvokerSchema).nullable().optional(),
 })
 
 export const updateTriggerSchema = z.object({
