@@ -96,7 +96,7 @@ export class ShellUpdater {
     return {
       version: info.version,
       downloadUrl: "",
-      releaseUrl: `https://github.com/kombusehq/kombuse-mono/releases/tag/shell-v${info.version}`,
+      releaseUrl: `https://github.com/KombuseLabs/kombuse/releases/tag/shell-v${info.version}`,
       releaseNotes,
       publishedAt: info.releaseDate ?? new Date().toISOString(),
     };

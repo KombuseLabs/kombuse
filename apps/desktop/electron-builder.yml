@@ -39,5 +39,5 @@ afterPack: ./build/afterPack.cjs
 # electron-updater reads latest-mac.yml from GitHub Releases
 publish:
   provider: github
-  owner: kombusehq
-  repo: kombuse-mono
+  owner: KombuseLabs
+  repo: kombuse
