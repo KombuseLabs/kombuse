@@ -47,7 +47,7 @@ export type AgentInvocationFilters = z.infer<typeof invocationFiltersSchema>
  */
 export interface CreateAgentInvocationInput {
   agent_id: string
-  trigger_id: number
+  trigger_id?: number | null
   event_id?: number
   session_id?: string
   project_id?: string

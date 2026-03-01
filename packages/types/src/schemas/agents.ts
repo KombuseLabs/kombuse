@@ -170,7 +170,7 @@ export const invocationStatusSchema = z.enum(['pending', 'running', 'completed',
 export const agentInvocationSchema = z.object({
   id: z.number().int().positive(),
   agent_id: z.string().min(1),
-  trigger_id: z.number().int().positive(),
+  trigger_id: z.number().int().positive().nullable(),
   event_id: z.number().int().positive().nullable(),
   session_id: z.string().nullable(),
   project_id: z.string().nullable(),

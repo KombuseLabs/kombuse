@@ -717,6 +717,27 @@ export function startAgentChatSession(
   const effectiveProjectId: string | undefined =
     continuationProjectId ?? normalizeProjectId(projectId)
 
+  // Create an initial invocation for chat-originated agent sessions so that
+  // resolveAgentContext() can authenticate the agent for MCP tool calls.
+  if (continuationInvocationId === null && agent) {
+    const chatInvocation = agentInvocationsRepository.create({
+      agent_id: agent.id,
+      session_id: persistentSessionId,
+      project_id: effectiveProjectId,
+      context: {
+        event_type: 'chat.started',
+        project_id: effectiveProjectId ?? null,
+        ticket_id: ticketId ?? null,
+      },
+    })
+    agentInvocationsRepository.update(chatInvocation.id, {
+      kombuse_session_id: appSessionId,
+      status: 'running',
+      started_at: new Date().toISOString(),
+    })
+    continuationInvocationId = chatInvocation.id
+  }
+
   let existingBackend = activeBackends.get(appSessionId)
   if (
     existingBackend

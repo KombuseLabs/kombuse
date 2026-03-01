@@ -818,6 +818,45 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX idx_session_events_request_id ON session_events(request_id) WHERE request_id IS NOT NULL`)
     },
   },
+  {
+    name: '013_nullable_invocation_trigger',
+    run: (db: DatabaseType) => {
+      // Make trigger_id nullable so chat-originated agent sessions can create invocations without a trigger
+      db.exec(`
+        CREATE TABLE agent_invocations_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+          trigger_id INTEGER REFERENCES agent_triggers(id) ON DELETE CASCADE,
+          event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+          session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+          project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed')),
+          attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+          max_attempts INTEGER NOT NULL DEFAULT 3 CHECK (max_attempts >= 1),
+          run_at TEXT NOT NULL DEFAULT (datetime('now')),
+          context TEXT NOT NULL CHECK (json_valid(context)),
+          result TEXT CHECK (result IS NULL OR json_valid(result)),
+          error TEXT,
+          started_at TEXT,
+          completed_at TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          kombuse_session_id TEXT,
+          ticket_id INTEGER
+        )
+      `)
+      db.exec(`INSERT INTO agent_invocations_new SELECT * FROM agent_invocations`)
+      db.exec(`DROP TABLE agent_invocations`)
+      db.exec(`ALTER TABLE agent_invocations_new RENAME TO agent_invocations`)
+      // Recreate all indexes
+      db.exec(`CREATE INDEX idx_agent_invocations_agent ON agent_invocations(agent_id, created_at DESC)`)
+      db.exec(`CREATE INDEX idx_agent_invocations_status ON agent_invocations(status)`)
+      db.exec(`CREATE INDEX idx_agent_invocations_run_at ON agent_invocations(status, run_at)`)
+      db.exec(`CREATE INDEX idx_agent_invocations_session ON agent_invocations(session_id)`)
+      db.exec(`CREATE INDEX idx_agent_invocations_kombuse_session ON agent_invocations(kombuse_session_id)`)
+      db.exec(`CREATE INDEX idx_agent_invocations_project ON agent_invocations(project_id) WHERE project_id IS NOT NULL`)
+      db.exec(`CREATE INDEX idx_agent_invocations_ticket_status ON agent_invocations(agent_id, ticket_id, status)`)
+    },
+  },
 ]
 
 /**

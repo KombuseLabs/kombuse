@@ -117,6 +117,7 @@ const EXPECTED_MIGRATIONS = [
   '010_project_uuids',
   '011_persistence_optimizations',
   '012_session_events_request_id',
+  '013_nullable_invocation_trigger',
 ]
 
 describe('database', () => {

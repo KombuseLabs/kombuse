@@ -3769,7 +3769,7 @@ describe('continuation invocation tracking', () => {
     )
   })
 
-  it('does not create continuation when no prior invocations exist', async () => {
+  it('creates an initial chat invocation when no prior invocations exist', async () => {
     vi.mocked(agentInvocationsRepository.list).mockReturnValue([])
 
     const { backend } = createEventDrivenBackend()
@@ -3788,7 +3788,21 @@ describe('continuation invocation tracking', () => {
 
     await waitForBackendStart(backend)
 
-    expect(agentInvocationsRepository.create).not.toHaveBeenCalled()
+    expect(agentInvocationsRepository.create).toHaveBeenCalledOnce()
+    expect(agentInvocationsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_id: 'test-agent',
+        session_id: 'session-1',
+        context: expect.objectContaining({ event_type: 'chat.started' }),
+      })
+    )
+    expect(agentInvocationsRepository.update).toHaveBeenCalledWith(
+      100,
+      expect.objectContaining({
+        kombuse_session_id: 'trigger-continue-test',
+        status: 'running',
+      })
+    )
   })
 
   it('does not create continuation when last invocation is still running', async () => {

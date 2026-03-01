@@ -533,7 +533,7 @@ export const agentInvocationsRepository = {
       )
       .get(
         input.agent_id,
-        input.trigger_id,
+        input.trigger_id ?? null,
         input.event_id ?? null,
         input.session_id ?? null,
         input.project_id ?? null,
@@ -702,7 +702,7 @@ interface RawAgentTrigger {
 interface RawAgentInvocation {
   id: number
   agent_id: string
-  trigger_id: number
+  trigger_id: number | null
   event_id: number | null
   session_id: string | null
   project_id: string | null
