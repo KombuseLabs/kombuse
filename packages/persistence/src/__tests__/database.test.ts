@@ -20,7 +20,9 @@ const EXPECTED_TABLES = [
   'profiles',
   'profile_settings',
   'projects',
+  'plugins',
   'labels',
+  'milestones',
   'tickets',
   'ticket_labels',
   'comments',
@@ -33,6 +35,8 @@ const EXPECTED_TABLES = [
   'agents',
   'agent_triggers',
   'agent_invocations',
+  'ticket_views',
+  'plugin_files',
 ]
 const EXPECTED_TICKET_COLUMNS = [
   'id',
@@ -56,6 +60,7 @@ const EXPECTED_TICKET_COLUMNS = [
   'opened_at',
   'closed_at',
   'last_activity_at',
+  'ticket_number',
   'created_at',
   'updated_at',
 ]
@@ -95,6 +100,7 @@ const EXPECTED_INVOCATION_COLUMNS = [
   'completed_at',
   'created_at',
   'kombuse_session_id',
+  'ticket_id',
 ]
 const EXPECTED_INDEXES = [
   'idx_tickets_project',
@@ -106,18 +112,6 @@ const EXPECTED_INDEXES = [
 ]
 const EXPECTED_MIGRATIONS = [
   '001_schema',
-  '002_profiles_slug',
-  '003_agents_plugin_base',
-  '004_plugin_scoped_slugs',
-  '005_trigger_slugs',
-  '006_agents_project_id',
-  '007_ticket_numbers',
-  '008_project_slugs',
-  '009_plugin_files',
-  '010_project_uuids',
-  '011_persistence_optimizations',
-  '012_session_events_request_id',
-  '013_nullable_invocation_trigger',
 ]
 
 describe('database', () => {

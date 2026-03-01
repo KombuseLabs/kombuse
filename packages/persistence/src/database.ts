@@ -2,9 +2,7 @@ import Database from 'better-sqlite3'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import { join, resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
-import { randomUUID } from 'crypto'
 import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config.repository'
-import { toSlug, ANONYMOUS_AGENT_ID, UUID_REGEX } from '@kombuse/types'
 
 export type { Database as DatabaseType } from 'better-sqlite3'
 
@@ -92,19 +90,13 @@ export function runMigrations(db: DatabaseType): void {
 
   for (const migration of migrations) {
     if (!appliedSet.has(migration.name)) {
-      if ('sql' in migration) {
-        db.exec(migration.sql)
-      } else {
-        migration.run(db)
-      }
+      db.exec(migration.sql)
       db.prepare('INSERT INTO migrations (name) VALUES (?)').run(migration.name)
     }
   }
 }
 
-type Migration =
-  | { name: string; sql: string }
-  | { name: string; run: (db: DatabaseType) => void }
+type Migration = { name: string; sql: string }
 
 const migrations: Migration[] = [
   {
@@ -121,12 +113,18 @@ const migrations: Migration[] = [
         external_source TEXT,
         external_id TEXT,
         is_active INTEGER NOT NULL DEFAULT 1,
+        slug TEXT,
+        plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_profiles_type ON profiles(type);
       CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_external ON profiles(external_source, external_id)
         WHERE external_source IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_slug_plugin ON profiles(slug, plugin_id)
+        WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_slug_global ON profiles(slug)
+        WHERE slug IS NOT NULL AND plugin_id IS NULL;
 
       -- 2. profile_settings
       CREATE TABLE IF NOT EXISTS profile_settings (
@@ -150,12 +148,14 @@ const migrations: Migration[] = [
         repo_source TEXT CHECK (repo_source IN ('github', 'gitlab', 'bitbucket')),
         repo_owner TEXT,
         repo_name TEXT,
+        slug TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
       CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_local_path
         ON projects(local_path) WHERE local_path IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug);
 
       -- 4. plugins (before labels/agents/triggers which reference it)
       CREATE TABLE IF NOT EXISTS plugins (
@@ -181,9 +181,14 @@ const migrations: Migration[] = [
         description TEXT,
         plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL,
         is_enabled INTEGER NOT NULL DEFAULT 1,
+        slug TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_labels_project ON labels(project_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_labels_slug_plugin ON labels(slug, plugin_id, project_id)
+        WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_labels_slug_global ON labels(slug, project_id)
+        WHERE slug IS NOT NULL AND plugin_id IS NULL;
 
       -- 6. milestones
       CREATE TABLE IF NOT EXISTS milestones (
@@ -224,6 +229,7 @@ const migrations: Migration[] = [
         last_activity_at TEXT,
         triggers_enabled INTEGER NOT NULL DEFAULT 1,
         loop_protection_enabled INTEGER NOT NULL DEFAULT 1,
+        ticket_number INTEGER,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
@@ -243,6 +249,7 @@ const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_tickets_last_activity ON tickets(project_id, last_activity_at DESC);
       CREATE INDEX IF NOT EXISTS idx_tickets_milestone ON tickets(milestone_id) WHERE milestone_id IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_tickets_priority ON tickets(project_id, priority DESC) WHERE priority IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_project_number ON tickets(project_id, ticket_number);
 
       -- 8. ticket_labels
       CREATE TABLE IF NOT EXISTS ticket_labels (
@@ -328,6 +335,7 @@ const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_events_project ON events(project_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_events_session ON events(kombuse_session_id) WHERE kombuse_session_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_events_project_actor ON events(project_id, actor_type, created_at DESC);
 
       -- 13. event_subscriptions
       CREATE TABLE IF NOT EXISTS event_subscriptions (
@@ -377,6 +385,7 @@ const migrations: Migration[] = [
         event_type TEXT NOT NULL,
         payload TEXT NOT NULL CHECK (json_valid(payload)),
         kombuse_session_id TEXT,
+        request_id TEXT GENERATED ALWAYS AS (json_extract(payload, '$.requestId')) VIRTUAL,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(session_id, seq)
       );
@@ -387,6 +396,8 @@ const migrations: Migration[] = [
         ON session_events(event_type, session_id);
       CREATE INDEX IF NOT EXISTS idx_session_events_type_created
         ON session_events(event_type, created_at);
+      CREATE INDEX IF NOT EXISTS idx_session_events_request_id
+        ON session_events(request_id) WHERE request_id IS NOT NULL;
 
       -- 16. agents
       CREATE TABLE IF NOT EXISTS agents (
@@ -397,10 +408,19 @@ const migrations: Migration[] = [
         is_enabled INTEGER NOT NULL DEFAULT 1,
         slug TEXT,
         plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL,
+        plugin_base TEXT DEFAULT NULL CHECK (plugin_base IS NULL OR json_valid(plugin_base)),
+        project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_agents_slug ON agents(slug) WHERE slug IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_agents_slug_plugin ON agents(slug, plugin_id, project_id)
+        WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_agents_slug_project ON agents(slug, project_id)
+        WHERE slug IS NOT NULL AND plugin_id IS NULL AND project_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_agents_slug_global ON agents(slug)
+        WHERE slug IS NOT NULL AND plugin_id IS NULL AND project_id IS NULL;
+      CREATE INDEX IF NOT EXISTS idx_agents_project ON agents(project_id)
+        WHERE project_id IS NOT NULL;
 
       -- 17. agent_triggers
       CREATE TABLE IF NOT EXISTS agent_triggers (
@@ -413,17 +433,24 @@ const migrations: Migration[] = [
         priority INTEGER NOT NULL DEFAULT 0,
         plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL,
         allowed_invokers TEXT DEFAULT NULL CHECK (allowed_invokers IS NULL OR json_valid(allowed_invokers)),
+        slug TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_agent_triggers_event ON agent_triggers(event_type, is_enabled);
       CREATE INDEX IF NOT EXISTS idx_agent_triggers_agent ON agent_triggers(agent_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_triggers_slug_plugin
+        ON agent_triggers(slug, agent_id, plugin_id)
+        WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_triggers_slug_global
+        ON agent_triggers(slug, agent_id)
+        WHERE slug IS NOT NULL AND plugin_id IS NULL;
 
       -- 18. agent_invocations
       CREATE TABLE IF NOT EXISTS agent_invocations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-        trigger_id INTEGER NOT NULL REFERENCES agent_triggers(id) ON DELETE CASCADE,
+        trigger_id INTEGER REFERENCES agent_triggers(id) ON DELETE CASCADE,
         event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
         session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
         project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
@@ -437,7 +464,8 @@ const migrations: Migration[] = [
         started_at TEXT,
         completed_at TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        kombuse_session_id TEXT
+        kombuse_session_id TEXT,
+        ticket_id INTEGER
       );
       CREATE INDEX IF NOT EXISTS idx_agent_invocations_agent ON agent_invocations(agent_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_agent_invocations_status ON agent_invocations(status);
@@ -447,6 +475,8 @@ const migrations: Migration[] = [
         ON agent_invocations(kombuse_session_id);
       CREATE INDEX IF NOT EXISTS idx_agent_invocations_project
         ON agent_invocations(project_id) WHERE project_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_agent_invocations_ticket_status
+        ON agent_invocations(agent_id, ticket_id, status);
 
       -- 19. ticket_views
       CREATE TABLE IF NOT EXISTS ticket_views (
@@ -459,7 +489,20 @@ const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_ticket_views_profile
         ON ticket_views(profile_id, ticket_id);
 
-      -- 20. tickets_fts (full-text search)
+      -- 20. plugin_files
+      CREATE TABLE IF NOT EXISTS plugin_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+        path TEXT NOT NULL,
+        content TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        is_user_modified INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(plugin_id, path)
+      );
+
+      -- 21. tickets_fts (full-text search)
       CREATE VIRTUAL TABLE IF NOT EXISTS tickets_fts USING fts5(
         title,
         body,
@@ -488,7 +531,7 @@ const migrations: Migration[] = [
         VALUES (new.id, new.title, COALESCE(new.body, ''));
       END;
 
-      -- 21. comments_fts (full-text search)
+      -- 22. comments_fts (full-text search)
       CREATE VIRTUAL TABLE IF NOT EXISTS comments_fts USING fts5(
         body,
         content=comments,
@@ -516,346 +559,6 @@ const migrations: Migration[] = [
         VALUES (new.id, COALESCE(new.body, ''));
       END;
     `,
-  },
-  {
-    name: '002_profiles_slug',
-    sql: `
-      ALTER TABLE profiles ADD COLUMN slug TEXT;
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_slug ON profiles(slug) WHERE slug IS NOT NULL;
-      UPDATE profiles SET slug = (SELECT slug FROM agents WHERE agents.id = profiles.id) WHERE type = 'agent';
-    `,
-  },
-  {
-    name: '003_agents_plugin_base',
-    sql: `
-      ALTER TABLE agents ADD COLUMN plugin_base TEXT DEFAULT NULL CHECK (plugin_base IS NULL OR json_valid(plugin_base));
-    `,
-  },
-  {
-    name: '004_plugin_scoped_slugs',
-    run: (db: DatabaseType) => {
-      // Temporarily disable FK checks for bulk reassignment
-      db.pragma('foreign_keys = OFF')
-
-      // 2a. Merge orphaned agent profiles into their active counterparts.
-      // Orphans are agent-type profiles with no corresponding agents row.
-      const orphans = db.prepare(`
-        SELECT p.id AS orphan_id, p.name,
-          (SELECT p2.id FROM profiles p2
-           JOIN agents a ON a.id = p2.id
-           WHERE p2.name = p.name AND p2.type = 'agent'
-           LIMIT 1) AS target_id
-        FROM profiles p
-        WHERE p.type = 'agent'
-          AND p.id != ?
-          AND NOT EXISTS (SELECT 1 FROM agents WHERE agents.id = p.id)
-      `).all(ANONYMOUS_AGENT_ID) as { orphan_id: string; name: string; target_id: string | null }[]
-
-      for (const { orphan_id, target_id } of orphans) {
-        if (!target_id) continue
-        db.prepare('UPDATE comments SET author_id = ? WHERE author_id = ?').run(target_id, orphan_id)
-        db.prepare('UPDATE events SET actor_id = ? WHERE actor_id = ?').run(target_id, orphan_id)
-        db.prepare('UPDATE ticket_labels SET added_by_id = ? WHERE added_by_id = ?').run(target_id, orphan_id)
-        db.prepare('UPDATE mentions SET mentioned_profile_id = ? WHERE mentioned_profile_id = ?').run(target_id, orphan_id)
-        db.prepare('UPDATE tickets SET author_id = ? WHERE author_id = ?').run(target_id, orphan_id)
-        db.prepare('UPDATE tickets SET assignee_id = ? WHERE assignee_id = ?').run(target_id, orphan_id)
-        db.prepare('UPDATE tickets SET claimed_by_id = ? WHERE claimed_by_id = ?').run(target_id, orphan_id)
-        db.prepare('DELETE FROM profiles WHERE id = ?').run(orphan_id)
-      }
-
-      // 2b. Add plugin_id to profiles and backfill from agents table.
-      db.exec(`ALTER TABLE profiles ADD COLUMN plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL`)
-      db.exec(`
-        UPDATE profiles SET plugin_id = (
-          SELECT plugin_id FROM agents WHERE agents.id = profiles.id
-        ) WHERE type = 'agent' AND EXISTS (
-          SELECT 1 FROM agents WHERE agents.id = profiles.id
-        )
-      `)
-
-      // 2c. Replace global slug indexes with composite (slug, plugin_id) indexes.
-      // Two indexes per table: one for plugin-scoped, one for non-plugin (global).
-      db.exec(`
-        DROP INDEX IF EXISTS idx_agents_slug;
-        CREATE UNIQUE INDEX idx_agents_slug_plugin ON agents(slug, plugin_id)
-          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
-        CREATE UNIQUE INDEX idx_agents_slug_global ON agents(slug)
-          WHERE slug IS NOT NULL AND plugin_id IS NULL;
-
-        DROP INDEX IF EXISTS idx_profiles_slug;
-        CREATE UNIQUE INDEX idx_profiles_slug_plugin ON profiles(slug, plugin_id)
-          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
-        CREATE UNIQUE INDEX idx_profiles_slug_global ON profiles(slug)
-          WHERE slug IS NOT NULL AND plugin_id IS NULL;
-      `)
-
-      // 2d. Add slug column to labels and backfill from name.
-      db.exec(`ALTER TABLE labels ADD COLUMN slug TEXT`)
-
-      const labels = db.prepare('SELECT id, name FROM labels').all() as { id: number; name: string }[]
-      const updateSlug = db.prepare('UPDATE labels SET slug = ? WHERE id = ?')
-      for (const label of labels) {
-        updateSlug.run(toSlug(label.name), label.id)
-      }
-
-      db.exec(`
-        CREATE UNIQUE INDEX idx_labels_slug_plugin ON labels(slug, plugin_id, project_id)
-          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
-        CREATE UNIQUE INDEX idx_labels_slug_global ON labels(slug, project_id)
-          WHERE slug IS NOT NULL AND plugin_id IS NULL;
-      `)
-
-      // Re-enable FK checks
-      db.pragma('foreign_keys = ON')
-    },
-  },
-  {
-    name: '005_trigger_slugs',
-    run: (db: DatabaseType) => {
-      // 1. Add slug column to agent_triggers
-      db.exec(`ALTER TABLE agent_triggers ADD COLUMN slug TEXT`)
-
-      // 2. Backfill: derive slug from event_type, dedup within same agent
-      const triggers = db.prepare(
-        'SELECT id, agent_id, event_type FROM agent_triggers ORDER BY agent_id, id'
-      ).all() as { id: number; agent_id: string; event_type: string }[]
-
-      const slugCountByAgent = new Map<string, Map<string, number>>()
-      const updateSlug = db.prepare('UPDATE agent_triggers SET slug = ? WHERE id = ?')
-
-      for (const trigger of triggers) {
-        let agentSlugs = slugCountByAgent.get(trigger.agent_id)
-        if (!agentSlugs) {
-          agentSlugs = new Map()
-          slugCountByAgent.set(trigger.agent_id, agentSlugs)
-        }
-
-        const baseSlug = toSlug(trigger.event_type)
-        const count = (agentSlugs.get(baseSlug) ?? 0) + 1
-        agentSlugs.set(baseSlug, count)
-
-        const finalSlug = count === 1 ? baseSlug : `${baseSlug}-${count}`
-        updateSlug.run(finalSlug, trigger.id)
-      }
-
-      // 3. Create composite unique indexes (dual-index pattern for NULL plugin_id)
-      db.exec(`
-        CREATE UNIQUE INDEX idx_agent_triggers_slug_plugin
-          ON agent_triggers(slug, agent_id, plugin_id)
-          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
-        CREATE UNIQUE INDEX idx_agent_triggers_slug_global
-          ON agent_triggers(slug, agent_id)
-          WHERE slug IS NOT NULL AND plugin_id IS NULL;
-      `)
-    },
-  },
-  {
-    name: '006_agents_project_id',
-    run: (db: DatabaseType) => {
-      // 1. Add nullable project_id column with FK to projects
-      db.exec(`
-        ALTER TABLE agents ADD COLUMN project_id TEXT
-          REFERENCES projects(id) ON DELETE CASCADE
-      `)
-
-      // 2. Backfill: set project_id from the linked plugin's project_id
-      db.exec(`
-        UPDATE agents SET project_id = (
-          SELECT p.project_id FROM plugins p WHERE p.id = agents.plugin_id
-        ) WHERE plugin_id IS NOT NULL
-      `)
-
-      // 3. Replace slug uniqueness indexes with project-scoped variants
-      db.exec(`
-        DROP INDEX IF EXISTS idx_agents_slug_plugin;
-        DROP INDEX IF EXISTS idx_agents_slug_global;
-        CREATE UNIQUE INDEX idx_agents_slug_plugin ON agents(slug, plugin_id, project_id)
-          WHERE slug IS NOT NULL AND plugin_id IS NOT NULL;
-        CREATE UNIQUE INDEX idx_agents_slug_project ON agents(slug, project_id)
-          WHERE slug IS NOT NULL AND plugin_id IS NULL AND project_id IS NOT NULL;
-        CREATE UNIQUE INDEX idx_agents_slug_global ON agents(slug)
-          WHERE slug IS NOT NULL AND plugin_id IS NULL AND project_id IS NULL;
-      `)
-
-      // 4. Index for project-scoped listing
-      db.exec(`
-        CREATE INDEX idx_agents_project ON agents(project_id)
-          WHERE project_id IS NOT NULL
-      `)
-    },
-  },
-  {
-    name: '007_ticket_numbers',
-    run: (db: DatabaseType) => {
-      // 1. Add ticket_number column (nullable for ALTER TABLE compatibility)
-      db.exec(`ALTER TABLE tickets ADD COLUMN ticket_number INTEGER`)
-
-      // 2. Backfill existing tickets with sequential numbers per project
-      const projects = db
-        .prepare('SELECT DISTINCT project_id FROM tickets')
-        .all() as { project_id: string }[]
-
-      const getTicketsByProject = db.prepare(
-        'SELECT id FROM tickets WHERE project_id = ? ORDER BY id ASC'
-      )
-      const updateNumber = db.prepare(
-        'UPDATE tickets SET ticket_number = ? WHERE id = ?'
-      )
-
-      for (const { project_id } of projects) {
-        const tickets = getTicketsByProject.all(project_id) as { id: number }[]
-        for (let i = 0; i < tickets.length; i++) {
-          updateNumber.run(i + 1, tickets[i]!.id)
-        }
-      }
-
-      // 3. Add unique constraint for per-project ticket numbers
-      db.exec(`
-        CREATE UNIQUE INDEX idx_tickets_project_number
-          ON tickets(project_id, ticket_number)
-      `)
-    },
-  },
-  {
-    name: '008_project_slugs',
-    run: (db: DatabaseType) => {
-      // 1. Add slug column
-      db.exec(`ALTER TABLE projects ADD COLUMN slug TEXT`)
-
-      // 2. Backfill from name
-      const projects = db
-        .prepare('SELECT id, name FROM projects')
-        .all() as { id: string; name: string }[]
-
-      const slugCounts = new Map<string, number>()
-      const updateSlug = db.prepare('UPDATE projects SET slug = ? WHERE id = ?')
-
-      for (const project of projects) {
-        const baseSlug = toSlug(project.name)
-        const count = (slugCounts.get(baseSlug) ?? 0) + 1
-        slugCounts.set(baseSlug, count)
-
-        const finalSlug = count === 1 ? baseSlug : `${baseSlug}-${count}`
-        updateSlug.run(finalSlug, project.id)
-      }
-
-      // 3. Add unique index
-      db.exec(`CREATE UNIQUE INDEX idx_projects_slug ON projects(slug)`)
-    },
-  },
-  {
-    name: '009_plugin_files',
-    sql: `
-      CREATE TABLE IF NOT EXISTS plugin_files (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
-        path TEXT NOT NULL,
-        content TEXT NOT NULL,
-        content_hash TEXT NOT NULL,
-        is_user_modified INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-        UNIQUE(plugin_id, path)
-      );
-    `,
-  },
-  {
-    name: '010_project_uuids',
-    run: (db: DatabaseType) => {
-      // Find projects with non-UUID ids and migrate them
-      const projects = db.prepare('SELECT id FROM projects').all() as { id: string }[]
-      const nonUuidProjects = projects.filter((p) => !UUID_REGEX.test(p.id))
-      if (nonUuidProjects.length === 0) return
-
-      // No ON UPDATE CASCADE, so disable FK checks for bulk update
-      db.pragma('foreign_keys = OFF')
-
-      for (const { id: oldId } of nonUuidProjects) {
-        const newId = randomUUID()
-
-        // Update all tables referencing this project
-        db.prepare('UPDATE projects SET id = ? WHERE id = ?').run(newId, oldId)
-        db.prepare('UPDATE agents SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE tickets SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE labels SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE plugins SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE agent_triggers SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE milestones SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE agent_invocations SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE event_subscriptions SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE events SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-        db.prepare('UPDATE sessions SET project_id = ? WHERE project_id = ?').run(newId, oldId)
-      }
-
-      db.pragma('foreign_keys = ON')
-    },
-  },
-  {
-    name: '011_persistence_optimizations',
-    run: (db: DatabaseType) => {
-      // Materialize ticket_id on agent_invocations for indexed lookups
-      db.exec(`ALTER TABLE agent_invocations ADD COLUMN ticket_id INTEGER`)
-
-      // Backfill from JSON context
-      db.exec(`
-        UPDATE agent_invocations
-        SET ticket_id = CAST(json_extract(context, '$.ticket_id') AS INTEGER)
-        WHERE json_extract(context, '$.ticket_id') IS NOT NULL
-      `)
-
-      // Composite index for loop protection / dedup queries
-      db.exec(`CREATE INDEX idx_agent_invocations_ticket_status ON agent_invocations(agent_id, ticket_id, status)`)
-
-      // Composite index for event listing with actor_type filter
-      db.exec(`CREATE INDEX idx_events_project_actor ON events(project_id, actor_type, created_at DESC)`)
-    },
-  },
-  {
-    name: '012_session_events_request_id',
-    run: (db: DatabaseType) => {
-      // Virtual generated column for indexed permission request/response matching
-      db.exec(`ALTER TABLE session_events ADD COLUMN request_id TEXT GENERATED ALWAYS AS (json_extract(payload, '$.requestId')) VIRTUAL`)
-      db.exec(`CREATE INDEX idx_session_events_request_id ON session_events(request_id) WHERE request_id IS NOT NULL`)
-    },
-  },
-  {
-    name: '013_nullable_invocation_trigger',
-    run: (db: DatabaseType) => {
-      // Make trigger_id nullable so chat-originated agent sessions can create invocations without a trigger
-      db.exec(`
-        CREATE TABLE agent_invocations_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-          trigger_id INTEGER REFERENCES agent_triggers(id) ON DELETE CASCADE,
-          event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
-          session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
-          project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
-          status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed')),
-          attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
-          max_attempts INTEGER NOT NULL DEFAULT 3 CHECK (max_attempts >= 1),
-          run_at TEXT NOT NULL DEFAULT (datetime('now')),
-          context TEXT NOT NULL CHECK (json_valid(context)),
-          result TEXT CHECK (result IS NULL OR json_valid(result)),
-          error TEXT,
-          started_at TEXT,
-          completed_at TEXT,
-          created_at TEXT NOT NULL DEFAULT (datetime('now')),
-          kombuse_session_id TEXT,
-          ticket_id INTEGER
-        )
-      `)
-      db.exec(`INSERT INTO agent_invocations_new SELECT * FROM agent_invocations`)
-      db.exec(`DROP TABLE agent_invocations`)
-      db.exec(`ALTER TABLE agent_invocations_new RENAME TO agent_invocations`)
-      // Recreate all indexes
-      db.exec(`CREATE INDEX idx_agent_invocations_agent ON agent_invocations(agent_id, created_at DESC)`)
-      db.exec(`CREATE INDEX idx_agent_invocations_status ON agent_invocations(status)`)
-      db.exec(`CREATE INDEX idx_agent_invocations_run_at ON agent_invocations(status, run_at)`)
-      db.exec(`CREATE INDEX idx_agent_invocations_session ON agent_invocations(session_id)`)
-      db.exec(`CREATE INDEX idx_agent_invocations_kombuse_session ON agent_invocations(kombuse_session_id)`)
-      db.exec(`CREATE INDEX idx_agent_invocations_project ON agent_invocations(project_id) WHERE project_id IS NOT NULL`)
-      db.exec(`CREATE INDEX idx_agent_invocations_ticket_status ON agent_invocations(agent_id, ticket_id, status)`)
-    },
   },
 ]
 
