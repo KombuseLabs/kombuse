@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron";
 
 export interface DesktopApiOptions {
-  createWindow: (path?: string) => BrowserWindow;
+  createWindow: (opts?: { path?: string; width?: number; height?: number }) => BrowserWindow;
   getWebUrl: () => string;
 }
 
@@ -25,8 +25,8 @@ export async function desktopApiPlugin(
   });
 
   fastify.post("/desktop/windows", async (request: any) => {
-    const { path } = (request.body as { path?: string }) || {};
-    const win = opts.createWindow(path);
+    const { path, width, height } = (request.body as { path?: string; width?: number; height?: number }) || {};
+    const win = opts.createWindow({ path, width, height });
 
     // Wait for the window to be ready before returning
     await new Promise<void>((resolve) => {

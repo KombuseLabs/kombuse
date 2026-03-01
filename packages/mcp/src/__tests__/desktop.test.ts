@@ -144,6 +144,72 @@ describe('open_window', () => {
     })
   })
 
+  it('should open window with width and height', async () => {
+    const windowInfo = { id: 3, title: 'Kombuse', url: 'http://localhost:3333/' }
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify(windowInfo),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'open_window',
+      arguments: { width: 800, height: 600 },
+    })
+    const data = parseContent(result)
+
+    expect(data).toEqual(windowInfo)
+    expect(injectable.lastCall).toEqual({
+      method: 'POST',
+      url: '/api/desktop/windows',
+      payload: { width: 800, height: 600 },
+    })
+  })
+
+  it('should open window with only width', async () => {
+    const windowInfo = { id: 4, title: 'Kombuse', url: 'http://localhost:3333/' }
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify(windowInfo),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'open_window',
+      arguments: { width: 1000 },
+    })
+    const data = parseContent(result)
+
+    expect(data).toEqual(windowInfo)
+    expect(injectable.lastCall).toEqual({
+      method: 'POST',
+      url: '/api/desktop/windows',
+      payload: { width: 1000 },
+    })
+  })
+
+  it('should open window with only height', async () => {
+    const windowInfo = { id: 5, title: 'Kombuse', url: 'http://localhost:3333/' }
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify(windowInfo),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'open_window',
+      arguments: { height: 600 },
+    })
+    const data = parseContent(result)
+
+    expect(data).toEqual(windowInfo)
+    expect(injectable.lastCall).toEqual({
+      method: 'POST',
+      url: '/api/desktop/windows',
+      payload: { height: 600 },
+    })
+  })
+
   it('should return error response when server returns error status', async () => {
     const injectable = createMockInjectable({
       statusCode: 500,

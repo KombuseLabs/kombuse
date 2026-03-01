@@ -2,7 +2,7 @@ import { app, Menu, shell, BrowserWindow } from "electron";
 import type { MenuItemConstructorOptions } from "electron";
 
 export interface MenuConfig {
-  createWindow: (path?: string) => void;
+  createWindow: (opts?: { path?: string; width?: number; height?: number }) => void;
   webUrl: string;
   serverPort: number;
   isDev: boolean;
@@ -42,7 +42,7 @@ export function buildAppMenu(
     recentProjects && recentProjects.length > 0
       ? recentProjects.map((project) => ({
           label: project.name,
-          click: () => config.createWindow(`/projects/${project.slug}/tickets`),
+          click: () => config.createWindow({ path: `/projects/${project.slug}/tickets` }),
         }))
       : [{ label: "No Recent Projects", enabled: false }];
 

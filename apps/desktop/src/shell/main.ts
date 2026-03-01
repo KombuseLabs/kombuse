@@ -104,15 +104,15 @@ function isSafeExternalUrl(url: string): boolean {
 
 let webUrl = DEV_WEB_URL;
 
-function createWindow(path?: string): BrowserWindow {
+function createWindow(opts?: { path?: string; width?: number; height?: number }): BrowserWindow {
   const focused = BrowserWindow.getFocusedWindow();
   const bounds = focused?.getBounds();
   const x = bounds ? bounds.x + 20 : undefined;
   const y = bounds ? bounds.y + 20 : undefined;
 
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: opts?.width ?? 1200,
+    height: opts?.height ?? 800,
     ...(x !== undefined && y !== undefined ? { x, y } : {}),
     backgroundColor: "#1A1A1A",
     titleBarStyle: "hiddenInset",
@@ -159,7 +159,7 @@ function createWindow(path?: string): BrowserWindow {
     mainWindow.show();
   });
 
-  const loadUrl = path ? new URL(path, webUrl).href : webUrl;
+  const loadUrl = opts?.path ? new URL(opts.path, webUrl).href : webUrl;
   mainWindow.loadURL(loadUrl);
 
   return mainWindow;

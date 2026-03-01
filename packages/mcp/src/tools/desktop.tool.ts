@@ -70,14 +70,31 @@ export function registerDesktopTools(
           .string()
           .optional()
           .describe('App path to navigate to, e.g. "/projects/1/tickets/42"'),
+        width: z
+          .number()
+          .int()
+          .min(200)
+          .optional()
+          .describe('Window width in pixels (minimum 200, default 1200)'),
+        height: z
+          .number()
+          .int()
+          .min(200)
+          .optional()
+          .describe('Window height in pixels (minimum 200, default 800)'),
       },
     },
-    async ({ path }) => {
+    async ({ path, width, height }) => {
       try {
+        const payload: Record<string, unknown> = {}
+        if (path) payload.path = path
+        if (width !== undefined) payload.width = width
+        if (height !== undefined) payload.height = height
+
         const response = await injectable.inject({
           method: 'POST',
           url: '/api/desktop/windows',
-          payload: path ? { path } : {},
+          payload,
         })
 
         let body: unknown
