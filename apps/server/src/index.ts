@@ -8,6 +8,7 @@ import {
   setDatabase,
   initializeDatabase,
   seedDatabase,
+  seedDemoData,
   onEventCreated,
   dbContext,
 } from "@kombuse/persistence";
@@ -76,6 +77,9 @@ export interface ServerOptions {
 export async function createServer({ port, dbPath, desktop, isolated }: ServerOptions) {
   const db = initializeDatabase(dbPath);
   seedDatabase(db);
+  if (isolated) {
+    seedDemoData(db);
+  }
   // Primary server sets the global DB for non-request contexts (e.g. orphan timer).
   // Isolated server skips this so it never clobbers the primary server's global ref.
   if (!isolated) {

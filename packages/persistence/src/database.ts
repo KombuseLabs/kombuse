@@ -611,3 +611,157 @@ export function seedDatabase(database: DatabaseType): void {
   }
 
 }
+
+/**
+ * Seed realistic demo data for isolated databases (e.g. docs screenshots).
+ * Creates a project with tickets, labels, and comments so the UI isn't empty.
+ * Safe to call multiple times — skips if demo-project already exists.
+ */
+export function seedDemoData(database: DatabaseType): void {
+  const existing = database
+    .prepare('SELECT id FROM projects WHERE id = ?')
+    .get('demo-project')
+
+  if (existing) return
+
+  const seed = database.transaction(() => {
+    // Project
+    database
+      .prepare('INSERT INTO projects (id, name, owner_id) VALUES (?, ?, ?)')
+      .run('demo-project', 'Acme Project', 'user-1')
+
+    // Labels
+    database
+      .prepare(
+        'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
+      )
+      .run('demo-project', 'Bug', '#ef4444')
+    database
+      .prepare(
+        'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
+      )
+      .run('demo-project', 'Feature', '#3b82f6')
+    database
+      .prepare(
+        'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
+      )
+      .run('demo-project', 'Documentation', '#22c55e')
+
+    // Look up the auto-generated label IDs
+    const bugLabel = database
+      .prepare(
+        "SELECT id FROM labels WHERE project_id = 'demo-project' AND name = 'Bug'"
+      )
+      .get() as { id: number }
+    const featureLabel = database
+      .prepare(
+        "SELECT id FROM labels WHERE project_id = 'demo-project' AND name = 'Feature'"
+      )
+      .get() as { id: number }
+    const docsLabel = database
+      .prepare(
+        "SELECT id FROM labels WHERE project_id = 'demo-project' AND name = 'Documentation'"
+      )
+      .get() as { id: number }
+
+    // Tickets
+    const insertTicket = database.prepare(`
+      INSERT INTO tickets (
+        project_id, author_id, title, status, priority, ticket_number,
+        opened_at, closed_at, last_activity_at
+      ) VALUES (
+        'demo-project', 'user-1', ?, ?, ?, ?,
+        datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now')
+      )
+      RETURNING id
+    `)
+
+    const t1 = (
+      insertTicket.get(
+        'Add user authentication flow',
+        'closed',
+        3,
+        1,
+        'closed'
+      ) as { id: number }
+    ).id
+    const t2 = (
+      insertTicket.get(
+        'Dashboard loading time is too slow',
+        'in_progress',
+        2,
+        2,
+        'in_progress'
+      ) as { id: number }
+    ).id
+    const t3 = (
+      insertTicket.get(
+        'Fix sidebar navigation on mobile',
+        'open',
+        2,
+        3,
+        'open'
+      ) as { id: number }
+    ).id
+    const t4 = (
+      insertTicket.get(
+        'Add dark mode support',
+        'open',
+        1,
+        4,
+        'open'
+      ) as { id: number }
+    ).id
+    const t5 = (
+      insertTicket.get(
+        'API rate limiting returns wrong status code',
+        'in_progress',
+        3,
+        5,
+        'in_progress'
+      ) as { id: number }
+    ).id
+    const t6 = (
+      insertTicket.get(
+        'Update README with deployment instructions',
+        'open',
+        0,
+        6,
+        'open'
+      ) as { id: number }
+    ).id
+
+    // Label assignments
+    const assignLabel = database.prepare(
+      'INSERT INTO ticket_labels (ticket_id, label_id, added_by_id) VALUES (?, ?, ?)'
+    )
+    assignLabel.run(t3, bugLabel.id, 'user-1')
+    assignLabel.run(t5, bugLabel.id, 'user-1')
+    assignLabel.run(t1, featureLabel.id, 'user-1')
+    assignLabel.run(t4, featureLabel.id, 'user-1')
+    assignLabel.run(t6, docsLabel.id, 'user-1')
+
+    // Comments
+    const insertComment = database.prepare(
+      "INSERT INTO comments (ticket_id, author_id, body) VALUES (?, 'user-1', ?)"
+    )
+    insertComment.run(
+      t1,
+      'Implemented OAuth2 flow with JWT tokens. All tests passing.'
+    )
+    insertComment.run(
+      t2,
+      'Profiled the main dashboard query — the N+1 on project labels is the bottleneck.'
+    )
+    insertComment.run(
+      t2,
+      'Switched to a single JOIN query, load time dropped from 1.2s to 180ms.'
+    )
+    insertComment.run(
+      t5,
+      'Confirmed: the rate limiter returns 403 instead of 429. Looks like the middleware checks auth before rate limits.'
+    )
+  })
+
+  seed()
+}

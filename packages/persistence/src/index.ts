@@ -6,6 +6,7 @@ export {
   closeDatabase,
   runMigrations,
   seedDatabase,
+  seedDemoData,
   dbContext,
 } from './database'
 export type { DatabaseType } from './database'
