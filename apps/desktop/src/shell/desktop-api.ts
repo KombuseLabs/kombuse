@@ -99,7 +99,11 @@ export async function desktopApiPlugin(
     "/desktop/windows/:id/navigate",
     async (request: any, reply: any) => {
       const id = Number(request.params.id);
-      const { path } = (request.body as { path: string }) || {};
+      const { path, wait_for_selector, timeout_ms = 5000 } = (request.body as {
+        path: string;
+        wait_for_selector?: string;
+        timeout_ms?: number;
+      }) || {};
 
       if (!path) {
         return reply.status(400).send({ error: "path is required" });
@@ -113,10 +117,52 @@ export async function desktopApiPlugin(
       const url = `${opts.getWebUrl()}${path}`;
       await win.loadURL(url);
 
+      if (wait_for_selector) {
+        const selectorJson = JSON.stringify(wait_for_selector);
+        const waitScript = `
+          new Promise((resolve, reject) => {
+            const timeout = setTimeout(
+              () => reject(new Error('wait_for_selector timed out after ${timeout_ms}ms')),
+              ${timeout_ms}
+            );
+            const check = () => {
+              if (document.querySelector(${selectorJson})) {
+                clearTimeout(timeout);
+                resolve(true);
+              } else {
+                requestAnimationFrame(check);
+              }
+            };
+            check();
+          })
+        `;
+        await win.webContents.executeJavaScript(waitScript);
+      }
+
       return {
         id: win.id,
         url: win.webContents.getURL(),
       };
+    },
+  );
+
+  fastify.post(
+    "/desktop/windows/:id/execute-js",
+    async (request: any, reply: any) => {
+      const id = Number(request.params.id);
+      const { script } = (request.body as { script: string }) || {};
+
+      const win = BrowserWindow.fromId(id);
+      if (!win) {
+        return reply.status(404).send({ error: "Window not found" });
+      }
+
+      if (!opts.windowServerPortMap.has(win.webContents.id)) {
+        return reply.status(403).send({ error: "execute_js is only allowed on isolated windows" });
+      }
+
+      const result = await win.webContents.executeJavaScript(script);
+      return { result };
     },
   );
 

@@ -135,14 +135,28 @@ export function registerDesktopTools(
           .string()
           .min(1)
           .describe('App path to navigate to, e.g. "/projects/1/tickets/42"'),
+        wait_for_selector: z
+          .string()
+          .optional()
+          .describe('CSS selector to wait for before resolving. Polls until the element appears in the DOM or timeout_ms elapses. Useful for waiting for React to finish rendering.'),
+        timeout_ms: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe('Maximum wait time in milliseconds for wait_for_selector (default: 5000)'),
       },
     },
-    async ({ window_id, path }) => {
+    async ({ window_id, path, wait_for_selector, timeout_ms }) => {
       try {
+        const payload: Record<string, unknown> = { path }
+        if (wait_for_selector !== undefined) payload.wait_for_selector = wait_for_selector
+        if (timeout_ms !== undefined) payload.timeout_ms = timeout_ms
+
         const response = await injectable.inject({
           method: 'POST',
           url: `/api/desktop/windows/${window_id}/navigate`,
-          payload: { path },
+          payload,
         })
 
         let body: unknown
@@ -159,6 +173,49 @@ export function registerDesktopTools(
         return successResponse(body)
       } catch (err) {
         return errorResponse(`navigate_to failed: ${(err as Error).message}`)
+      }
+    }
+  )
+
+  registerTool(
+    'execute_js',
+    {
+      description:
+        'Execute JavaScript in an isolated desktop window and return the evaluated result. Only works on isolated windows opened with open_window({ isolated: true }). Use for clicking buttons, filling forms, reading DOM state, or waiting for UI conditions.',
+      inputSchema: {
+        window_id: z
+          .number()
+          .int()
+          .positive()
+          .describe('The ID of the isolated window'),
+        script: z
+          .string()
+          .min(1)
+          .describe('JavaScript code to execute in the window renderer process'),
+      },
+    },
+    async ({ window_id, script }) => {
+      try {
+        const response = await injectable.inject({
+          method: 'POST',
+          url: `/api/desktop/windows/${window_id}/execute-js`,
+          payload: { script },
+        })
+
+        let body: unknown
+        try {
+          body = JSON.parse(response.body)
+        } catch {
+          body = response.body
+        }
+
+        if (response.statusCode >= 400) {
+          return errorResponse(`execute_js failed (${response.statusCode}): ${(body as any)?.error ?? response.body}`)
+        }
+
+        return successResponse(body)
+      } catch (err) {
+        return errorResponse(`execute_js failed: ${(err as Error).message}`)
       }
     }
   )

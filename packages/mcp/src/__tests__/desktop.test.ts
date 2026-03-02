@@ -612,3 +612,168 @@ describe('close_window', () => {
     expect(data.error).toContain('Network error')
   })
 })
+
+describe('execute_js', () => {
+  it('should return evaluated result on success', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ result: 42 }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'execute_js',
+      arguments: { window_id: 1, script: '1 + 41' },
+    })
+    const data = parseContent(result) as { result: number }
+
+    expect(result.isError).toBeFalsy()
+    expect(data.result).toBe(42)
+    expect(injectable.lastCall).toEqual({
+      method: 'POST',
+      url: '/api/desktop/windows/1/execute-js',
+      payload: { script: '1 + 41' },
+    })
+  })
+
+  it('should interpolate window_id into URL', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ result: null }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    await client.callTool({
+      name: 'execute_js',
+      arguments: { window_id: 7, script: 'null' },
+    })
+
+    expect(injectable.lastCall?.url).toBe('/api/desktop/windows/7/execute-js')
+  })
+
+  it('should return error when window not found (404)', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 404,
+      body: JSON.stringify({ error: 'Window not found' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'execute_js',
+      arguments: { window_id: 99, script: 'true' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('404')
+  })
+
+  it('should return error when window is not isolated (403)', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 403,
+      body: JSON.stringify({ error: 'execute_js is only allowed on isolated windows' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'execute_js',
+      arguments: { window_id: 2, script: 'true' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('403')
+  })
+
+  it('should return error response when inject throws', async () => {
+    const injectable: InjectableServer = {
+      async inject() {
+        throw new Error('IPC error')
+      },
+    }
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'execute_js',
+      arguments: { window_id: 1, script: 'true' },
+    })
+    const data = parseContent(result) as { error: string }
+
+    expect(result.isError).toBe(true)
+    expect(data.error).toContain('IPC error')
+  })
+})
+
+describe('navigate_to with wait_for_selector', () => {
+  it('should send only path when no selector provided (regression)', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ id: 1, url: 'http://localhost:3333/tickets' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    await client.callTool({
+      name: 'navigate_to',
+      arguments: { window_id: 1, path: '/tickets' },
+    })
+
+    expect(injectable.lastCall).toEqual({
+      method: 'POST',
+      url: '/api/desktop/windows/1/navigate',
+      payload: { path: '/tickets' },
+    })
+  })
+
+  it('should include wait_for_selector in payload when provided', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ id: 1, url: 'http://localhost:3333/tickets' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    await client.callTool({
+      name: 'navigate_to',
+      arguments: { window_id: 1, path: '/tickets', wait_for_selector: '[data-loaded]' },
+    })
+
+    expect(injectable.lastCall).toEqual({
+      method: 'POST',
+      url: '/api/desktop/windows/1/navigate',
+      payload: { path: '/tickets', wait_for_selector: '[data-loaded]' },
+    })
+  })
+
+  it('should include both wait_for_selector and timeout_ms when provided', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 200,
+      body: JSON.stringify({ id: 1, url: 'http://localhost:3333/tickets' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    await client.callTool({
+      name: 'navigate_to',
+      arguments: { window_id: 1, path: '/tickets', wait_for_selector: '.ticket-list', timeout_ms: 10000 },
+    })
+
+    expect(injectable.lastCall).toEqual({
+      method: 'POST',
+      url: '/api/desktop/windows/1/navigate',
+      payload: { path: '/tickets', wait_for_selector: '.ticket-list', timeout_ms: 10000 },
+    })
+  })
+
+  it('should propagate error response when selector times out', async () => {
+    const injectable = createMockInjectable({
+      statusCode: 500,
+      body: JSON.stringify({ error: 'wait_for_selector timed out after 5000ms' }),
+    })
+    const { client } = await setupTestClient(injectable)
+
+    const result = await client.callTool({
+      name: 'navigate_to',
+      arguments: { window_id: 1, path: '/tickets', wait_for_selector: '.nonexistent' },
+    })
+
+    expect(result.isError).toBe(true)
+  })
+})
