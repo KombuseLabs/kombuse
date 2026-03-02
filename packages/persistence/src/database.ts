@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3'
 import type { Database as DatabaseType } from 'better-sqlite3'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { join, resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config.repository'
@@ -7,6 +8,14 @@ import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config.reposi
 export type { Database as DatabaseType } from 'better-sqlite3'
 
 let db: DatabaseType | null = null
+
+/**
+ * Per-request database context. Each Fastify server instance sets this in an
+ * onRequest hook so that repository calls within the request's async context
+ * read from the correct database (primary or isolated) without touching the
+ * shared module-level `db` global.
+ */
+export const dbContext = new AsyncLocalStorage<{ db: DatabaseType }>()
 
 /**
  * Set the database instance (dependency injection).
@@ -49,9 +58,13 @@ export function initializeDatabase(dbPath?: string): DatabaseType {
 
 /**
  * Get the current database instance.
- * Throws if no database has been set or initialized.
+ * Checks the per-request AsyncLocalStorage context first (set by each Fastify
+ * server's onRequest hook), then falls back to the global singleton.
+ * Throws if neither is available.
  */
 export function getDatabase(): DatabaseType {
+  const store = dbContext.getStore()
+  if (store) return store.db
   if (!db) {
     throw new Error(
       'Database not initialized. Call setDatabase() or initializeDatabase() first.'

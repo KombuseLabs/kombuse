@@ -6,6 +6,7 @@ export {
   closeDatabase,
   runMigrations,
   seedDatabase,
+  dbContext,
 } from './database'
 export type { DatabaseType } from './database'
 export { loadKombuseConfig, loadProjectConfig, saveProjectConfig, getKombuseDir, resolveDbPath, resolveEnvToken } from './config.repository'

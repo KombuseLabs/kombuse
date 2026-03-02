@@ -53,7 +53,7 @@ const PORT_FILE = join(homedir(), ".kombuse", "server-port");
 const windowServerPortMap = new Map<number, number>();
 
 // Holds the active createServer fn — updated to package's createServer in prod/preview mode.
-type CreateServerFn = (opts: { port: number; dbPath?: string; desktop?: boolean }) => Promise<{
+type CreateServerFn = (opts: { port: number; dbPath?: string; desktop?: boolean; isolated?: boolean }) => Promise<{
   listen: () => Promise<string>;
   close: () => Promise<unknown>;
   instance: unknown;
@@ -107,7 +107,7 @@ async function startPackageServer() {
  * The server is assigned a random port (port: 0) and never writes to the port file.
  */
 async function startIsolatedServer(dbPath: string): Promise<{ port: number; close: () => Promise<void> }> {
-  const server = await _createServerForIsolated({ port: 0, dbPath, desktop: false });
+  const server = await _createServerForIsolated({ port: 0, dbPath, desktop: false, isolated: true });
   const address = await server.listen();
   const port = new URL(address).port ? Number(new URL(address).port) : 0;
   return { port, close: async () => { await server.close(); } };

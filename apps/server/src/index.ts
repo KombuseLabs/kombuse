@@ -9,6 +9,7 @@ import {
   initializeDatabase,
   seedDatabase,
   onEventCreated,
+  dbContext,
 } from "@kombuse/persistence";
 import {
   registerTicketTools,
@@ -65,33 +66,42 @@ export interface ServerOptions {
   port: number;
   dbPath?: string;
   desktop?: boolean;
+  isolated?: boolean;
 }
 
 /**
  * Create a configured Fastify server instance.
  * Initializes and seeds the database internally.
  */
-export async function createServer({ port, dbPath, desktop }: ServerOptions) {
+export async function createServer({ port, dbPath, desktop, isolated }: ServerOptions) {
   const db = initializeDatabase(dbPath);
   seedDatabase(db);
-  setDatabase(db);
-
-  // Clean up orphaned sessions from previous runs.
-  // Startup recovery should reconcile immediately because in-process backends
-  // are gone after restart.
-  const abortedCount = cleanupOrphanedSessions({
-    source: 'startup_cleanup',
-    reason: 'server_startup_recovery',
-    minInactiveMs: 0,
-  });
-  if (abortedCount > 0) {
-    serverLog.info(
-      `Aborted ${abortedCount} orphaned session(s) from previous run`
-    );
+  // Primary server sets the global DB for non-request contexts (e.g. orphan timer).
+  // Isolated server skips this so it never clobbers the primary server's global ref.
+  if (!isolated) {
+    setDatabase(db);
   }
 
-  // Periodically detect and abort orphaned sessions (running with no live backend)
-  const orphanInterval = setInterval(() => {
+  // Isolated servers have no agent sessions, so orphan cleanup is unnecessary.
+  if (!isolated) {
+    // Clean up orphaned sessions from previous runs.
+    // Startup recovery should reconcile immediately because in-process backends
+    // are gone after restart.
+    const abortedCount = cleanupOrphanedSessions({
+      source: 'startup_cleanup',
+      reason: 'server_startup_recovery',
+      minInactiveMs: 0,
+    });
+    if (abortedCount > 0) {
+      serverLog.info(
+        `Aborted ${abortedCount} orphaned session(s) from previous run`
+      );
+    }
+  }
+
+  // Periodically detect and abort orphaned sessions (running with no live backend).
+  // Skipped for isolated servers which have no agent sessions.
+  const orphanInterval = isolated ? undefined : setInterval(() => {
     const count = cleanupOrphanedSessions();
     if (count > 0) {
       serverLog.info(
@@ -108,6 +118,14 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
 
   fastify.addHook("preSerialization", createResponseValidationHook());
   fastify.addHook("preHandler", resolveProjectSlug);
+
+  // Scope each request's async context to this server instance's database.
+  // This allows multiple server instances (primary + isolated) to coexist in
+  // the same process without clobbering the shared global DB reference.
+  const localDb = db;
+  fastify.addHook("onRequest", async (_request, _reply) => {
+    dbContext.enterWith({ db: localDb });
+  });
 
   // Host header validation — primary defense against DNS rebinding.
   // A malicious page at evil.com that rebinds DNS to 127.0.0.1 still sends
@@ -157,13 +175,15 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
   await fastify.register(websocket);
   fastify.register(websocketRoutes);
 
-  // Connect event system to WebSocket broadcaster
-  onEventCreated(broadcastEvent);
-
-  // Connect event system to agent trigger processing
-  onEventCreated(async (event) => {
-    await processEventAndRunAgents(event);
-  });
+  // Connect event system to WebSocket broadcaster and agent trigger processing.
+  // Isolated servers have no WebSocket hub or agent processing — skipping these
+  // prevents duplicate listener accumulation in the module-level listeners array.
+  const unsubBroadcast = isolated ? () => {} : onEventCreated(broadcastEvent);
+  const unsubAgents = isolated
+    ? () => {}
+    : onEventCreated(async (event) => {
+        await processEventAndRunAgents(event);
+      });
 
   // Collect API route metadata for MCP discovery tool
   const apiRoutes: ApiRouteInfo[] = [];
@@ -234,8 +254,12 @@ export async function createServer({ port, dbPath, desktop }: ServerOptions) {
     listen: () => fastify.listen({ port, host: "127.0.0.1" }),
     close: () => {
       clearInterval(orphanInterval);
-      stopAllActiveBackends();
-      closeAppLogger();
+      unsubBroadcast();
+      unsubAgents();
+      if (!isolated) {
+        stopAllActiveBackends();
+        closeAppLogger();
+      }
       return fastify.close();
     },
     instance: fastify,
