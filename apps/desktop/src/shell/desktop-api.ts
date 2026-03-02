@@ -52,10 +52,11 @@ export async function desktopApiPlugin(
 
       // Map is set BEFORE loadURL — renderer's ipcRenderer.sendSync("server:port") will
       // now return the isolated port, not the primary port.
-      opts.windowServerPortMap.set(win.webContents.id, isolatedServer.port);
+      const webContentsId = win.webContents.id;
+      opts.windowServerPortMap.set(webContentsId, isolatedServer.port);
       win.on("closed", () => {
         void isolatedServer.close().catch(console.error);
-        opts.windowServerPortMap.delete(win.webContents.id);
+        opts.windowServerPortMap.delete(webContentsId);
       });
 
       // Now it's safe to load the URL.
