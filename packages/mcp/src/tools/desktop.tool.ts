@@ -82,14 +82,19 @@ export function registerDesktopTools(
           .min(200)
           .optional()
           .describe('Window height in pixels (minimum 200, default 800)'),
+        isolated: z
+          .boolean()
+          .optional()
+          .describe('When true, opens the window backed by an isolated docs database (~/.kombuse/docs.db). Use for documentation screenshots to avoid capturing private user data.'),
       },
     },
-    async ({ path, width, height }) => {
+    async ({ path, width, height, isolated }) => {
       try {
         const payload: Record<string, unknown> = {}
         if (path) payload.path = path
         if (width !== undefined) payload.width = width
         if (height !== undefined) payload.height = height
+        if (isolated !== undefined) payload.isolated = isolated
 
         const response = await injectable.inject({
           method: 'POST',

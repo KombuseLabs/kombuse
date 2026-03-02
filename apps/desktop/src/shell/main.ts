@@ -50,6 +50,15 @@ const DEV_WEB_URL = "http://localhost:3333";
 
 let serverPort = 0;
 const PORT_FILE = join(homedir(), ".kombuse", "server-port");
+const windowServerPortMap = new Map<number, number>();
+
+// Holds the active createServer fn — updated to package's createServer in prod/preview mode.
+type CreateServerFn = (opts: { port: number; dbPath?: string; desktop?: boolean }) => Promise<{
+  listen: () => Promise<string>;
+  close: () => Promise<unknown>;
+  instance: unknown;
+}>;
+let _createServerForIsolated: CreateServerFn = createServerDirect as unknown as CreateServerFn;
 
 /**
  * Start embedded server in dev mode (direct import, no package).
@@ -60,7 +69,7 @@ async function startDevServer() {
   setShellAutoUpdater(shellUpdater);
 
   const server = await createServerDirect({ port: Number(process.env.KOMBUSE_PORT || 0), desktop: true });
-  server.instance.register(desktopApiPlugin, { prefix: "/api", createWindow, getWebUrl: () => webUrl } as any);
+  server.instance.register(desktopApiPlugin, { prefix: "/api", createWindow, getWebUrl: () => webUrl, windowServerPortMap, startIsolatedServer } as any);
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
@@ -77,19 +86,31 @@ async function startPackageServer() {
   console.log(`Loading package v${pkg.manifest.version} from ${pkg.path}`);
 
   const { createServer, setAutoUpdater: setPackageAutoUpdater, setShellAutoUpdater: setPackageShellAutoUpdater } = await loadPackage(pkg.serverBundle);
+  _createServerForIsolated = createServer;
 
   // Wire up auto-updaters to server
   setPackageAutoUpdater(autoUpdater);
   if (setPackageShellAutoUpdater) setPackageShellAutoUpdater(shellUpdater);
 
   const server = await createServer({ port: 0, desktop: true });
-  server.instance.register(desktopApiPlugin, { prefix: "/api", createWindow, getWebUrl: () => webUrl } as any);
+  server.instance.register(desktopApiPlugin, { prefix: "/api", createWindow, getWebUrl: () => webUrl, windowServerPortMap, startIsolatedServer } as any);
   const address = await server.listen();
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
   writeFileSync(PORT_FILE, String(serverPort));
   console.log(`Server running on port ${serverPort}`);
   return { server, pkg };
+}
+
+/**
+ * Start an isolated Fastify server backed by a separate database.
+ * The server is assigned a random port (port: 0) and never writes to the port file.
+ */
+async function startIsolatedServer(dbPath: string): Promise<{ port: number; close: () => Promise<void> }> {
+  const server = await _createServerForIsolated({ port: 0, dbPath, desktop: false });
+  const address = await server.listen();
+  const port = new URL(address).port ? Number(new URL(address).port) : 0;
+  return { port, close: async () => { await server.close(); } };
 }
 
 const SAFE_EXTERNAL_PROTOCOLS = new Set(["http:", "https:"]);
@@ -166,8 +187,9 @@ function createWindow(opts?: { path?: string; width?: number; height?: number })
 }
 
 // IPC handler for server port (used by renderer to discover API address)
+// Returns isolated server port for isolated windows, primary port for all others.
 ipcMain.on("server:port", (event) => {
-  event.returnValue = serverPort;
+  event.returnValue = windowServerPortMap.get(event.sender.id) ?? serverPort;
 });
 
 // IPC handler for app restart (used by auto-updater UI)

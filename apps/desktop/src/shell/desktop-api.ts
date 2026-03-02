@@ -1,8 +1,12 @@
 import { BrowserWindow } from "electron";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 export interface DesktopApiOptions {
   createWindow: (opts?: { path?: string; width?: number; height?: number }) => BrowserWindow;
   getWebUrl: () => string;
+  windowServerPortMap: Map<number, number>;
+  startIsolatedServer: (dbPath: string) => Promise<{ port: number; close: () => Promise<void> }>;
 }
 
 interface RouteInstance {
@@ -25,8 +29,23 @@ export async function desktopApiPlugin(
   });
 
   fastify.post("/desktop/windows", async (request: any) => {
-    const { path, width, height } = (request.body as { path?: string; width?: number; height?: number }) || {};
+    const { path, width, height, isolated } = (request.body as {
+      path?: string;
+      width?: number;
+      height?: number;
+      isolated?: boolean;
+    }) || {};
     const win = opts.createWindow({ path, width, height });
+
+    if (isolated) {
+      const docsDbPath = join(homedir(), ".kombuse", "docs.db");
+      const isolatedServer = await opts.startIsolatedServer(docsDbPath);
+      opts.windowServerPortMap.set(win.webContents.id, isolatedServer.port);
+      win.on("closed", () => {
+        isolatedServer.close();
+        opts.windowServerPortMap.delete(win.webContents.id);
+      });
+    }
 
     // Wait for the window to be ready before returning
     await new Promise<void>((resolve) => {
