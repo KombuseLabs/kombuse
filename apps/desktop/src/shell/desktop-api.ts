@@ -164,7 +164,14 @@ export async function desktopApiPlugin(
         return reply.status(403).send({ error: "execute_js is only allowed on isolated windows" });
       }
 
-      const result = await win.webContents.executeJavaScript(script);
+      let result: unknown;
+      try {
+        result = await win.webContents.executeJavaScript(script);
+      } catch (error) {
+        return reply.status(400).send({
+          error: `Script execution failed: ${(error as Error).message}`,
+        });
+      }
       return { result };
     },
   );
