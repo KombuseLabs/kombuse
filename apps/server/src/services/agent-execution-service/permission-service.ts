@@ -32,6 +32,14 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'mcp__kombuse__list_agents': 'List agents',
   'mcp__kombuse__create_agent': 'Create a new agent',
   'mcp__kombuse__update_agent': 'Update an agent',
+  // Desktop MCP tools
+  'mcp__kombuse__list_windows': 'List open desktop windows',
+  'mcp__kombuse__open_window': 'Open a new desktop window',
+  'mcp__kombuse__navigate_to': 'Navigate a desktop window to a path',
+  'mcp__kombuse__execute_js': 'Run JavaScript in an isolated window',
+  'mcp__kombuse__take_screenshot': 'Capture a screenshot (returns image)',
+  'mcp__kombuse__save_screenshot': 'Capture a screenshot and save to disk',
+  'mcp__kombuse__close_window': 'Close a desktop window',
   // Common Claude Code tools
   'Bash': 'Run a shell command',
   'Read': 'Read a file',
