@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export interface DesktopApiOptions {
-  createWindow: (opts?: { path?: string; width?: number; height?: number }) => BrowserWindow;
+  createWindow: (opts?: { path?: string; width?: number; height?: number; deferLoad?: boolean }) => BrowserWindow;
   getWebUrl: () => string;
   windowServerPortMap: Map<number, number>;
   startIsolatedServer: (dbPath: string) => Promise<{ port: number; close: () => Promise<void> }>;
@@ -28,24 +28,56 @@ export async function desktopApiPlugin(
     }));
   });
 
-  fastify.post("/desktop/windows", async (request: any) => {
+  fastify.post("/desktop/windows", async (request: any, reply: any) => {
     const { path, width, height, isolated } = (request.body as {
       path?: string;
       width?: number;
       height?: number;
       isolated?: boolean;
     }) || {};
-    const win = opts.createWindow({ path, width, height });
 
     if (isolated) {
       const docsDbPath = join(homedir(), ".kombuse", "docs.db");
-      const isolatedServer = await opts.startIsolatedServer(docsDbPath);
+      // Create window WITHOUT loading URL yet — renderer must not fire server:port IPC
+      // until the isolated port is in the map.
+      const win = opts.createWindow({ path, width, height, deferLoad: true });
+
+      let isolatedServer: { port: number; close: () => Promise<void> };
+      try {
+        isolatedServer = await opts.startIsolatedServer(docsDbPath);
+      } catch (err) {
+        win.close();
+        return reply.status(500).send({ error: "Failed to start isolated server" });
+      }
+
+      // Map is set BEFORE loadURL — renderer's ipcRenderer.sendSync("server:port") will
+      // now return the isolated port, not the primary port.
       opts.windowServerPortMap.set(win.webContents.id, isolatedServer.port);
       win.on("closed", () => {
-        isolatedServer.close();
+        void isolatedServer.close().catch(console.error);
         opts.windowServerPortMap.delete(win.webContents.id);
       });
+
+      // Now it's safe to load the URL.
+      const loadUrl = path ? new URL(path, opts.getWebUrl()).href : opts.getWebUrl();
+      win.loadURL(loadUrl);
+
+      await new Promise<void>((resolve) => {
+        if (win.webContents.isLoading()) {
+          win.webContents.once("did-finish-load", () => resolve());
+        } else {
+          resolve();
+        }
+      });
+
+      return {
+        id: win.id,
+        title: win.getTitle(),
+        url: win.webContents.getURL(),
+      };
     }
+
+    const win = opts.createWindow({ path, width, height });
 
     // Wait for the window to be ready before returning
     await new Promise<void>((resolve) => {

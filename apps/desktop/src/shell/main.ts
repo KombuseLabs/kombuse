@@ -125,7 +125,7 @@ function isSafeExternalUrl(url: string): boolean {
 
 let webUrl = DEV_WEB_URL;
 
-function createWindow(opts?: { path?: string; width?: number; height?: number }): BrowserWindow {
+function createWindow(opts?: { path?: string; width?: number; height?: number; deferLoad?: boolean }): BrowserWindow {
   const focused = BrowserWindow.getFocusedWindow();
   const bounds = focused?.getBounds();
   const x = bounds ? bounds.x + 20 : undefined;
@@ -181,7 +181,9 @@ function createWindow(opts?: { path?: string; width?: number; height?: number })
   });
 
   const loadUrl = opts?.path ? new URL(opts.path, webUrl).href : webUrl;
-  mainWindow.loadURL(loadUrl);
+  if (!opts?.deferLoad) {
+    mainWindow.loadURL(loadUrl);
+  }
 
   return mainWindow;
 }
