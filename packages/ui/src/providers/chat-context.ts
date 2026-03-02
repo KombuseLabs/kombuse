@@ -46,7 +46,8 @@ export interface ChatContextValue {
     requestId: string,
     behavior: 'allow' | 'deny',
     message?: string,
-    updatedInput?: Record<string, unknown>
+    updatedInput?: Record<string, unknown>,
+    options?: { alwaysAllow?: boolean }
   ) => void
   /** Clear events and reset conversation */
   reset: () => void

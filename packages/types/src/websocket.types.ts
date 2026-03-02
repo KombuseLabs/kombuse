@@ -55,6 +55,8 @@ export type ClientMessage =
       behavior: 'allow' | 'deny'
       updatedInput?: Record<string, unknown>
       message?: string
+      /** When true with behavior='allow', persists the tool to the agent's auto-approved config */
+      alwaysAllow?: boolean
     }
   | {
       type: 'agent.stop'

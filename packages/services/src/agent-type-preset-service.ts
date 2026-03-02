@@ -93,8 +93,8 @@ export function getTypePreset(agentType?: string, pluginId?: string): AgentTypeP
 
 /**
  * Resolve the effective preset for an agent, applying config overrides.
- * If config contains override arrays, they replace the base preset values.
- * Undefined overrides fall through to the base preset.
+ * Override arrays are additive — they are merged (union) with the base preset,
+ * not replacements. Undefined overrides fall through to the base preset.
  */
 export function getEffectivePreset(agentType?: string, config?: AgentConfig, pluginId?: string): AgentTypePreset {
   const base = getTypePreset(agentType, pluginId)
@@ -107,8 +107,12 @@ export function getEffectivePreset(agentType?: string, config?: AgentConfig, plu
 
   return {
     ...base,
-    autoApprovedTools: toolsOverride ?? base.autoApprovedTools,
-    autoApprovedBashCommands: bashOverride ?? base.autoApprovedBashCommands,
+    autoApprovedTools: toolsOverride
+      ? [...new Set([...base.autoApprovedTools, ...toolsOverride])]
+      : base.autoApprovedTools,
+    autoApprovedBashCommands: bashOverride
+      ? [...new Set([...base.autoApprovedBashCommands, ...bashOverride])]
+      : base.autoApprovedBashCommands,
   }
 }
 

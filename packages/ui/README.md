@@ -1402,6 +1402,14 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Click-to-open lightbox with Radix Dialog, keyboard navigation (arrow keys), and close (Escape)
 - Used by `MessageRenderer` to render user-sent images in chat messages
 
+`PermissionBar` props:
+- `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request
+- `onRespond`: `(behavior: 'allow' | 'deny', message?: string, options?: { alwaysAllow?: boolean }) => void` — callback for user decision
+- Three primary actions: Allow, Always Allow (persists to agent auto-approved config), Reject
+- "Always Allow" sends `alwaysAllow: true` in the WebSocket response, which persists the tool (or bash command prefix) to the agent's `auto_approved_tools_override` / `auto_approved_bash_commands_override` config
+- "Suggest" mode: reveals a text input for sending a denial message
+- The `NotificationBell` default permission card also includes an "Always" button with the same behavior
+
 `PlanApprovalBar` props:
 - `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request with `toolName: 'ExitPlanMode'`
 - `onRespond`: `(behavior: 'allow' | 'deny', message?: string) => void` — callback for user decision

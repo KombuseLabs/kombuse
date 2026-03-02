@@ -1576,6 +1576,78 @@ describe('pluginImportService', () => {
       // plugin_base always reflects latest plugin values
       expect(updated!.plugin_base!.system_prompt).toBe('v2 prompt')
     })
+
+    it('should preserve user-customized config fields while applying plugin config updates (field-level merge)', () => {
+      const pkg = trackDir(
+        createPluginPackage({
+          manifest: { name: 'config-merge-plugin' },
+          agents: [
+            {
+              filename: 'merge-agent.md',
+              frontmatter: {
+                name: 'Merge Agent',
+                slug: 'merge-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                model: 'claude-sonnet-4-6',
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v1 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg,
+        project_id: TEST_PROJECT_ID,
+      })
+
+      // User adds auto-approved tools (simulates "Always Allow")
+      const agent = agentsRepository.getBySlug('merge-agent')
+      const userConfig = {
+        ...agent!.config,
+        auto_approved_tools_override: ['Write'],
+      }
+      agentsRepository.update(agent!.id, { config: userConfig })
+
+      // v2: plugin updates the model field
+      const pkg2 = trackDir(
+        createPluginPackage({
+          manifest: { name: 'config-merge-plugin' },
+          agents: [
+            {
+              filename: 'merge-agent.md',
+              frontmatter: {
+                name: 'Merge Agent',
+                slug: 'merge-agent',
+                type: 'kombuse',
+                is_enabled: true,
+                enabled_for_chat: false,
+                model: 'claude-opus-4-6',
+                permissions: [],
+                triggers: [],
+              },
+              body: 'v1 prompt',
+            },
+          ],
+        })
+      )
+
+      pluginImportService.installPackage({
+        package_path: pkg2,
+        project_id: TEST_PROJECT_ID,
+        overwrite: true,
+      })
+
+      const updated = agentsRepository.getBySlug('merge-agent')
+      // User's permission override preserved
+      expect(updated!.config.auto_approved_tools_override).toEqual(['Write'])
+      // Plugin's model update applied
+      expect(updated!.config.model).toBe('claude-opus-4-6')
+    })
   })
 
   describe('trigger slug-based sync', () => {

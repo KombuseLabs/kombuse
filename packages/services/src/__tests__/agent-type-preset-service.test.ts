@@ -26,36 +26,58 @@ describe('getEffectivePreset', () => {
     expect(preset.autoApprovedBashCommands).toEqual(base.autoApprovedBashCommands)
   })
 
-  it('overrides tools when auto_approved_tools_override is present', () => {
-    const preset = getEffectivePreset('kombuse', {
-      auto_approved_tools_override: ['Read', 'Grep'],
-    })
-    expect(preset.autoApprovedTools).toEqual(['Read', 'Grep'])
+  it('merges override tools with base preset (additive)', () => {
     const base = getTypePreset('kombuse')
+    const preset = getEffectivePreset('kombuse', {
+      auto_approved_tools_override: ['Write', 'Edit'],
+    })
+    // Should include all base tools plus the overrides
+    expect(preset.autoApprovedTools).toContain('Write')
+    expect(preset.autoApprovedTools).toContain('Edit')
+    for (const tool of base.autoApprovedTools) {
+      expect(preset.autoApprovedTools).toContain(tool)
+    }
     expect(preset.autoApprovedBashCommands).toEqual(base.autoApprovedBashCommands)
   })
 
-  it('overrides bash commands when auto_approved_bash_commands_override is present', () => {
-    const preset = getEffectivePreset('coder', {
-      auto_approved_bash_commands_override: ['git status'],
-    })
-    expect(preset.autoApprovedBashCommands).toEqual(['git status'])
+  it('merges override bash commands with base preset (additive)', () => {
     const base = getTypePreset('coder')
+    const preset = getEffectivePreset('coder', {
+      auto_approved_bash_commands_override: ['wc'],
+    })
+    // Should include all base bash commands plus the override
+    expect(preset.autoApprovedBashCommands).toContain('wc')
+    for (const cmd of base.autoApprovedBashCommands) {
+      expect(preset.autoApprovedBashCommands).toContain(cmd)
+    }
     expect(preset.autoApprovedTools).toEqual(base.autoApprovedTools)
   })
 
-  it('allows empty array to clear all tools', () => {
+  it('deduplicates when override contains tools already in base', () => {
+    const base = getTypePreset('kombuse')
+    const preset = getEffectivePreset('kombuse', {
+      auto_approved_tools_override: ['Read', 'Grep'], // already in base
+    })
+    // Should not have duplicates
+    const readCount = preset.autoApprovedTools.filter(t => t === 'Read').length
+    expect(readCount).toBe(1)
+    expect(preset.autoApprovedTools.length).toBe(base.autoApprovedTools.length)
+  })
+
+  it('empty override array adds nothing (preserves base)', () => {
+    const base = getTypePreset('kombuse')
     const preset = getEffectivePreset('kombuse', {
       auto_approved_tools_override: [],
     })
-    expect(preset.autoApprovedTools).toEqual([])
+    expect(preset.autoApprovedTools).toEqual(base.autoApprovedTools)
   })
 
-  it('allows empty array to clear all bash commands', () => {
+  it('empty bash override array adds nothing (preserves base)', () => {
+    const base = getTypePreset('coder')
     const preset = getEffectivePreset('coder', {
       auto_approved_bash_commands_override: [],
     })
-    expect(preset.autoApprovedBashCommands).toEqual([])
+    expect(preset.autoApprovedBashCommands).toEqual(base.autoApprovedBashCommands)
   })
 
   it('preserves permissionMode from base', () => {
@@ -66,20 +88,31 @@ describe('getEffectivePreset', () => {
     expect(preset.permissionMode).toBe(base.permissionMode)
   })
 
-  it('overrides both tools and bash commands simultaneously', () => {
+  it('merges both tools and bash commands simultaneously', () => {
+    const base = getTypePreset('kombuse')
     const preset = getEffectivePreset('kombuse', {
-      auto_approved_tools_override: ['Read'],
+      auto_approved_tools_override: ['Write'],
       auto_approved_bash_commands_override: ['ls'],
     })
-    expect(preset.autoApprovedTools).toEqual(['Read'])
-    expect(preset.autoApprovedBashCommands).toEqual(['ls'])
+    expect(preset.autoApprovedTools).toContain('Write')
+    for (const tool of base.autoApprovedTools) {
+      expect(preset.autoApprovedTools).toContain(tool)
+    }
+    expect(preset.autoApprovedBashCommands).toContain('ls')
+    for (const cmd of base.autoApprovedBashCommands) {
+      expect(preset.autoApprovedBashCommands).toContain(cmd)
+    }
   })
 
   it('falls back to default preset for unknown agent type', () => {
+    const base = getTypePreset(undefined) // default
     const preset = getEffectivePreset('unknown-type', {
-      auto_approved_tools_override: ['Read'],
+      auto_approved_tools_override: ['Write'],
     })
-    expect(preset.autoApprovedTools).toEqual(['Read'])
+    expect(preset.autoApprovedTools).toContain('Write')
+    for (const tool of base.autoApprovedTools) {
+      expect(preset.autoApprovedTools).toContain(tool)
+    }
   })
 })
 
@@ -148,7 +181,7 @@ describe('getEffectivePreset with pluginId', () => {
     mockGet.mockReturnValue(null)
   })
 
-  it('applies config overrides on top of plugin preset', () => {
+  it('merges config overrides on top of plugin preset (additive)', () => {
     const pluginPreset = {
       autoApprovedTools: ['Read', 'Grep'],
       autoApprovedBashCommands: ['ls'],
@@ -160,7 +193,10 @@ describe('getEffectivePreset with pluginId', () => {
       auto_approved_tools_override: ['Write'],
     }, 'test-plugin-id')
 
-    expect(preset.autoApprovedTools).toEqual(['Write'])
+    // Should have base plugin tools + override
+    expect(preset.autoApprovedTools).toContain('Read')
+    expect(preset.autoApprovedTools).toContain('Grep')
+    expect(preset.autoApprovedTools).toContain('Write')
     expect(preset.autoApprovedBashCommands).toEqual(['ls'])
     expect(preset.permissionMode).toBe('plan')
   })

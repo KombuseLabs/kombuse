@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Bell, Shield, Check, X, ExternalLink, FileCheck, HelpCircle, Loader2 } from 'lucide-react'
+import { Bell, Shield, ShieldCheck, Check, X, ExternalLink, FileCheck, HelpCircle, Loader2 } from 'lucide-react'
 import { Button } from '../base/button'
 import { Badge } from '../base/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '../base/popover'
@@ -82,6 +82,18 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       behavior: 'deny',
     })
     // Wait for agent.permission_resolved to remove from UI
+    setRespondedKeys((prev) => new Set(prev).add(permission.permissionKey))
+  }
+
+  const handleAlwaysAllow = (permission: PendingPermission) => {
+    send({
+      type: 'permission.response',
+      kombuseSessionId: permission.sessionId,
+      requestId: permission.requestId,
+      behavior: 'allow',
+      updatedInput: permission.input,
+      alwaysAllow: true,
+    })
     setRespondedKeys((prev) => new Set(prev).add(permission.permissionKey))
   }
 
@@ -292,6 +304,15 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
           >
             {isResponding ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Check className="mr-1 size-3" />}
             {isResponding ? 'Sending...' : 'Allow'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleAlwaysAllow(permission)}
+            disabled={isResponding}
+          >
+            <ShieldCheck className="mr-1 size-3" />
+            Always
           </Button>
           <Button
             size="sm"

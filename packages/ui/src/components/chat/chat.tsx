@@ -93,8 +93,8 @@ function Chat({
         ) : (
           <PermissionBar
             permission={pendingPermission}
-            onRespond={(behavior, message) =>
-              respondToPermission(pendingPermission.requestId, behavior, message)
+            onRespond={(behavior, message, options) =>
+              respondToPermission(pendingPermission.requestId, behavior, message, undefined, options)
             }
           />
         )

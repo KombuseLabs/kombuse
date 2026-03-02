@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
-import { Shield, Check, X, MessageSquare } from 'lucide-react'
+import { Shield, ShieldCheck, Check, X, MessageSquare } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { extractPermissionDetail } from '../../lib/permission-utils'
 import { Button } from '../../base/button'
@@ -10,7 +10,7 @@ import { Input } from '../../base/input'
 
 export interface PermissionBarProps {
   permission: SerializedAgentPermissionRequestEvent
-  onRespond: (behavior: 'allow' | 'deny', message?: string) => void
+  onRespond: (behavior: 'allow' | 'deny', message?: string, options?: { alwaysAllow?: boolean }) => void
 }
 
 export function PermissionBar({ permission, onRespond }: PermissionBarProps) {
@@ -23,6 +23,10 @@ export function PermissionBar({ permission, onRespond }: PermissionBarProps) {
 
   const handleAllow = () => {
     onRespond('allow')
+  }
+
+  const handleAlwaysAllow = () => {
+    onRespond('allow', undefined, { alwaysAllow: true })
   }
 
   const handleReject = () => {
@@ -101,6 +105,14 @@ export function PermissionBar({ permission, onRespond }: PermissionBarProps) {
               >
                 <Check className="mr-1 size-3" />
                 Allow
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAlwaysAllow}
+              >
+                <ShieldCheck className="mr-1 size-3" />
+                Always Allow
               </Button>
               <Button
                 size="sm"

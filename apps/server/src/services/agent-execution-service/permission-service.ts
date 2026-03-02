@@ -1,6 +1,7 @@
 import { createAppLogger } from '@kombuse/core/logger'
+import { agentsRepository } from '@kombuse/persistence'
 import { sessionPersistenceService } from '@kombuse/services'
-import type { AgentEvent, ServerMessage } from '@kombuse/types'
+import type { AgentConfig, AgentEvent, ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import {
   activeBackends,
@@ -271,6 +272,46 @@ export function broadcastPermissionPending(
 }
 
 /**
+ * Persist a tool or bash command prefix to an agent's auto-approved config.
+ * Called when the user clicks "Always Allow" on a permission prompt.
+ */
+function persistAlwaysAllow(
+  agentId: string,
+  toolName: string,
+  input: Record<string, unknown>
+): void {
+  const agent = agentsRepository.get(agentId)
+  if (!agent) {
+    log.warn(`Cannot persist alwaysAllow: agent ${agentId} not found`)
+    return
+  }
+
+  const config: AgentConfig = { ...agent.config }
+
+  if (toolName === 'Bash' && typeof input.command === 'string') {
+    const prefix = input.command.trim().split(/\s+/)[0] ?? ''
+    if (!prefix) return
+
+    const existing = config.auto_approved_bash_commands_override ?? []
+    if (!existing.includes(prefix)) {
+      config.auto_approved_bash_commands_override = [...existing, prefix]
+    } else {
+      return // already present
+    }
+  } else {
+    const existing = config.auto_approved_tools_override ?? []
+    if (!existing.includes(toolName)) {
+      config.auto_approved_tools_override = [...existing, toolName]
+    } else {
+      return // already present
+    }
+  }
+
+  agentsRepository.update(agentId, { config })
+  log.info(`alwaysAllow persisted for agent ${agentId}: ${toolName}`)
+}
+
+/**
  * Respond to a permission request for an active chat session.
  */
 export function respondToPermission(message: PermissionResponseMessage): boolean {
@@ -288,12 +329,21 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
     return false
   }
 
+  // Read pending permission before it's deleted below
+  const pendingPerm = serverPendingPermissions.get(permissionKey)
+
   backend.respondToPermission(requestId, behavior, {
     updatedInput,
     message: denyMessage,
   })
 
   const session = sessionPersistenceService.getSessionByKombuseId(kombuseSessionId)
+
+  // Persist "Always Allow" to the agent's auto-approved config
+  if (behavior === 'allow' && message.alwaysAllow && pendingPerm && session?.agent_id) {
+    persistAlwaysAllow(session.agent_id, pendingPerm.toolName, pendingPerm.input)
+  }
+
   if (session) {
     sessionPersistenceService.persistEvent(session.id, {
       type: 'permission_response',

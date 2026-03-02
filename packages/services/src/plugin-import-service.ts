@@ -248,6 +248,17 @@ export class PluginImportService {
           }
           if (!oldBase || !isFieldCustomized(existingAgent.config, oldBase.config)) {
             updateFields.config = config
+          } else {
+            // Field-level merge: preserve user-customized config fields while applying plugin updates
+            const merged: Record<string, unknown> = { ...config }
+            const currentConfig = (existingAgent.config ?? {}) as Record<string, unknown>
+            const baseConfig = (oldBase.config ?? {}) as Record<string, unknown>
+            for (const key of Object.keys(currentConfig)) {
+              if (isFieldCustomized(currentConfig[key], baseConfig[key])) {
+                merged[key] = currentConfig[key]
+              }
+            }
+            updateFields.config = merged as AgentConfig
           }
           if (!oldBase || !isFieldCustomized(existingAgent.is_enabled, oldBase.is_enabled)) {
             updateFields.is_enabled = frontmatter.is_enabled !== false
