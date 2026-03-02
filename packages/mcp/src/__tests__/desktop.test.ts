@@ -762,7 +762,7 @@ describe('navigate_to with wait_for_selector', () => {
     })
   })
 
-  it('should propagate error response when selector times out', async () => {
+  it('should propagate 500 error response', async () => {
     const injectable = createMockInjectable({
       statusCode: 500,
       body: JSON.stringify({ error: 'wait_for_selector timed out after 5000ms' }),

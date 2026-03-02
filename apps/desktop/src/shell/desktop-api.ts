@@ -99,7 +99,7 @@ export async function desktopApiPlugin(
     "/desktop/windows/:id/navigate",
     async (request: any, reply: any) => {
       const id = Number(request.params.id);
-      const { path, wait_for_selector, timeout_ms = 5000 } = (request.body as {
+      const { path, wait_for_selector, timeout_ms } = (request.body as {
         path: string;
         wait_for_selector?: string;
         timeout_ms?: number;
@@ -118,12 +118,13 @@ export async function desktopApiPlugin(
       await win.loadURL(url);
 
       if (wait_for_selector) {
+        const safeTimeout = Math.max(0, Number(timeout_ms ?? 5000));
         const selectorJson = JSON.stringify(wait_for_selector);
         const waitScript = `
           new Promise((resolve, reject) => {
             const timeout = setTimeout(
-              () => reject(new Error('wait_for_selector timed out after ${timeout_ms}ms')),
-              ${timeout_ms}
+              () => reject(new Error('wait_for_selector timed out after ${safeTimeout}ms')),
+              ${safeTimeout}
             );
             const check = () => {
               if (document.querySelector(${selectorJson})) {
@@ -151,6 +152,8 @@ export async function desktopApiPlugin(
     async (request: any, reply: any) => {
       const id = Number(request.params.id);
       const { script } = (request.body as { script: string }) || {};
+
+      if (!script) return reply.status(400).send({ error: 'script is required' });
 
       const win = BrowserWindow.fromId(id);
       if (!win) {
