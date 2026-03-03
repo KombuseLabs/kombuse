@@ -15,6 +15,27 @@ interface RouteInstance {
   delete(path: string, handler: (request: any, reply: any) => Promise<unknown>): void;
 }
 
+function buildWaitForScript(selector: string, timeoutMs: number): string {
+  const selectorJson = JSON.stringify(selector);
+  return `
+    new Promise((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error('wait_for timed out after ${timeoutMs}ms')),
+        ${timeoutMs}
+      );
+      const check = () => {
+        if (document.querySelector(${selectorJson})) {
+          clearTimeout(timeout);
+          resolve(true);
+        } else {
+          requestAnimationFrame(check);
+        }
+      };
+      check();
+    })
+  `;
+}
+
 export async function desktopApiPlugin(
   fastify: RouteInstance,
   opts: DesktopApiOptions,
@@ -120,25 +141,7 @@ export async function desktopApiPlugin(
 
       if (wait_for_selector) {
         const safeTimeout = Math.max(0, Number(timeout_ms ?? 5000));
-        const selectorJson = JSON.stringify(wait_for_selector);
-        const waitScript = `
-          new Promise((resolve, reject) => {
-            const timeout = setTimeout(
-              () => reject(new Error('wait_for_selector timed out after ${safeTimeout}ms')),
-              ${safeTimeout}
-            );
-            const check = () => {
-              if (document.querySelector(${selectorJson})) {
-                clearTimeout(timeout);
-                resolve(true);
-              } else {
-                requestAnimationFrame(check);
-              }
-            };
-            check();
-          })
-        `;
-        await win.webContents.executeJavaScript(waitScript);
+        await win.webContents.executeJavaScript(buildWaitForScript(wait_for_selector, safeTimeout));
       }
 
       return {
@@ -152,7 +155,7 @@ export async function desktopApiPlugin(
     "/desktop/windows/:id/execute-js",
     async (request: any, reply: any) => {
       const id = Number(request.params.id);
-      const { script } = (request.body as { script: string }) || {};
+      const { script, timeout_ms } = (request.body as { script: string; timeout_ms?: number }) || {};
 
       if (!script) return reply.status(400).send({ error: 'script is required' });
 
@@ -165,15 +168,48 @@ export async function desktopApiPlugin(
         return reply.status(403).send({ error: "execute_js is only allowed on isolated windows" });
       }
 
+      const safeTimeout = Math.max(1000, Number(timeout_ms ?? 30000));
       let result: unknown;
       try {
-        result = await win.webContents.executeJavaScript(script);
+        const executePromise = win.webContents.executeJavaScript(script);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`execute_js timed out after ${safeTimeout}ms`)), safeTimeout)
+        );
+        result = await Promise.race([executePromise, timeoutPromise]);
       } catch (error) {
         return reply.status(400).send({
           error: `Script execution failed: ${(error as Error).message}`,
         });
       }
       return { result };
+    },
+  );
+
+  fastify.post(
+    "/desktop/windows/:id/wait-for",
+    async (request: any, reply: any) => {
+      const id = Number(request.params.id);
+      const { selector, timeout_ms } = (request.body as {
+        selector: string;
+        timeout_ms?: number;
+      }) || {};
+
+      if (!selector) return reply.status(400).send({ error: 'selector is required' });
+
+      const win = BrowserWindow.fromId(id);
+      if (!win) {
+        return reply.status(404).send({ error: "Window not found" });
+      }
+
+      const safeTimeout = Math.max(0, Number(timeout_ms ?? 5000));
+      try {
+        await win.webContents.executeJavaScript(buildWaitForScript(selector, safeTimeout));
+        return { found: true, selector };
+      } catch (error) {
+        return reply.status(408).send({
+          error: `wait_for failed: ${(error as Error).message}`,
+        });
+      }
     },
   );
 

@@ -181,7 +181,15 @@ export function registerDesktopTools(
     'execute_js',
     {
       description:
-        'Execute JavaScript in an isolated desktop window and return the evaluated result. Only works on isolated windows opened with open_window({ isolated: true }). Use for clicking buttons, filling forms, reading DOM state, or waiting for UI conditions.',
+        'Execute JavaScript in an isolated desktop window and return the evaluated result. '
+        + 'Only works on isolated windows opened with open_window({ isolated: true }). '
+        + 'Use for clicking buttons, filling forms, reading DOM state, or waiting for UI conditions.\n\n'
+        + 'Runtime constraints:\n'
+        + '- Top-level `await` is NOT supported. Wrap async code in an IIFE: `(function() { return new Promise(...) })()`\n'
+        + '- Use `var` instead of `const`/`let` for variable declarations\n'
+        + '- Promises block until resolved — always include a timeout in any Promise you create\n'
+        + '- Return only serializable values (no DOM nodes, functions, or circular references)\n'
+        + '- Scripts that exceed timeout_ms (default 30s) are terminated with an error',
       inputSchema: {
         window_id: z
           .number()
@@ -192,14 +200,23 @@ export function registerDesktopTools(
           .string()
           .min(1)
           .describe('JavaScript code to execute in the window renderer process'),
+        timeout_ms: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe('Maximum execution time in milliseconds (default: 30000). Scripts that exceed this timeout are terminated with an error.'),
       },
     },
-    async ({ window_id, script }) => {
+    async ({ window_id, script, timeout_ms }) => {
       try {
+        const payload: Record<string, unknown> = { script }
+        if (timeout_ms !== undefined) payload.timeout_ms = timeout_ms
+
         const response = await injectable.inject({
           method: 'POST',
           url: `/api/desktop/windows/${window_id}/execute-js`,
-          payload: { script },
+          payload,
         })
 
         let body: unknown
@@ -216,6 +233,60 @@ export function registerDesktopTools(
         return successResponse(body)
       } catch (err) {
         return errorResponse(`execute_js failed: ${(err as Error).message}`)
+      }
+    }
+  )
+
+  registerTool(
+    'wait_for',
+    {
+      description:
+        'Wait for a CSS selector to appear in a desktop window\'s DOM. '
+        + 'Polls using requestAnimationFrame until the element is found or timeout_ms elapses. '
+        + 'Preferred over hand-writing polling JS in execute_js.',
+      inputSchema: {
+        window_id: z
+          .number()
+          .int()
+          .positive()
+          .describe('The window id to check'),
+        selector: z
+          .string()
+          .min(1)
+          .describe('CSS selector to wait for, e.g. ".ticket-list" or "[data-testid=modal]"'),
+        timeout_ms: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe('Maximum wait time in milliseconds (default: 5000)'),
+      },
+    },
+    async ({ window_id, selector, timeout_ms }) => {
+      try {
+        const payload: Record<string, unknown> = { selector }
+        if (timeout_ms !== undefined) payload.timeout_ms = timeout_ms
+
+        const response = await injectable.inject({
+          method: 'POST',
+          url: `/api/desktop/windows/${window_id}/wait-for`,
+          payload,
+        })
+
+        let body: unknown
+        try {
+          body = JSON.parse(response.body)
+        } catch {
+          body = response.body
+        }
+
+        if (response.statusCode >= 400) {
+          return errorResponse(`wait_for failed (${response.statusCode}): ${(body as any)?.error ?? response.body}`)
+        }
+
+        return successResponse(body)
+      } catch (err) {
+        return errorResponse(`wait_for failed: ${(err as Error).message}`)
       }
     }
   )

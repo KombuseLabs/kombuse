@@ -28,6 +28,21 @@ export const BACKEND_IDLE_TIMEOUT_MS = parseBackendIdleTimeoutMs(
   process.env.KOMBUSE_BACKEND_IDLE_TIMEOUT_MS
 )
 
+/** Default in-turn idle timeout: 5 minutes. If no events arrive during an active turn for this long, the session is auto-stopped. */
+const DEFAULT_IDLE_TURN_TIMEOUT_MS = 5 * 60 * 1000
+
+function parseIdleTurnTimeoutMs(rawValue: string | undefined): number {
+  const parsed = Number.parseInt(rawValue ?? '', 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_IDLE_TURN_TIMEOUT_MS
+  }
+  return parsed
+}
+
+export const IDLE_TURN_TIMEOUT_MS = parseIdleTurnTimeoutMs(
+  process.env.KOMBUSE_IDLE_TURN_TIMEOUT_MS
+)
+
 export function resolveBackendIdleTimeoutMs(): number | null {
   const userMinutes = readUserBackendIdleTimeoutMinutes()
   if (userMinutes === null) return null

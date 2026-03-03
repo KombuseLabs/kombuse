@@ -102,8 +102,11 @@ export function getEffectivePreset(agentType?: string, config?: AgentConfig, plu
 
   const toolsOverride = config.auto_approved_tools_override
   const bashOverride = config.auto_approved_bash_commands_override
+  const clearBaseBash = config.clear_base_bash_commands === true
 
-  if (toolsOverride === undefined && bashOverride === undefined) return base
+  if (toolsOverride === undefined && bashOverride === undefined && !clearBaseBash) return base
+
+  const baseBash = clearBaseBash ? [] : base.autoApprovedBashCommands
 
   return {
     ...base,
@@ -111,8 +114,8 @@ export function getEffectivePreset(agentType?: string, config?: AgentConfig, plu
       ? [...new Set([...base.autoApprovedTools, ...toolsOverride])]
       : base.autoApprovedTools,
     autoApprovedBashCommands: bashOverride
-      ? [...new Set([...base.autoApprovedBashCommands, ...bashOverride])]
-      : base.autoApprovedBashCommands,
+      ? [...new Set([...baseBash, ...bashOverride])]
+      : baseBash,
   }
 }
 

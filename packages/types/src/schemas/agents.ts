@@ -54,6 +54,7 @@ export const agentConfigSchema = z.object({
   max_chain_depth: z.number().int().min(1).max(100).optional(),
   auto_approved_tools_override: z.array(z.string()).optional(),
   auto_approved_bash_commands_override: z.array(z.string()).optional(),
+  clear_base_bash_commands: z.boolean().optional(),
   min_backend_version: z.string().optional(),
 }).catchall(z.unknown())
 

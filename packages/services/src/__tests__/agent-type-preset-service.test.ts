@@ -114,6 +114,32 @@ describe('getEffectivePreset', () => {
       expect(preset.autoApprovedTools).toContain(tool)
     }
   })
+
+  it('clears base bash commands when clear_base_bash_commands is true', () => {
+    const base = getTypePreset('kombuse')
+    expect(base.autoApprovedBashCommands.length).toBeGreaterThan(0)
+    const preset = getEffectivePreset('kombuse', {
+      clear_base_bash_commands: true,
+    })
+    expect(preset.autoApprovedBashCommands).toEqual([])
+    expect(preset.autoApprovedTools).toEqual(base.autoApprovedTools)
+  })
+
+  it('clears base bash commands but adds overrides when both set', () => {
+    const preset = getEffectivePreset('kombuse', {
+      clear_base_bash_commands: true,
+      auto_approved_bash_commands_override: ['ls'],
+    })
+    expect(preset.autoApprovedBashCommands).toEqual(['ls'])
+  })
+
+  it('does not clear bash commands when clear_base_bash_commands is false', () => {
+    const base = getTypePreset('kombuse')
+    const preset = getEffectivePreset('kombuse', {
+      clear_base_bash_commands: false,
+    })
+    expect(preset.autoApprovedBashCommands).toEqual(base.autoApprovedBashCommands)
+  })
 })
 
 describe('getTypePreset with pluginId', () => {

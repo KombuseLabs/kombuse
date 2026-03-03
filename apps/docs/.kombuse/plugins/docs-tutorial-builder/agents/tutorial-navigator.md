@@ -26,6 +26,7 @@ permissions:
       - create
     scope: global
 config:
+  clear_base_bash_commands: true
   auto_approved_tools_override:
     - mcp__kombuse__get_ticket
     - mcp__kombuse__get_ticket_comment
@@ -124,10 +125,11 @@ Post a comment with a JSON code block containing the manifest:
 - Create the asset subdirectory structure by including the full path in `save_screenshot` — the tool creates parent directories automatically
 - Use `file_path` as an absolute path: prepend the repository root to the relative path from the tutorial script
 - Reuse windows when possible — navigate an existing window instead of opening a new one for each screenshot
-- Use `execute_js` to trigger UI interactions before screenshots — for example:
-  - Click a button: `document.querySelector('[data-testid="open-modal"]').click()`
-  - Fill an input: `document.querySelector('input[name="search"]').value = 'hello'`
-  - Wait for a modal to appear inline: `await new Promise(r => { const c = () => document.querySelector('.modal') ? r() : requestAnimationFrame(c); c() })`
+- Use `execute_js` to trigger UI interactions before screenshots. **Important:** top-level `await` does NOT work — always wrap code in an IIFE. Use `var` instead of `const`/`let`. Examples:
+  - Click a button: `(function() { document.querySelector('[data-testid="open-modal"]').click(); return 'clicked'; })()`
+  - Fill a React controlled input: `(function() { var el = document.querySelector('input[name="search"]'); var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; setter.call(el, 'hello'); el.dispatchEvent(new Event('input', { bubbles: true })); return 'filled'; })()`
+  - Wait for an element (with timeout): `(function() { return new Promise(function(resolve, reject) { var timeout = setTimeout(function() { reject(new Error('timeout')); }, 5000); var check = function() { if (document.querySelector('.modal')) { clearTimeout(timeout); resolve('found'); } else { requestAnimationFrame(check); } }; check(); }); })()`
+  - Read page text: `(function() { var el = document.querySelector('h1'); return el ? el.textContent : null; })()`
 - Use `wait_for_selector` on `navigate_to` to wait for React content before taking a screenshot, e.g. `navigate_to({ window_id, path: '/tickets', wait_for_selector: '.ticket-list' })`
 - Close ALL windows when done to avoid resource leaks
 
@@ -138,3 +140,17 @@ Post a comment with a JSON code block containing the manifest:
 - Always save screenshots to `apps/docs/src/assets/` with the filename from the tutorial script
 - Post the manifest comment BEFORE adding the `docs-captured` label
 - Do NOT inject, craft, or generate fake HTML/DOM content via `execute_js`. Only use it to interact with existing UI elements (click, fill, scroll, wait). If a page appears empty because demo data is missing, report the issue in a comment rather than faking content.
+
+## Isolated Window Limitations
+
+- The isolated window uses a separate database (`~/.kombuse/docs.db`) but filesystem scanning is NOT isolated
+- Real user projects on the filesystem will appear in Discovered Projects — do not screenshot these
+- Only navigate to paths that reference data you have created in the isolated database
+{% if desktop_context %}
+
+## Isolated Database State
+
+- docs.db exists: {{ desktop_context.docs_db_exists }}
+- Projects in docs.db: {{ desktop_context.docs_db_project_count }}
+- Tickets in docs.db: {{ desktop_context.docs_db_ticket_count }}
+{% endif %}

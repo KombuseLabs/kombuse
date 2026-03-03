@@ -37,7 +37,7 @@ import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registr
 import { buildPersistedContent } from './content-helpers'
 import { broadcastPermissionPending } from './permission-service'
 import { getEffectivePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from '@kombuse/services'
-import { activeBackends, createPermissionKey, setSessionTurnActive } from './runtime-state'
+import { activeBackends, createPermissionKey, setSessionTurnActive, IDLE_TURN_TIMEOUT_MS } from './runtime-state'
 import type {
   AgentExecutionDependencies,
   AgentExecutionEvent,
@@ -45,6 +45,8 @@ import type {
 } from './types'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
+import Database from 'better-sqlite3'
 
 const log = createAppLogger('ChatSessionRunner')
 
@@ -61,6 +63,35 @@ export function readAgentsMd(projectPath: string): string | undefined {
   } catch {
     return undefined
   }
+}
+
+interface DesktopContext {
+  docs_db_exists: boolean
+  docs_db_project_count: number
+  docs_db_ticket_count: number
+}
+
+function resolveDesktopContext(): DesktopContext | undefined {
+  const docsDbPath = join(homedir(), '.kombuse', 'docs.db')
+  const docsDbExists = existsSync(docsDbPath)
+  if (!docsDbExists) {
+    return { docs_db_exists: false, docs_db_project_count: 0, docs_db_ticket_count: 0 }
+  }
+  try {
+    const db = new Database(docsDbPath, { readonly: true })
+    const projectCount = (db.prepare('SELECT COUNT(*) as c FROM projects').get() as { c: number })?.c ?? 0
+    const ticketCount = (db.prepare('SELECT COUNT(*) as c FROM tickets').get() as { c: number })?.c ?? 0
+    db.close()
+    return { docs_db_exists: true, docs_db_project_count: projectCount, docs_db_ticket_count: ticketCount }
+  } catch {
+    return { docs_db_exists: true, docs_db_project_count: 0, docs_db_ticket_count: 0 }
+  }
+}
+
+function agentHasDesktopTools(config?: { auto_approved_tools_override?: string[] }): boolean {
+  return config?.auto_approved_tools_override?.some(
+    (t: string) => t.startsWith('mcp__kombuse__') && (t.includes('window') || t.includes('screenshot') || t.includes('execute_js'))
+  ) ?? false
 }
 
 /**
@@ -104,8 +135,35 @@ async function runAgentChat(
 ): Promise<ConversationContext> {
   const appSessionId = kombuseSessionId
   let didComplete = false
+  let idleAbortTriggered = false
+  let lastEventTimestamp = Date.now()
+  let pendingPermission = false
+
+  const idleCheckInterval = setInterval(() => {
+    if (didComplete) {
+      clearInterval(idleCheckInterval)
+      return
+    }
+    if (pendingPermission) {
+      lastEventTimestamp = Date.now()
+      return
+    }
+    const elapsed = Date.now() - lastEventTimestamp
+    if (elapsed > IDLE_TURN_TIMEOUT_MS) {
+      log.warn('In-turn idle timeout exceeded', {
+        sessionId: appSessionId,
+        elapsedMs: elapsed,
+        timeoutMs: IDLE_TURN_TIMEOUT_MS,
+      })
+      clearInterval(idleCheckInterval)
+      idleAbortTriggered = true
+      void backend.stop().catch(() => {})
+    }
+  }, 60_000)
+  if (idleCheckInterval.unref) idleCheckInterval.unref()
 
   const finalize = (keepAlive = false) => {
+    clearInterval(idleCheckInterval)
     unsubscribe()
     if (!keepAlive && backend.isRunning()) {
       void backend.stop().catch((stopError) => {
@@ -121,6 +179,16 @@ async function runAgentChat(
       return
     }
 
+    if (event.type !== 'lifecycle') {
+      lastEventTimestamp = Date.now()
+    }
+    if (event.type === 'permission_request') {
+      pendingPermission = true
+    }
+    if (event.type === 'permission_response') {
+      pendingPermission = false
+    }
+
     if (event.type === 'complete') {
       didComplete = true
       if (event.resumeFailed && options.onResumeFailed) {
@@ -129,7 +197,7 @@ async function runAgentChat(
         return
       }
       if (event.reason === 'stopped') {
-        options.onStopped?.('user_stop')
+        options.onStopped?.(idleAbortTriggered ? 'idle_turn_timeout' : 'user_stop')
         finalize()
         return
       }
@@ -197,15 +265,52 @@ function runFollowUpChat(
   images?: ImageAttachment[]
 ): void {
   let didComplete = false
+  let idleAbortTriggered = false
+  let lastEventTimestamp = Date.now()
+  let pendingPermission = false
+
+  const idleCheckInterval = setInterval(() => {
+    if (didComplete) {
+      clearInterval(idleCheckInterval)
+      return
+    }
+    if (pendingPermission) {
+      lastEventTimestamp = Date.now()
+      return
+    }
+    const elapsed = Date.now() - lastEventTimestamp
+    if (elapsed > IDLE_TURN_TIMEOUT_MS) {
+      log.warn('In-turn idle timeout exceeded (follow-up)', {
+        sessionId: kombuseSessionId,
+        elapsedMs: elapsed,
+        timeoutMs: IDLE_TURN_TIMEOUT_MS,
+      })
+      clearInterval(idleCheckInterval)
+      idleAbortTriggered = true
+      void backend.stop().catch(() => {})
+    }
+  }, 60_000)
+  if (idleCheckInterval.unref) idleCheckInterval.unref()
 
   const unsubscribe = backend.subscribe((event) => {
     if (didComplete) return
 
+    if (event.type !== 'lifecycle') {
+      lastEventTimestamp = Date.now()
+    }
+    if (event.type === 'permission_request') {
+      pendingPermission = true
+    }
+    if (event.type === 'permission_response') {
+      pendingPermission = false
+    }
+
     if (event.type === 'complete') {
       didComplete = true
+      clearInterval(idleCheckInterval)
       unsubscribe()
       if (event.reason === 'stopped') {
-        options.onStopped?.('user_stop')
+        options.onStopped?.(idleAbortTriggered ? 'idle_turn_timeout' : 'user_stop')
         return
       }
       if (event.success === false) {
@@ -992,6 +1097,7 @@ export function startAgentChatSession(
             labels: labelsRepository.getTicketLabels(ticketRecord.id),
           }
         : undefined,
+      desktop_context: agentHasDesktopTools(agent?.config) ? resolveDesktopContext() : undefined,
     }
     resolvedSystemPrompt = renderTemplateWithIncludes(agent.system_prompt, preambleContext, agent.plugin_id)
   }
