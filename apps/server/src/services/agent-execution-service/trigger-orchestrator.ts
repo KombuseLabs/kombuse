@@ -2,12 +2,13 @@ import { statSync } from 'node:fs'
 import { createAppLogger } from '@kombuse/core/logger'
 import { resolve as resolvePath } from 'node:path'
 import { agentInvocationsRepository, commentsRepository, sessionsRepository, ticketsRepository } from '@kombuse/persistence'
-import { buildTemplateContext, MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplateWithIncludes } from '@kombuse/services'
+import { MAX_CHAIN_DEPTH, projectService, readUserDefaultMaxChainDepth, renderTemplateWithIncludes } from '@kombuse/services'
 import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, type KombuseSessionId, type ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import { serializeAgentStreamEvent } from '../../websocket/serialize-agent-event'
 import { broadcastTicketAgentStatus } from './backend-registry'
-import { resolveDesktopContext, startAgentChatSession } from './chat-session-runner'
+import { startAgentChatSession } from './chat-session-runner'
+import { buildAgentTemplateContext } from './template-context'
 import { emitAgentEvent } from './emit-agent-event'
 import type { AgentExecutionDependencies } from './types'
 
@@ -32,12 +33,11 @@ function buildTriggerPrompt(
   agent: { system_prompt: string; plugin_id: string | null; config: { type?: string; [key: string]: unknown } },
   kombuseSessionId: string
 ): TriggerPrompt {
-  const templateContext = {
-    ...buildTemplateContext(event),
-    kombuse_session_id: kombuseSessionId,
-    backend_type: (agent.config as { backend_type?: string })?.backend_type ?? 'claude-code',
-    desktop_context: resolveDesktopContext(),
-  }
+  const templateContext = buildAgentTemplateContext({
+    event,
+    kombuseSessionId,
+    backendType: (agent.config as { backend_type?: string })?.backend_type ?? 'claude-code',
+  })
 
   const systemPrompt = agent.system_prompt
     ? renderTemplateWithIncludes(agent.system_prompt, templateContext, agent.plugin_id)

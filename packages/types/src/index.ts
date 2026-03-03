@@ -277,6 +277,7 @@ export type {
   TemplateContext,
   TicketEnrichedContext,
   CommentEnrichedContext,
+  DesktopContext,
 } from './templates.types'
 export {
   toSlug,

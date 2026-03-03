@@ -40,6 +40,18 @@ export interface TemplateContext {
   agents?: Array<{ id: string; name: string; description: string | null; slug: string | null }>
   /** The backend type rendering this prompt (e.g. 'claude-code', 'codex'). */
   backend_type?: string
+  /** Desktop environment context (docs.db presence, counts). */
+  desktop_context?: DesktopContext
+}
+
+/**
+ * Desktop environment context resolved from docs.db.
+ */
+export interface DesktopContext {
+  docs_db_exists: boolean
+  docs_db_project_count: number
+  docs_db_ticket_count: number
+  demo_project_id: string | null
 }
 
 /**

@@ -1,8 +1,6 @@
 import {
   agentInvocationsRepository,
-  agentsRepository,
   commentsRepository,
-  labelsRepository,
   profilesRepository,
   projectsRepository,
   ticketsRepository,
@@ -35,6 +33,7 @@ import { checkAllBackendStatuses } from '../backend-status'
 import { meetsMinimumVersion } from '@kombuse/pkg'
 import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registry'
 import { buildPersistedContent } from './content-helpers'
+import { buildAgentTemplateContext } from './template-context'
 import { broadcastPermissionPending } from './permission-service'
 import { getEffectivePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from '@kombuse/services'
 import { activeBackends, createPermissionKey, setSessionTurnActive, IDLE_TURN_TIMEOUT_MS } from './runtime-state'
@@ -65,14 +64,7 @@ export function readAgentsMd(projectPath: string): string | undefined {
   }
 }
 
-interface DesktopContext {
-  docs_db_exists: boolean
-  docs_db_project_count: number
-  docs_db_ticket_count: number
-  demo_project_id: string | null
-}
-
-export function resolveDesktopContext(overrideDbPath?: string): DesktopContext | undefined {
+export function resolveDesktopContext(overrideDbPath?: string): import('@kombuse/types').DesktopContext | undefined {
   const docsDbPath = overrideDbPath ?? join(homedir(), '.kombuse', 'docs.db')
   const docsDbExists = existsSync(docsDbPath)
   if (!docsDbExists) {
@@ -1069,41 +1061,12 @@ export function startAgentChatSession(
   if (options?.systemPromptOverride) {
     resolvedSystemPrompt = options.systemPromptOverride
   } else if (agent?.system_prompt) {
-    const preambleContext = {
-      event_type: '',
-      ticket_id: ticketId ?? null,
-      ticket_number: ticketRecord?.ticket_number ?? null,
-      project_id: effectiveProjectId ?? null,
-      comment_id: null,
-      actor_id: null,
-      actor_type: 'user' as const,
-      payload: {} as Record<string, unknown>,
-      kombuse_session_id: appSessionId,
-      backend_type: resolvedBackendType,
-      agents: profilesRepository.list({
-        type: 'agent',
-        is_active: true,
-        has_agent: true,
-        ...(effectiveProjectId ? { project_id: effectiveProjectId } : {}),
-      }).map((profile) => {
-        const agentRecord = agentsRepository.get(profile.id)
-        return { id: profile.id, name: profile.name, description: profile.description, slug: agentRecord?.slug ?? null }
-      }),
-      project: effectiveProjectId
-        ? projectsRepository.get(effectiveProjectId)
-        : undefined,
-      ticket: ticketRecord
-        ? {
-            ...ticketRecord,
-            author: profilesRepository.get(ticketRecord.author_id) ?? undefined,
-            assignee: ticketRecord.assignee_id
-              ? profilesRepository.get(ticketRecord.assignee_id) ?? undefined
-              : undefined,
-            labels: labelsRepository.getTicketLabels(ticketRecord.id),
-          }
-        : undefined,
-      desktop_context: resolveDesktopContext(),
-    }
+    const preambleContext = buildAgentTemplateContext({
+      ticketId: ticketId ?? null,
+      projectId: effectiveProjectId ?? null,
+      kombuseSessionId: appSessionId,
+      backendType: resolvedBackendType,
+    })
     resolvedSystemPrompt = renderTemplateWithIncludes(agent.system_prompt, preambleContext, agent.plugin_id)
   }
 
