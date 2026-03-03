@@ -473,7 +473,7 @@ function handlePermissionRequest(options: {
   logger.info('permission not auto-approved', {
     toolName: event.toolName,
     ...(event.toolName === 'Bash' && event.input?.command ? { command: String(event.input.command) } : {}),
-    autoApprovedBashCommands: preset.autoApprovedBashCommands,
+    ...(event.toolName === 'Bash' ? { autoApprovedBashCommands: preset.autoApprovedBashCommands } : {}),
   })
   broadcastPermissionPending(sessionId, event, ticketNumber, projectId)
   return false
