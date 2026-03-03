@@ -19,8 +19,8 @@ The Agents page is accessible from the project sidebar and shows all agents avai
 
 Kombuse ships with a default plugin that includes pre-configured agents for triage, planning, coding, and code review. If no agents appear yet, the **Install** button in the onboarding prompt installs the default plugin. Custom agents can also be created from scratch using the **Create Agent** button in the top-right corner.
 
-<WindowFrame title="Kombuse" cursorX={88} cursorY={5}>
-  <Image src={screenshotAgentList} alt="The Agents page showing the empty agent list with an install prompt for the default plugin" />
+<WindowFrame title="Kombuse" cursorX={91} cursorY={10}>
+  <Image src={screenshotAgentList} alt="The Agents page showing an empty agent list with a Create Agent button" />
 </WindowFrame>
 
 ## Creating an Agent
@@ -85,7 +85,7 @@ In the chat toolbar, the agent picker button (initially showing "No agent") sele
 
 After selecting an agent, a backend and model are chosen if needed, and a message is typed and sent. The agent processes the request using its system prompt and configured permissions. The session panel shows connection status, event counts, and the backend details in use.
 
-<WindowFrame title="Kombuse" cursorX={22} cursorY={95}>
+<WindowFrame title="Kombuse" cursorX={42} cursorY={82}>
   <Image src={screenshotChatAgentPicker} alt="The chat interface with the agent picker dropdown open in the toolbar" />
 </WindowFrame>
 
@@ -97,6 +97,6 @@ When a comment containing an @mention is submitted, the agent's **Mention Create
 
 Agents can also be triggered automatically by other events — for example, when a ticket is created (`ticket.created`), when a label is added (`label.added`), or when any comment is posted (`comment.added`). These are configured in the **Triggers** section of the agent's Configuration tab.
 
-<WindowFrame title="Kombuse" cursorX={55} cursorY={80}>
-  <Image src={screenshotMentionAutocomplete} alt="The comment input field where typing @ would trigger the mention autocomplete to show available agents" />
+<WindowFrame title="Kombuse" cursorX={57} cursorY={76}>
+  <Image src={screenshotMentionAutocomplete} alt="A ticket detail view with an @ character typed in the comment input, ready to trigger the mention autocomplete" />
 </WindowFrame>

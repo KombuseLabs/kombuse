@@ -29,7 +29,7 @@ The comment input sits at the bottom of the ticket detail view with the placehol
 
 Comments support full Markdown formatting — headings, bold, italic, code blocks, lists, and links all render in the posted comment.
 
-<WindowFrame title="Kombuse" cursorX={93} cursorY={93}>
+<WindowFrame section cursorX={93} cursorY={76}>
   <Image src={screenshotCommentInput} alt="The comment input area with typed text, showing the send button and attach button in the toolbar" />
 </WindowFrame>
 
@@ -41,8 +41,8 @@ When a comment containing an @mention is sent and agent triggers are enabled for
 
 In the posted comment, @mentions render as highlighted text in the primary accent color.
 
-<WindowFrame title="Kombuse" cursorX={55} cursorY={82}>
-  <Image src={screenshotMentionAutocomplete} alt="The @mention autocomplete dropdown showing available agents with their avatar icons and names" />
+<WindowFrame section cursorX={37} cursorY={58}>
+  <Image src={screenshotMentionAutocomplete} alt="The comment input with an @ character typed, ready to trigger the mention autocomplete" />
 </WindowFrame>
 
 ## Referencing Tickets
@@ -51,7 +51,7 @@ Typing `#` in the comment input opens a search for other tickets. The autocomple
 
 Arrow keys navigate the list, and **Enter** or **Tab** selects an entry. In the posted comment, ticket references render as interactive chips — a small badge displaying the ticket number, a truncated title, and a colored status dot (green for open, yellow for in progress, red for blocked, gray for closed). Hovering over a chip shows a preview card with more details, and clicking it navigates directly to that ticket.
 
-<WindowFrame title="Kombuse" cursorX={55} cursorY={82}>
+<WindowFrame section cursorX={43} cursorY={60}>
   <Image src={screenshotTicketReferenceAutocomplete} alt="The ticket reference autocomplete dropdown showing matching tickets with their number, title, and status badge" />
 </WindowFrame>
 
@@ -65,7 +65,7 @@ Images can be attached to comments in three ways:
 
 Only image files are supported. Attached images appear as previews above the toolbar before sending, allowing review or removal. In posted comments, images display as thumbnails below the text — clicking any thumbnail opens it in a fullscreen lightbox viewer.
 
-<WindowFrame title="Kombuse" cursorX={53} cursorY={95}>
+<WindowFrame section cursorX={38} cursorY={53}>
   <Image src={screenshotAttachButton} alt="The comment input toolbar showing the attach button (paperclip icon) for adding images" />
 </WindowFrame>
 
@@ -79,6 +79,6 @@ The trash icon deletes a comment permanently.
 
 For comments posted by an AI agent session, two additional buttons appear: a play button to resume the agent's session and a rotate button to rerun it from the beginning.
 
-<WindowFrame title="Kombuse" cursorX={91} cursorY={42}>
+<WindowFrame section cursorX={91} cursorY={54}>
   <Image src={screenshotCommentActions} alt="A comment showing the edit (pencil) and delete (trash) action buttons in its header" />
 </WindowFrame>
