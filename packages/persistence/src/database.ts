@@ -627,8 +627,8 @@ export function seedDemoData(database: DatabaseType): void {
   const seed = database.transaction(() => {
     // Project
     database
-      .prepare('INSERT INTO projects (id, name, owner_id) VALUES (?, ?, ?)')
-      .run('demo-project', 'Acme Project', 'user-1')
+      .prepare('INSERT INTO projects (id, name, slug, owner_id) VALUES (?, ?, ?, ?)')
+      .run('demo-project', 'Acme Project', 'acme-project', 'user-1')
 
     // Labels
     database

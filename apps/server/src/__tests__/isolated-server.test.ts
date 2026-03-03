@@ -70,6 +70,20 @@ describe('isolated server — DB isolation', () => {
     expect(profiles.some((p) => p.id === 'primary-only')).toBe(true)
   })
 
+  it('isolated server returns demo project with valid slug', async () => {
+    const resp = await isolated.instance.inject({
+      method: 'GET',
+      url: '/api/projects',
+      headers: { host: 'localhost' },
+    })
+
+    expect(resp.statusCode).toBe(200)
+    const projects = resp.json() as { id: string; slug: string }[]
+    const demo = projects.find((p) => p.id === 'demo-project')
+    expect(demo).toBeDefined()
+    expect(demo!.slug).toBe('acme-project')
+  })
+
   it('isolated server does not see data inserted into the primary database', async () => {
     // Same insertion into primary's DB.
     const primaryDb = getDatabase()
