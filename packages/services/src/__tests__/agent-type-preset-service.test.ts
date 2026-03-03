@@ -7,7 +7,7 @@ vi.mock('@kombuse/persistence', () => ({
 }))
 
 import { pluginFilesRepository } from '@kombuse/persistence'
-import { getTypePreset, getEffectivePreset } from '../agent-type-preset-service'
+import { getTypePreset, getEffectivePreset, shouldAutoApprove, presetToAllowedTools } from '../agent-type-preset-service'
 
 const mockGet = pluginFilesRepository.get as ReturnType<typeof vi.fn>
 
@@ -225,5 +225,98 @@ describe('getEffectivePreset with pluginId', () => {
     expect(preset.autoApprovedTools).toContain('Write')
     expect(preset.autoApprovedBashCommands).toEqual(['ls'])
     expect(preset.permissionMode).toBe('plan')
+  })
+})
+
+describe('shouldAutoApprove', () => {
+  const kombusePreset = getTypePreset('kombuse')
+
+  it('approves auto-approved tools by name', () => {
+    expect(shouldAutoApprove('Read', undefined, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Grep', undefined, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Glob', undefined, kombusePreset)).toBe(true)
+  })
+
+  it('rejects tools not in the auto-approved list', () => {
+    expect(shouldAutoApprove('Write', undefined, kombusePreset)).toBe(false)
+    expect(shouldAutoApprove('Edit', undefined, kombusePreset)).toBe(false)
+    expect(shouldAutoApprove('UnknownTool', undefined, kombusePreset)).toBe(false)
+  })
+
+  it.each([
+    ['ls -la /path'],
+    ['find . -name "*.ts"'],
+    ['cat /some/file.ts'],
+    ['grep -r pattern /path'],
+    ['head -n 10 /file'],
+    ['tail -5 /file'],
+    ['wc -l /file'],
+  ])('approves read-only bash command: %s', (command) => {
+    expect(shouldAutoApprove('Bash', { command }, kombusePreset)).toBe(true)
+  })
+
+  it.each([
+    ['ls'],
+    ['cat'],
+    ['find'],
+    ['grep'],
+    ['head'],
+    ['tail'],
+    ['wc'],
+    ['git status'],
+    ['git diff'],
+  ])('approves exact bash command: %s', (command) => {
+    expect(shouldAutoApprove('Bash', { command }, kombusePreset)).toBe(true)
+  })
+
+  it.each([
+    ['rm -rf /'],
+    ['chmod 777 /file'],
+    ['chown root /file'],
+    ['curl http://example.com'],
+    ['wget http://example.com'],
+  ])('rejects destructive or unknown bash command: %s', (command) => {
+    expect(shouldAutoApprove('Bash', { command }, kombusePreset)).toBe(false)
+  })
+
+  it('rejects Bash without a command', () => {
+    expect(shouldAutoApprove('Bash', undefined, kombusePreset)).toBe(false)
+    expect(shouldAutoApprove('Bash', {}, kombusePreset)).toBe(false)
+  })
+})
+
+describe('presetToAllowedTools', () => {
+  it('includes Bash(cmd *) patterns for kombuse preset', () => {
+    const kombusePreset = getTypePreset('kombuse')
+    const tools = presetToAllowedTools(kombusePreset)
+
+    expect(tools).toContain('Bash(ls *)')
+    expect(tools).toContain('Bash(cat *)')
+    expect(tools).toContain('Bash(find *)')
+    expect(tools).toContain('Bash(grep *)')
+    expect(tools).toContain('Bash(head *)')
+    expect(tools).toContain('Bash(tail *)')
+    expect(tools).toContain('Bash(wc *)')
+    expect(tools).toContain('Bash(git status *)')
+  })
+
+  it('does not include Bash(cmd *) patterns when Bash is in autoApprovedTools', () => {
+    const coderPreset = getTypePreset('coder')
+    const tools = presetToAllowedTools(coderPreset)
+
+    // Coder has 'Bash' in autoApprovedTools, so no Bash(prefix *) patterns
+    expect(tools).toContain('Bash')
+    expect(tools).not.toContain('Bash(bun *)')
+    expect(tools).not.toContain('Bash(git status *)')
+  })
+
+  it('includes all auto-approved tools', () => {
+    const kombusePreset = getTypePreset('kombuse')
+    const tools = presetToAllowedTools(kombusePreset)
+
+    expect(tools).toContain('Read')
+    expect(tools).toContain('Grep')
+    expect(tools).toContain('Glob')
+    expect(tools).toContain('mcp__kombuse__get_ticket')
   })
 })

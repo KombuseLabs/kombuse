@@ -39,7 +39,7 @@ const READ_TOOLS: string[] = ['Grep', 'Glob', 'Read']
 const AGENT_TYPE_PRESETS: Record<string, AgentTypePreset> = {
   kombuse: {
     autoApprovedTools: [...KOMBUSE_TOOLS, ...READ_TOOLS],
-    autoApprovedBashCommands: ['git status', 'git diff', 'git log', 'git show', 'git branch', 'git rev-parse'],
+    autoApprovedBashCommands: ['git status', 'git diff', 'git log', 'git show', 'git branch', 'git rev-parse', 'ls', 'cat', 'find', 'grep', 'head', 'tail', 'wc'],
   },
   coder: {
     autoApprovedTools: [
