@@ -204,6 +204,30 @@ export function useTextareaAutocomplete({
     [onValueChange, textareaRef]
   )
 
+  const programmaticSetValue = useCallback(
+    (value: string) => {
+      onValueChange(value)
+      const cursorPos = value.length
+      const ctx = getMentionContext(value, cursorPos)
+      setMentionContext(ctx)
+      setSelectedMentionIndex(0)
+      setSelectedTicketIndex(0)
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = cursorPos
+          textareaRef.current.selectionEnd = cursorPos
+          textareaRef.current.focus()
+          if (ctx.isActive) {
+            setCaretPosition(
+              getCaretCoordinates(textareaRef.current, cursorPos)
+            )
+          }
+        }
+      })
+    },
+    [onValueChange, textareaRef]
+  )
+
   const AutocompletePortal = useMemo(
     () =>
       function AutocompletePortalComponent() {
@@ -249,6 +273,7 @@ export function useTextareaAutocomplete({
       onChange: handleChange,
       onKeyDown: handleKeyDown,
     },
+    programmaticSetValue,
     AutocompletePortal,
   }
 }

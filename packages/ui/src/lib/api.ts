@@ -90,6 +90,9 @@ declare global {
         onResult: (callback: (result: { activeMatchOrdinal: number; matches: number; finalUpdate: boolean }) => void) => () => void
       }
     }
+    __kombuse?: {
+      setInputValue?: (selector: string, value: string) => boolean
+    }
   }
 }
 

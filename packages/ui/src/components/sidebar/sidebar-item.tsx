@@ -61,6 +61,7 @@ function SidebarItem({
     <NavLink
       to={to}
       aria-label={usesRailStyle ? label : undefined}
+      data-testid={`sidebar-item-${label.toLowerCase().replace(/\s+/g, "-")}`}
       className={cn(
         sidebarItemVariants({
           variant: usesRailStyle ? "rail" : "panel",

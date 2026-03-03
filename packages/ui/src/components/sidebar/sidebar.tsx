@@ -31,6 +31,7 @@ function Sidebar({
         <aside
           className={cn("shrink-0 px-3 pt-3", className)}
           data-sidebar-variant={variant}
+          data-testid="sidebar"
         >
           <div className="flex w-17 flex-col rounded-[1.5rem] border border-border/80 bg-background/95 p-2 shadow-sm">
             {header && (
@@ -61,6 +62,7 @@ function Sidebar({
           className
         )}
         data-sidebar-variant={variant}
+        data-testid="sidebar"
       >
         <div
           className={cn(
@@ -76,6 +78,7 @@ function Sidebar({
             size="icon"
             onClick={() => onCollapsedChange?.(!isCollapsed)}
             className="size-8 shrink-0"
+            data-testid="sidebar-collapse"
           >
             {isCollapsed ? (
               <ChevronRight className="size-4" />

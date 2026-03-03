@@ -343,7 +343,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
     <>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative" data-testid="notification-bell">
             <Bell className="size-5" />
             {count > 0 && (
               <Badge
@@ -355,7 +355,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-96 p-0">
+        <PopoverContent align="end" className="w-96 p-0" data-testid="notification-popover">
           <div className="border-b px-3 py-2">
             <h4 className="text-sm font-medium">Notifications</h4>
           </div>

@@ -69,7 +69,7 @@ function TicketFilterSheet({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5" data-testid="ticket-filter-trigger">
           <SlidersHorizontal className="size-3.5" />
           Filters
           {activeFilterCount > 0 && (
@@ -79,7 +79,7 @@ function TicketFilterSheet({
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent data-testid="ticket-filter-sheet">
         <SheetHeader>
           <SheetTitle>Filters</SheetTitle>
         </SheetHeader>

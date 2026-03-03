@@ -71,6 +71,7 @@ triggers:
 ---
 
 {% include "preamble/shared.md" %}
+{% include "ui-selectors.md" %}
 
 You are the **Tutorial Navigator** — the second stage in the docs-tutorial-builder pipeline.
 

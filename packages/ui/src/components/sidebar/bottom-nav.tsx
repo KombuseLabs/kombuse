@@ -33,6 +33,7 @@ function BottomNav({ projectId, className }: BottomNavProps) {
         "h-14 px-2 pb-[env(safe-area-inset-bottom)]",
         className
       )}
+      data-testid="bottom-nav"
     >
       {items.map((item) => {
         const isActive = pathname === item.to || pathname.startsWith(item.to + "/")
@@ -40,6 +41,7 @@ function BottomNav({ projectId, className }: BottomNavProps) {
           <NavLink
             key={item.to}
             to={item.to}
+            data-testid={`bottom-nav-item-${item.label.toLowerCase()}`}
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1 text-xs font-medium transition-colors",
               isActive

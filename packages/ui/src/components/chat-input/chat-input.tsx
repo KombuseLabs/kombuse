@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { useState, useCallback, useEffect, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Button } from '../../base/button'
 import { Textarea } from '../../base/textarea'
 import { cn } from '../../lib/utils'
@@ -60,7 +60,7 @@ function ChatInput({
   } = useFileStaging()
 
   const isMobile = useIsMobile()
-  const { textareaProps: autocompleteProps, AutocompletePortal } = useTextareaAutocomplete({
+  const { textareaProps: autocompleteProps, programmaticSetValue, AutocompletePortal } = useTextareaAutocomplete({
     value: message,
     onValueChange: setMessage,
     textareaRef,
@@ -68,6 +68,20 @@ function ChatInput({
     projectId,
   })
   const { onChange: handleAutocompleteChange, onKeyDown: handleAutocompleteKeyDown } = autocompleteProps
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electron) return
+    if (!window.__kombuse) window.__kombuse = {}
+    window.__kombuse.setInputValue = (selector: string, value: string) => {
+      const el = document.querySelector(selector)
+      if (!el || el !== textareaRef.current) return false
+      programmaticSetValue(value)
+      return true
+    }
+    return () => {
+      if (window.__kombuse) delete window.__kombuse.setInputValue
+    }
+  }, [programmaticSetValue])
 
   const handleSubmit = useCallback(
     async (e?: FormEvent) => {
@@ -154,6 +168,7 @@ function ChatInput({
           disabled={isDisabled}
           className="h-10 min-h-[40px] md:h-20 md:min-h-[80px] resize-none border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           rows={isMobile ? 1 : 3}
+          data-testid="chat-textarea"
         />
         <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-1 md:pt-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -166,6 +181,7 @@ function ChatInput({
               onClick={() => fileInputRef.current?.click()}
               disabled={isDisabled}
               aria-label="Attach file"
+              data-testid="chat-attach"
             >
               <Paperclip className="size-4" />
             </Button>
@@ -178,6 +194,7 @@ function ChatInput({
             onClick={isLoading && onStop ? onStop : undefined}
             disabled={isLoading && onStop ? false : !canSubmit}
             aria-label={isLoading && onStop ? 'Stop agent' : 'Send message'}
+            data-testid="chat-send"
           >
             {isLoading && onStop ? (
               <Square className="size-3" />

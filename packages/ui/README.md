@@ -2118,6 +2118,16 @@ function MyComponent() {
 }
 ```
 
+## `data-testid` Convention
+
+Components use `data-testid` attributes as stable selectors for agent automation and testing. Follow these patterns:
+
+- **Static elements:** `{component}-{element}` — e.g. `sidebar`, `sidebar-collapse`, `chat-textarea`, `chat-send`
+- **Dynamic items:** `{component}-{element}-{id}` — e.g. `ticket-item-42`, `comment-123`, `session-item-abc`
+- **Named items:** derive from label/name prop, lowercased with hyphens — e.g. `sidebar-item-tickets`, `bottom-nav-item-agents`
+
+All selectors are documented in `apps/docs/.kombuse/plugins/docs-tutorial-builder/files/ui-selectors.md`.
+
 ## Adding New Components
 
 1. **Base components** (shadcn/ui): Add to `src/base/` and add an explicit named export in `src/base/index.ts`
