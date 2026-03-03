@@ -72,8 +72,8 @@ interface DesktopContext {
   demo_project_id: string | null
 }
 
-export function resolveDesktopContext(): DesktopContext | undefined {
-  const docsDbPath = join(homedir(), '.kombuse', 'docs.db')
+export function resolveDesktopContext(overrideDbPath?: string): DesktopContext | undefined {
+  const docsDbPath = overrideDbPath ?? join(homedir(), '.kombuse', 'docs.db')
   const docsDbExists = existsSync(docsDbPath)
   if (!docsDbExists) {
     return { docs_db_exists: false, docs_db_project_count: 0, docs_db_ticket_count: 0, demo_project_id: null }
