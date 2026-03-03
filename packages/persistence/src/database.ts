@@ -622,7 +622,13 @@ export function seedDemoData(database: DatabaseType): void {
     .prepare('SELECT id FROM projects WHERE id = ?')
     .get('demo-project')
 
-  if (existing) return
+  if (existing) {
+    // Repair stale docs.db: slug was missing before it was added to the INSERT
+    database
+      .prepare("UPDATE projects SET slug = 'acme-project' WHERE id = 'demo-project' AND slug IS NULL")
+      .run()
+    return
+  }
 
   const seed = database.transaction(() => {
     // Project

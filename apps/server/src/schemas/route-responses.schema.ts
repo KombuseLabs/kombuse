@@ -545,6 +545,10 @@ registerSuccessSchema('POST', '/api/desktop/windows', desktopWindowSchema)
 registerSuccessSchema('POST', '/api/desktop/windows/:id/navigate', desktopWindowSchema.pick({ id: true, url: true }))
 registerSuccessSchema('POST', '/api/desktop/windows/:id/screenshot', desktopScreenshotSchema)
 registerSuccessSchema('POST', '/api/desktop/windows/:id/execute-js', z.object({ result: z.unknown() }))
+registerSuccessSchema('POST', '/api/desktop/windows/:id/wait-for', z.object({
+  found: z.literal(true),
+  selector: z.string().min(1),
+}))
 
 export function toRouteKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path}`
