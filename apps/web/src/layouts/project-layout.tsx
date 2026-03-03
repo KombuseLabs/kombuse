@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, useParams } from "react-router-dom";
 import { Sidebar, SidebarItem, BottomNav } from "@kombuse/ui/components";
-import { useProject, useProfileSetting, useAppContext, useIsMobile } from "@kombuse/ui/hooks";
+import { useProject, useProfileSetting, useAppContext, useIsMobile, useDocumentTitle } from "@kombuse/ui/hooks";
 import { Ticket, Bot, MessageSquare, History, Tags, Shield, Database, Puzzle, BarChart3 } from "lucide-react";
 
 export function ProjectLayout() {
@@ -14,6 +14,8 @@ export function ProjectLayout() {
     setCurrentProjectId(project?.id ?? null);
     return () => setCurrentProjectId(null);
   }, [project?.id, setCurrentProjectId]);
+
+  useDocumentTitle(project?.name ? `${project.name} — Kombuse` : "Kombuse");
 
   const { data: eventsSetting } = useProfileSetting("user-1", "sidebar.hidden.events");
   const { data: permissionsSetting } = useProfileSetting("user-1", "sidebar.hidden.permissions");

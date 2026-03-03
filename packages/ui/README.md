@@ -194,6 +194,13 @@ const isMobile = useIsMobile()
 ```
 
 ```typescript
+import { useDocumentTitle } from '@kombuse/ui/hooks'
+
+// Set the browser/Electron window title (restores previous title on unmount)
+useDocumentTitle('My Project — Kombuse')
+```
+
+```typescript
 import { useProfile, useCurrentUserProfile } from '@kombuse/ui/hooks'
 
 // Fetch a profile by ID
