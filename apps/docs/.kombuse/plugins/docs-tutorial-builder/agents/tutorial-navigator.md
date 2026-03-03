@@ -56,6 +56,7 @@ config:
     - mcp__kombuse__save_screenshot
     - mcp__kombuse__take_screenshot
     - mcp__kombuse__close_window
+    - mcp__kombuse__wait_for
 triggers:
   - event_type: label.added
     conditions:

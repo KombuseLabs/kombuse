@@ -122,6 +122,60 @@ interface ChatRunnerOptions {
   onResumeFailed?: () => void
 }
 
+interface IdleWatcher {
+  onEvent(): void
+  onPermissionRequest(): void
+  onPermissionResponse(): void
+  complete(): void
+  readonly idleAbortTriggered: boolean
+}
+
+function createIdleWatcher(
+  backend: AgentBackend,
+  sessionId: string,
+  label: string
+): IdleWatcher {
+  let lastEventTimestamp = Date.now()
+  let pendingPermission = false
+  let _idleAbortTriggered = false
+  let stopped = false
+
+  const idleCheckInterval = setInterval(() => {
+    if (stopped) {
+      clearInterval(idleCheckInterval)
+      return
+    }
+    if (pendingPermission) {
+      lastEventTimestamp = Date.now()
+      return
+    }
+    const elapsed = Date.now() - lastEventTimestamp
+    if (elapsed > IDLE_TURN_TIMEOUT_MS) {
+      const suffix = label ? ` ${label}` : ''
+      log.warn(`In-turn idle timeout exceeded${suffix}`, {
+        sessionId,
+        elapsedMs: elapsed,
+        timeoutMs: IDLE_TURN_TIMEOUT_MS,
+      })
+      clearInterval(idleCheckInterval)
+      _idleAbortTriggered = true
+      void backend.stop().catch(() => {})
+    }
+  }, 60_000)
+  if (idleCheckInterval.unref) idleCheckInterval.unref()
+
+  return {
+    onEvent() { lastEventTimestamp = Date.now() },
+    onPermissionRequest() { pendingPermission = true },
+    onPermissionResponse() { pendingPermission = false },
+    complete() {
+      stopped = true
+      clearInterval(idleCheckInterval)
+    },
+    get idleAbortTriggered() { return _idleAbortTriggered },
+  }
+}
+
 /**
  * Run a chat message through an agent backend.
  * Returns immediately after starting - events come via callbacks.
@@ -135,35 +189,10 @@ async function runAgentChat(
 ): Promise<ConversationContext> {
   const appSessionId = kombuseSessionId
   let didComplete = false
-  let idleAbortTriggered = false
-  let lastEventTimestamp = Date.now()
-  let pendingPermission = false
-
-  const idleCheckInterval = setInterval(() => {
-    if (didComplete) {
-      clearInterval(idleCheckInterval)
-      return
-    }
-    if (pendingPermission) {
-      lastEventTimestamp = Date.now()
-      return
-    }
-    const elapsed = Date.now() - lastEventTimestamp
-    if (elapsed > IDLE_TURN_TIMEOUT_MS) {
-      log.warn('In-turn idle timeout exceeded', {
-        sessionId: appSessionId,
-        elapsedMs: elapsed,
-        timeoutMs: IDLE_TURN_TIMEOUT_MS,
-      })
-      clearInterval(idleCheckInterval)
-      idleAbortTriggered = true
-      void backend.stop().catch(() => {})
-    }
-  }, 60_000)
-  if (idleCheckInterval.unref) idleCheckInterval.unref()
+  const idle = createIdleWatcher(backend, appSessionId, '')
 
   const finalize = (keepAlive = false) => {
-    clearInterval(idleCheckInterval)
+    idle.complete()
     unsubscribe()
     if (!keepAlive && backend.isRunning()) {
       void backend.stop().catch((stopError) => {
@@ -180,13 +209,13 @@ async function runAgentChat(
     }
 
     if (event.type !== 'lifecycle') {
-      lastEventTimestamp = Date.now()
+      idle.onEvent()
     }
     if (event.type === 'permission_request') {
-      pendingPermission = true
+      idle.onPermissionRequest()
     }
     if (event.type === 'permission_response') {
-      pendingPermission = false
+      idle.onPermissionResponse()
     }
 
     if (event.type === 'complete') {
@@ -197,7 +226,7 @@ async function runAgentChat(
         return
       }
       if (event.reason === 'stopped') {
-        options.onStopped?.(idleAbortTriggered ? 'idle_turn_timeout' : 'user_stop')
+        options.onStopped?.(idle.idleAbortTriggered ? 'idle_turn_timeout' : 'user_stop')
         finalize()
         return
       }
@@ -265,52 +294,27 @@ function runFollowUpChat(
   images?: ImageAttachment[]
 ): void {
   let didComplete = false
-  let idleAbortTriggered = false
-  let lastEventTimestamp = Date.now()
-  let pendingPermission = false
-
-  const idleCheckInterval = setInterval(() => {
-    if (didComplete) {
-      clearInterval(idleCheckInterval)
-      return
-    }
-    if (pendingPermission) {
-      lastEventTimestamp = Date.now()
-      return
-    }
-    const elapsed = Date.now() - lastEventTimestamp
-    if (elapsed > IDLE_TURN_TIMEOUT_MS) {
-      log.warn('In-turn idle timeout exceeded (follow-up)', {
-        sessionId: kombuseSessionId,
-        elapsedMs: elapsed,
-        timeoutMs: IDLE_TURN_TIMEOUT_MS,
-      })
-      clearInterval(idleCheckInterval)
-      idleAbortTriggered = true
-      void backend.stop().catch(() => {})
-    }
-  }, 60_000)
-  if (idleCheckInterval.unref) idleCheckInterval.unref()
+  const idle = createIdleWatcher(backend, kombuseSessionId, '(follow-up)')
 
   const unsubscribe = backend.subscribe((event) => {
     if (didComplete) return
 
     if (event.type !== 'lifecycle') {
-      lastEventTimestamp = Date.now()
+      idle.onEvent()
     }
     if (event.type === 'permission_request') {
-      pendingPermission = true
+      idle.onPermissionRequest()
     }
     if (event.type === 'permission_response') {
-      pendingPermission = false
+      idle.onPermissionResponse()
     }
 
     if (event.type === 'complete') {
       didComplete = true
-      clearInterval(idleCheckInterval)
+      idle.complete()
       unsubscribe()
       if (event.reason === 'stopped') {
-        options.onStopped?.(idleAbortTriggered ? 'idle_turn_timeout' : 'user_stop')
+        options.onStopped?.(idle.idleAbortTriggered ? 'idle_turn_timeout' : 'user_stop')
         return
       }
       if (event.success === false) {

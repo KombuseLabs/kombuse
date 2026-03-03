@@ -20,7 +20,7 @@ function buildWaitForScript(selector: string, timeoutMs: number): string {
   return `
     new Promise((resolve, reject) => {
       const timeout = setTimeout(
-        () => reject(new Error('wait_for timed out after ${timeoutMs}ms')),
+        () => reject(new Error('wait_for_selector timed out after ${timeoutMs}ms')),
         ${timeoutMs}
       );
       const check = () => {
@@ -171,11 +171,13 @@ export async function desktopApiPlugin(
       const safeTimeout = Math.max(1000, Number(timeout_ms ?? 30000));
       let result: unknown;
       try {
+        let timeoutId: ReturnType<typeof setTimeout>;
         const executePromise = win.webContents.executeJavaScript(script);
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`execute_js timed out after ${safeTimeout}ms`)), safeTimeout)
-        );
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error(`execute_js timed out after ${safeTimeout}ms`)), safeTimeout);
+        });
         result = await Promise.race([executePromise, timeoutPromise]);
+        clearTimeout(timeoutId!);
       } catch (error) {
         return reply.status(400).send({
           error: `Script execution failed: ${(error as Error).message}`,
