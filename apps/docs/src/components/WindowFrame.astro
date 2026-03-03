@@ -9,20 +9,20 @@ const { title = '', cursorX, cursorY } = Astro.props
 const showCursor = cursorX !== undefined && cursorY !== undefined
 ---
 
-<div class="window-frame">
+<div class="window-frame not-content">
   <div class="window-titlebar">
     <div class="window-buttons">
       <span class="window-button close"></span>
       <span class="window-button minimize"></span>
       <span class="window-button maximize"></span>
     </div>
-    {title && <span class="window-title">{title}</span>}
+    <span class="window-title">Kombuse</span>
   </div>
   <div class="window-content">
     <slot />
     {showCursor && (
       <svg
-        class="cursor"
+        class="window-cursor"
         style={`left: ${cursorX}%; top: ${cursorY}%`}
         width="20"
         height="28"
@@ -42,7 +42,7 @@ const showCursor = cursorX !== undefined && cursorY !== undefined
   </div>
 </div>
 
-<style>
+<style is:inline>
   .window-frame {
     border: 1px solid #d1d5db;
     border-radius: 10px;
@@ -51,7 +51,7 @@ const showCursor = cursorX !== undefined && cursorY !== undefined
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
-  :global([data-theme='dark']) .window-frame {
+  [data-theme='dark'] .window-frame {
     border-color: #374151;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
@@ -59,27 +59,22 @@ const showCursor = cursorX !== undefined && cursorY !== undefined
   .window-titlebar {
     display: flex;
     align-items: center;
-    height: 38px;
-    padding: 0 12px;
-    background: #f3f4f6;
-    border-bottom: 1px solid #d1d5db;
+    height: 40px;
+    padding: 0 16px;
+    background: #1A1A1A;
     gap: 8px;
-  }
-
-  :global([data-theme='dark']) .window-titlebar {
-    background: #1f2937;
-    border-bottom-color: #374151;
   }
 
   .window-buttons {
     display: flex;
-    gap: 6px;
+    gap: 8px;
   }
 
   .window-button {
     width: 12px;
     height: 12px;
     border-radius: 50%;
+    display: inline-block;
   }
 
   .window-button.close {
@@ -95,15 +90,10 @@ const showCursor = cursorX !== undefined && cursorY !== undefined
   }
 
   .window-title {
-    flex: 1;
-    text-align: center;
-    font-size: 0.8rem;
-    color: #6b7280;
-    margin-right: 54px; /* offset for buttons to keep title centered */
-  }
-
-  :global([data-theme='dark']) .window-title {
-    color: #9ca3af;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    margin-left: 32px;
   }
 
   .window-content {
@@ -111,8 +101,8 @@ const showCursor = cursorX !== undefined && cursorY !== undefined
     line-height: 0;
   }
 
-  .window-content :global(img),
-  .window-content :global(picture) {
+  .window-content img,
+  .window-content picture {
     width: 100%;
     height: auto;
     display: block;
@@ -120,12 +110,12 @@ const showCursor = cursorX !== undefined && cursorY !== undefined
     padding: 0;
   }
 
-  .window-content :global(p) {
+  .window-content p {
     margin: 0;
     padding: 0;
   }
 
-  .cursor {
+  .window-cursor {
     position: absolute;
     pointer-events: none;
     z-index: 10;
