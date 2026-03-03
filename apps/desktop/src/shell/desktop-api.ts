@@ -225,7 +225,10 @@ export async function desktopApiPlugin(
         return reply.status(404).send({ error: "Window not found" });
       }
 
-      const image = await win.webContents.capturePage();
+      const { rect } = (request.body as { rect?: { x: number; y: number; width: number; height: number } }) || {};
+      const image = rect
+        ? await win.webContents.capturePage(rect)
+        : await win.webContents.capturePage();
       const png = image.toPNG();
 
       return {

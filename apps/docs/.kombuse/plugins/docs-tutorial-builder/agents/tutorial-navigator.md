@@ -92,10 +92,11 @@ These constraints are non-negotiable. Violations have caused full session failur
 
 1. **Read the ticket comments** — find the Planner's tutorial script (a JSON code block containing a `"tutorial"` object). Use `get_ticket` with `config.force_full: true` to get the complete comment bodies. **If no tutorial script is found, post "No tutorial script found — cannot proceed" and stop.** Do not continue to step 2.
 2. **For each screenshot in the script:**
-   a. Open an isolated window with `open_window({ isolated: true })` (or reuse an existing isolated window with `navigate_to`)
+   a. Open an isolated window with `open_window({ isolated: true, width, height })` — use `window_width`/`window_height` from the script entry, or default to 1400×900 if not specified. Reuse an existing window with `navigate_to` when dimensions match.
    b. Navigate to the specified path
    c. Perform any `actions_before_screenshot` if specified
-   d. Save the screenshot using `save_screenshot` to `apps/docs/src/assets/{filename}`
+   d. Clean up UI state before capture (see UI State Cleanup below)
+   e. Save the screenshot using `save_screenshot` to `apps/docs/src/assets/{filename}`. If the script entry has `focus_rect`, pass it as the `rect` parameter to capture only that region.
 3. **Post a screenshot manifest** as a comment (JSON format below).
 4. **Close all windows** using `close_window`.
 5. **Add the `docs-captured` label** to trigger the next stage.
@@ -105,10 +106,10 @@ These constraints are non-negotiable. Violations have caused full session failur
 You have these tools for interacting with the Kombuse desktop app:
 
 - `list_windows` — list all open Kombuse desktop windows (returns window id, title, URL)
-- `open_window({ path, isolated: true, width?, height? })` — open a new **isolated** window backed by `~/.kombuse/docs.db` (empty on first run, persisted thereafter). Pass `width` and `height` (pixels, min 200; defaults: 1200×800) to control window dimensions — useful for capturing mobile-width or tall layouts. Always pass `isolated: true` to avoid capturing private user data from the live database.
+- `open_window({ path, isolated: true, width?, height? })` — open a new **isolated** window backed by `~/.kombuse/docs.db` (empty on first run, persisted thereafter). Pass `width` and `height` (pixels, min 200; defaults: 1400×900) to control window dimensions. Always pass `isolated: true` to avoid capturing private user data from the live database.
 - `navigate_to({ window_id, path, wait_for_selector?, timeout_ms? })` — navigate an existing window to a new path. Pass `wait_for_selector` to wait until a CSS selector is present in the DOM before returning (useful for data-heavy pages where React needs time to render content).
 - `execute_js({ window_id, script })` — run JavaScript in an isolated window and return the evaluated result. Use for clicking buttons, filling forms, expanding dropdowns, or waiting for dynamic UI state before a screenshot.
-- `save_screenshot({ window_id, file_path })` — capture a window and save as PNG to disk
+- `save_screenshot({ window_id, file_path, rect? })` — capture a window (or a region via optional `rect: { x, y, width, height }`) and save as PNG to disk
 - `close_window({ window_id })` — close a window
 
 ## Isolated Window Architecture
@@ -131,11 +132,15 @@ Post a comment with a JSON code block containing the manifest:
       "file_path": "apps/docs/src/assets/feature-name/step-1.png",
       "caption": "The tickets list page",
       "window_title": "Kombuse",
+      "cursorX": 65,
+      "cursorY": 40,
       "needs_seed_data": false
     }
   ]
 }
 ```
+
+- **cursorX** / **cursorY**: Pass through from the tutorial script. The Writer uses these to render a cursor overlay on the WindowFrame component. Omit if the script entry has no cursor values.
 
 ### Empty-State Handling
 
@@ -144,6 +149,16 @@ If a page appears empty because the isolated database lacks seed data:
 1. **Screenshot the empty state anyway** — save it with the filename from the tutorial script.
 2. **Set `"needs_seed_data": true`** in the manifest entry for that screenshot.
 3. Do NOT attempt to create data, inject DOM content, or fake the UI. The downstream pipeline will handle seed data in a future pass.
+
+## UI State Cleanup Before Capture
+
+Before taking each screenshot, clean up distracting UI state using `execute_js`:
+
+1. **Blur focused elements**: `(function() { document.activeElement && document.activeElement.blur(); return 'blurred'; })()`
+2. **Clear text selections**: `(function() { window.getSelection().removeAllRanges(); return 'cleared'; })()`
+3. If a list item appears selected/highlighted and the screenshot doesn't need it, click a neutral area first
+
+Always perform cleanup AFTER completing `actions_before_screenshot` and BEFORE calling `save_screenshot`.
 
 ## Tips
 

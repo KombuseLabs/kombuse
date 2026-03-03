@@ -112,6 +112,11 @@ Post a single comment with a JSON code block. This is the contract between you a
             "filename": "feature-name/step-1.png",
             "caption": "The tickets list page",
             "window_title": "Kombuse",
+            "window_width": 1600,
+            "window_height": 900,
+            "cursorX": 65,
+            "cursorY": 40,
+            "focus_rect": { "x": 400, "y": 0, "width": 800, "height": 900 },
             "actions_before_screenshot": [
               "Navigate to the page and wait for it to load"
             ]
@@ -132,6 +137,9 @@ Post a single comment with a JSON code block. This is the contract between you a
 - **screenshots[].filename**: Relative to `apps/docs/src/assets/` — the Navigator saves here
 - **screenshots[].caption**: Used as the `alt` text in the final MDX
 - **screenshots[].window_title**: Optional title for the WindowFrame component
+- **screenshots[].window_width** / **window_height**: Window dimensions in pixels. Use larger sizes (1600×900+) for split-panel views. Defaults to 1400×900 if omitted.
+- **screenshots[].cursorX** / **cursorY**: Cursor position as percentage (0–100) for the WindowFrame cursor overlay. Use to indicate where the user should click or look. Omit if no cursor is needed.
+- **screenshots[].focus_rect**: Optional `{ x, y, width, height }` in pixels for partial screenshot capture. Use to focus on a specific panel (e.g. the detail panel in a split view) instead of capturing the full window.
 - **screenshots[].actions_before_screenshot**: Instructions for the Navigator (e.g. "Click the New Ticket button", "Wait for the modal to appear")
 - **content_notes**: Guidance for the Writer on what text content to include
 - **sources**: File paths the Planner read to verify claims in `content_notes` (e.g. `apps/web/src/routes/home.tsx` for a UI label). Helps the Writer and Reviewer cross-check accuracy.
@@ -155,6 +163,10 @@ The isolated database contains a pre-seeded demo project with ID `{{ desktop_con
 - Use descriptive filenames for screenshots (e.g. `tickets/create-ticket-form.png`, not `step-1.png`)
 - Include `actions_before_screenshot` whenever the Navigator needs to interact with the UI beyond just navigating
 - Consider the reader's perspective — what do they need to see and understand?
+- Use `window_width: 1600` or larger for views with side-by-side panels (ticket detail, settings with sidebar, etc.)
+- Use `focus_rect` to capture just the relevant panel when the full window includes distracting context (e.g. capture only the detail panel in a ticket view)
+- Vary window dimensions per screenshot based on what needs focus — list views, detail views, and modals each have different ideal sizes
+- Include `cursorX`/`cursorY` when the screenshot should show where to click or interact
 - Every factual claim in `content_notes` must be verified by reading the source — never invent platform support, UI labels, or feature lists from memory or assumption
 - Do NOT write any MDX content — that's the Writer's job
 - Do NOT take any screenshots — that's the Navigator's job

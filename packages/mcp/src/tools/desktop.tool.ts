@@ -302,13 +302,20 @@ export function registerDesktopTools(
           .int()
           .positive()
           .describe('The window id to capture'),
+        rect: z.object({
+          x: z.number().int().nonnegative().describe('X offset in pixels'),
+          y: z.number().int().nonnegative().describe('Y offset in pixels'),
+          width: z.number().int().positive().describe('Region width in pixels'),
+          height: z.number().int().positive().describe('Region height in pixels'),
+        }).optional().describe('Optional region to capture. If omitted, captures the full window.'),
       },
     },
-    async ({ window_id }) => {
+    async ({ window_id, rect }) => {
       try {
         const response = await injectable.inject({
           method: 'POST',
           url: `/api/desktop/windows/${window_id}/screenshot`,
+          ...(rect ? { payload: JSON.stringify({ rect }), headers: { 'content-type': 'application/json' } } : {}),
         })
 
         let body: unknown
@@ -351,13 +358,20 @@ export function registerDesktopTools(
           .string()
           .min(1)
           .describe('Absolute file path to write the PNG to, e.g. "/path/to/screenshot.png"'),
+        rect: z.object({
+          x: z.number().int().nonnegative().describe('X offset in pixels'),
+          y: z.number().int().nonnegative().describe('Y offset in pixels'),
+          width: z.number().int().positive().describe('Region width in pixels'),
+          height: z.number().int().positive().describe('Region height in pixels'),
+        }).optional().describe('Optional region to capture. If omitted, captures the full window.'),
       },
     },
-    async ({ window_id, file_path }) => {
+    async ({ window_id, file_path, rect }) => {
       try {
         const response = await injectable.inject({
           method: 'POST',
           url: `/api/desktop/windows/${window_id}/screenshot`,
+          ...(rect ? { payload: JSON.stringify({ rect }), headers: { 'content-type': 'application/json' } } : {}),
         })
 
         let body: unknown
