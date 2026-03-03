@@ -180,4 +180,5 @@ If a page appears empty because the isolated database lacks seed data:
 - docs.db exists: {{ desktop_context.docs_db_exists }}
 - Projects in docs.db: {{ desktop_context.docs_db_project_count }}
 - Tickets in docs.db: {{ desktop_context.docs_db_ticket_count }}
+{% if desktop_context.demo_project_id %}- **Demo project ID**: `{{ desktop_context.demo_project_id }}` — use this in ALL navigation paths (e.g. `/projects/{{ desktop_context.demo_project_id }}/tickets`). Do NOT attempt to discover project IDs by exploring the codebase.{% endif %}
 {% endif %}

@@ -69,29 +69,25 @@ interface DesktopContext {
   docs_db_exists: boolean
   docs_db_project_count: number
   docs_db_ticket_count: number
+  demo_project_id: string | null
 }
 
-function resolveDesktopContext(): DesktopContext | undefined {
+export function resolveDesktopContext(): DesktopContext | undefined {
   const docsDbPath = join(homedir(), '.kombuse', 'docs.db')
   const docsDbExists = existsSync(docsDbPath)
   if (!docsDbExists) {
-    return { docs_db_exists: false, docs_db_project_count: 0, docs_db_ticket_count: 0 }
+    return { docs_db_exists: false, docs_db_project_count: 0, docs_db_ticket_count: 0, demo_project_id: null }
   }
   try {
     const db = new Database(docsDbPath, { readonly: true })
     const projectCount = (db.prepare('SELECT COUNT(*) as c FROM projects').get() as { c: number })?.c ?? 0
     const ticketCount = (db.prepare('SELECT COUNT(*) as c FROM tickets').get() as { c: number })?.c ?? 0
+    const demoProject = db.prepare("SELECT id FROM projects WHERE id = 'demo-project'").get() as { id: string } | undefined
     db.close()
-    return { docs_db_exists: true, docs_db_project_count: projectCount, docs_db_ticket_count: ticketCount }
+    return { docs_db_exists: true, docs_db_project_count: projectCount, docs_db_ticket_count: ticketCount, demo_project_id: demoProject?.id ?? null }
   } catch {
-    return { docs_db_exists: true, docs_db_project_count: 0, docs_db_ticket_count: 0 }
+    return { docs_db_exists: true, docs_db_project_count: 0, docs_db_ticket_count: 0, demo_project_id: null }
   }
-}
-
-function agentHasDesktopTools(config?: { auto_approved_tools_override?: string[] }): boolean {
-  return config?.auto_approved_tools_override?.some(
-    (t: string) => t.startsWith('mcp__kombuse__') && (t.includes('window') || t.includes('screenshot') || t.includes('execute_js'))
-  ) ?? false
 }
 
 /**
@@ -1101,7 +1097,7 @@ export function startAgentChatSession(
             labels: labelsRepository.getTicketLabels(ticketRecord.id),
           }
         : undefined,
-      desktop_context: agentHasDesktopTools(agent?.config) ? resolveDesktopContext() : undefined,
+      desktop_context: resolveDesktopContext(),
     }
     resolvedSystemPrompt = renderTemplateWithIncludes(agent.system_prompt, preambleContext, agent.plugin_id)
   }

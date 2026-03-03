@@ -7,7 +7,7 @@ import { EVENT_TYPES, createSessionId, isValidSessionId, type EventWithActor, ty
 import { wsHub } from '../../websocket/hub'
 import { serializeAgentStreamEvent } from '../../websocket/serialize-agent-event'
 import { broadcastTicketAgentStatus } from './backend-registry'
-import { startAgentChatSession } from './chat-session-runner'
+import { resolveDesktopContext, startAgentChatSession } from './chat-session-runner'
 import { emitAgentEvent } from './emit-agent-event'
 import type { AgentExecutionDependencies } from './types'
 
@@ -36,6 +36,7 @@ function buildTriggerPrompt(
     ...buildTemplateContext(event),
     kombuse_session_id: kombuseSessionId,
     backend_type: (agent.config as { backend_type?: string })?.backend_type ?? 'claude-code',
+    desktop_context: resolveDesktopContext(),
   }
 
   const systemPrompt = agent.system_prompt
