@@ -96,7 +96,7 @@ These constraints are non-negotiable. Violations have caused full session failur
    b. Navigate to the specified path
    c. Perform any `actions_before_screenshot` if specified
    d. Clean up UI state before capture (see UI State Cleanup below)
-   e. Save the screenshot using `save_screenshot` to `apps/docs/src/assets/{filename}`. If the script entry has `focus_rect`, pass it as the `rect` parameter to capture only that region.
+   e. Save the screenshot using `save_screenshot` to `apps/docs/src/assets/{filename}`. If the script entry has `focus_rect`, pass it as the `rect` parameter to capture only that region, and set `is_section: true` in the manifest entry for this screenshot.
 3. **Post a screenshot manifest** as a comment (JSON format below).
 4. **Close all windows** using `close_window`.
 5. **Add the `docs-captured` label** to trigger the next stage.
@@ -134,13 +134,15 @@ Post a comment with a JSON code block containing the manifest:
       "window_title": "Kombuse",
       "cursorX": 65,
       "cursorY": 40,
-      "needs_seed_data": false
+      "needs_seed_data": false,
+      "is_section": false
     }
   ]
 }
 ```
 
 - **cursorX** / **cursorY**: Pass through from the tutorial script. The Writer uses these to render a cursor overlay on the WindowFrame component. Omit if the script entry has no cursor values.
+- **is_section**: Set to `true` when the screenshot was captured with a `rect` parameter (i.e. the script entry had `focus_rect`). Omit or set to `false` for full-window captures. The Writer uses this to render the screenshot without window chrome.
 
 ### Empty-State Handling
 

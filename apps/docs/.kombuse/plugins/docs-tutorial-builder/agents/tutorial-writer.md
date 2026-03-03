@@ -88,6 +88,11 @@ More explanatory text...
 <WindowFrame title="Kombuse">
   <Image src={screenshotStep2} alt="Description of the next screenshot" />
 </WindowFrame>
+
+<!-- Section screenshot (cropped region, no window chrome) -->
+<WindowFrame section>
+  <Image src={screenshotStep3} alt="Cropped detail view" />
+</WindowFrame>
 ```
 
 ## Critical Rules for MDX
@@ -101,11 +106,12 @@ More explanatory text...
 4. **Import screenshots** from the correct relative path:
    - Files in `docs/users/`: `../../assets/feature-name/step-1.png`
    - Files in `docs/developers/guides/`: `../../../assets/feature-name/step-1.png`
-5. **Wrap every screenshot** in `<WindowFrame>` with an `<Image>` inside
+5. **Wrap every screenshot** in `<WindowFrame>` with an `<Image>` inside. If the manifest entry has `"is_section": true`, add the `section` prop: `<WindowFrame section>`
 6. **Use camelCase** for screenshot import names (e.g. `screenshotTicketList`, not `screenshot-ticket-list`)
 7. **Always include `alt` text** on `<Image>` — use the caption from the screenshot manifest
 8. **WindowFrame `title` prop** is optional — use the `window_title` from the manifest if provided
 9. **WindowFrame `cursorX` / `cursorY` props** — if the screenshot manifest includes `cursorX` and `cursorY` values, pass them as props to `<WindowFrame>` to render a cursor overlay. Omit these props if the manifest entry has no cursor values.
+10. **Section screenshots** — when `is_section` is true in the manifest, use `<WindowFrame section>` (no `title` prop, as the title bar is hidden). `cursorX`/`cursorY` are still valid and should be passed through if present.
 
 ## Docs Structure Knowledge
 
@@ -118,9 +124,10 @@ More explanatory text...
 
 - Write for a user who is new to the feature — don't assume prior knowledge
 - Keep paragraphs short (2-3 sentences)
-- Use active voice and direct instructions ("Click the button" not "The button should be clicked")
-- Reference the screenshots naturally in the text ("As shown below..." or "You'll see the following screen:")
-- Include numbered steps for sequential workflows
+- Use neutral, third-person tone — avoid addressing the reader as "you" (e.g. "When the user opens a ticket…" not "When you open a ticket…")
+- Prefer passive or impersonal constructions over imperative commands (e.g. "Images can be attached in three ways" not "You can attach images in three ways"; "By typing @ the autocomplete is triggered" not "Type @ to open the autocomplete")
+- Reference screenshots with neutral phrasing (e.g. "The following screenshot shows…" or "As shown below…")
+- Use numbered steps for sequential workflows, written in neutral form (e.g. "The ticket is created by clicking…" or "Clicking **Create Ticket** saves the entry")
 
 ## Rules
 

@@ -3,18 +3,21 @@ interface Props {
   title?: string
   cursorX?: number
   cursorY?: number
+  section?: boolean
 }
 
-const { title = '', cursorX, cursorY } = Astro.props
+const { title = '', cursorX, cursorY, section = false } = Astro.props
 const showCursor = cursorX !== undefined && cursorY !== undefined
 ---
 
-<div class="window-frame not-content">
-  <div class="window-buttons">
-    <span class="window-button close"></span>
-    <span class="window-button minimize"></span>
-    <span class="window-button maximize"></span>
-  </div>
+<div class={`window-frame not-content${section ? ' window-frame--section' : ''}`}>
+  {!section && (
+    <div class="window-buttons">
+      <span class="window-button close"></span>
+      <span class="window-button minimize"></span>
+      <span class="window-button maximize"></span>
+    </div>
+  )}
   <div class="window-content">
     <slot />
     {showCursor && (
@@ -47,6 +50,10 @@ const showCursor = cursorX !== undefined && cursorY !== undefined
     overflow: hidden;
     margin: 1.5rem 0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .window-frame--section {
+    border-radius: 4px;
   }
 
   [data-theme='dark'] .window-frame {

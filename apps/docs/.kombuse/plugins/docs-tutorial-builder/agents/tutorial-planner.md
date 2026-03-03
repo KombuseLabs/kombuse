@@ -139,7 +139,7 @@ Post a single comment with a JSON code block. This is the contract between you a
 - **screenshots[].window_title**: Optional title for the WindowFrame component
 - **screenshots[].window_width** / **window_height**: Window dimensions in pixels. Use larger sizes (1600×900+) for split-panel views. Defaults to 1400×900 if omitted.
 - **screenshots[].cursorX** / **cursorY**: Cursor position as percentage (0–100) for the WindowFrame cursor overlay. Use to indicate where the user should click or look. Omit if no cursor is needed.
-- **screenshots[].focus_rect**: Optional `{ x, y, width, height }` in pixels for partial screenshot capture. Use to focus on a specific panel (e.g. the detail panel in a split view) instead of capturing the full window.
+- **screenshots[].focus_rect**: Optional `{ x, y, width, height }` in pixels for partial screenshot capture. Use to focus on a specific panel (e.g. the detail panel in a split view) instead of capturing the full window. When `focus_rect` is used, the Navigator will automatically mark the screenshot as a section screenshot (`is_section: true`), and the Writer will render it without window chrome (`<WindowFrame section>`).
 - **screenshots[].actions_before_screenshot**: Instructions for the Navigator (e.g. "Click the New Ticket button", "Wait for the modal to appear")
 - **content_notes**: Guidance for the Writer on what text content to include
 - **sources**: File paths the Planner read to verify claims in `content_notes` (e.g. `apps/web/src/routes/home.tsx` for a UI label). Helps the Writer and Reviewer cross-check accuracy.
