@@ -98,9 +98,11 @@ These constraints are non-negotiable. Violations have caused full session failur
    c. Perform any `actions_before_screenshot` if specified
    d. Clean up UI state before capture (see UI State Cleanup below)
    e. Save the screenshot using `save_screenshot` to `apps/docs/src/assets/{filename}`. If the script entry has `focus_rect`, pass it as the `rect` parameter to capture only that region, and set `is_section: true` in the manifest entry for this screenshot.
+   f. Record any issues encountered during this screenshot (selector failures, navigation errors, workarounds) for the execution summary.
 3. **Post a screenshot manifest** as a comment (JSON format below).
-4. **Close all windows** using `close_window`.
-5. **Add the `docs-captured` label** to trigger the next stage.
+4. **Post an execution summary** as a separate comment (JSON format below). This step is mandatory — post even if no issues were encountered.
+5. **Close all windows** using `close_window`.
+6. **Add the `docs-captured` label** to trigger the next stage.
 
 ## Desktop MCP Tools
 
@@ -145,6 +147,60 @@ Post a comment with a JSON code block containing the manifest:
 - **cursorX** / **cursorY**: Pass through from the tutorial script. The Writer uses these to render a cursor overlay on the WindowFrame component. Omit if the script entry has no cursor values.
 - **is_section**: Set to `true` when the screenshot was captured with a `rect` parameter (i.e. the script entry had `focus_rect`). Omit or set to `false` for full-window captures. The Writer uses this to render the screenshot without window chrome.
 
+## Execution Summary Format
+
+Post a **separate comment** (not merged into the manifest) with a JSON code block containing the execution summary. Maintain a running list of issues as you work through screenshots — do not reconstruct from memory at the end.
+
+```json
+{
+  "execution_summary": {
+    "screenshots_attempted": 8,
+    "screenshots_captured": 6,
+    "screenshots_needing_seed_data": 2,
+    "issues": [
+      {
+        "screenshot": "feature-name/step-1.png",
+        "type": "selector_failure",
+        "description": "Ticket detail panel did not render — 'Project not found' error toast",
+        "selector": ".ticket-detail-panel",
+        "workaround": "Re-navigated after waiting 2s for toast to auto-dismiss",
+        "resolved": true
+      }
+    ],
+    "working_patterns": [
+      {
+        "action": "Open command palette",
+        "selector": "Cmd+K keyboard shortcut via execute_js",
+        "notes": "Reliable across all window sizes"
+      }
+    ],
+    "failing_patterns": [
+      {
+        "action": "Open label popover",
+        "selector": ".label-trigger-button",
+        "notes": "Required 2-step click: first edit mode, then label button"
+      }
+    ],
+    "workarounds_applied": [
+      "Waited 2s for error toast auto-dismiss before capture",
+      "Clicked neutral area to clear selection highlight"
+    ]
+  }
+}
+```
+
+### Issue Type Taxonomy
+
+| Type | When to use |
+|------|-------------|
+| `selector_failure` | A CSS selector didn't match any element, or matched the wrong element |
+| `navigation_error` | `navigate_to` failed or the page didn't render the expected content |
+| `modal_not_triggered` | A click/action intended to open a dialog or popover had no visible effect |
+| `timeout` | `wait_for_selector` or a polling loop timed out |
+| `empty_state` | Page rendered but showed no data (empty list, blank panel) |
+| `permission_denied` | An action was blocked by permissions or the isolated window environment |
+| `execute_js_error` | JavaScript execution threw an error or returned an unexpected result |
+
 ### Empty-State Handling
 
 If a page appears empty because the isolated database lacks seed data:
@@ -184,7 +240,7 @@ Always perform cleanup AFTER completing `actions_before_screenshot` and BEFORE c
 - Always save screenshots to `apps/docs/src/assets/` with the filename from the tutorial script
 - Post the manifest comment BEFORE adding the `docs-captured` label
 - **No fake content** (see Critical Constraints above): do NOT inject, craft, or generate fake HTML/DOM content via `execute_js`. Only use `execute_js` to interact with existing UI elements (click, fill, scroll, wait). If a page is empty, screenshot it and flag `needs_seed_data` in the manifest.
-- **Turn budget:** If 15 consecutive tool calls pass without a `save_screenshot`, STOP. Post a comment explaining what is blocking screenshot capture, then end your session. Do not spiral into exploration or workarounds.
+- **Turn budget:** If 15 consecutive tool calls pass without a `save_screenshot`, STOP. Post the execution summary (with all issues logged so far) and a comment explaining what is blocking screenshot capture, then end your session. Do not spiral into exploration or workarounds.
 
 ## Isolated Window Limitations
 
