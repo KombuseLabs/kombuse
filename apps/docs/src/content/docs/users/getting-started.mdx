@@ -1,26 +1,63 @@
 ---
-title: Getting Started
-description: Install and set up Kombuse.
+title: "Getting Started"
+description: "Download Kombuse and set up your first project"
 ---
+import { Image } from 'astro:assets';
+import WindowFrame from '../../../components/WindowFrame.astro';
+import screenshotHomePage from '../../../assets/getting-started/home-page.png';
+import screenshotSidebarNavigation from '../../../assets/getting-started/sidebar-navigation.png';
+import screenshotTicketList from '../../../assets/getting-started/ticket-list.png';
+import screenshotAgentEditor from '../../../assets/getting-started/agent-editor.png';
 
-import { Image } from 'astro:assets'
-import WindowFrame from '../../../components/WindowFrame.astro'
-import ticketsEmpty from '../../../assets/tickets-empty.png'
+## What is Kombuse
 
-Welcome to Kombuse! This guide will help you get up and running.
+Kombuse is a local-first desktop app for managing AI coding agents with a built-in private issue tracker. Everything runs entirely on your machine — no cloud dependency, no data leaving your computer. It manages AI agents that work alongside Claude Code and integrates a private ticket system for tracking work. Kombuse is free and open source.
 
-## Installation
+## Download and Install
 
-Download the latest release for your platform from the [releases page](https://github.com/kombuse/kombuse-mono/releases).
+Visit [kombuse.dev](https://kombuse.dev) to download the latest release for your platform. Installers are available for macOS. Download the installer, run it, and you're ready to go.
 
-## First Steps
+## Creating Your First Project
 
-Once installed, launch the app and you're ready to go.
+When you launch Kombuse, the home page lists your projects. Kombuse automatically discovers Claude Code projects on your machine — look for the **Discovered from Claude Code** section at the bottom of the page.
 
-## Tickets
+Click **Import** on a discovered project to add it, or use the **New Project** button to create one from scratch. Each project gets its own ticket tracker, agents, and configuration.
 
-The tickets page is where you manage all your work items. Create tickets to track bugs, features, and tasks across your projects.
+<WindowFrame title="Kombuse">
+  <Image src={screenshotHomePage} alt="The Kombuse home page showing your projects and discovered Claude Code projects" />
+</WindowFrame>
 
-<WindowFrame title="Kombuse" cursorX={88} cursorY={10}>
-  <Image src={ticketsEmpty} alt="The Kombuse tickets page" />
+## Navigating the Sidebar
+
+Once inside a project, the sidebar gives you access to the main sections:
+
+- **Tickets** — your private issue tracker
+- **Chats** — conversations with AI agents
+- **Agents** — configure and manage AI assistants
+- **Labels** — organize tickets with color-coded tags
+
+Additional sections like Events, Permissions, Database, Plugins, and Analytics can be enabled in Settings.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotSidebarNavigation} alt="The project sidebar showing Tickets, Chats, Agents, and Labels sections" />
+</WindowFrame>
+
+## Working with Tickets
+
+The Tickets page is your private issue tracker. Create tickets to track bugs, features, and tasks. Tickets support statuses (open, in progress, blocked, closed), priority levels, labels, and assignees.
+
+Write descriptions and comments in Markdown. AI agents can also create, update, and comment on tickets autonomously — this is how agents coordinate work across your project.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotTicketList} alt="The ticket list showing open issues with statuses, labels, and activity" />
+</WindowFrame>
+
+## Managing Agents
+
+Agents are AI assistants that respond to ticket events — like new comments, label changes, or status updates. Each agent has a system prompt defining its behavior, configurable triggers that determine when it activates, and permissions controlling what it can do.
+
+Kombuse ships with starter agents for triage, coding, and code review. You can create custom agents for your own workflow.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotAgentEditor} alt="The agent editor showing the agent list and configuration panel" />
 </WindowFrame>

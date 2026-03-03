@@ -11,16 +11,21 @@ The project is organized into apps and packages:
 
 ### Apps
 
+- **desktop** — Electron desktop application
 - **web** — Vite + React Router web application
 - **docs** — This documentation site (Astro Starlight)
 - **server** — Fastify REST API server
 
 ### Packages
 
+- **agent** — Agent backend implementations (Claude Code, Codex, etc.)
 - **core** — Command registry and keybindings (framework-agnostic)
-- **ui** — React component library (shadcn/ui + Radix)
-- **types** — Shared TypeScript types
+- **mcp** — MCP server and tool definitions
+- **persistence** — Database layer (SQLite, repositories, migrations)
+- **pkg** — Package/build utilities
 - **services** — Business logic services
+- **types** — Shared TypeScript types
+- **ui** — React component library (shadcn/ui + Radix)
 
 ## Tech Stack
 
