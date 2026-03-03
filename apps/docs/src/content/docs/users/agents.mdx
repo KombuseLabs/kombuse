@@ -1,0 +1,102 @@
+---
+title: "Agents"
+description: "Create and configure AI-powered agents to automate your workflow"
+---
+import { Image } from 'astro:assets';
+import WindowFrame from '../../../components/WindowFrame.astro';
+import screenshotAgentList from '../../../assets/agents/agent-list.png';
+import screenshotCreateAgentForm from '../../../assets/agents/create-agent-form.png';
+import screenshotSystemPromptEditor from '../../../assets/agents/system-prompt-editor.png';
+import screenshotConfigurationTab from '../../../assets/agents/configuration-tab.png';
+import screenshotChatAgentPicker from '../../../assets/agents/chat-agent-picker.png';
+import screenshotMentionAutocomplete from '../../../assets/agents/mention-autocomplete.png';
+
+Agents are AI-powered assistants that respond to ticket events and chat messages. The pre-configured agents that come with the default plugin can be used as-is, or custom agents can be created to tailor the workflow.
+
+## The Agents Page
+
+The Agents page is accessible from the project sidebar and shows all agents available in the project. Agents are grouped by the plugin they belong to. Each agent shows its name, avatar, and an enable/disable toggle. Enabled agents can respond to triggers and appear in the chat agent picker.
+
+Kombuse ships with a default plugin that includes pre-configured agents for triage, planning, coding, and code review. If no agents appear yet, the **Install** button in the onboarding prompt installs the default plugin. Custom agents can also be created from scratch using the **Create Agent** button in the top-right corner.
+
+<WindowFrame title="Kombuse" cursorX={88} cursorY={5}>
+  <Image src={screenshotAgentList} alt="The Agents page showing the empty agent list with an install prompt for the default plugin" />
+</WindowFrame>
+
+## Creating an Agent
+
+Clicking **Create Agent** on the Agents page opens the creation form. The form has four fields:
+
+1. **Name** (required) — the display name for the agent, shown throughout the interface
+2. **Description** (optional) — a brief summary of what the agent does, visible in the agent picker
+3. **Avatar** — an icon to represent the agent
+4. **System Prompt** (required) — the instructions that define how the agent behaves
+
+After filling in the fields, clicking **Create Agent** saves the new agent. It appears in the agent list immediately.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotCreateAgentForm} alt="The Create Agent form filled with a name 'Bug Fixer', description, and system prompt" />
+</WindowFrame>
+
+## System Prompt and Template Variables
+
+The system prompt is the core of an agent — it defines how the agent behaves when it runs. It is written as plain instructions in natural language, as one would write a prompt for any AI assistant.
+
+The system prompt supports dynamic **template variables** that are filled in at runtime when the agent is triggered. Double curly braces insert values:
+
+| Variable | Description |
+|----------|-------------|
+| `{{ ticket.title }}` | The ticket title |
+| `{{ ticket.body }}` | The ticket description |
+| `{{ ticket.status }}` | Current ticket status |
+| `{{ project.name }}` | The project name |
+| `{{ comment.body }}` | The comment that triggered the agent |
+| `{{ comment.author.name }}` | The name of the commenter |
+| `{{ event_type }}` | The event that fired the trigger |
+| `{{ agents }}` | List of agents available in the project |
+| `{{ kombuse_session_id }}` | The current agent session ID |
+
+Plugin-based agents can also use `{% include "file.md" %}` directives to compose prompts from shared template files.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotSystemPromptEditor} alt="The agent detail view showing the system prompt editor on the Basic Info tab" />
+</WindowFrame>
+
+## Agent Configuration
+
+Selecting an agent and opening the **Configuration** tab reveals controls for how and when it runs. Key settings:
+
+- **Available in chat** — when enabled, the agent appears in the chat agent picker for interactive use from the Chat page
+- **Can invoke other agents** — allows the agent to trigger other agents via @-mentions in its responses
+- **Backend Override** — specifies which AI backend runs the agent: the global default, **Claude Code** (Claude Code CLI), or **Codex** (OpenAI Codex CLI); "Use global default" inherits the project-wide setting
+- **Model Override** — selects a specific model version, or left blank to use the backend's default model
+- **Permissions** — defines what resources (tickets, comments, labels) the agent can read, create, update, or delete
+- **Triggers** — configures events that automatically start the agent, such as ticket.created, mention.created, or label.added; each trigger has an event type, optional conditions, a priority, and an enable/disable toggle
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotConfigurationTab} alt="The Configuration tab showing backend override, model override, and trigger settings for an agent" />
+</WindowFrame>
+
+## Running Agents from Chat
+
+Agents can be run interactively through the **Chat** page. The Chat page is accessible from the sidebar, and a new session is started by clicking **New Chat**.
+
+In the chat toolbar, the agent picker button (initially showing "No agent") selects which agent to use. Only agents with **Available in chat** enabled appear in the picker. Pressing **Shift+Tab** cycles through available agents without opening the dropdown.
+
+After selecting an agent, a backend and model are chosen if needed, and a message is typed and sent. The agent processes the request using its system prompt and configured permissions. The session panel shows connection status, event counts, and the backend details in use.
+
+<WindowFrame title="Kombuse" cursorX={22} cursorY={95}>
+  <Image src={screenshotChatAgentPicker} alt="The chat interface with the agent picker dropdown open in the toolbar" />
+</WindowFrame>
+
+## Triggering Agents from Ticket Comments
+
+The most common way to run an agent is by @mentioning it in a ticket comment. Typing `@` in the comment input opens the mention autocomplete — it shows available agents and users with their avatar and display name. Arrow keys navigate the list, and **Enter** or **Tab** selects an entry.
+
+When a comment containing an @mention is submitted, the agent's **Mention Created** trigger fires automatically and the agent begins processing the ticket. This requires the agent to have a trigger configured for the `mention.created` event type. The default plugin agents come with this trigger pre-configured.
+
+Agents can also be triggered automatically by other events — for example, when a ticket is created (`ticket.created`), when a label is added (`label.added`), or when any comment is posted (`comment.added`). These are configured in the **Triggers** section of the agent's Configuration tab.
+
+<WindowFrame title="Kombuse" cursorX={55} cursorY={80}>
+  <Image src={screenshotMentionAutocomplete} alt="The comment input field where typing @ would trigger the mention autocomplete to show available agents" />
+</WindowFrame>
