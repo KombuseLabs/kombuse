@@ -1409,6 +1409,7 @@ import type { ViewMode } from '@kombuse/ui/components'
 - "Always Allow" sends `alwaysAllow: true` in the WebSocket response, which persists the tool (or bash command prefix) to the agent's `auto_approved_tools_override` / `auto_approved_bash_commands_override` config
 - "Suggest" mode: reveals a text input for sending a denial message
 - The `NotificationBell` default permission card also includes an "Always" button with the same behavior
+- The notification popover uses `w-96` (384px) width with `flex-wrap` on the button row to accommodate 4 buttons without overflow
 
 `PlanApprovalBar` props:
 - `permission`: `SerializedAgentPermissionRequestEvent` — the pending permission request with `toolName: 'ExitPlanMode'`

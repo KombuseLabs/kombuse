@@ -295,7 +295,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
             </pre>
           ) : null
         })()}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             variant="default"
@@ -355,7 +355,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-80 p-0">
+        <PopoverContent align="end" className="w-96 p-0">
           <div className="border-b px-3 py-2">
             <h4 className="text-sm font-medium">Notifications</h4>
           </div>
@@ -364,7 +364,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
               No pending requests
             </div>
           ) : (
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-96 overflow-y-auto">
               {permissions.map(renderPermissionCard)}
             </div>
           )}
