@@ -275,7 +275,7 @@ export function broadcastPermissionPending(
  * Persist a tool or bash command prefix to an agent's auto-approved config.
  * Called when the user clicks "Always Allow" on a permission prompt.
  */
-function persistAlwaysAllow(
+export function persistAlwaysAllow(
   agentId: string,
   toolName: string,
   input: Record<string, unknown>
