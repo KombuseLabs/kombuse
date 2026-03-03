@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { runMigrations } from '@kombuse/persistence'
+import { DEMO_PROJECT_ID, runMigrations } from '@kombuse/persistence'
 import { resolveDesktopContext } from '../services/agent-execution-service/chat-session-runner'
 
 describe('resolveDesktopContext', () => {
@@ -27,14 +27,14 @@ describe('resolveDesktopContext', () => {
     })
   })
 
-  it('returns demo_project_id when demo-project exists', () => {
+  it('returns demo_project_id when demo project exists', () => {
     const dbPath = join(tempDir, 'docs.db')
     const db = new Database(dbPath)
     runMigrations(db)
 
     db.prepare(`INSERT INTO profiles (id, type, name) VALUES ('owner', 'user', 'Owner')`).run()
-    db.prepare(`INSERT INTO projects (id, name, owner_id) VALUES ('demo-project', 'Acme Project', 'owner')`).run()
-    db.prepare(`INSERT INTO tickets (project_id, author_id, title, status) VALUES ('demo-project', 'owner', 'Test Ticket', 'open')`).run()
+    db.prepare(`INSERT INTO projects (id, name, owner_id) VALUES (?, 'Acme Project', 'owner')`).run(DEMO_PROJECT_ID)
+    db.prepare(`INSERT INTO tickets (project_id, author_id, title, status) VALUES (?, 'owner', 'Test Ticket', 'open')`).run(DEMO_PROJECT_ID)
     db.close()
 
     const result = resolveDesktopContext(dbPath)
@@ -42,7 +42,7 @@ describe('resolveDesktopContext', () => {
       docs_db_exists: true,
       docs_db_project_count: 1,
       docs_db_ticket_count: 1,
-      demo_project_id: 'demo-project',
+      demo_project_id: DEMO_PROJECT_ID,
     })
   })
 

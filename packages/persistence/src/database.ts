@@ -7,6 +7,9 @@ import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config.reposi
 
 export type { Database as DatabaseType } from 'better-sqlite3'
 
+/** Stable UUID for the demo project seeded in isolated databases (docs.db). */
+export const DEMO_PROJECT_ID = '00000000-0000-4000-a000-000000000001'
+
 let db: DatabaseType | null = null
 
 /**
@@ -629,18 +632,26 @@ export function seedDatabase(database: DatabaseType): void {
 /**
  * Seed realistic demo data for isolated databases (e.g. docs screenshots).
  * Creates a project with tickets, labels, and comments so the UI isn't empty.
- * Safe to call multiple times — skips if demo-project already exists.
+ * Safe to call multiple times — skips if demo project already exists.
  */
 export function seedDemoData(database: DatabaseType): void {
+  // Migrate old non-UUID demo project ID to new UUID format
+  const oldDemo = database.prepare("SELECT id FROM projects WHERE id = 'demo-project'").get()
+  if (oldDemo) {
+    database.prepare("UPDATE tickets SET project_id = ? WHERE project_id = 'demo-project'").run(DEMO_PROJECT_ID)
+    database.prepare("UPDATE labels SET project_id = ? WHERE project_id = 'demo-project'").run(DEMO_PROJECT_ID)
+    database.prepare("UPDATE projects SET id = ? WHERE id = 'demo-project'").run(DEMO_PROJECT_ID)
+  }
+
   const existing = database
     .prepare('SELECT id FROM projects WHERE id = ?')
-    .get('demo-project')
+    .get(DEMO_PROJECT_ID)
 
   if (existing) {
     // Repair stale docs.db: slug was missing before it was added to the INSERT
     database
-      .prepare("UPDATE projects SET slug = 'acme-project' WHERE id = 'demo-project' AND slug IS NULL")
-      .run()
+      .prepare(`UPDATE projects SET slug = 'acme-project' WHERE id = ? AND slug IS NULL`)
+      .run(DEMO_PROJECT_ID)
     return
   }
 
@@ -648,39 +659,39 @@ export function seedDemoData(database: DatabaseType): void {
     // Project
     database
       .prepare('INSERT INTO projects (id, name, slug, owner_id) VALUES (?, ?, ?, ?)')
-      .run('demo-project', 'Acme Project', 'acme-project', 'user-1')
+      .run(DEMO_PROJECT_ID, 'Acme Project', 'acme-project', 'user-1')
 
     // Labels
     database
       .prepare(
         'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
       )
-      .run('demo-project', 'Bug', '#ef4444')
+      .run(DEMO_PROJECT_ID, 'Bug', '#ef4444')
     database
       .prepare(
         'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
       )
-      .run('demo-project', 'Feature', '#3b82f6')
+      .run(DEMO_PROJECT_ID, 'Feature', '#3b82f6')
     database
       .prepare(
         'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
       )
-      .run('demo-project', 'Documentation', '#22c55e')
+      .run(DEMO_PROJECT_ID, 'Documentation', '#22c55e')
 
     // Look up the auto-generated label IDs
     const bugLabel = database
       .prepare(
-        "SELECT id FROM labels WHERE project_id = 'demo-project' AND name = 'Bug'"
+        `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Bug'`
       )
       .get() as { id: number }
     const featureLabel = database
       .prepare(
-        "SELECT id FROM labels WHERE project_id = 'demo-project' AND name = 'Feature'"
+        `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Feature'`
       )
       .get() as { id: number }
     const docsLabel = database
       .prepare(
-        "SELECT id FROM labels WHERE project_id = 'demo-project' AND name = 'Documentation'"
+        `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Documentation'`
       )
       .get() as { id: number }
 
@@ -690,7 +701,7 @@ export function seedDemoData(database: DatabaseType): void {
         project_id, author_id, title, status, priority, ticket_number,
         opened_at, closed_at, last_activity_at
       ) VALUES (
-        'demo-project', 'user-1', ?, ?, ?, ?,
+        '${DEMO_PROJECT_ID}', 'user-1', ?, ?, ?, ?,
         datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now')
       )
       RETURNING id

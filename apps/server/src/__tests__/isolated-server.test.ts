@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { closeDatabase, getDatabase } from '@kombuse/persistence'
+import { closeDatabase, DEMO_PROJECT_ID, getDatabase } from '@kombuse/persistence'
 import { createServer } from '../index'
 import { stopAllActiveBackends } from '../services/agent-execution-service'
 import { closeAppLogger } from '../logger'
@@ -79,7 +79,7 @@ describe('isolated server — DB isolation', () => {
 
     expect(resp.statusCode).toBe(200)
     const projects = resp.json() as { id: string; slug: string }[]
-    const demo = projects.find((p) => p.id === 'demo-project')
+    const demo = projects.find((p) => p.id === DEMO_PROJECT_ID)
     expect(demo).toBeDefined()
     expect(demo!.slug).toBe('acme-project')
   })

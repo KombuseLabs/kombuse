@@ -108,7 +108,7 @@ Post a single comment with a JSON code block. This is the contract between you a
         "description": "Brief description of what this section covers",
         "screenshots": [
           {
-            "path": "/projects/demo-project/tickets",
+            "path": "/projects/00000000-0000-4000-a000-000000000001/tickets",
             "filename": "feature-name/step-1.png",
             "caption": "The tickets list page",
             "window_title": "Kombuse",

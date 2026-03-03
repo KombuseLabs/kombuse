@@ -1,6 +1,7 @@
 import {
   agentInvocationsRepository,
   commentsRepository,
+  DEMO_PROJECT_ID,
   profilesRepository,
   projectsRepository,
   ticketsRepository,
@@ -74,7 +75,7 @@ export function resolveDesktopContext(overrideDbPath?: string): import('@kombuse
     const db = new Database(docsDbPath, { readonly: true })
     const projectCount = (db.prepare('SELECT COUNT(*) as c FROM projects').get() as { c: number })?.c ?? 0
     const ticketCount = (db.prepare('SELECT COUNT(*) as c FROM tickets').get() as { c: number })?.c ?? 0
-    const demoProject = db.prepare("SELECT id FROM projects WHERE id = 'demo-project'").get() as { id: string } | undefined
+    const demoProject = db.prepare('SELECT id FROM projects WHERE id = ?').get(DEMO_PROJECT_ID) as { id: string } | undefined
     db.close()
     return { docs_db_exists: true, docs_db_project_count: projectCount, docs_db_ticket_count: ticketCount, demo_project_id: demoProject?.id ?? null }
   } catch {
