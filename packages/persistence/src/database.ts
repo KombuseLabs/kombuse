@@ -573,6 +573,20 @@ const migrations: Migration[] = [
       END;
     `,
   },
+  {
+    name: '002_agent_comment_update_permission',
+    sql: `
+      UPDATE agents
+      SET permissions = REPLACE(
+        permissions,
+        '"resource":"comment","actions":["read","create"]',
+        '"resource":"comment","actions":["read","create","update"]'
+      ),
+      updated_at = datetime('now')
+      WHERE permissions LIKE '%"resource":"comment","actions":["read","create"]%'
+        AND permissions NOT LIKE '%"resource":"comment","actions":["read","create","update"]%';
+    `,
+  },
 ]
 
 /**

@@ -994,6 +994,10 @@ export function registerTicketTools(server: McpServer): void {
         if (!result.allowed) {
           return permissionDeniedResponse(result.reason ?? 'Cannot update comments')
         }
+        // Agents may only update their own comments
+        if (existing.author_id !== agentContext.invocation.agent_id) {
+          return permissionDeniedResponse('Can only update own comments')
+        }
       } else {
         const anonCheck = checkAnonymousWriteAccess()
         if (!anonCheck.allowed) {

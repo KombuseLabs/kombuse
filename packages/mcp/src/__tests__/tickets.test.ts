@@ -1604,7 +1604,34 @@ describe('permission enforcement', () => {
     expect(data.error).toContain('Permission denied')
   })
 
-  it('should allow agent with comment.update permission to update comments', async () => {
+  it('should allow agent with comment.update permission to update own comments', async () => {
+    const sessionId = createTestAgentSession([
+      { type: 'resource', resource: 'comment', actions: ['update'], scope: 'global' },
+    ])
+    const invocations = agentInvocationsRepository.list({ kombuse_session_id: sessionId })
+    const agentId = invocations[0]!.agent_id
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    const comment = commentsRepository.create({
+      ticket_id: ticket.id,
+      author_id: agentId,
+      body: 'Original',
+    })
+
+    const result = await client.callTool({
+      name: 'update_comment',
+      arguments: { comment_id: comment.id, body: 'Agent updated', kombuse_session_id: sessionId },
+    })
+
+    expect(result.isError).toBeFalsy()
+    const data = parseContent(result) as { body: string }
+    expect(data.body).toBe('Agent updated')
+  })
+
+  it('should deny agent from updating another author\'s comment', async () => {
     const sessionId = createTestAgentSession([
       { type: 'resource', resource: 'comment', actions: ['update'], scope: 'global' },
     ])
@@ -1621,12 +1648,12 @@ describe('permission enforcement', () => {
 
     const result = await client.callTool({
       name: 'update_comment',
-      arguments: { comment_id: comment.id, body: 'Agent updated', kombuse_session_id: sessionId },
+      arguments: { comment_id: comment.id, body: 'Should fail', kombuse_session_id: sessionId },
     })
 
-    expect(result.isError).toBeFalsy()
-    const data = parseContent(result) as { body: string }
-    expect(data.body).toBe('Agent updated')
+    expect(result.isError).toBe(true)
+    const data = parseContent(result) as { error: string }
+    expect(data.error).toContain('own comments')
   })
 
   // -- anonymous write access setting --

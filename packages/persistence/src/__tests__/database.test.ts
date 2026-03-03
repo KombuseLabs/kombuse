@@ -112,6 +112,7 @@ const EXPECTED_INDEXES = [
 ]
 const EXPECTED_MIGRATIONS = [
   '001_schema',
+  '002_agent_comment_update_permission',
 ]
 
 describe('database', () => {
