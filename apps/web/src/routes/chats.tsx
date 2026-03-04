@@ -31,6 +31,7 @@ const USER_PROFILE_ID = "user-1";
 const CHAT_DEFAULT_BACKEND_SETTING_KEY = "chat.default_backend_type";
 const CHAT_DEFAULT_MODEL_SETTING_KEY = "chat.default_model";
 const CHATS_PANEL_LAYOUT_KEY = "chats-panel-layout";
+const LIST_PANEL_HIDDEN_SETTING_KEY = "layout.listPanelHidden";
 
 export function Chats() {
   const navigate = useNavigate();
@@ -48,6 +49,8 @@ export function Chats() {
   const deleteSession = useDeleteSession();
   const { data: defaultBackendSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_BACKEND_SETTING_KEY);
   const { data: defaultModelSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_DEFAULT_MODEL_SETTING_KEY);
+  const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY);
+  const listPanelHidden = listPanelSetting?.setting_value === "true";
 
   const [activeTab, setActiveTab] = useState<'all' | 'chats' | 'system'>('all');
   const filteredSessions = useMemo(() => {
@@ -266,7 +269,13 @@ export function Chats() {
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
-        {showSessionList ? (
+        {showSessionList && selectedSessionId && listPanelHidden ? (
+          <ResizableCardPanel side="detail">
+            <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+              {chatDetailContent}
+            </Card>
+          </ResizableCardPanel>
+        ) : showSessionList ? (
           <ResizablePanelGroup
             orientation="horizontal"
             defaultLayout={defaultLayout}

@@ -50,12 +50,15 @@ import {
   useUpdatePluginFile,
   useAppContext,
   useIsMobile,
+  useProfileSetting,
 } from "@kombuse/ui/hooks";
 import type { TriggerFormData } from "@kombuse/ui/components";
 import { Plus, X, Save, Package, Puzzle, ChevronDown } from "lucide-react";
 import type { Agent, AgentConfig, Permission, Plugin, Profile } from "@kombuse/types";
 
 const AGENTS_PANEL_LAYOUT_KEY = "agents-panel-layout";
+const USER_PROFILE_ID = "user-1";
+const LIST_PANEL_HIDDEN_SETTING_KEY = "layout.listPanelHidden";
 
 export function Agents() {
   const { projectId: pid, agentId } = useParams<{ projectId: string; agentId?: string }>();
@@ -63,6 +66,8 @@ export function Agents() {
   const { currentProjectId } = useAppContext();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY);
+  const listPanelHidden = listPanelSetting?.setting_value === "true";
   const isCreating = agentId === "new";
   const basePath = `/projects/${projectId}/agents`;
 
@@ -565,7 +570,11 @@ export function Agents() {
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {showDetailPanel ? (
+        {showDetailPanel && listPanelHidden ? (
+          <ResizableCardPanel side="detail">
+            {agentDetailContent}
+          </ResizableCardPanel>
+        ) : showDetailPanel ? (
           <ResizablePanelGroup
             orientation="horizontal"
             defaultLayout={defaultLayout}

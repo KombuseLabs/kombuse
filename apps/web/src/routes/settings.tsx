@@ -42,6 +42,7 @@ const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth
 const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
 const NOTIFICATIONS_SCOPE_SETTING_KEY = 'notifications.scope_to_project'
 const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
+const LIST_PANEL_HIDDEN_SETTING_KEY = 'layout.listPanelHidden'
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
@@ -56,6 +57,7 @@ export function Settings() {
   const { data: backendTimeoutSetting } = useProfileSetting(USER_PROFILE_ID, CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY)
   const { data: notificationScopeSetting } = useProfileSetting(USER_PROFILE_ID, NOTIFICATIONS_SCOPE_SETTING_KEY)
   const { data: mcpAnonWriteSetting } = useProfileSetting(USER_PROFILE_ID, MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY)
+  const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const { data: claudeCodeMcpStatus, isLoading: claudeCodeMcpStatusLoading } = useClaudeCodeMcpStatus()
@@ -75,6 +77,7 @@ export function Settings() {
   const codexMcpEnabled = codexMcpStatus?.enabled === true
   const claudeCodeMcpEnabled = claudeCodeMcpStatus?.enabled === true
   const mcpAnonymousWriteAllowed = mcpAnonWriteSetting?.setting_value === 'allowed'
+  const showListPanel = listPanelSetting?.setting_value !== 'true'
 
   useEffect(() => {
     setMaxChainDepthValue(maxChainDepthSetting?.setting_value ?? '')
@@ -229,6 +232,30 @@ export function Settings() {
                   upsertSetting.mutate({
                     profile_id: USER_PROFILE_ID,
                     setting_key: SIDEBAR_ANALYTICS_SETTING_KEY,
+                    setting_value: checked ? 'false' : 'true',
+                  })
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Layout */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Layout</CardTitle>
+            <CardDescription>Control panel visibility in master-detail views.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="layout-list-panel" className="font-normal">Show List Panel</Label>
+              <Switch
+                id="layout-list-panel"
+                checked={showListPanel}
+                onCheckedChange={(checked) => {
+                  upsertSetting.mutate({
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: LIST_PANEL_HIDDEN_SETTING_KEY,
                     setting_value: checked ? 'false' : 'true',
                   })
                 }}

@@ -19,6 +19,7 @@ const SIDEBAR_EVENTS_SETTING_KEY = "sidebar.hidden.events";
 const SIDEBAR_PERMISSIONS_SETTING_KEY = "sidebar.hidden.permissions";
 const SIDEBAR_DATABASE_SETTING_KEY = "sidebar.hidden.database";
 const SIDEBAR_PLUGINS_SETTING_KEY = "sidebar.hidden.plugins";
+const LIST_PANEL_HIDDEN_SETTING_KEY = "layout.listPanelHidden";
 
 interface PaletteState {
   open: boolean;
@@ -54,6 +55,8 @@ export function CommandSetup({ children }: CommandSetupProps) {
   const databaseVisible = databaseSetting?.setting_value === "false";
   const { data: pluginsSetting } = useProfileSetting(USER_PROFILE_ID, SIDEBAR_PLUGINS_SETTING_KEY);
   const pluginsVisible = pluginsSetting?.setting_value === "false";
+  const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY);
+  const listPanelVisible = listPanelSetting?.setting_value !== "true";
   const codexMcpEnabled = codexMcpStatus?.enabled === true;
   const setCodexMcpEnabled = useSetCodexMcpEnabled();
   const upsertSetting = useUpsertProfileSetting();
@@ -195,6 +198,19 @@ export function CommandSetup({ children }: CommandSetupProps) {
         },
       }),
       registry.register({
+        id: "layout.toggleListPanel",
+        title: listPanelVisible ? "Hide List Panel" : "Show List Panel",
+        category: "Layout",
+        keybinding: "mod+b",
+        handler: () => {
+          upsertSetting.mutate({
+            profile_id: USER_PROFILE_ID,
+            setting_key: LIST_PANEL_HIDDEN_SETTING_KEY,
+            setting_value: listPanelVisible ? "true" : "false",
+          });
+        },
+      }),
+      registry.register({
         id: "codex.toggleMcp",
         title: codexMcpEnabled ? "Disable MCP for Codex" : "Enable MCP for Codex",
         category: "Codex",
@@ -278,7 +294,7 @@ export function CommandSetup({ children }: CommandSetupProps) {
     ];
 
     return () => unregisterFns.forEach((fn) => fn());
-  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, databaseVisible, pluginsVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting, historyNav.goBack, historyNav.goForward]);
+  }, [registry, setTheme, resolvedTheme, navigate, currentProjectId, eventsVisible, permissionsVisible, databaseVisible, pluginsVisible, listPanelVisible, codexMcpEnabled, setCodexMcpEnabled, upsertSetting, historyNav.goBack, historyNav.goForward]);
 
   const context: CommandContext = useMemo(
     () => ({

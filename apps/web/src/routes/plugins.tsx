@@ -40,6 +40,7 @@ import {
   useUpdatePluginSources,
   useAppContext,
   useIsMobile,
+  useProfileSetting,
 } from '@kombuse/ui/hooks'
 import { cn } from '@kombuse/ui/lib/utils'
 import { ANONYMOUS_AGENT_ID } from '@kombuse/types'
@@ -63,6 +64,8 @@ import {
 
 const PACKAGE_NAME_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const PLUGINS_PANEL_LAYOUT_KEY = 'plugins-panel-layout'
+const USER_PROFILE_ID = 'user-1'
+const LIST_PANEL_HIDDEN_SETTING_KEY = 'layout.listPanelHidden'
 
 const SOURCE_TYPE_LABELS: Record<PluginSourceConfig['type'], string> = {
   filesystem: 'Filesystem',
@@ -1117,6 +1120,8 @@ export function PluginsPage() {
   const { currentProjectId } = useAppContext()
   const navigate = useNavigate()
   const isMobile = useIsMobile()
+  const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY)
+  const listPanelHidden = listPanelSetting?.setting_value === 'true'
 
   const [exportOpen, setExportOpen] = useState(false)
   const [sourcesDialogOpen, setSourcesDialogOpen] = useState(false)
@@ -1280,7 +1285,11 @@ export function PluginsPage() {
     <>
       <div className="flex h-full min-h-0">
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          {showDetailPanel ? (
+          {showDetailPanel && listPanelHidden ? (
+            <ResizableCardPanel side="detail">
+              {pluginDetailContent}
+            </ResizableCardPanel>
+          ) : showDetailPanel ? (
             <ResizablePanelGroup
               orientation="horizontal"
               defaultLayout={defaultLayout}

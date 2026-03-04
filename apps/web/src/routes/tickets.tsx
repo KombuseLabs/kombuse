@@ -51,6 +51,7 @@ import {
   useScrollToBottom,
   useScrollToComment,
   useIsMobile,
+  useProfileSetting,
 } from "@kombuse/ui/hooks";
 import { LabelBadge, MilestoneBadge, StagedFilePreviews } from "@kombuse/ui/components";
 import { Plus, X, Save, ArrowUp, ArrowDown, Paperclip, Check, ChevronsUpDown } from "lucide-react";
@@ -58,6 +59,8 @@ import type { Ticket, TicketStatus, TicketFilters, CommentWithAuthor } from "@ko
 import { sessionsApi } from "@kombuse/ui/lib/api";
 
 const TICKETS_PANEL_LAYOUT_KEY = "tickets-panel-layout";
+const USER_PROFILE_ID = "user-1";
+const LIST_PANEL_HIDDEN_SETTING_KEY = "layout.listPanelHidden";
 
 export function Tickets() {
   const { projectId, ticketNumber: ticketNumberParam } = useParams<{
@@ -66,6 +69,8 @@ export function Tickets() {
   }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY);
+  const listPanelHidden = listPanelSetting?.setting_value === "true";
 
   // Sync route params to app context
   const { currentProjectId, setCurrentTicket, setView } = useAppContext();
@@ -1157,7 +1162,53 @@ export function Tickets() {
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
-        {ticketNumberParam ? (
+        {ticketNumberParam && listPanelHidden ? (
+          chatSessionId ? (
+            <ResizablePanelGroup
+              orientation="horizontal"
+              defaultLayout={defaultLayout}
+              onLayoutChanged={handleLayoutChanged}
+            >
+              <ResizablePanel id="detail" defaultSize={60} minSize={25} className="min-h-0">
+                <ResizableCardPanel side="detail">
+                  {ticketDetailContent}
+                </ResizableCardPanel>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel id="chat" defaultSize={40} minSize={25} className="min-h-0 border-t">
+                <div className="flex flex-col h-full min-h-0">
+                  <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
+                    <h3 className="text-sm font-medium">Session</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6"
+                      onClick={() => updateSearchParams({ session: null })}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                  <div className="flex-1 min-h-0">
+                    <ChatProvider
+                      key={chatSessionId}
+                      sessionId={chatSessionId}
+                      projectId={currentProjectId ?? null}
+                    >
+                      <Chat
+                        emptyMessage="Loading session..."
+                        className="h-full"
+                      />
+                    </ChatProvider>
+                  </div>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <ResizableCardPanel side="detail">
+              {ticketDetailContent}
+            </ResizableCardPanel>
+          )
+        ) : ticketNumberParam ? (
           <ResizablePanelGroup
             orientation="horizontal"
             defaultLayout={defaultLayout}

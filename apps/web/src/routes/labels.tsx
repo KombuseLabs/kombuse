@@ -28,12 +28,15 @@ import {
   useUpdatePlugin,
   useAppContext,
   useIsMobile,
+  useProfileSetting,
 } from "@kombuse/ui/hooks";
 import { Plus, X, Tags, Puzzle, ChevronDown } from "lucide-react";
 import type { Label } from "@kombuse/types";
 import type { Plugin } from "@kombuse/types";
 
 const LABELS_PANEL_LAYOUT_KEY = "labels-panel-layout";
+const USER_PROFILE_ID = "user-1";
+const LIST_PANEL_HIDDEN_SETTING_KEY = "layout.listPanelHidden";
 
 export function Labels() {
   const { projectId, labelId } = useParams<{
@@ -43,6 +46,8 @@ export function Labels() {
   const navigate = useNavigate();
   const { currentProjectId } = useAppContext();
   const isMobile = useIsMobile();
+  const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY);
+  const listPanelHidden = listPanelSetting?.setting_value === "true";
   const isCreating = labelId === "new";
   const basePath = `/projects/${projectId}/labels`;
 
@@ -360,7 +365,11 @@ export function Labels() {
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
-        {showDetailPanel ? (
+        {showDetailPanel && listPanelHidden ? (
+          <ResizableCardPanel side="detail">
+            {labelDetailContent}
+          </ResizableCardPanel>
+        ) : showDetailPanel ? (
           <ResizablePanelGroup
             orientation="horizontal"
             defaultLayout={defaultLayout}
