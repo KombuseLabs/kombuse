@@ -1,0 +1,125 @@
+---
+title: "Settings & Configuration"
+description: "Customize appearance, backend defaults, sidebar visibility, and advanced configuration options"
+sidebar:
+  order: 6
+---
+import { Image } from 'astro:assets';
+import WindowFrame from '../../../components/WindowFrame.astro';
+import screenshotGeneralTab from '../../../assets/settings/general-tab.png';
+import screenshotChatDefaults from '../../../assets/settings/chat-defaults.png';
+import screenshotBackendMcpSettings from '../../../assets/settings/backend-mcp-settings.png';
+import screenshotAgentTab from '../../../assets/settings/agent-tab.png';
+
+The Settings page provides controls for appearance, chat defaults, backend lifecycle, agent execution limits, and infrastructure-level configuration. Settings can be opened via the command palette (`Cmd+K`, then search "Open Settings") or with the `Cmd+,` keyboard shortcut.
+
+## General Settings
+
+The **General** tab groups appearance, sidebar visibility, and notification scope settings.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotGeneralTab} alt="The General tab showing Appearance, Sidebar, and Notifications settings" />
+</WindowFrame>
+
+The **Appearance** card controls the color theme. Three options are available: **Light** (sun icon), **Dark** (moon icon), and **System** (monitor icon). The System option follows the operating system preference and updates automatically when the OS theme changes.
+
+The **Sidebar** card has five toggles that control which optional sections appear in the project sidebar:
+
+| Toggle | Default |
+|--------|---------|
+| Show Events | On |
+| Show Permissions | On |
+| Show Database | Off |
+| Show Plugins | Off |
+| Show Analytics | Off |
+
+The always-visible sidebar sections — Tickets, Chats, Agents, and Labels — cannot be hidden.
+
+The **Notifications** card has one toggle: **Scope to current project**. When enabled (the default), only notifications and active agents for the currently open project are shown.
+
+## Chat Settings
+
+The **Chat** tab controls default backend and model preferences for new chat sessions.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotChatDefaults} alt="The Chat tab showing default backend and model preferences" />
+</WindowFrame>
+
+The **Chat Defaults** card has two fields:
+
+- **Default Backend** — A dropdown listing available backends. The available options are **Claude Code** and **Codex**. If a backend is configured but its executable is not installed, the option shows "(not installed)". If no backends are available, the dropdown is disabled and shows "No backends available".
+- **Default Model Preference** — A dropdown listing available models for the selected backend. The first option is always "Use backend default". A hint below the selector shows the backend's current default model ID.
+
+## Backend Lifecycle & MCP
+
+Scrolling down the **Chat** tab reveals settings for backend process management and MCP integration.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotBackendMcpSettings} alt="Backend lifecycle settings and MCP integration toggles" />
+</WindowFrame>
+
+The **Backend** card has one setting: **Idle Timeout (minutes)**. This controls how long an idle backend process continues running before it is automatically stopped. The default is **30 minutes**. Clearing the field disables automatic removal entirely. A shorter timeout is useful when running many parallel tasks; a longer one suits occasional chat sessions.
+
+The **Codex** card has a toggle: **Enable MCP for Codex**. When enabled, Kombuse writes an MCP server entry to the local Codex configuration at `~/.codex/config.toml`. Toggling this setting stops all active Codex backends.
+
+The **Claude Code** card has a toggle: **Enable MCP for Claude Code**. When enabled, Kombuse writes an MCP server entry to `~/.claude/settings.local.json`. Toggling this setting stops all active Claude Code backends.
+
+The **MCP Security** card has one toggle: **Allow anonymous write access**. When enabled, external tools connected via MCP can create and modify tickets, comments, and agents without authentication. When disabled, MCP connections are read-only.
+
+## Agent Settings
+
+The **Agent** tab controls agent execution defaults.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotAgentTab} alt="The Agent tab with loop depth configuration" />
+</WindowFrame>
+
+The **Agent** card has one setting: **Default Loop Depth**. This is the maximum number of agent invocations per ticket per hour before loop protection triggers. The default is **15**, with a valid range of 1 to 100. Loop protection prevents runaway agent chains from consuming excessive resources.
+
+## Configuration File
+
+Kombuse reads a static configuration file at `~/.kombuse/config.json` for infrastructure-level settings that are not exposed in the Settings UI. The file is optional — Kombuse uses built-in defaults if it is absent.
+
+A per-project override is also supported at `<project-path>/.kombuse/config.json`.
+
+The configuration file supports two top-level keys:
+
+### database.path
+
+A custom path for the SQLite database file. The value can be an absolute path or a path relative to `~/.kombuse`.
+
+### plugins.sources
+
+An array of plugin source registries. Each source object has a `type` field and type-specific properties:
+
+- **filesystem** — loads plugins from a local directory:
+  ```json
+  { "type": "filesystem", "path": "/path/to/plugins" }
+  ```
+
+- **github** — loads plugins from a GitHub repository:
+  ```json
+  { "type": "github", "repo": "owner/repo", "package_name": "optional", "token": "$ENV_VAR" }
+  ```
+
+- **http** — loads plugins from an HTTP registry:
+  ```json
+  { "type": "http", "base_url": "https://example.com/plugins", "token": "$ENV_VAR" }
+  ```
+
+Values starting with `$` (for example `$MY_TOKEN`) are resolved as environment variable references at startup.
+
+**Example `~/.kombuse/config.json`:**
+
+```json
+{
+  "database": {
+    "path": "/custom/path/kombuse.db"
+  },
+  "plugins": {
+    "sources": [
+      { "type": "filesystem", "path": "./my-plugins" }
+    ]
+  }
+}
+```

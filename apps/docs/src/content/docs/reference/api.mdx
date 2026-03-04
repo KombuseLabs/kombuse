@@ -1,0 +1,926 @@
+---
+title: "REST API Reference"
+description: "Complete reference for the Kombuse REST API — endpoints, request/response formats, and real-time events"
+sidebar:
+  order: 7
+---
+
+The Kombuse server exposes a REST API for programmatic access to tickets, comments, agents, projects, and all other platform resources. This reference covers every endpoint group, common conventions, authentication, and the real-time WebSocket and MCP interfaces.
+
+## Overview
+
+The REST API is available at `http://127.0.0.1:<port>/api/`. The server binds exclusively to localhost and is not reachable from remote hosts.
+
+**Port resolution:**
+- Standalone server: default port **3331**
+- Desktop app (embedded): port is dynamically assigned and written to `~/.kombuse/server-port`
+
+**Request and response bodies** use JSON (`Content-Type: application/json`), except file upload endpoints which use `multipart/form-data`.
+
+**Response validation:** All responses are validated against registered Zod schemas before being sent. If a route's response schema is not registered, the server returns a `500` error.
+
+**ID types:**
+
+| Resource | ID Type |
+|----------|---------|
+| Projects, Agents, Profiles, Sessions | UUID (string) |
+| Tickets, Comments, Labels, Milestones, Events | Integer |
+
+**Timestamps** are ISO 8601 strings. The canonical unique reference for a ticket is the `(project_id, ticket_number)` pair — `ticket.id` should not be used as a stable identifier.
+
+## Authentication & Security
+
+Kombuse does not use API keys or tokens. Security relies on three mechanisms:
+
+1. **Localhost binding** — The server only listens on `127.0.0.1`, making it unreachable from external machines.
+
+2. **Host header validation** — Every request must include a `Host` header matching `localhost`, `127.0.0.1`, or `[::1]`. This prevents DNS rebinding attacks where a page at a malicious domain resolves to `127.0.0.1`.
+
+3. **WebSocket origin validation** — Only connections from `app://.`, `http://localhost:*`, and `http://127.0.0.1:*` origins are accepted.
+
+**`kombuse_session_id`** — This field found on comments and sessions is **not an authentication token**. It links an action to a specific agent session for audit and tracing purposes.
+
+**MCP write access** can be restricted via **Settings > Chat > MCP Security**. The "Allow anonymous write access" toggle controls whether MCP-connected tools can perform write operations.
+
+## Common Patterns
+
+### Pagination
+
+List endpoints accept `limit` and `offset` query parameters. Default limits vary by resource (typically `50`, max `100`).
+
+### Filtering and Sorting
+
+Most list endpoints support resource-specific query parameters such as `status`, `project_id`, and `author_id`. The ticket list supports `sort_by` (`created_at`, `updated_at`, `last_activity_at`, `priority`) and `sort_order` (`asc`, `desc`).
+
+### Full-Text Search
+
+The `search` query parameter on `GET /api/tickets` performs full-text search with stemming across titles, bodies, and comments (max 200 characters). Matching results include:
+- `match_context` — highlighted snippet showing where the match occurred
+- `match_source` — one of `title`, `body`, or `comment`
+
+### Error Responses
+
+| Situation | Status | Body |
+|-----------|--------|------|
+| Validation failure | `400` | `{ "error": ZodIssue[] }` |
+| Business / not-found error | `400` / `404` / `422` | `{ "error": string }` |
+| Claim conflict | `409` | `{ "error": string, "ticket": Ticket }` |
+| Duplicate slug | `409` | `{ "error": string }` |
+
+### File Uploads
+
+Endpoints that accept file uploads use `multipart/form-data`. The file binary and any required metadata fields are sent as form parts.
+
+### Streaming
+
+`GET /api/attachments/:id/download` streams the file binary with appropriate `Content-Type` and `Content-Disposition` headers. This is the only streaming route and is excluded from response schema validation.
+
+## Tickets
+
+Tickets are the central unit of work in Kombuse. The canonical address for a ticket is `(project_id, ticket_number)`.
+
+**Statuses:** `open` (default), `in_progress`, `blocked`, `closed`
+
+**Priorities:** `0` (lowest) through `4` (highest); `null` when unset
+
+### Endpoints
+
+**`GET /api/tickets`** — List tickets.
+
+| Query parameter | Type | Description |
+|----------------|------|-------------|
+| `project_id` | string | Filter by project |
+| `status` | string | `open` \| `in_progress` \| `blocked` \| `closed` |
+| `priority` | integer | `0`–`4` |
+| `author_id` | string | Filter by author profile |
+| `assignee_id` | string | Filter by assignee |
+| `claimed_by_id` | string | Filter by claimer |
+| `unclaimed` | boolean | Show only unclaimed tickets |
+| `expired_claims` | boolean | Show tickets with expired claims |
+| `milestone_id` | integer | Filter by milestone |
+| `viewer_id` | string | Adds `has_unread` field to results |
+| `search` | string | Full-text search (max 200 chars) |
+| `sort_by` | string | `created_at` \| `updated_at` \| `last_activity_at` \| `priority` |
+| `sort_order` | string | `asc` \| `desc` |
+| `label_ids` | string | Comma-separated label integers |
+| `limit` / `offset` | integer | Pagination |
+
+Response: array of `TicketWithRelations` (includes author profile, assignee profile, labels array).
+
+---
+
+**`GET /api/tickets/counts`** — Per-status counts. Requires `project_id`.
+
+Response:
+```json
+{ "open": 12, "in_progress": 3, "blocked": 1, "closed": 45 }
+```
+
+---
+
+**`GET /api/projects/:projectId/tickets/by-number/:number`** — Get a single ticket by its project-scoped number.
+
+---
+
+**`POST /api/tickets`** — Create a ticket. Returns `201`.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `project_id` | string | Yes |
+| `author_id` | string | Yes |
+| `title` | string | Yes |
+| `body` | string | No |
+| `status` | string | No |
+| `priority` | integer | No |
+| `assignee_id` | string | No |
+| `milestone_id` | integer | No |
+| `label_ids` | integer[] | No |
+| `triggers_enabled` | boolean | No |
+| `loop_protection_enabled` | boolean | No |
+| `external_source` / `external_id` / `external_url` | string | No |
+
+---
+
+**`PATCH /api/projects/:projectId/tickets/by-number/:number`** — Update a ticket. All fields optional. Supports `updated_by_id` for audit.
+
+**`DELETE /api/projects/:projectId/tickets/by-number/:number`** — Delete a ticket. Returns `204`.
+
+### Claiming
+
+**`POST .../claim`** — Claim a ticket. Body: `{ claimer_id, duration_minutes? }`. Returns `409` if already claimed.
+
+**`POST .../unclaim`** — Release a claim. Supports force unclaim.
+
+**`POST .../claim/extend`** — Extend a claim. Body: `{ additional_minutes }` (required).
+
+### Other Actions
+
+**`POST .../view`** — Mark ticket as viewed. Body: `{ profile_id }` (required).
+
+**`GET .../timeline`** — Merged chronological timeline of comments and events.
+
+Response:
+```json
+{
+  "items": [
+    { "type": "comment", "timestamp": "...", "data": { ... } },
+    { "type": "event", "timestamp": "...", "data": { ... } }
+  ],
+  "total": 42
+}
+```
+
+## Comments
+
+Comments are attached to tickets and support threaded replies and rich mention parsing.
+
+### Endpoints
+
+**`GET /api/projects/:projectId/tickets/by-number/:number/comments`** — List comments.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `author_id` | Filter by author |
+| `parent_id` | Integer for thread; `null` for top-level only |
+| `limit` / `offset` | Pagination |
+
+Response: array of `CommentWithAuthor` (includes author profile).
+
+---
+
+**`GET /api/comments/:id`** — Get a single comment.
+
+---
+
+**`POST /api/projects/:projectId/tickets/by-number/:number/comments`** — Create a comment. Returns `201`.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `author_id` | string | Yes |
+| `body` | string | Yes |
+| `parent_id` | integer | No (threaded reply) |
+| `kombuse_session_id` | string | No (links to agent session) |
+| `external_source` / `external_id` | string | No |
+
+Comment bodies support `@[Display Name](profile-id)` mentions and `#number` ticket references. These are automatically parsed into structured mention records.
+
+---
+
+**`PATCH /api/comments/:id`** — Update a comment body. Sets `is_edited` to `true`.
+
+**`DELETE /api/comments/:id`** — Delete a comment. Returns `204`.
+
+**`GET /api/comments/:id/mentions`** — Get parsed mentions from a comment.
+
+Response: array of `Mention` objects with:
+- `mention_type`: `profile` or `ticket`
+- `mentioned_profile_id` or `mentioned_ticket_id`
+
+## Projects
+
+Projects group tickets, agents, and labels. Each project can optionally link to a local code repository.
+
+### Endpoints
+
+**`GET /api/projects`** — List projects.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `owner_id` | Filter by owner profile |
+| `repo_source` | `github` \| `gitlab` \| `bitbucket` |
+| `search` | Name search |
+| `limit` / `offset` | Pagination |
+
+---
+
+**`GET /api/projects/:id`** — Get project by UUID or slug.
+
+---
+
+**`POST /api/projects`** — Create a project. Returns `201`.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `name` | string | Yes |
+| `owner_id` | string | Yes |
+| `id` | string (UUID) | No |
+| `slug` | string (kebab-case) | No |
+| `description` | string | No |
+| `local_path` | string | No |
+| `repo_source` | string | No |
+| `repo_owner` / `repo_name` | string | No |
+
+When `local_path` is set, the server automatically configures Codex project trust and MCP config for that path.
+
+---
+
+**`PATCH /api/projects/:id`** — Update a project. All fields optional.
+
+**`DELETE /api/projects/:id`** — Delete a project. Returns `204`.
+
+---
+
+**`POST /api/projects/:id/init`** — Initialize a project with setup files in its `local_path`. Returns `400` if the project has no `local_path` configured, or `404` if not found.
+
+| Body field | Type | Description |
+|-----------|------|-------------|
+| `skipMcpJson` | boolean | Skip writing `.claude/mcp.json` |
+| `skipAgentsMd` | boolean | Skip writing `AGENTS.md` |
+| `skipKombuseDir` | boolean | Skip creating `.kombuse/` directory |
+| `skipGitignore` | boolean | Skip updating `.gitignore` |
+
+All body fields are optional; omitting them runs all setup steps.
+
+**Project fields:** `id` (UUID), `name`, `slug`, `description`, `owner_id`, `local_path`, `repo_source`, `repo_owner`, `repo_name`, `created_at`, `updated_at`.
+
+## Labels
+
+Labels categorize tickets. Labels with at least one enabled trigger are called **smart labels**.
+
+### Endpoints
+
+**`GET /api/projects/:projectId/labels`** — List labels.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `search` | Name search |
+| `sort` | `name` \| `usage` (includes `usage_count`) |
+| `usage_scope` | `open` — counts usage on open tickets only |
+| `is_enabled` | boolean |
+
+---
+
+**`GET /api/labels/:id`** — Get a single label.
+
+---
+
+**`POST /api/projects/:projectId/labels`** — Create a label. Returns `201`. Body: `{ name, color (hex #rrggbb), description }`.
+
+**`PATCH /api/labels/:id`** — Update. Fields: `name`, `color`, `description`, `is_enabled`.
+
+**`DELETE /api/labels/:id`** — Delete. Returns `204`.
+
+### Ticket–Label Associations
+
+**`GET .../tickets/by-number/:number/labels`** — List labels on a ticket.
+
+**`POST .../tickets/by-number/:number/labels/:labelId`** — Add label to ticket. Body: `{ added_by_id? }` (profile UUID for audit). Returns `201`.
+
+**`DELETE .../tickets/by-number/:number/labels/:labelId`** — Remove label. Body: `{ removed_by_id? }`. Returns `204`.
+
+### Smart Label Queries
+
+**`GET /api/labels/:labelId/triggers`** — Get agent triggers associated with a label.
+
+**`GET /api/projects/:projectId/smart-label-ids`** — Returns IDs of labels that have at least one enabled trigger.
+
+**Label fields:** `id` (integer), `project_id`, `name`, `slug`, `color`, `description`, `plugin_id`, `is_enabled`, `created_at`.
+
+## Agents
+
+Agents are AI actors configured with a system prompt, permissions, and execution settings.
+
+### Endpoints
+
+**`GET /api/agents`** — List agents. Each agent is enriched with a `resolved_preset` field containing `type`, `autoApprovedTools`, and `autoApprovedBashCommands`.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `is_enabled` | boolean |
+| `enabled_for_chat` | Agents with `config.enabled_for_chat = true` |
+| `project_id` | Scope to project (also includes global agents) |
+| `limit` / `offset` | Pagination |
+
+---
+
+**`GET /api/agents/:id`** — Get agent by UUID.
+
+**`GET /api/agents/by-slug/:slug`** — Get agent by slug. Supports `plugin_id` query param to scope the lookup.
+
+---
+
+**`POST /api/agents`** — Create an agent. Returns `201`. Returns `409` if slug already exists.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `name` | string | Yes |
+| `description` | string | Yes |
+| `system_prompt` | string | Yes |
+| `id` | string (UUID) | No |
+| `slug` | string (kebab-case) | No |
+| `permissions` | Permission[] | No |
+| `config` | AgentConfig | No |
+| `is_enabled` | boolean | No |
+| `project_id` | string | No |
+
+---
+
+**`PATCH /api/agents/:id`** — Update. Fields: `system_prompt`, `permissions`, `config`, `is_enabled`.
+
+**`POST /api/agents/:id/reset-to-plugin-defaults`** — Reset a plugin-managed agent to its plugin defaults. Returns `409` if no plugin defaults exist.
+
+**`DELETE /api/agents/:id`** — Delete. Returns `204`.
+
+### Permissions
+
+Permissions are a discriminated union:
+
+**Resource permission:**
+```json
+{
+  "type": "resource",
+  "resource": "tickets",
+  "actions": ["read", "create", "update", "delete"],
+  "scope": "invocation | project | global",
+  "filter": { ... }
+}
+```
+
+**Tool permission:**
+```json
+{
+  "type": "tool",
+  "tool": "Bash",
+  "scope": "invocation | project | global"
+}
+```
+
+### AgentConfig Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `backend_type` | string | `claude-code` \| `codex` \| `mock` |
+| `model` | string | Model ID override |
+| `max_tokens` | integer | Max output tokens |
+| `temperature` | number | Sampling temperature |
+| `enabled_for_chat` | boolean | Available in chat sessions |
+| `can_invoke_agents` | boolean | Allowed to trigger other agents |
+| `max_chain_depth` | integer | Max invocation chain depth (1–100) |
+| `auto_approved_tools_override` | string[] | Override auto-approved tools list |
+| `auto_approved_bash_commands_override` | string[] | Override auto-approved commands |
+| `retry_on_failure` | boolean | Retry failed invocations |
+| `max_retries` | integer | Maximum retry count |
+| `timeout_ms` | integer | Execution timeout |
+| `anthropic.thinking` | object | Extended thinking config (Claude Code) |
+| `openai.response_format` | object | Response format config (Codex) |
+
+### Triggers
+
+**`GET /api/agents/:agentId/triggers`** — List triggers for an agent.
+
+**`POST /api/agents/:agentId/triggers`** — Create a trigger.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `event_type` | string | Yes |
+| `slug` | string | No |
+| `project_id` | string | No |
+| `conditions` | object | No |
+| `is_enabled` | boolean | No |
+| `priority` | integer | No |
+| `allowed_invokers` | AllowedInvoker[] | No |
+
+**AllowedInvoker types:** `any`, `user`, `agent` (with optional `agent_id` / `agent_type`), `system`.
+
+**`GET /api/triggers/:id`** — Get a single trigger by its numeric ID. Returns `404` if not found.
+
+**`PATCH /api/triggers/:id`** — Update a trigger.
+
+**`DELETE /api/triggers/:id`** — Delete a trigger. Returns `204`.
+
+### Invocations (Read-Only)
+
+**`GET /api/invocations`** — List invocations.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `agent_id` | Filter by agent |
+| `trigger_id` | Filter by trigger |
+| `status` | `pending` \| `running` \| `completed` \| `failed` |
+| `session_id` | Filter by session |
+| `project_id` | Filter by project |
+| `limit` / `offset` | Pagination |
+
+**`GET /api/invocations/:id`** — Get a single invocation.
+
+**`GET /api/agents/:agentId/invocations`** — List invocations for an agent.
+
+### Other Actions
+
+**`POST /api/agents/process-event`** — Find matching triggers for an event and create invocations. Body: `{ event_id }`.
+
+**`POST /api/agents/export`** — Export agents as markdown files. Body: `{ directory, agent_ids? }`.
+
+## Profiles
+
+Profiles represent users and agent actors. Agent profiles are created automatically alongside agents.
+
+### Endpoints
+
+**`GET /api/profiles`** — List profiles.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `type` | `user` \| `agent` |
+| `is_active` | boolean |
+| `search` | Name search |
+| `has_agent` | boolean — only profiles with a linked agent |
+| `project_id` | Scope |
+| `limit` / `offset` | Pagination |
+
+---
+
+**`GET /api/profiles/:id`** — Get profile by UUID.
+
+---
+
+**`POST /api/profiles`** — Create a profile. Returns `201`.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `type` | string | Yes (`user` \| `agent`) |
+| `name` | string | Yes |
+| `id` | string (UUID) | No |
+| `email` | string | No |
+| `description` | string | No |
+| `avatar_url` | string | No (URL or icon name) |
+| `external_source` / `external_id` | string | No |
+
+---
+
+**`PATCH /api/profiles/:id`** — Update. Fields: `name`, `email`, `description`, `avatar_url`, `is_active`.
+
+**`DELETE /api/profiles/:id`** — Soft-delete (sets `is_active` to `false`). Returns `204`.
+
+**Profile fields:** `id` (UUID), `type`, `name`, `slug`, `email`, `description`, `avatar_url`, `external_source`, `external_id`, `plugin_id`, `is_active`, `created_at`, `updated_at`.
+
+## Sessions
+
+Sessions represent chat interactions between a user and an agent backend.
+
+### Endpoints
+
+**`GET /api/sessions`** — List sessions. Response includes computed fields: `effective_backend`, `model_preference`, `applied_model`, `ticket_number`, `agent_name`, `prompt_preview`.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `ticket_id` | Filter by ticket |
+| `project_id` | Filter by project |
+| `agent_id` | Filter by agent |
+| `status` | `pending` \| `running` \| `completed` \| `failed` \| `aborted` \| `stopped` |
+| `terminal_reason` | Filter by terminal reason |
+| `has_backend_session_id` | boolean |
+| `sort_by` | `created_at` \| `updated_at` |
+| `limit` / `offset` | Pagination (max 100, default 50) |
+
+---
+
+**`POST /api/sessions`** — Create a chat session. Returns `201`.
+
+Backend type is resolved in order: session body → agent config → user default → fallback `claude-code`. The agent must be enabled and have `config.enabled_for_chat = true`. A stable `kombuse_session_id` is auto-generated in the format `chat-*`.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `backend_type` | string | No |
+| `model_preference` | string | No |
+| `agent_id` | string | No |
+| `project_id` | string | No |
+
+---
+
+**`GET /api/sessions/:id`** — Get session by `kombuse_session_id`.
+
+---
+
+**`GET /api/sessions/:id/events`** — Stream-poll session events.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `since_seq` | Return events after this sequence number |
+| `event_type` | Filter by event type |
+| `limit` | Max events to return (max 1000, default 100) |
+
+Response: `{ session_id, events, total }`.
+
+---
+
+**`DELETE /api/sessions/:id`** — Delete session. Returns `204`.
+
+**`GET /api/sessions/diagnostics`** — Abort investigation statistics. Query: `recent_limit` (max 200, default 20).
+
+## Events & Subscriptions
+
+Events are the audit log of all actions in Kombuse. Subscriptions enable efficient polling for new events.
+
+### Events
+
+**`GET /api/events`** — List events.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `event_type` | Filter by type |
+| `project_id` | Filter by project |
+| `ticket_id` | Filter by ticket |
+| `actor_id` | Filter by actor |
+| `actor_type` | `user` \| `agent` \| `system` |
+| `since` | ISO datetime — events after this time |
+| `limit` / `offset` | Pagination |
+
+Response: `EventWithActor` array (includes actor profile).
+
+---
+
+**`GET /api/projects/:projectId/tickets/by-number/:number/events`** — Ticket-scoped events.
+
+---
+
+**`POST /api/events`** — Create an event (internal/system use). Returns `201`.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `event_type` | string | Yes |
+| `actor_type` | string | Yes |
+| `payload` | object | Yes |
+| `project_id` | string | No |
+| `ticket_id` | integer | No |
+| `comment_id` | integer | No |
+| `actor_id` | string | No |
+
+**Event fields:** `id` (integer), `event_type`, `project_id`, `ticket_id`, `ticket_number`, `comment_id`, `actor_id`, `actor_type`, `kombuse_session_id`, `payload` (JSON string), `created_at`.
+
+### Subscriptions
+
+Subscriptions provide efficient event polling without requiring WebSocket connections.
+
+**`GET /api/subscriptions`** — List subscriptions. Requires `subscriber_id` query param.
+
+**`POST /api/subscriptions`** — Create a subscription. Body: `{ subscriber_id, event_type, project_id? }`.
+
+**`GET /api/subscriptions/:id/events`** — Fetch unprocessed events for a subscription.
+
+**`POST /api/subscriptions/:id/acknowledge`** — Mark events as processed. Body: `{ last_event_id }`.
+
+**`DELETE /api/subscriptions/:id`** — Remove a subscription.
+
+## Milestones
+
+Milestones group tickets into deliverable phases.
+
+### Endpoints
+
+**`GET /api/projects/:projectId/milestones`** — List milestones. Query: `status` (`open` \| `closed`).
+
+Response: `MilestoneWithStats` array including `open_count`, `closed_count`, and `total_count`.
+
+---
+
+**`GET /api/milestones/:id`** — Get milestone with stats.
+
+---
+
+**`POST /api/projects/:projectId/milestones`** — Create a milestone. Returns `201`.
+
+| Body field | Type | Required |
+|-----------|------|---------|
+| `title` | string | Yes |
+| `description` | string | No |
+| `due_date` | string (ISO date) | No |
+
+---
+
+**`PATCH /api/milestones/:id`** — Update. Fields: `title`, `description` (nullable), `due_date` (nullable), `status` (`open` \| `closed`).
+
+**`DELETE /api/milestones/:id`** — Delete. Returns `204`.
+
+## Attachments
+
+Attachments store files linked to tickets or comments.
+
+### Uploading
+
+All upload endpoints use `multipart/form-data` with two form parts: the file binary and `uploaded_by_id` (required profile UUID).
+
+**`POST /api/projects/:projectId/tickets/by-number/:number/attachments`** — Upload a file to a ticket. Returns `201`.
+
+**`POST /api/comments/:commentId/attachments`** — Upload a file to a comment. Returns `201`.
+
+Both return an `Attachment` object:
+```json
+{
+  "id": 42,
+  "comment_id": null,
+  "ticket_id": 7,
+  "filename": "screenshot.png",
+  "mime_type": "image/png",
+  "size_bytes": 204800,
+  "storage_path": "...",
+  "uploaded_by_id": "profile-uuid",
+  "created_at": "..."
+}
+```
+
+Returns `400` on invalid MIME type or if file size is exceeded.
+
+### Downloading and Listing
+
+**`GET /api/attachments/:id`** — Get attachment metadata.
+
+**`GET /api/attachments/:id/download`** — Stream file binary. Sets `Content-Type` and `Content-Disposition` headers. This is the only streaming endpoint.
+
+**`GET .../tickets/by-number/:number/attachments`** — List ticket attachments. Query: `uploaded_by_id`, `limit`, `offset`.
+
+**`GET /api/comments/:commentId/attachments`** — List comment attachments.
+
+**`DELETE /api/attachments/:id`** — Delete an attachment. Returns `204`.
+
+## Plugins
+
+Plugins package agents, labels, triggers, and file assets for reuse and distribution.
+
+### Endpoints
+
+**`GET /api/plugins`** — List installed plugins. Query: `project_id`.
+
+**`GET /api/plugins/available`** — List available (uninstalled) plugins. Requires `project_id`.
+
+**`GET /api/plugins/:id`** — Get a plugin.
+
+---
+
+**`POST /api/plugins/install`** — Install from a local `.tar.gz` package. Returns `201`.
+
+Body: `{ package_path, project_id, overwrite? }`.
+
+Response includes: `agents_created`, `agents_updated`, `labels_created`, `labels_merged`, `triggers_created`, `triggers_updated`, `files_imported`, `files_preserved`, `warnings`. Returns `409` if already installed (without `overwrite`).
+
+---
+
+**`POST /api/plugins/install-remote`** — Install from a registry. Body: `{ name, project_id, version?, overwrite? }`.
+
+**`POST /api/plugins/:id/pull`** — Pull the latest version from the plugin's remote source.
+
+**`PATCH /api/plugins/:id`** — Enable or disable a plugin. Body: `{ is_enabled? }`.
+
+---
+
+**`DELETE /api/plugins/:id`** — Uninstall a plugin. Returns `204`.
+
+Query: `mode` — `orphan` (default, detaches agents/labels rather than deleting) or `delete` (removes associated resources).
+
+---
+
+**`POST /api/plugins/export`** — Export project agents as a plugin package.
+
+Body: `{ package_name (kebab-case), project_id, agent_ids?, description?, overwrite?, archive_format? }`.
+
+Response includes the archive path and checksum.
+
+---
+
+**`POST /api/plugins/publish`** — Publish a plugin to a registry.
+
+Body: `{ package_name, project_id, author, registry_url, token, agent_ids?, channel?, version?, description?, overwrite? }`.
+
+**`GET /api/plugins/:id/check-updates`** — Check for available updates.
+
+### Plugin Files
+
+**`GET /api/plugins/:pluginId/files`** — List files bundled with a plugin.
+
+**`GET /api/plugins/:pluginId/files/:fileId`** — Get a single plugin file.
+
+**`PATCH /api/plugins/:pluginId/files/:fileId`** — Update file content. Body: `{ content }`.
+
+### Plugin Sources
+
+Plugin sources control where Kombuse looks for installable plugins.
+
+**`GET /api/plugin-sources`** — Get plugin sources for a project. Requires `project_id` query parameter.
+
+Response includes three categories:
+
+| Field | Description |
+|-------|-------------|
+| `global_sources` | Sources from global Kombuse config |
+| `project_sources` | Sources specific to this project |
+| `default_sources` | Computed defaults (project plugins dir, global plugins dir, Kombuse registry) |
+
+Each source entry: `{ type: "filesystem" | "github" | "http", path?, repo?, package_name?, base_url?, token? }`.
+
+**`PUT /api/plugin-sources`** — Update project-specific plugin sources. Body: `{ project_id, sources: PluginSource[] }`. Returns the same three-category response. Returns `403` if the config file cannot be written due to filesystem permissions.
+
+## Real-time Events (WebSocket)
+
+The server provides a WebSocket endpoint at `/ws` for live event subscriptions.
+
+### Connecting
+
+```
+ws://127.0.0.1:<port>/ws
+```
+
+Only connections from localhost origins (`app://.`, `http://localhost:*`, `http://127.0.0.1:*`) are accepted.
+
+### Client → Server Messages
+
+**Subscribe to topics:**
+```json
+{ "type": "subscribe", "topics": ["ticket:123", "session:abc-def"] }
+```
+
+**Unsubscribe:**
+```json
+{ "type": "unsubscribe", "topics": ["ticket:123"] }
+```
+
+**Topic format:** `resource:id` (e.g. `ticket:123`, `session:abc-def`).
+
+**Send a chat message to a running session:**
+```json
+{ "type": "chat", "session_id": "chat-xxx", "message": "Hello" }
+```
+
+**Respond to an agent permission request:**
+```json
+{ "type": "permission_response", "..." }
+```
+
+**Stop a running session:**
+```json
+{ "type": "stop_session", "session_id": "chat-xxx" }
+```
+
+### Server → Client Messages
+
+**Subscription confirmation:**
+```json
+{ "type": "subscribed", "topics": ["ticket:123"] }
+```
+
+**Event notification:**
+```json
+{ "type": "event", "topic": "ticket:123", "event": { ... } }
+```
+
+**Error:**
+```json
+{ "type": "error", "message": "..." }
+```
+
+## MCP Endpoint
+
+Kombuse exposes a Model Context Protocol (MCP) server at `/mcp` using the Streamable HTTP transport in stateless mode. This allows AI coding agents such as Claude Code and Codex to interact with Kombuse programmatically without writing REST API calls directly.
+
+### Registered Tool Categories
+
+- **Ticket management** — create, search, and update tickets and comments
+- **Database access** — list tables and run read-only SQL queries
+- **API access** — list available endpoints and call GET endpoints
+- **Agent management** — list, create, and update agents
+- **Desktop window management** — open, navigate, screenshot, and close windows (desktop app only)
+
+### Configuration
+
+MCP access is configured via **Settings > Chat**:
+
+- **Enable MCP for Claude Code** — writes an MCP server entry to `~/.claude/settings.local.json`. Toggling this setting stops all active Claude Code backends.
+- **Enable MCP for Codex** — writes an MCP server entry to `~/.codex/config.toml`. Toggling this setting stops all active Codex backends.
+- **Allow anonymous write access** — controls whether MCP-connected tools can perform write operations (see [Authentication & Security](#authentication--security)).
+
+### MCP Configuration API
+
+The following REST endpoints control whether MCP is enabled for each backend:
+
+**`GET /api/claude-code/mcp`** — Get current Claude Code MCP configuration status.
+
+**`PUT /api/claude-code/mcp`** — Enable or disable Claude Code MCP. Body: `{ enabled: boolean }`. Stops active Claude Code backend sessions when toggling. Returns the new status and `{ stopped_sessions: number }`.
+
+**`GET /api/codex/mcp`** — Get current Codex MCP configuration status.
+
+**`PUT /api/codex/mcp`** — Enable or disable Codex MCP. Body: `{ enabled: boolean }`. Stops active Codex backend sessions when toggling. Returns the new status and `{ stopped_sessions: number }`.
+
+## Additional Endpoints
+
+### Claude Code Integration
+
+**`GET /api/claude-code/projects`** — Scan `~/.claude/projects/` and return discovered Claude Code projects. Each entry includes `path`, `isImported` (whether already imported into Kombuse), and project metadata.
+
+**`POST /api/claude-code/projects/import`** — Import Claude Code projects into the database. Body: `{ paths: string[] }` (min 1 path). Uses `basename(path)` as project name. Returns `201` with an array of created projects; already-imported paths are skipped.
+
+**`GET /api/claude-code/sessions`** — List Claude Code sessions for a project. Query param: `path` (required) — filesystem path to the Claude Code project directory. Returns `{ sessions: [...] }`.
+
+**`GET /api/claude-code/sessions/:sessionId`** — Get a single Claude Code session. Query param: `path` (required). Returns raw JSONL content, parsed agent events, and a validation report: `{ items, count, events, validation: { valid, invalid, byType, errors } }`. Returns `404` if the session does not exist.
+
+### Permissions Audit Log
+
+**`GET /api/projects/:projectId/permissions`** — Read-only log of agent permission decisions.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `tool_name` | Filter by tool |
+| `behavior` | `allow` \| `deny` \| `auto_approved` |
+| `limit` / `offset` | Pagination |
+
+### Backend Status
+
+**`GET /api/backend-status`** — Availability and version of each backend type (`claude-code`, `codex`, `mock`).
+
+**`POST /api/backend-status/refresh`** — Re-check backend availability.
+
+### Models
+
+**`GET /api/models`** — Available models per backend, including `default_model_id`.
+
+### Profile Settings
+
+**`GET /api/profiles/:profileId/settings`** — List all settings for a profile.
+
+**`GET /api/profiles/:profileId/settings/:key`** — Get a single setting by key.
+
+**`PUT /api/profile-settings`** — Set a profile setting.
+
+**`DELETE /api/profiles/:profileId/settings/:key`** — Delete a setting.
+
+### Database
+
+**`GET /api/database/tables`** — List all database tables.
+
+**`POST /api/database/query`** — Execute a read-only SQL query.
+
+### Sync State
+
+**`GET /api/sync/state`** — Returns pending permissions, active sessions, and agent statuses.
+
+### Analytics
+
+Analytics endpoints under `/api/analytics/`:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/analytics/sessions-per-day` | Sessions created per day |
+| `GET /api/analytics/duration-percentiles` | Session duration percentiles |
+| `GET /api/analytics/pipeline-stage-duration` | Time spent per pipeline stage |
+| `GET /api/analytics/most-frequent-reads` | Most-read files |
+| `GET /api/analytics/tool-calls-per-session` | Tool call counts |
+| `GET /api/analytics/slowest-tools` | Slowest tool executions |
+| `GET /api/analytics/tool-call-volume` | Tool call volume over time |
+| `GET /api/analytics/ticket-burndown` | Ticket burndown chart data |
+| `GET /api/analytics/agent-runtime-per-ticket` | Agent runtime per ticket |
+
+### Desktop Window Management (Desktop App Only)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/desktop/windows` | List open windows |
+| `POST /api/desktop/windows` | Open a new window |
+| `POST /api/desktop/windows/:id/navigate` | Navigate a window to a path |
+| `POST /api/desktop/windows/:id/execute-js` | Execute JavaScript in an isolated window |
+| `POST /api/desktop/windows/:id/wait-for` | Wait for a CSS selector |
+| `POST /api/desktop/windows/:id/screenshot` | Capture a screenshot |
+| `DELETE /api/desktop/windows/:id` | Close a window |
+
+### App and Shell Updates
+
+**`GET /api/updates/status`** / **`POST /api/updates/check`** / **`POST /api/updates/install`** — Check and install application auto-updates.
+
+**`GET /api/shell-updates/status`** / **`POST /api/shell-updates/check`** / **`POST /api/shell-updates/install`** — Check and install shell (CLI) updates.

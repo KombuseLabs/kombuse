@@ -1,0 +1,236 @@
+---
+title: "Building a Plugin"
+description: "Create, export, and share reusable plugin packages with agents, labels, and shared files"
+sidebar:
+  order: 4
+---
+
+Plugins are reusable packages that bundle agents, labels, and shared files together. A plugin can be installed into any project, exported as a directory, and shared via local filesystem paths, GitHub repositories, or HTTP registries. Kombuse includes a built-in plugin feed at kombuse.dev that lists publicly available plugins.
+
+## Plugin Directory Structure
+
+A plugin is a directory with the following layout:
+
+```
+my-plugin/
+├── manifest.json
+├── .kombuse-plugin/
+│   └── plugin.json
+├── agents/
+│   ├── agent-one.md
+│   └── agent-two.md
+└── files/
+    ├── preamble/
+    │   └── shared.md
+    └── presets/
+        └── default.json
+```
+
+Each directory serves a specific purpose:
+
+- `manifest.json` — standard package metadata (name, version, author)
+- `.kombuse-plugin/plugin.json` — Kombuse-specific manifest with label definitions and export metadata; auto-generated on export
+- `agents/` — one markdown file per agent, named by agent slug
+- `files/` — shared files available to agents for template includes and configuration presets
+
+Plugins live in `.kombuse/plugins/` at the project level or `~/.kombuse/plugins/` globally. Both locations are auto-discovered when the Plugins page is opened.
+
+## Writing an Agent
+
+Each agent is a single markdown file with two parts:
+
+1. **YAML frontmatter** (between `---` delimiters) — agent metadata and configuration
+2. **System prompt** — the markdown body that becomes the agent's instructions
+
+A complete agent file looks like this:
+
+```markdown
+---
+name: Triage Agent
+slug: triage-agent
+description: Classifies new tickets and adds labels
+avatar: search
+type: kombuse
+model: claude-sonnet-4-5-20250929
+backend_type: null
+is_enabled: true
+enabled_for_chat: false
+permissions:
+  - type: resource
+    resource: ticket
+    actions: [read, update]
+    scope: global
+  - type: tool
+    tool: search_tickets
+    scope: global
+triggers:
+  - event_type: ticket.created
+    conditions: {}
+    is_enabled: true
+    priority: 0
+---
+
+System prompt goes here. Shared files can be included with Jinja2 syntax:
+
+{% include "preamble/shared.md" %}
+
+Template variables are replaced at runtime:
+- Ticket title: {{ ticket.title }}
+- Project name: {{ project.name }}
+- Session ID: {{ kombuse_session_id }}
+```
+
+Key frontmatter fields:
+
+| Field | Description |
+|---|---|
+| `name` | Display name shown in the UI |
+| `slug` | URL-safe identifier; must match the filename (without `.md`) |
+| `description` | One-line summary shown in the agents list |
+| `avatar` | Lucide icon name (e.g. `search`, `clipboard`, `pen`) |
+| `type` | Agent type: `kombuse`, `coder`, or `generic` |
+| `model` | Model ID (e.g. `claude-sonnet-4-5-20250929`) or `null` for the project default |
+| `backend_type` | Backend to use (e.g. `claude-code`) or `null` for the project default |
+| `is_enabled` | Whether the agent is active |
+| `enabled_for_chat` | Whether the agent appears in the chat @mention list |
+| `permissions` | Array of resource and tool permissions |
+| `triggers` | Array of event triggers |
+
+## Permissions and Triggers
+
+### Permissions
+
+**Resource permissions** control access to Kombuse data:
+
+```yaml
+permissions:
+  - type: resource
+    resource: ticket       # ticket, comment, ticket.labels
+    actions: [read, create, update, delete]
+    scope: global          # or project
+```
+
+**Tool permissions** grant access to specific MCP tools:
+
+```yaml
+  - type: tool
+    tool: search_tickets
+    scope: global
+```
+
+Without the appropriate permissions, tool calls made by the agent are denied at runtime.
+
+### Triggers
+
+Triggers define when an agent runs automatically. Each trigger specifies an event type, optional conditions, and a priority that controls execution order when multiple agents respond to the same event.
+
+```yaml
+triggers:
+  - event_type: mention.created
+    conditions:
+      mention_type: profile
+      mentioned_profile_id: $SELF
+    is_enabled: true
+    priority: 0
+  - event_type: label.added
+    conditions:
+      label_name: needs-triage
+    is_enabled: true
+    priority: 0
+```
+
+Common event types:
+
+| Event | When it fires |
+|---|---|
+| `ticket.created` | A new ticket is created |
+| `label.added` | A label is added to a ticket |
+| `label.removed` | A label is removed from a ticket |
+| `mention.created` | A profile is @mentioned in a comment |
+
+The `$SELF` placeholder in trigger conditions is replaced with the agent's own profile ID when the plugin is installed.
+
+## The Plugin Manifest
+
+A plugin includes two manifest files.
+
+### manifest.json
+
+The root-level manifest contains standard package metadata:
+
+```json
+{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "type": "plugin",
+  "author": "your-name"
+}
+```
+
+The `name` field must be kebab-case (matching `^[a-z0-9]+(-[a-z0-9]+)*$`). The `version` field follows semantic versioning.
+
+### .kombuse-plugin/plugin.json
+
+This file contains Kombuse-specific metadata and is auto-generated when exporting. It can also be written by hand:
+
+```json
+{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "kombuse": {
+    "plugin_system_version": "kombuse-plugin-v1",
+    "exported_at": "2026-03-01T00:00:00.000Z",
+    "labels": [
+      {
+        "name": "Bug",
+        "color": "#e5534b",
+        "description": "A defect"
+      }
+    ]
+  }
+}
+```
+
+Labels listed in `plugin.json` are created (or merged with existing labels) when the plugin is installed into a project.
+
+## Exporting a Plugin
+
+Existing agents in a project can be packaged into a plugin using the export dialog on the Plugins page:
+
+1. Open the Plugins page from the sidebar
+2. Click **Export** in the page header
+3. Enter a kebab-case package name and optional description
+4. Select which agents to include, or click **Export All** to include every agent in the project
+5. Labels used by the selected agents are automatically included in the export
+
+The export creates a plugin directory at `.kombuse/plugins/{package-name}/` with the complete directory structure: `manifest.json`, `.kombuse-plugin/plugin.json`, `agents/`, and `files/`.
+
+Plugins can also be assembled by hand — creating the directory structure and files directly, without using the export dialog.
+
+## Sharing and Installing
+
+Plugins are distributed through sources. Three source types are supported.
+
+### Filesystem
+
+Project-level plugins in `.kombuse/plugins/` and global plugins in `~/.kombuse/plugins/` are auto-discovered. Additional directories can be added as custom filesystem sources from the **Sources** configuration on the Plugins page.
+
+### GitHub
+
+Plugins hosted in a GitHub repository can be added as a source:
+
+```json
+{ "type": "github", "repo": "owner/repo" }
+```
+
+A specific plugin within the repository can be targeted with `package_name`. Private repositories are supported via a `token` field — environment variable syntax (`$ENV_VAR`) is accepted to avoid storing credentials directly.
+
+### HTTP Registry
+
+Any HTTP-compatible registry can be configured as a source:
+
+```json
+{ "type": "http", "base_url": "https://registry.example.com" }
+```
+
+Sources are configured from the **Sources** button on the Plugins page. Plugins from all configured sources appear in the **Available** section and can be installed with a single click. Installed plugins display their current version and show an update prompt when a newer version is available.

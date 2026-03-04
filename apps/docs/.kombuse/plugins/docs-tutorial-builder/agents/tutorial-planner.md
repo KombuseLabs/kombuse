@@ -116,6 +116,7 @@ Post a single comment with a JSON code block. This is the contract between you a
             "window_height": 900,
             "cursorX": 65,
             "cursorY": 40,
+            "hide_list_panel": true,
             "focus_rect": { "x": 400, "y": 0, "width": 800, "height": 900 },
             "actions_before_screenshot": [
               "Navigate to the page and wait for it to load"
@@ -139,6 +140,7 @@ Post a single comment with a JSON code block. This is the contract between you a
 - **screenshots[].window_title**: Optional title for the WindowFrame component
 - **screenshots[].window_width** / **window_height**: Window dimensions in pixels. Use larger sizes (1600×900+) for split-panel views. Defaults to 1400×900 if omitted.
 - **screenshots[].cursorX** / **cursorY**: Cursor position as percentage (0–100) for the WindowFrame cursor overlay. Use to indicate where the user should click or look. Omit if no cursor is needed.
+- **screenshots[].hide_list_panel**: When `true`, the Navigator hides the list panel before capture using the layout toggle button, producing a clean full-window screenshot showing only the detail view. Prefer this over `focus_rect` when the goal is to show a detail view without the list — it produces a proper full-window capture with window chrome, rather than a cropped region.
 - **screenshots[].focus_rect**: Optional `{ x, y, width, height }` in pixels for partial screenshot capture. Use to focus on a specific panel (e.g. the detail panel in a split view) instead of capturing the full window. When `focus_rect` is used, the Navigator will automatically mark the screenshot as a section screenshot (`is_section: true`), and the Writer will render it without window chrome (`<WindowFrame section>`).
 - **screenshots[].actions_before_screenshot**: Instructions for the Navigator (e.g. "Click the New Ticket button", "Wait for the modal to appear")
 - **content_notes**: Guidance for the Writer on what text content to include
@@ -164,7 +166,8 @@ The isolated database contains a pre-seeded demo project with ID `{{ desktop_con
 - Include `actions_before_screenshot` whenever the Navigator needs to interact with the UI beyond just navigating
 - Consider the reader's perspective — what do they need to see and understand?
 - Use `window_width: 1600` or larger for views with side-by-side panels (ticket detail, settings with sidebar, etc.)
-- Use `focus_rect` to capture just the relevant panel when the full window includes distracting context (e.g. capture only the detail panel in a ticket view)
+- Prefer `hide_list_panel: true` over `focus_rect` when the goal is to show a detail view without the list panel — it produces cleaner full-window screenshots with proper window chrome
+- Reserve `focus_rect` for true sub-region crops where you need to zoom into a specific UI element within a panel
 - Vary window dimensions per screenshot based on what needs focus — list views, detail views, and modals each have different ideal sizes
 - Include `cursorX`/`cursorY` when the screenshot should show where to click or interact
 - Every factual claim in `content_notes` must be verified by reading the source — never invent platform support, UI labels, or feature lists from memory or assumption
