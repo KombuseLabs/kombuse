@@ -97,6 +97,7 @@ declare global {
       toggleCheckbox?: (selector: string) => boolean
       scrollTo?: (selector: string) => boolean
       getElementRect?: (selector: string) => { x: number; y: number; width: number; height: number } | null
+      redactPaths?: () => number
     }
   }
 }

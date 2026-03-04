@@ -7,6 +7,9 @@
  */
 
 import { contextBridge, ipcRenderer } from "electron";
+import { homedir } from "node:os";
+
+const HOME_DIR = homedir();
 
 contextBridge.exposeInMainWorld("electron", {
   /**
@@ -120,5 +123,18 @@ contextBridge.exposeInMainWorld("__kombuse", {
     if (!el) return null;
     const { x, y, width, height } = el.getBoundingClientRect();
     return { x, y, width, height };
+  },
+
+  redactPaths: (): number => {
+    let count = 0;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      if (node.textContent && node.textContent.includes(HOME_DIR)) {
+        node.textContent = node.textContent.replaceAll(HOME_DIR, "/Users/demo");
+        count++;
+      }
+    }
+    return count;
   },
 });
