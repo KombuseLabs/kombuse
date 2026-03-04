@@ -632,9 +632,15 @@ export function seedDatabase(database: DatabaseType): void {
 /**
  * Seed realistic demo data for isolated databases (e.g. docs screenshots).
  * Creates a project with tickets, labels, and comments so the UI isn't empty.
- * Safe to call multiple times — skips if demo project already exists.
+ *
+ * Uses SQLite's PRAGMA user_version for incremental versioning — existing
+ * databases automatically pick up new seed data on next server start.
+ * To add new seed data: increment CURRENT_SEED_VERSION and add a new
+ * `if (seedVersion < N)` block.
  */
 export function seedDemoData(database: DatabaseType): void {
+  const CURRENT_SEED_VERSION = 3
+
   // Migrate old non-UUID demo project ID to new UUID format
   const oldDemo = database.prepare("SELECT id FROM projects WHERE id = 'demo-project'").get()
   if (oldDemo) {
@@ -643,174 +649,302 @@ export function seedDemoData(database: DatabaseType): void {
     database.prepare("UPDATE projects SET id = ? WHERE id = 'demo-project'").run(DEMO_PROJECT_ID)
   }
 
-  const existing = database
-    .prepare('SELECT id FROM projects WHERE id = ?')
-    .get(DEMO_PROJECT_ID)
-
-  if (existing) {
-    // Repair stale docs.db: slug was missing before it was added to the INSERT
-    database
-      .prepare(`UPDATE projects SET slug = 'acme-project' WHERE id = ? AND slug IS NULL`)
-      .run(DEMO_PROJECT_ID)
-    return
-  }
+  const seedVersion = database.pragma('user_version', { simple: true }) as number
+  if (seedVersion >= CURRENT_SEED_VERSION) return
 
   const seed = database.transaction(() => {
-    // Project
-    database
-      .prepare('INSERT INTO projects (id, name, slug, owner_id) VALUES (?, ?, ?, ?)')
-      .run(DEMO_PROJECT_ID, 'Acme Project', 'acme-project', 'user-1')
+    // --- Version 1: base demo data (project, tickets, labels, user comments) ---
+    if (seedVersion < 1) {
+      // Project
+      database
+        .prepare('INSERT INTO projects (id, name, slug, owner_id) VALUES (?, ?, ?, ?)')
+        .run(DEMO_PROJECT_ID, 'Acme Project', 'acme-project', 'user-1')
 
-    // Labels
-    database
-      .prepare(
-        'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
-      )
-      .run(DEMO_PROJECT_ID, 'Bug', '#ef4444')
-    database
-      .prepare(
-        'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
-      )
-      .run(DEMO_PROJECT_ID, 'Feature', '#3b82f6')
-    database
-      .prepare(
-        'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
-      )
-      .run(DEMO_PROJECT_ID, 'Documentation', '#22c55e')
+      // Labels
+      database
+        .prepare(
+          'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
+        )
+        .run(DEMO_PROJECT_ID, 'Bug', '#ef4444')
+      database
+        .prepare(
+          'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
+        )
+        .run(DEMO_PROJECT_ID, 'Feature', '#3b82f6')
+      database
+        .prepare(
+          'INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)'
+        )
+        .run(DEMO_PROJECT_ID, 'Documentation', '#22c55e')
 
-    // Look up the auto-generated label IDs
-    const bugLabel = database
-      .prepare(
-        `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Bug'`
+      // Look up the auto-generated label IDs
+      const bugLabel = database
+        .prepare(
+          `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Bug'`
+        )
+        .get() as { id: number }
+      const featureLabel = database
+        .prepare(
+          `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Feature'`
+        )
+        .get() as { id: number }
+      const docsLabel = database
+        .prepare(
+          `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Documentation'`
+        )
+        .get() as { id: number }
+
+      // Tickets
+      const insertTicket = database.prepare(`
+        INSERT INTO tickets (
+          project_id, author_id, title, status, priority, ticket_number,
+          opened_at, closed_at, last_activity_at
+        ) VALUES (
+          '${DEMO_PROJECT_ID}', 'user-1', ?, ?, ?, ?,
+          datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now')
+        )
+        RETURNING id
+      `)
+
+      const t1 = (
+        insertTicket.get(
+          'Add user authentication flow',
+          'closed',
+          3,
+          1,
+          'closed'
+        ) as { id: number }
+      ).id
+      const t2 = (
+        insertTicket.get(
+          'Dashboard loading time is too slow',
+          'in_progress',
+          2,
+          2,
+          'in_progress'
+        ) as { id: number }
+      ).id
+      const t3 = (
+        insertTicket.get(
+          'Fix sidebar navigation on mobile',
+          'open',
+          2,
+          3,
+          'open'
+        ) as { id: number }
+      ).id
+      const t4 = (
+        insertTicket.get(
+          'Add dark mode support',
+          'open',
+          1,
+          4,
+          'open'
+        ) as { id: number }
+      ).id
+      const t5 = (
+        insertTicket.get(
+          'API rate limiting returns wrong status code',
+          'in_progress',
+          3,
+          5,
+          'in_progress'
+        ) as { id: number }
+      ).id
+      const t6 = (
+        insertTicket.get(
+          'Update README with deployment instructions',
+          'open',
+          0,
+          6,
+          'open'
+        ) as { id: number }
+      ).id
+
+      // Label assignments
+      const assignLabel = database.prepare(
+        'INSERT INTO ticket_labels (ticket_id, label_id, added_by_id) VALUES (?, ?, ?)'
       )
-      .get() as { id: number }
-    const featureLabel = database
-      .prepare(
-        `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Feature'`
+      assignLabel.run(t3, bugLabel.id, 'user-1')
+      assignLabel.run(t5, bugLabel.id, 'user-1')
+      assignLabel.run(t1, featureLabel.id, 'user-1')
+      assignLabel.run(t4, featureLabel.id, 'user-1')
+      assignLabel.run(t6, docsLabel.id, 'user-1')
+
+      // User comments
+      const insertComment = database.prepare(
+        "INSERT INTO comments (ticket_id, author_id, body) VALUES (?, 'user-1', ?)"
       )
-      .get() as { id: number }
-    const docsLabel = database
-      .prepare(
-        `SELECT id FROM labels WHERE project_id = '${DEMO_PROJECT_ID}' AND name = 'Documentation'`
+      insertComment.run(
+        t1,
+        'Implemented OAuth2 flow with JWT tokens. All tests passing.'
       )
-      .get() as { id: number }
-
-    // Tickets
-    const insertTicket = database.prepare(`
-      INSERT INTO tickets (
-        project_id, author_id, title, status, priority, ticket_number,
-        opened_at, closed_at, last_activity_at
-      ) VALUES (
-        '${DEMO_PROJECT_ID}', 'user-1', ?, ?, ?, ?,
-        datetime('now'), CASE WHEN ? = 'closed' THEN datetime('now') ELSE NULL END, datetime('now')
+      insertComment.run(
+        t2,
+        'Profiled the main dashboard query — the N+1 on project labels is the bottleneck.'
       )
-      RETURNING id
-    `)
+      insertComment.run(
+        t2,
+        'Switched to a single JOIN query, load time dropped from 1.2s to 180ms.'
+      )
+      insertComment.run(
+        t5,
+        'Confirmed: the rate limiter returns 403 instead of 429. Looks like the middleware checks auth before rate limits.'
+      )
+    }
 
-    const t1 = (
-      insertTicket.get(
-        'Add user authentication flow',
-        'closed',
-        3,
-        1,
-        'closed'
-      ) as { id: number }
-    ).id
-    const t2 = (
-      insertTicket.get(
-        'Dashboard loading time is too slow',
-        'in_progress',
-        2,
-        2,
-        'in_progress'
-      ) as { id: number }
-    ).id
-    const t3 = (
-      insertTicket.get(
-        'Fix sidebar navigation on mobile',
-        'open',
-        2,
-        3,
-        'open'
-      ) as { id: number }
-    ).id
-    const t4 = (
-      insertTicket.get(
-        'Add dark mode support',
-        'open',
-        1,
-        4,
-        'open'
-      ) as { id: number }
-    ).id
-    const t5 = (
-      insertTicket.get(
-        'API rate limiting returns wrong status code',
-        'in_progress',
-        3,
-        5,
-        'in_progress'
-      ) as { id: number }
-    ).id
-    const t6 = (
-      insertTicket.get(
-        'Update README with deployment instructions',
-        'open',
-        0,
-        6,
-        'open'
-      ) as { id: number }
-    ).id
+    // --- Version 2: agent profiles + agent-authored comments ---
+    if (seedVersion < 2) {
+      // Repair stale docs.db: slug was missing before it was added to the INSERT
+      database
+        .prepare(`UPDATE projects SET slug = 'acme-project' WHERE id = ? AND slug IS NULL`)
+        .run(DEMO_PROJECT_ID)
 
-    // Label assignments
-    const assignLabel = database.prepare(
-      'INSERT INTO ticket_labels (ticket_id, label_id, added_by_id) VALUES (?, ?, ?)'
-    )
-    assignLabel.run(t3, bugLabel.id, 'user-1')
-    assignLabel.run(t5, bugLabel.id, 'user-1')
-    assignLabel.run(t1, featureLabel.id, 'user-1')
-    assignLabel.run(t4, featureLabel.id, 'user-1')
-    assignLabel.run(t6, docsLabel.id, 'user-1')
+      // Agent profiles for multi-agent conversation demo
+      database.prepare(`
+        INSERT OR IGNORE INTO profiles (id, type, name, description, avatar_url)
+        VALUES (?, ?, ?, ?, ?)
+      `).run('demo-analyzer', 'agent', 'Ticket Analyzer', 'Investigates codebase to find root cause and impact of issues', 'search')
+      database.prepare(`
+        INSERT OR IGNORE INTO profiles (id, type, name, description, avatar_url)
+        VALUES (?, ?, ?, ?, ?)
+      `).run('demo-coder', 'agent', 'Coding Agent', 'Implements features and fixes', 'code')
 
-    // Agent profiles for multi-agent conversation demo
-    database.prepare(`
-      INSERT OR IGNORE INTO profiles (id, type, name, description, avatar_url)
-      VALUES (?, ?, ?, ?, ?)
-    `).run('demo-analyzer', 'agent', 'Ticket Analyzer', 'Investigates codebase to find root cause and impact of issues', 'search')
-    database.prepare(`
-      INSERT OR IGNORE INTO profiles (id, type, name, description, avatar_url)
-      VALUES (?, ?, ?, ?, ?)
-    `).run('demo-coder', 'agent', 'Coding Agent', 'Implements features and fixes', 'code')
+      // Agent-authored comments on ticket 5
+      const t5Row = database
+        .prepare('SELECT id FROM tickets WHERE project_id = ? AND ticket_number = 5')
+        .get(DEMO_PROJECT_ID) as { id: number } | undefined
 
-    // Comments
-    const insertComment = database.prepare(
-      "INSERT INTO comments (ticket_id, author_id, body) VALUES (?, 'user-1', ?)"
-    )
-    const insertAgentComment = database.prepare(
-      "INSERT INTO comments (ticket_id, author_id, body) VALUES (?, ?, ?)"
-    )
-    insertComment.run(
-      t1,
-      'Implemented OAuth2 flow with JWT tokens. All tests passing.'
-    )
-    insertComment.run(
-      t2,
-      'Profiled the main dashboard query — the N+1 on project labels is the bottleneck.'
-    )
-    insertComment.run(
-      t2,
-      'Switched to a single JOIN query, load time dropped from 1.2s to 180ms.'
-    )
-    insertComment.run(
-      t5,
-      'Confirmed: the rate limiter returns 403 instead of 429. Looks like the middleware checks auth before rate limits.'
-    )
-    insertAgentComment.run(t5, 'demo-analyzer',
-      'Investigated the rate limiting middleware. The auth check at line 42 runs before the rate limiter at line 58, so an invalid token triggers a 403 before the rate limiter can return 429. Swapping the middleware order fixes this.')
-    insertComment.run(t5,
-      'Makes sense — the rate limiter should run first regardless of auth status.')
-    insertAgentComment.run(t5, 'demo-coder',
-      'Fixed the middleware ordering in api-middleware.ts. Rate limiter now runs at priority 1 (before auth at priority 2). Added a test to verify 429 is returned for rate-limited requests regardless of auth status.')
+      if (t5Row) {
+        const t5 = t5Row.id
+        const hasAnalyzerComment = database
+          .prepare('SELECT 1 FROM comments WHERE ticket_id = ? AND author_id = ?')
+          .get(t5, 'demo-analyzer')
+
+        if (!hasAnalyzerComment) {
+          database.prepare(
+            'INSERT INTO comments (ticket_id, author_id, body) VALUES (?, ?, ?)'
+          ).run(t5, 'demo-analyzer',
+            'Investigated the rate limiting middleware. The auth check at line 42 runs before the rate limiter at line 58, so an invalid token triggers a 403 before the rate limiter can return 429. Swapping the middleware order fixes this.')
+
+          database.prepare(
+            "INSERT INTO comments (ticket_id, author_id, body) VALUES (?, 'user-1', ?)"
+          ).run(t5,
+            'Makes sense — the rate limiter should run first regardless of auth status.')
+
+          database.prepare(
+            'INSERT INTO comments (ticket_id, author_id, body) VALUES (?, ?, ?)'
+          ).run(t5, 'demo-coder',
+            'Fixed the middleware ordering in api-middleware.ts. Rate limiter now runs at priority 1 (before auth at priority 2). Added a test to verify 429 is returned for rate-limited requests regardless of auth status.')
+        }
+      }
+    }
+
+    // --- Version 3: agents, sessions, and permission events (for agent-permissions screenshots) ---
+    if (seedVersion < 3) {
+      // Agent entries (required for sessions FK + permission screenshots)
+      database.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt, permissions, config, is_enabled, project_id)
+        VALUES (?, ?, ?, ?, 1, ?)
+      `).run(
+        'demo-analyzer',
+        'You are a ticket analyzer agent. Investigate issues and find root causes.',
+        JSON.stringify([
+          { type: 'resource', resource: 'ticket', actions: ['read'], scope: 'project' },
+          { type: 'resource', resource: 'comment', actions: ['read', 'create'], scope: 'project' },
+          { type: 'tool', tool: 'Bash', scope: 'invocation' },
+          { type: 'tool', tool: 'Read', scope: 'project' },
+        ]),
+        JSON.stringify({ type: 'kombuse' }),
+        DEMO_PROJECT_ID
+      )
+      database.prepare(`
+        INSERT OR IGNORE INTO agents (id, system_prompt, permissions, config, is_enabled, project_id)
+        VALUES (?, ?, ?, ?, 1, ?)
+      `).run(
+        'demo-coder',
+        'You are a coding agent. Implement features and fixes.',
+        JSON.stringify([
+          { type: 'resource', resource: '*', actions: ['read', 'create', 'update'], scope: 'project' },
+          { type: 'tool', tool: '*', scope: 'project' },
+        ]),
+        JSON.stringify({ type: 'kombuse' }),
+        DEMO_PROJECT_ID
+      )
+
+      // Session for permission event demo (linked to ticket 5)
+      const demoSessionId = '00000000-0000-4000-b000-000000000001'
+      const demoKombuseSessionId = 'trigger-00000000-0000-4000-b000-000000000002'
+
+      const t5Row = database
+        .prepare('SELECT id FROM tickets WHERE project_id = ? AND ticket_number = 5')
+        .get(DEMO_PROJECT_ID) as { id: number } | undefined
+
+      if (t5Row) {
+        database.prepare(`
+          INSERT OR IGNORE INTO sessions (
+            id, kombuse_session_id, backend_type, ticket_id, agent_id,
+            project_id, status, metadata, started_at, completed_at, last_event_seq
+          ) VALUES (?, ?, 'claude-code', ?, 'demo-analyzer', ?, 'completed', '{}',
+            datetime('now', '-2 hours'), datetime('now', '-1 hour'), 8)
+        `).run(demoSessionId, demoKombuseSessionId, t5Row.id, DEMO_PROJECT_ID)
+
+        // Permission events (request/response pairs with varied tools and behaviors)
+        const insertEvent = database.prepare(`
+          INSERT OR IGNORE INTO session_events (session_id, seq, event_type, payload, kombuse_session_id)
+          VALUES (?, ?, ?, ?, ?)
+        `)
+        const baseTs = Date.now() - 7200000 // 2 hours ago
+
+        // 1. Bash — allowed
+        insertEvent.run(demoSessionId, 1, 'permission_request', JSON.stringify({
+          type: 'permission_request', eventId: 'evt-perm-001', backend: 'claude-code',
+          timestamp: baseTs, requestId: 'req-001', toolName: 'Bash', toolUseId: 'tu-001',
+          input: { command: 'git log --oneline -5', description: 'View recent commits' },
+          description: 'Run git log to check recent commits',
+        }), demoKombuseSessionId)
+        insertEvent.run(demoSessionId, 2, 'permission_response', JSON.stringify({
+          type: 'permission_response', eventId: 'evt-perm-002', backend: 'claude-code',
+          timestamp: baseTs + 5000, requestId: 'req-001', behavior: 'allow',
+        }), demoKombuseSessionId)
+
+        // 2. Read — auto-approved
+        insertEvent.run(demoSessionId, 3, 'permission_request', JSON.stringify({
+          type: 'permission_request', eventId: 'evt-perm-003', backend: 'claude-code',
+          timestamp: baseTs + 10000, requestId: 'req-002', toolName: 'Read', toolUseId: 'tu-002',
+          input: { file_path: 'src/middleware/rate-limiter.ts' },
+          description: 'Read rate limiter source file',
+          autoApproved: true,
+        }), demoKombuseSessionId)
+
+        // 3. Edit — allowed
+        insertEvent.run(demoSessionId, 5, 'permission_request', JSON.stringify({
+          type: 'permission_request', eventId: 'evt-perm-005', backend: 'claude-code',
+          timestamp: baseTs + 60000, requestId: 'req-003', toolName: 'Edit', toolUseId: 'tu-003',
+          input: { file_path: 'src/middleware/api-middleware.ts', description: 'Swap middleware ordering' },
+          description: 'Edit api-middleware.ts to fix middleware ordering',
+        }), demoKombuseSessionId)
+        insertEvent.run(demoSessionId, 6, 'permission_response', JSON.stringify({
+          type: 'permission_response', eventId: 'evt-perm-006', backend: 'claude-code',
+          timestamp: baseTs + 65000, requestId: 'req-003', behavior: 'allow',
+        }), demoKombuseSessionId)
+
+        // 4. Bash — denied with message
+        insertEvent.run(demoSessionId, 7, 'permission_request', JSON.stringify({
+          type: 'permission_request', eventId: 'evt-perm-007', backend: 'claude-code',
+          timestamp: baseTs + 120000, requestId: 'req-004', toolName: 'Bash', toolUseId: 'tu-004',
+          input: { command: 'bun test src/middleware/', description: 'Run middleware tests' },
+          description: 'Run middleware test suite',
+        }), demoKombuseSessionId)
+        insertEvent.run(demoSessionId, 8, 'permission_response', JSON.stringify({
+          type: 'permission_response', eventId: 'evt-perm-008', backend: 'claude-code',
+          timestamp: baseTs + 130000, requestId: 'req-004', behavior: 'deny',
+          message: 'Run only the specific rate-limiter test, not the entire middleware suite',
+        }), demoKombuseSessionId)
+      }
+    }
+
+    database.pragma(`user_version = ${CURRENT_SEED_VERSION}`)
   })
 
   seed()
