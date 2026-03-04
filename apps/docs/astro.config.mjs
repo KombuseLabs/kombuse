@@ -12,8 +12,12 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: 'User Guide',
-          autogenerate: { directory: 'users' },
+          label: 'Guides',
+          autogenerate: { directory: 'guides' },
+        },
+        {
+          label: 'Reference',
+          autogenerate: { directory: 'reference' },
         },
       ],
     }),
