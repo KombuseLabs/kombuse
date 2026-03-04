@@ -92,6 +92,11 @@ declare global {
     }
     __kombuse?: {
       setInputValue?: (selector: string, value: string) => boolean
+      activateTab?: (selector: string) => boolean
+      openSelect?: (selector: string) => boolean
+      toggleCheckbox?: (selector: string) => boolean
+      scrollTo?: (selector: string) => boolean
+      getElementRect?: (selector: string) => { x: number; y: number; width: number; height: number } | null
     }
   }
 }

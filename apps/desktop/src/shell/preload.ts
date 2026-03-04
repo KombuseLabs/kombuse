@@ -65,3 +65,60 @@ contextBridge.exposeInMainWorld("electron", {
     },
   },
 });
+
+contextBridge.exposeInMainWorld("__kombuse", {
+  setInputValue: (selector: string, value: string): boolean => {
+    const el = document.querySelector<HTMLInputElement>(selector);
+    if (!el) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    if (!setter) return false;
+    setter.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    return true;
+  },
+
+  activateTab: (selector: string): boolean => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return false;
+    el.focus();
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
+    return true;
+  },
+
+  openSelect: (selector: string): boolean => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return false;
+    el.focus();
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", code: "ArrowDown", bubbles: true }));
+    return true;
+  },
+
+  toggleCheckbox: (selector: string): boolean => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    const clientX = rect.x + rect.width / 2;
+    const clientY = rect.y + rect.height / 2;
+    const opts = { bubbles: true, clientX, clientY } as const;
+    el.dispatchEvent(new PointerEvent("pointerdown", opts));
+    el.dispatchEvent(new MouseEvent("mousedown", opts));
+    el.dispatchEvent(new PointerEvent("pointerup", opts));
+    el.dispatchEvent(new MouseEvent("mouseup", opts));
+    el.dispatchEvent(new MouseEvent("click", opts));
+    return true;
+  },
+
+  scrollTo: (selector: string): boolean => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return false;
+    el.scrollIntoView({ behavior: "instant", block: "start" });
+    return true;
+  },
+
+  getElementRect: (selector: string): { x: number; y: number; width: number; height: number } | null => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return null;
+    const { x, y, width, height } = el.getBoundingClientRect();
+    return { x, y, width, height };
+  },
+});
