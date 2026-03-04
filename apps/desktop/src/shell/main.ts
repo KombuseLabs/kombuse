@@ -110,6 +110,18 @@ async function startIsolatedServer(dbPath: string): Promise<{ port: number; clos
   const server = await _createServerForIsolated({ port: 0, dbPath, desktop: false, isolated: true });
   const address = await server.listen();
   const port = new URL(address).port ? Number(new URL(address).port) : 0;
+
+  // Auto-install the kombuse-dev plugin so isolated windows show realistic plugin data.
+  // Fire-and-forget: 201 = installed, 409 = already installed (docs.db persists), errors swallowed.
+  fetch(`http://127.0.0.1:${port}/api/plugins/install-remote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Host: 'localhost' },
+    body: JSON.stringify({
+      name: 'kombuse-dev',
+      project_id: '00000000-0000-4000-a000-000000000001',
+    }),
+  }).catch(() => {})
+
   return { port, close: async () => { await server.close(); } };
 }
 
