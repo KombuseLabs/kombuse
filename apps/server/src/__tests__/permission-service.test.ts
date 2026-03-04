@@ -16,6 +16,16 @@ vi.mock('@kombuse/services', () => ({
     getSessionByKombuseId: vi.fn(),
     persistEvent: vi.fn(),
   },
+  appendToProjectPermissions: vi.fn(),
+  stripCdPrefix: (command: string) => {
+    let result = command.trim()
+    while (true) {
+      const match = result.match(/^cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:&&|;)\s*/)
+      if (!match) break
+      result = result.slice(match[0].length)
+    }
+    return result
+  },
 }))
 
 vi.mock('../websocket/hub', () => ({

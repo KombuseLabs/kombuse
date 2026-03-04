@@ -7,7 +7,7 @@ vi.mock('@kombuse/persistence', () => ({
 }))
 
 import { pluginFilesRepository } from '@kombuse/persistence'
-import { getTypePreset, getEffectivePreset, shouldAutoApprove, presetToAllowedTools } from '../agent-type-preset-service'
+import { getTypePreset, getEffectivePreset, shouldAutoApprove, presetToAllowedTools, stripCdPrefix } from '../agent-type-preset-service'
 
 const mockGet = pluginFilesRepository.get as ReturnType<typeof vi.fn>
 
@@ -282,6 +282,63 @@ describe('shouldAutoApprove', () => {
   it('rejects Bash without a command', () => {
     expect(shouldAutoApprove('Bash', undefined, kombusePreset)).toBe(false)
     expect(shouldAutoApprove('Bash', {}, kombusePreset)).toBe(false)
+  })
+})
+
+describe('stripCdPrefix', () => {
+  it('strips a single cd prefix with &&', () => {
+    expect(stripCdPrefix('cd /path/to/dir && git status')).toBe('git status')
+  })
+
+  it('strips a single cd prefix with ;', () => {
+    expect(stripCdPrefix('cd /path/to/dir ; ls -la')).toBe('ls -la')
+  })
+
+  it('strips chained cd prefixes', () => {
+    expect(stripCdPrefix('cd /a && cd /b && git diff')).toBe('git diff')
+  })
+
+  it('handles double-quoted paths', () => {
+    expect(stripCdPrefix('cd "/path with spaces" && ls')).toBe('ls')
+  })
+
+  it('handles single-quoted paths', () => {
+    expect(stripCdPrefix("cd '/path with spaces' && ls")).toBe('ls')
+  })
+
+  it('leaves bare cd unchanged (no && or ;)', () => {
+    expect(stripCdPrefix('cd /path')).toBe('cd /path')
+  })
+
+  it('returns the command unchanged when no cd prefix', () => {
+    expect(stripCdPrefix('git status')).toBe('git status')
+  })
+
+  it('trims whitespace', () => {
+    expect(stripCdPrefix('  cd /path && git status  ')).toBe('git status')
+  })
+})
+
+describe('shouldAutoApprove with cd-prefixed commands', () => {
+  const kombusePreset = getTypePreset('kombuse')
+
+  it.each([
+    ['cd /path/to/root && git status'],
+    ['cd /path && git diff'],
+    ['cd /path && git log --oneline'],
+    ['cd /path && ls -la'],
+    ['cd /a && cd /b && git diff'],
+    ['cd "/path with spaces" && find . -name "*.ts"'],
+  ])('approves cd-prefixed approved command: %s', (command) => {
+    expect(shouldAutoApprove('Bash', { command }, kombusePreset)).toBe(true)
+  })
+
+  it.each([
+    ['cd /path && rm -rf /'],
+    ['cd /path && curl http://example.com'],
+    ['cd /path'],
+  ])('rejects cd-prefixed unapproved command: %s', (command) => {
+    expect(shouldAutoApprove('Bash', { command }, kombusePreset)).toBe(false)
   })
 })
 

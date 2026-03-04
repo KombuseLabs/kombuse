@@ -139,6 +139,21 @@ export function presetToAllowedTools(preset: AgentTypePreset): string[] {
 }
 
 /**
+ * Strip leading `cd <path> &&` or `cd <path> ;` prefixes from a bash command.
+ * Returns the actual command to evaluate for permissions.
+ * Handles quoted paths and multiple chained cd prefixes.
+ */
+export function stripCdPrefix(command: string): string {
+  let result = command.trim()
+  while (true) {
+    const match = result.match(/^cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:&&|;)\s*/)
+    if (!match) break
+    result = result.slice(match[0].length)
+  }
+  return result
+}
+
+/**
  * Check if a tool should be auto-approved based on the agent's type preset.
  */
 export function shouldAutoApprove(
@@ -152,7 +167,7 @@ export function shouldAutoApprove(
 
   // Special handling for Bash - only approve specific command prefixes
   if (toolName === 'Bash' && input?.command) {
-    const command = String(input.command).trim()
+    const command = stripCdPrefix(String(input.command))
     return preset.autoApprovedBashCommands.some((cmd: string) =>
       command === cmd || command.startsWith(`${cmd} `)
     )

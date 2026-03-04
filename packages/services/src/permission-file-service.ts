@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
+import { stripCdPrefix } from './agent-type-preset-service'
 import type { AgentTypePreset } from './agent-type-preset-service'
 
 interface PermissionFileContent {
@@ -131,7 +132,7 @@ export function appendToProjectPermissions(
 
   let entry: string
   if (toolName === 'Bash' && typeof input.command === 'string') {
-    const prefix = input.command.trim().split(/\s+/)[0] ?? ''
+    const prefix = stripCdPrefix(input.command).split(/\s+/)[0] ?? ''
     if (!prefix) return
     entry = formatBashEntry(prefix)
   } else {

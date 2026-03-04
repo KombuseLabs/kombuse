@@ -1,6 +1,6 @@
 import { createAppLogger } from '@kombuse/core/logger'
 import { agentsRepository, projectsRepository } from '@kombuse/persistence'
-import { appendToProjectPermissions, sessionPersistenceService } from '@kombuse/services'
+import { appendToProjectPermissions, sessionPersistenceService, stripCdPrefix } from '@kombuse/services'
 import type { AgentConfig, AgentEvent, ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import {
@@ -60,7 +60,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
  * Parse a Bash command and generate a human-readable description.
  */
 function describeBashCommand(command: string): string {
-  const trimmed = command.trim()
+  const trimmed = stripCdPrefix(command.trim())
   const parts = trimmed.split(/\s+/)
   const cmd = parts[0] ?? ''
 
@@ -289,7 +289,7 @@ export function persistAlwaysAllow(
   const config: AgentConfig = { ...agent.config }
 
   if (toolName === 'Bash' && typeof input.command === 'string') {
-    const prefix = input.command.trim().split(/\s+/)[0] ?? ''
+    const prefix = stripCdPrefix(input.command).split(/\s+/)[0] ?? ''
     if (!prefix) return
 
     const existing = config.auto_approved_bash_commands_override ?? []

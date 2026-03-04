@@ -269,4 +269,13 @@ describe('appendToProjectPermissions', () => {
     const result = readPermissionFile(getProjectPermissionsPath(PROJECT_DIR))
     expect(result?.permissions.allow).toEqual([])
   })
+
+  it('strips cd prefix before extracting command prefix', () => {
+    writePermFile(PROJECT_DIR, {
+      permissions: { allow: [], deny: [] },
+    })
+    appendToProjectPermissions(PROJECT_DIR, 'Bash', { command: 'cd /path/to/root && git status' })
+    const result = readPermissionFile(getProjectPermissionsPath(PROJECT_DIR))
+    expect(result?.permissions.allow).toEqual(['Bash(git *)'])
+  })
 })
