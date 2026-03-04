@@ -649,7 +649,14 @@ export function seedDemoData(database: DatabaseType): void {
     database.prepare("UPDATE projects SET id = ? WHERE id = 'demo-project'").run(DEMO_PROJECT_ID)
   }
 
-  const seedVersion = database.pragma('user_version', { simple: true }) as number
+  let seedVersion = database.pragma('user_version', { simple: true }) as number
+
+  // Handle databases seeded before user_version was introduced
+  if (seedVersion === 0) {
+    const hasProject = database.prepare('SELECT 1 FROM projects WHERE id = ?').get(DEMO_PROJECT_ID)
+    if (hasProject) seedVersion = 1
+  }
+
   if (seedVersion >= CURRENT_SEED_VERSION) return
 
   const seed = database.transaction(() => {
