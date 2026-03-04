@@ -22,7 +22,7 @@ The Agents page is accessible from the project sidebar and shows all agents avai
 Kombuse ships with a default plugin that includes pre-configured agents for triage, planning, coding, and code review. If no agents appear yet, the **Install** button in the onboarding prompt installs the default plugin. Custom agents can also be created from scratch using the **Create Agent** button in the top-right corner.
 
 <WindowFrame title="Kombuse" cursorX={91} cursorY={10}>
-  <Image src={screenshotAgentList} alt="The Agents page showing an empty agent list with a Create Agent button" />
+  <Image src={screenshotAgentList} alt="The Agents page showing a populated list of agents grouped by plugin, with enable/disable toggles and a Create Agent button" />
 </WindowFrame>
 
 ## Creating an Agent
@@ -100,5 +100,5 @@ When a comment containing an @mention is submitted, the agent's **Mention Create
 Agents can also be triggered automatically by other events — for example, when a ticket is created (`ticket.created`), when a label is added (`label.added`), or when any comment is posted (`comment.added`). These are configured in the **Triggers** section of the agent's Configuration tab.
 
 <WindowFrame title="Kombuse" cursorX={57} cursorY={76}>
-  <Image src={screenshotMentionAutocomplete} alt="A ticket detail view with an @ character typed in the comment input, ready to trigger the mention autocomplete" />
+  <Image src={screenshotMentionAutocomplete} alt="A ticket detail view with the mention autocomplete popup open, showing available agents to select" />
 </WindowFrame>
