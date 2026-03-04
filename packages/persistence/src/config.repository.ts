@@ -24,6 +24,10 @@ export function getKombuseDir(): string {
   )
 }
 
+export function getEffectiveProjectPath(project: { id: string; local_path: string | null }): string {
+  return project.local_path ?? join(getKombuseDir(), 'projects', project.id)
+}
+
 export function resolveDbPath(rawPath: string): string {
   if (isAbsolute(rawPath)) {
     return rawPath

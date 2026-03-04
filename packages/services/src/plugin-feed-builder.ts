@@ -7,6 +7,7 @@ import {
   resolveEnvToken,
   projectsRepository,
   getKombuseDir,
+  getEffectiveProjectPath,
   loadKombuseConfig,
   loadProjectConfig,
 } from '@kombuse/persistence'
@@ -18,14 +19,15 @@ function resolveAuth(token?: string): FeedAuth | undefined {
 
 export function resolvePluginConfig(projectId: string) {
   const project = projectsRepository.get(projectId)
-  const projectPluginsDir = project?.local_path
-    ? join(project.local_path, '.kombuse', 'plugins')
+  const effectivePath = project ? getEffectiveProjectPath(project) : null
+  const projectPluginsDir = effectivePath
+    ? join(effectivePath, '.kombuse', 'plugins')
     : null
   const globalPluginsDir = join(getKombuseDir(), 'plugins')
 
   const globalConfig = loadKombuseConfig()
-  const projectConfig = project?.local_path
-    ? loadProjectConfig(project.local_path)
+  const projectConfig = effectivePath
+    ? loadProjectConfig(effectivePath)
     : {}
   const configSources = [
     ...(globalConfig.plugins?.sources ?? []),

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { projectService, resolvePluginConfig } from '@kombuse/services'
-import { loadKombuseConfig, loadProjectConfig, saveProjectConfig } from '@kombuse/persistence'
+import { loadKombuseConfig, loadProjectConfig, saveProjectConfig, getEffectiveProjectPath } from '@kombuse/persistence'
 import {
   pluginSourcesQuerySchema,
   putPluginSourcesBodySchema,
@@ -29,9 +29,7 @@ export async function pluginSourceRoutes(fastify: FastifyInstance) {
     }
 
     const globalConfig = loadKombuseConfig()
-    const projectConfig = project.local_path
-      ? loadProjectConfig(project.local_path)
-      : {}
+    const projectConfig = loadProjectConfig(getEffectiveProjectPath(project))
 
     return {
       global_sources: globalConfig.plugins?.sources ?? [],
@@ -52,13 +50,9 @@ export async function pluginSourceRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Project not found' })
     }
 
-    if (!project.local_path) {
-      return reply.status(400).send({
-        error: 'Project has no local_path configured. Cannot save plugin sources.',
-      })
-    }
+    const effectivePath = getEffectiveProjectPath(project)
 
-    const existingConfig = loadProjectConfig(project.local_path)
+    const existingConfig = loadProjectConfig(effectivePath)
     const updatedConfig = {
       ...existingConfig,
       plugins: {
@@ -68,7 +62,7 @@ export async function pluginSourceRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      saveProjectConfig(project.local_path, updatedConfig)
+      saveProjectConfig(effectivePath, updatedConfig)
     } catch (error) {
       const message = (error as Error).message
       if (
