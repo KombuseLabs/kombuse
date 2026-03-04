@@ -1,7 +1,7 @@
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from "@tanstack/react-query";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UpdateNotification, ShellUpdateNotification, UpdateStatusDialog, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar } from "@kombuse/ui/components";
+import { Header, UpdateNotification, ShellUpdateNotification, UpdateStatusDialog, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar, LayoutToggleButtons } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { getWsUrl } from "@kombuse/ui/lib/api";
 import { useDesktop, useAvailableBackends } from "@kombuse/ui/hooks";
@@ -81,6 +81,7 @@ function AppContent() {
       >
         {!isHome && (
           <>
+            <LayoutToggleButtons />
             <ActiveAgentsIndicator onNavigate={navigate} />
             <NotificationBell onNavigate={navigate} />
             <ProfileButton onNavigate={navigate} />

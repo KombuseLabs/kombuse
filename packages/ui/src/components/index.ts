@@ -86,6 +86,7 @@ export {
 } from './milestones'
 export { Markdown } from './markdown'
 export { ModeToggle } from './mode-toggle'
+export { LayoutToggleButtons } from './layout-toggle'
 export {
   PromptEditor,
   type PromptEditorProps,
