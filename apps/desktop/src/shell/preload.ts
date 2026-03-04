@@ -7,9 +7,6 @@
  */
 
 import { contextBridge, ipcRenderer } from "electron";
-import { homedir } from "node:os";
-
-const HOME_DIR = homedir();
 
 contextBridge.exposeInMainWorld("electron", {
   /**
@@ -69,6 +66,11 @@ contextBridge.exposeInMainWorld("electron", {
   },
 });
 
+// Wrapped in try/catch so a failure in __kombuse helpers never prevents
+// the critical window.electron bridge above from being exposed.
+let HOME_DIR = "";
+try {
+HOME_DIR = ipcRenderer.sendSync("app:homedir") as string;
 contextBridge.exposeInMainWorld("__kombuse", {
   setInputValue: (selector: string, value: string): boolean => {
     const el = document.querySelector<HTMLInputElement>(selector);
@@ -138,3 +140,6 @@ contextBridge.exposeInMainWorld("__kombuse", {
     return count;
   },
 });
+} catch (err) {
+  console.error("[Preload] Failed to expose __kombuse helpers:", err);
+}

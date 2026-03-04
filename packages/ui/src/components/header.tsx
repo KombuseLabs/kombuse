@@ -59,7 +59,7 @@ function Header({
         {afterTitle}
       </div>
       {!minimal && (
-        <div className="flex flex-1 justify-center px-[21px] mt-[10px]">
+        <div className="flex flex-1 justify-center px-[21px]">
           {showNavArrows && !isMobile && (
             <div className="flex items-center gap-0.5 mr-2 electron-no-drag">
               <Button
@@ -90,7 +90,7 @@ function Header({
         </div>
       )}
       {!minimal && (
-        <nav className="flex shrink-0 items-center gap-4 px-[5px] electron-no-drag mt-[5px]">
+        <nav className="flex shrink-0 items-center gap-4 px-[5px] electron-no-drag">
           {children}
           <ModeToggle />
         </nav>

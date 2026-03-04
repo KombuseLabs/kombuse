@@ -206,6 +206,11 @@ ipcMain.on("server:port", (event) => {
   event.returnValue = windowServerPortMap.get(event.sender.id) ?? serverPort;
 });
 
+// IPC handler for home directory (used by redactPaths in preload)
+ipcMain.on("app:homedir", (event) => {
+  event.returnValue = app.getPath("home");
+});
+
 // IPC handler for app restart (used by auto-updater UI)
 ipcMain.handle("app:restart", () => {
   console.log("[Main] Restart requested, relaunching app...");

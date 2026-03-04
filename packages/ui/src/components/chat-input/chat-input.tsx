@@ -71,15 +71,15 @@ function ChatInput({
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electron) return
-    if (!window.__kombuse) window.__kombuse = {}
-    window.__kombuse.setInputValue = (selector: string, value: string) => {
-      const el = document.querySelector(selector)
-      if (!el || el !== textareaRef.current) return false
+    // Expose a React-aware input setter that agents can call.
+    // We use a separate key to avoid conflicting with the frozen
+    // __kombuse object created by contextBridge in the preload script.
+    ;(window as unknown as Record<string, unknown>).__kombuseChatSetValue = (value: string) => {
       programmaticSetValue(value)
       return true
     }
     return () => {
-      if (window.__kombuse) delete window.__kombuse.setInputValue
+      delete (window as unknown as Record<string, unknown>).__kombuseChatSetValue
     }
   }, [programmaticSetValue])
 
