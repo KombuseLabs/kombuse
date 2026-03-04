@@ -22,7 +22,7 @@ export interface AvailablePlugin {
   name: string
   version: string
   description?: string
-  directory: string
+  directory?: string
   source: 'project' | 'global' | 'filesystem' | 'github' | 'http'
   source_feed_id?: string
   installed: boolean

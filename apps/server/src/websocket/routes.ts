@@ -19,7 +19,18 @@ const log = createAppLogger('WebSocket')
  * - When events occur, server sends { type: 'event', topic: 'ticket:123', event: {...} }
  */
 export async function websocketRoutes(fastify: FastifyInstance) {
-  fastify.get('/ws', { websocket: true }, (socket, _req) => {
+  fastify.get('/ws', { websocket: true }, (socket, req) => {
+    const origin = req.headers.origin
+    if (
+      origin &&
+      origin !== 'app://.' &&
+      !origin.startsWith('http://localhost:') &&
+      !origin.startsWith('http://127.0.0.1:')
+    ) {
+      socket.close(1008, 'Origin not allowed')
+      return
+    }
+
     wsHub.addClient(socket)
 
     socket.on('message', (rawMessage: RawData) => {
