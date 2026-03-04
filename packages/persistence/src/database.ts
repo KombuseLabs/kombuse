@@ -772,9 +772,22 @@ export function seedDemoData(database: DatabaseType): void {
     assignLabel.run(t4, featureLabel.id, 'user-1')
     assignLabel.run(t6, docsLabel.id, 'user-1')
 
+    // Agent profiles for multi-agent conversation demo
+    database.prepare(`
+      INSERT OR IGNORE INTO profiles (id, type, name, description, avatar_url)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('demo-analyzer', 'agent', 'Ticket Analyzer', 'Investigates codebase to find root cause and impact of issues', 'search')
+    database.prepare(`
+      INSERT OR IGNORE INTO profiles (id, type, name, description, avatar_url)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('demo-coder', 'agent', 'Coding Agent', 'Implements features and fixes', 'code')
+
     // Comments
     const insertComment = database.prepare(
       "INSERT INTO comments (ticket_id, author_id, body) VALUES (?, 'user-1', ?)"
+    )
+    const insertAgentComment = database.prepare(
+      "INSERT INTO comments (ticket_id, author_id, body) VALUES (?, ?, ?)"
     )
     insertComment.run(
       t1,
@@ -792,6 +805,12 @@ export function seedDemoData(database: DatabaseType): void {
       t5,
       'Confirmed: the rate limiter returns 403 instead of 429. Looks like the middleware checks auth before rate limits.'
     )
+    insertAgentComment.run(t5, 'demo-analyzer',
+      'Investigated the rate limiting middleware. The auth check at line 42 runs before the rate limiter at line 58, so an invalid token triggers a 403 before the rate limiter can return 429. Swapping the middleware order fixes this.')
+    insertComment.run(t5,
+      'Makes sense — the rate limiter should run first regardless of auth status.')
+    insertAgentComment.run(t5, 'demo-coder',
+      'Fixed the middleware ordering in api-middleware.ts. Rate limiter now runs at priority 1 (before auth at priority 2). Added a test to verify 429 is returned for rate-limited requests regardless of auth status.')
   })
 
   seed()
