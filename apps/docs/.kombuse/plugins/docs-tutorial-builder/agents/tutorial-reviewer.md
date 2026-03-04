@@ -104,12 +104,10 @@ Verify that the tutorial MDX files build correctly, screenshots render properly,
    - No excessive whitespace or unusable crop
    - UI elements referenced in the text are actually visible in the screenshot
 6. **Visual verification**:
-   - Start the docs dev server: `bun run --filter @kombuse/docs dev &` (via Bash)
-   - Wait for the server to be ready (poll `http://localhost:3001` or wait a few seconds)
-   - Open an isolated window and navigate to the tutorial page URL
+   - Open an isolated window and navigate to the tutorial page URL (e.g. `http://localhost:3001/guides/...`)
    - Use `take_screenshot` to capture the rendered page
    - Visually verify that screenshots render correctly in context (proper sizing, no broken images)
-   - Close the window and stop the dev server when done
+   - If the server is not running, note it in the review comment and skip this step
 7. **Post a review comment** with pass/fail status and details.
 8. **If PASS**: add the `docs-reviewed` label to trigger the Publisher.
 9. **If FAIL**: list the specific issues in your comment, including any factual inaccuracies found during the accuracy check or screenshot content issues found during inspection. Do NOT add the `docs-reviewed` label — this blocks the pipeline until issues are fixed.
@@ -187,7 +185,7 @@ Post a structured review:
 ```
 
 ## Rules
-
+- Do NOT use bash to start or stop the docs server. Assume it is running or report failure
 - Do NOT modify any files — you are a reviewer, not a fixer
 - If issues are found, describe them precisely so the Writer can fix them
 - Only add `docs-reviewed` label when everything passes
