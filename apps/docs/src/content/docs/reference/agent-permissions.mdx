@@ -38,7 +38,7 @@ Clicking **Add Permission** opens an inline form. The **Permission Type** dropdo
 For **Resource permissions**, the form presents:
 - **Resource** — a dropdown with preset options (All Resources, Tickets, Comments, Labels, Profiles) and a "Custom pattern…" entry for arbitrary patterns
 - **Actions** — checkboxes for Read, Create, Update, and Delete; selecting "All Actions" disables the individual checkboxes
-- **Filter** — an optional text field to restrict the permission to matching resources (e.g. `project:my-project, status:open`)
+- **Filter** — an optional text field reserved for future use
 - **Scope** — a dropdown selecting the breadth of the rule (see [Permission Scopes](#permission-scopes) below)
 
 <WindowFrame section>
@@ -118,3 +118,8 @@ The **Auto-Approved Tools** tab lists agents alongside their effective auto-appr
 ### Permission Rules
 
 The **Permission Rules** tab provides a read-only overview of all agents and their explicitly configured permission rules. Each agent's name, preset type (if any), rule count, and full permission list are shown for quick reference.
+
+## See also
+
+- [Agents](/reference/agents) — create and configure AI-powered agents
+- [Building a Plugin](/guides/building-a-plugin) — create reusable plugin packages with agents and permissions

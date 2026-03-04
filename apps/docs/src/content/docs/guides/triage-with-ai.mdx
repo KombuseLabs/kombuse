@@ -56,7 +56,7 @@ The **Available variables** panel below the prompt editor lists all variables wi
 
 ## Add a Ticket Created Trigger
 
-To make the agent run automatically, a trigger is configured on the **Configuration** tab of the agent detail page. The **Triggers** section (marked with a lightning bolt icon) is expanded by clicking on it, then **Add Trigger** opens the trigger form.
+To make the agent run automatically, a trigger is configured on the **Configuration** tab of the agent detail page. The **Triggers** section (marked with a zap icon) is expanded by clicking on it, then **Add Trigger** opens the trigger form.
 
 The event type **Ticket Created** fires whenever a new ticket is created in the project. No conditions are needed for basic triage — the agent will process every new ticket. The **Priority** field controls execution order when multiple agents respond to the same event (higher value runs first).
 
@@ -98,3 +98,9 @@ With the triage agent configured, the full flow runs automatically:
 6. The agent session completes — no manual intervention required
 
 The agent runs in the background. If the agent encounters an error or lacks permission for an action, the details are logged in the agent session history, accessible from the agent detail page.
+
+## See also
+
+- [Agent Triggers](/reference/agent-triggers) — configure event-driven automation for agents
+- [Agent Permissions](/reference/agent-permissions) — control what resources and tools agents can access
+- [Agents](/reference/agents) — full reference for creating and configuring agents

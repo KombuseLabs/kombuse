@@ -57,6 +57,8 @@ The system prompt supports dynamic **template variables** that are filled in at 
 | `{{ event_type }}` | The event that fired the trigger |
 | `{{ agents }}` | List of agents available in the project |
 | `{{ kombuse_session_id }}` | The current agent session ID |
+| `{{ ticket.labels }}` | Existing labels on the ticket |
+| `{{ ticket_number }}` | The per-project ticket number |
 
 Plugin-based agents can also use `{% include "file.md" %}` directives to compose prompts from shared template files.
 
@@ -78,6 +80,8 @@ Selecting an agent and opening the **Configuration** tab reveals controls for ho
 <WindowFrame title="Kombuse">
   <Image src={screenshotConfigurationTab} alt="The Configuration tab showing backend override, model override, and trigger settings for an agent" />
 </WindowFrame>
+
+Agents that work with tickets can also interact with milestones. Milestones group related tickets to track progress toward a shared goal. For full milestone documentation, see the [Tickets reference](/reference/tickets#milestones).
 
 ## Running Agents from Chat
 
@@ -102,3 +106,8 @@ Agents can also be triggered automatically by other events — for example, when
 <WindowFrame title="Kombuse" cursorX={57} cursorY={76}>
   <Image src={screenshotMentionAutocomplete} alt="A ticket detail view with the mention autocomplete popup open, showing available agents to select" />
 </WindowFrame>
+
+## See also
+
+- [Agent Permissions](/reference/agent-permissions) — control what resources and tools agents can access
+- [Agent Triggers](/reference/agent-triggers) — automate agent workflows with event-driven triggers

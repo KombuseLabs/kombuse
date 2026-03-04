@@ -10,6 +10,7 @@ import screenshotHomeProjects from '../../../assets/projects/home-projects.png';
 import screenshotCreateProjectDialog from '../../../assets/projects/create-project-dialog.png';
 import screenshotProjectSettings from '../../../assets/projects/project-settings.png';
 import screenshotInitCard from '../../../assets/projects/init-card.png';
+import screenshotDiscoveredProjects from '../../../assets/projects/discovered-projects.png';
 
 Projects are the top-level organizational unit in Kombuse. Each project has its own ticket tracker, agents, and configuration, and can be linked to a local code repository on disk.
 
@@ -46,6 +47,10 @@ Projects are selected using the checkboxes, then imported by clicking **Import**
 
 If no Claude Code sessions or projects are found, the home page shows an empty state: *"No projects discovered. Use Claude Code in a project directory to get started, or create a project manually."*
 
+<WindowFrame section>
+  <Image src={screenshotDiscoveredProjects} alt="The Discovered from Claude Code section showing projects with session counts and git branch information" />
+</WindowFrame>
+
 ## Project Settings
 
 Project settings are accessed by opening the command palette with **⌘K** and selecting **Go to Project Settings**.
@@ -81,3 +86,16 @@ Initialization creates four items:
 | **.gitignore** | Updated to exclude the `.kombuse/` directory from version control |
 
 After clicking Initialize, each file displays a status indicator: a green checkmark for created, a gray icon for skipped (already exists), or red for errors. All operations are idempotent — safe to run multiple times without side effects.
+
+## Deleting a Project
+
+Projects can be deleted through the REST API. There is no delete button in the Kombuse UI.
+
+To delete a project, send a `DELETE` request to `/api/projects/:id`, where `:id` is the project's UUID. Project deletion is permanent and cannot be undone.
+
+Deletion removes the project entry from Kombuse — it does not delete any files or directories on disk.
+
+## See also
+
+- [Tickets](/reference/tickets) — create, organize, and track work with tickets
+- [Settings & Configuration](/reference/settings) — customize appearance, defaults, and advanced settings

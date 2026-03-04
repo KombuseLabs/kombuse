@@ -12,6 +12,8 @@ import screenshotTicketAgentComments from '../../../assets/claude-code/ticket-ag
 
 Kombuse provides a set of MCP (Model Context Protocol) tools that make project data available to Claude Code. Once connected, Claude Code agents can create and search tickets, add comments, trigger other agents, and query the database — all from the terminal. This guide covers setting up the connection and common workflows for managing work from Claude Code.
 
+> **Prerequisites:** Claude Code must be installed before connecting to Kombuse. Kombuse searches for the `claude` binary at `~/.local/bin/claude`, `/usr/local/bin/claude`, `/opt/homebrew/bin/claude`, `~/.npm-global/bin/claude`, and the system `PATH`. The `CLAUDE_PATH` environment variable overrides the default search. See the [Claude Code installation guide](https://docs.anthropic.com/en/docs/claude-code/getting-started) for setup instructions.
+
 ## Setting Up the Connection
 
 Open the project in Kombuse and navigate to project settings. Scrolling down reveals the **Initialize Project** section with a button labeled "Initialize Project" and the description "Set up AGENTS.md, MCP config, and .kombuse directory for this project."
@@ -74,47 +76,11 @@ Agents include a `kombuse_session_id` when posting comments, which lets Kombuse 
 
 ## MCP Tools Reference
 
-The following tools are available when Kombuse is connected to Claude Code.
+Claude Code has access to all Kombuse MCP tools except the Desktop category (which requires the desktop app). This includes tools for managing tickets and projects, comments, agents, database queries, and API access.
 
-**Tickets and Projects**
+For a complete list of available tools and their descriptions, see the [MCP Integration — Available Tools](/guides/mcp-integration#available-tools) guide.
 
-| Tool | Description |
-|------|-------------|
-| `create_ticket` | Create a new ticket with title, description, and optional fields |
-| `get_ticket` | Read a ticket with its comments, labels, and metadata |
-| `list_tickets` | List tickets with filtering by status, assignee, and labels |
-| `search_tickets` | Full-text search across ticket titles, bodies, and comments |
-| `update_ticket` | Update status, priority, labels, assignee, title, or body |
-| `list_projects` | List all projects in the workspace |
-| `list_labels` | List all labels available in a project |
+## See also
 
-**Comments**
-
-| Tool | Description |
-|------|-------------|
-| `add_comment` | Add a comment to a ticket (supports @agent and #ticket mentions) |
-| `get_ticket_comment` | Read a single comment by ID |
-| `update_comment` | Edit a previously posted comment |
-
-**Agents**
-
-| Tool | Description |
-|------|-------------|
-| `list_agents` | List agents with optional project and status filters |
-| `create_agent` | Create a new agent with system prompt, permissions, and triggers |
-| `update_agent` | Update an agent's prompt, permissions, config, or enabled state |
-
-**Database**
-
-| Tool | Description |
-|------|-------------|
-| `query_db` | Run read-only SQL queries against the Kombuse database |
-| `list_tables` | List all tables and views in the database |
-| `describe_table` | Show the schema of a specific table |
-
-**API**
-
-| Tool | Description |
-|------|-------------|
-| `list_api_endpoints` | Discover all available Kombuse REST API endpoints |
-| `call_api` | Call a GET endpoint on the Kombuse API |
+- [MCP Integration](/guides/mcp-integration) — full MCP setup guide and available tools reference
+- [Getting Started](/guides/getting-started) — download Kombuse and set up your first project

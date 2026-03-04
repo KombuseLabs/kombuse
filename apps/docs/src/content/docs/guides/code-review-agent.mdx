@@ -59,7 +59,7 @@ The **Available variables** panel below the prompt editor lists all variables wi
 
 ## Add Triggers
 
-Triggers determine when the agent runs automatically. The code review agent is configured with two triggers on the **Configuration** tab of the agent detail page, in the **Triggers** section (lightning bolt icon).
+Triggers determine when the agent runs automatically. The code review agent is configured with two triggers on the **Configuration** tab of the agent detail page, in the **Triggers** section (zap icon).
 
 ### Label trigger
 
@@ -112,3 +112,9 @@ With the code review agent configured, the full flow runs automatically:
 6. The session completes — the full review is visible as a comment on the ticket
 
 The agent runs in the background. If it encounters an error or lacks permission for an action, the details are logged in the agent session history, accessible from the agent detail page. The code review agent pairs well with other agents in a pipeline — for example, a coding agent can add the "Requires review" label after completing its work, automatically triggering the review.
+
+## See also
+
+- [Agent Triggers](/reference/agent-triggers) — configure event-driven automation for agents
+- [Agent Permissions](/reference/agent-permissions) — control what resources and tools agents can access
+- [MCP Integration](/guides/mcp-integration) — connect external AI tools to Kombuse

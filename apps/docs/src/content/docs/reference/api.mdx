@@ -231,6 +231,8 @@ Projects group tickets, agents, and labels. Each project can optionally link to 
 | `search` | Name search |
 | `limit` / `offset` | Pagination |
 
+> `repo_source` accepts `github`, `gitlab`, or `bitbucket`. Currently, only `github` is fully integrated. The `gitlab` and `bitbucket` values are accepted and stored as project metadata but have no active integration — they are reserved for future use.
+
 ---
 
 **`GET /api/projects/:id`** — Get project by UUID or slug.
@@ -369,7 +371,7 @@ Permissions are a discriminated union:
 ```json
 {
   "type": "resource",
-  "resource": "tickets",
+  "resource": "ticket",
   "actions": ["read", "create", "update", "delete"],
   "scope": "invocation | project | global",
   "filter": { ... }
@@ -782,8 +784,26 @@ Only connections from localhost origins (`app://.`, `http://localhost:*`, `http:
 
 **Respond to an agent permission request:**
 ```json
-{ "type": "permission_response", "..." }
+{
+  "type": "permission.response",
+  "kombuseSessionId": "session-uuid",
+  "requestId": "request-uuid",
+  "behavior": "allow",
+  "updatedInput": {},
+  "message": "optional denial reason",
+  "alwaysAllow": false
+}
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | `"permission.response"` | Yes | Message type identifier |
+| `kombuseSessionId` | string | Yes | The session ID for the active agent session |
+| `requestId` | string | Yes | The request ID from the corresponding `agent.permission_pending` message |
+| `behavior` | `"allow"` \| `"deny"` | Yes | Whether to allow or deny the permission request |
+| `updatedInput` | object | No | Modified tool input before execution (only when behavior is `allow`) |
+| `message` | string | No | Reason for denial (only when behavior is `deny`) |
+| `alwaysAllow` | boolean | No | When `true` with `allow`, persists the tool to the agent's auto-approved list |
 
 **Stop a running session:**
 ```json
@@ -924,3 +944,8 @@ Analytics endpoints under `/api/analytics/`:
 **`GET /api/updates/status`** / **`POST /api/updates/check`** / **`POST /api/updates/install`** — Check and install application auto-updates.
 
 **`GET /api/shell-updates/status`** / **`POST /api/shell-updates/check`** / **`POST /api/shell-updates/install`** — Check and install shell (CLI) updates.
+
+## See also
+
+- [MCP Integration](/guides/mcp-integration) — connect external AI tools to Kombuse using MCP
+- [Agents](/reference/agents) — create and configure AI-powered agents

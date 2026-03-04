@@ -50,6 +50,8 @@ The **Chat Defaults** card has two fields:
 - **Default Backend** — A dropdown listing available backends. The available options are **Claude Code** and **Codex**. If a backend is configured but its executable is not installed, the option shows "(not installed)". If no backends are available, the dropdown is disabled and shows "No backends available".
 - **Default Model Preference** — A dropdown listing available models for the selected backend. The first option is always "Use backend default". A hint below the selector shows the backend's current default model ID.
 
+For fresh installations, the default backend is **Claude Code** and the default model is **Claude Opus 4.6** (`claude-opus-4-6`). Available Claude Code models: Opus 4.6 (default), Sonnet 4.6, Haiku 4.5, Sonnet 4.5, and Sonnet 4. Codex has no preset model defaults.
+
 ## Backend Lifecycle & MCP
 
 Scrolling down the **Chat** tab reveals settings for backend process management and MCP integration.
@@ -109,6 +111,25 @@ An array of plugin source registries. Each source object has a `type` field and 
 
 Values starting with `$` (for example `$MY_TOKEN`) are resolved as environment variable references at startup.
 
+Both `database` and `plugins` keys are optional — Kombuse uses built-in defaults if either key is absent. A per-project config at `<project-path>/.kombuse/config.json` overrides the global config on a per-key basis: whichever keys are present in the project config take precedence, and missing keys fall back to the global config.
+
+**Full schema:**
+
+```
+{
+  "database": {
+    "path": string        // optional: absolute path or path relative to ~/.kombuse
+  },
+  "plugins": {
+    "sources": [          // optional: array of plugin source objects
+      { "type": "filesystem", "path": string },
+      { "type": "github", "repo": string, "package_name"?: string, "token"?: string },
+      { "type": "http", "base_url": string, "token"?: string }
+    ]
+  }
+}
+```
+
 **Example `~/.kombuse/config.json`:**
 
 ```json
@@ -123,3 +144,8 @@ Values starting with `$` (for example `$MY_TOKEN`) are resolved as environment v
   }
 }
 ```
+
+## See also
+
+- [Getting Started](/guides/getting-started) — download Kombuse and set up your first project
+- [Projects](/reference/projects) — create and configure projects to organize your work

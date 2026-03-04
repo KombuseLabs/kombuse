@@ -4,8 +4,17 @@ description: "Create, export, and share reusable plugin packages with agents, la
 sidebar:
   order: 4
 ---
+import { Image } from 'astro:assets';
+import WindowFrame from '../../../components/WindowFrame.astro';
+import screenshotPluginsPage from '../../../assets/building-a-plugin/plugins-page.png';
+import screenshotExportDialog from '../../../assets/building-a-plugin/export-dialog.png';
+import screenshotPluginDetail from '../../../assets/building-a-plugin/plugin-detail.png';
 
 Plugins are reusable packages that bundle agents, labels, and shared files together. A plugin can be installed into any project, exported as a directory, and shared via local filesystem paths, GitHub repositories, or HTTP registries. Kombuse includes a built-in plugin feed at kombuse.dev that lists publicly available plugins.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotPluginsPage} alt="The Plugins page showing installed plugins with version and source badges" />
+</WindowFrame>
 
 ## Plugin Directory Structure
 
@@ -107,7 +116,7 @@ permissions:
   - type: resource
     resource: ticket       # ticket, comment, ticket.labels
     actions: [read, create, update, delete]
-    scope: global          # or project
+    scope: global          # invocation, project, or global
 ```
 
 **Tool permissions** grant access to specific MCP tools:
@@ -207,6 +216,10 @@ The export creates a plugin directory at `.kombuse/plugins/{package-name}/` with
 
 Plugins can also be assembled by hand — creating the directory structure and files directly, without using the export dialog.
 
+<WindowFrame title="Kombuse">
+  <Image src={screenshotExportDialog} alt="The Export Plugin dialog with package name, description, agent selection, and included labels" />
+</WindowFrame>
+
 ## Sharing and Installing
 
 Plugins are distributed through sources. Three source types are supported.
@@ -234,3 +247,13 @@ Any HTTP-compatible registry can be configured as a source:
 ```
 
 Sources are configured from the **Sources** button on the Plugins page. Plugins from all configured sources appear in the **Available** section and can be installed with a single click. Installed plugins display their current version and show an update prompt when a newer version is available.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotPluginDetail} alt="An installed plugin showing its bundled agents and labels" />
+</WindowFrame>
+
+## See also
+
+- [Agent Permissions](/reference/agent-permissions) — control what resources and tools agents can access
+- [Plugins](/reference/plugins) — browse, install, and manage plugin packages
+- [MCP Integration](/guides/mcp-integration) — connect external AI tools to Kombuse
