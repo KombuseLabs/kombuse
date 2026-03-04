@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -68,6 +68,8 @@ export function Agents() {
   const isMobile = useIsMobile();
   const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY);
   const listPanelHidden = listPanelSetting?.setting_value === "true";
+  const [activeTab, setActiveTab] = useState('basic-info');
+  useEffect(() => setActiveTab('basic-info'), [agentId]);
   const isCreating = agentId === "new";
   const basePath = `/projects/${projectId}/agents`;
 
@@ -546,6 +548,8 @@ export function Agents() {
           isDeleting={deleteAgent.isPending}
           isCreatingTrigger={createTrigger.isPending}
           isUpdatingTrigger={updateTrigger.isPending}
+          activeTab={activeTab}
+          onActiveTabChange={setActiveTab}
         />
       )}
     </>

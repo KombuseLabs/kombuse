@@ -46,6 +46,8 @@ interface AgentDetailProps {
   isUpdatingTrigger?: boolean
   deletingTriggerId?: number
   togglingTriggerId?: number
+  activeTab?: string
+  onActiveTabChange?: (tab: string) => void
 }
 
 function AgentDetail({
@@ -69,6 +71,8 @@ function AgentDetail({
   isUpdatingTrigger,
   deletingTriggerId,
   togglingTriggerId,
+  activeTab: activeTabProp,
+  onActiveTabChange,
 }: AgentDetailProps) {
   const [name, setName] = useState(profile.name)
   const [description, setDescription] = useState(profile.description || '')
@@ -83,7 +87,10 @@ function AgentDetail({
   const [modelPreference, setModelPreference] = useState(
     typeof agent.config?.model === 'string' ? agent.config.model : ''
   )
-  const [activeTab, setActiveTab] = useState('basic-info')
+  const [internalTab, setInternalTab] = useState('basic-info')
+  const isControlled = activeTabProp !== undefined
+  const activeTab = isControlled ? activeTabProp : internalTab
+  const setActiveTab = isControlled ? (onActiveTabChange ?? (() => {})) : setInternalTab
   const { defaultBackendType } = useDefaultBackendType()
   const { availableBackends, isAvailable, noneAvailable } = useAvailableBackends()
   const effectiveBackendForModels: BackendType | undefined =
@@ -133,8 +140,10 @@ function AgentDetail({
     setCanInvokeAgents(agent.config?.can_invoke_agents ?? true)
     setBackendChoice(normalizeBackendChoice(agent.config?.backend_type))
     setModelPreference(typeof agent.config?.model === 'string' ? agent.config.model : '')
-    setActiveTab('basic-info')
-  }, [agent, profile])
+    if (!isControlled) {
+      setInternalTab('basic-info')
+    }
+  }, [agent, profile, isControlled])
 
   const handleSave = async () => {
     if (!onSave) return
