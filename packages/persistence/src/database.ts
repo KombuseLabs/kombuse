@@ -639,7 +639,7 @@ export function seedDatabase(database: DatabaseType): void {
  * `if (seedVersion < N)` block.
  */
 export function seedDemoData(database: DatabaseType): void {
-  const CURRENT_SEED_VERSION = 3
+  const CURRENT_SEED_VERSION = 4
 
   // Migrate old non-UUID demo project ID to new UUID format
   const oldDemo = database.prepare("SELECT id FROM projects WHERE id = 'demo-project'").get()
@@ -948,6 +948,87 @@ export function seedDemoData(database: DatabaseType): void {
           timestamp: baseTs + 130000, requestId: 'req-004', behavior: 'deny',
           message: 'Run only the specific rate-limiter test, not the entire middleware suite',
         }), demoKombuseSessionId)
+      }
+    }
+
+    // --- Version 4: milestones, agent triggers, mixed statuses, invocations ---
+    if (seedVersion < 4) {
+      // Milestones
+      const m1 = (database.prepare(`
+        INSERT INTO milestones (project_id, title, description, due_date, status)
+        VALUES (?, 'v1.0 Release', 'Track all features and fixes for the 1.0 release', '2026-04-15', 'open')
+        RETURNING id
+      `).get(DEMO_PROJECT_ID) as { id: number }).id
+
+      database.prepare(`
+        INSERT INTO milestones (project_id, title, description, due_date, status)
+        VALUES (?, 'Beta Launch', 'Initial beta release milestones', '2026-02-01', 'closed')
+      `).run(DEMO_PROJECT_ID)
+
+      // Assign open tickets 3 and 4 to the v1.0 Release milestone
+      database.prepare(`
+        UPDATE tickets SET milestone_id = ? WHERE project_id = ? AND ticket_number IN (3, 4)
+      `).run(m1, DEMO_PROJECT_ID)
+
+      // Agent triggers
+      const trigger1 = (database.prepare(`
+        INSERT INTO agent_triggers (agent_id, event_type, project_id, conditions, is_enabled, priority)
+        VALUES ('demo-analyzer', 'ticket.updated', ?, '{"status":"open"}', 1, 0)
+        RETURNING id
+      `).get(DEMO_PROJECT_ID) as { id: number }).id
+
+      const trigger2 = (database.prepare(`
+        INSERT INTO agent_triggers (agent_id, event_type, project_id, conditions, is_enabled, priority)
+        VALUES ('demo-coder', 'mention.created', ?, NULL, 1, 0)
+        RETURNING id
+      `).get(DEMO_PROJECT_ID) as { id: number }).id
+
+      // Mixed ticket statuses — set ticket 3 to blocked
+      database.prepare(`
+        UPDATE tickets SET status = 'blocked' WHERE project_id = ? AND ticket_number = 3
+      `).run(DEMO_PROJECT_ID)
+
+      // Agent invocations (linked to existing session and ticket 5)
+      const t5 = database
+        .prepare('SELECT id FROM tickets WHERE project_id = ? AND ticket_number = 5')
+        .get(DEMO_PROJECT_ID) as { id: number } | undefined
+
+      if (t5) {
+        const existingSessionId = '00000000-0000-4000-b000-000000000001'
+
+        database.prepare(`
+          INSERT INTO agent_invocations (
+            agent_id, trigger_id, session_id, project_id, status,
+            attempts, max_attempts, run_at, context, result,
+            started_at, completed_at, ticket_id
+          ) VALUES (
+            'demo-analyzer', ?, ?, ?, 'completed',
+            1, 3, datetime('now', '-2 hours'), ?, ?,
+            datetime('now', '-2 hours'), datetime('now', '-1 hour'), ?
+          )
+        `).run(
+          trigger1, existingSessionId, DEMO_PROJECT_ID,
+          JSON.stringify({ ticket_number: 5, event: 'ticket.updated' }),
+          JSON.stringify({ summary: 'Middleware ordering issue identified' }),
+          t5.id
+        )
+
+        database.prepare(`
+          INSERT INTO agent_invocations (
+            agent_id, trigger_id, session_id, project_id, status,
+            attempts, max_attempts, run_at, context, result,
+            started_at, completed_at, ticket_id
+          ) VALUES (
+            'demo-coder', ?, ?, ?, 'completed',
+            1, 3, datetime('now', '-90 minutes'), ?, ?,
+            datetime('now', '-90 minutes'), datetime('now', '-1 hour'), ?
+          )
+        `).run(
+          trigger2, existingSessionId, DEMO_PROJECT_ID,
+          JSON.stringify({ ticket_number: 5, event: 'mention.created' }),
+          JSON.stringify({ summary: 'Fixed middleware ordering in api-middleware.ts' }),
+          t5.id
+        )
       }
     }
 
