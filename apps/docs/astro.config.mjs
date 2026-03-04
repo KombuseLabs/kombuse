@@ -3,6 +3,9 @@ import starlight from '@astrojs/starlight'
 import starlightBlog from 'starlight-blog'
 
 export default defineConfig({
+  redirects: {
+    '/': '/guides/getting-started/',
+  },
   integrations: [
     starlight({
       title: 'Kombuse Docs',
