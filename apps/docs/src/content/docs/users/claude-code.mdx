@@ -1,0 +1,120 @@
+---
+title: "Using Kombuse from Claude Code"
+description: "Set up the MCP connection and manage tickets, comments, and agents from Claude Code"
+sidebar:
+  order: 8
+---
+import { Image } from 'astro:assets';
+import WindowFrame from '../../../components/WindowFrame.astro';
+import screenshotInitSection from '../../../assets/claude-code/init-section.png';
+import screenshotTicketList from '../../../assets/claude-code/ticket-list.png';
+import screenshotTicketAgentComments from '../../../assets/claude-code/ticket-agent-comments.png';
+
+Kombuse provides a set of MCP (Model Context Protocol) tools that make project data available to Claude Code. Once connected, Claude Code agents can create and search tickets, add comments, trigger other agents, and query the database — all from the terminal. This guide covers setting up the connection and common workflows for managing work from Claude Code.
+
+## Setting Up the Connection
+
+Open the project in Kombuse and navigate to project settings. Scrolling down reveals the **Initialize Project** section with a button labeled "Initialize Project" and the description "Set up AGENTS.md, MCP config, and .kombuse directory for this project."
+
+Clicking the button creates four items in the project directory:
+
+- `.mcp.json` — the MCP server configuration that tells Claude Code how to connect to Kombuse
+- `AGENTS.md` — a template for guiding AI agents working in the project
+- `.kombuse/` — local config and plugin storage directory
+- A `.gitignore` entry — keeps `.kombuse/` out of version control
+
+<WindowFrame title="Kombuse" cursorX={50} cursorY={80}>
+  <Image src={screenshotInitSection} alt="The Initialize Project section in project settings" />
+</WindowFrame>
+
+The generated `.mcp.json` points Claude Code to the Kombuse MCP bridge:
+
+```json
+{
+  "mcpServers": {
+    "kombuse": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/Applications/Kombuse.app/Contents/Resources/package/server/mcp-bridge.mjs"]
+    }
+  }
+}
+```
+
+The path is resolved automatically based on where Kombuse is installed. After initialization, any Claude Code session started in the project directory automatically connects to Kombuse. Initialization only needs to happen once per project.
+
+## Managing Tickets from Claude Code
+
+Once connected, Claude Code can interact with Kombuse tickets directly. Common operations include:
+
+- **Creating tickets** — asking Claude Code to create a ticket produces a new entry with a title and description using the `create_ticket` tool.
+- **Searching** — full-text search across ticket titles, bodies, and comments is available via `search_tickets`.
+- **Listing and filtering** — `list_tickets` accepts filters for status, assignee, and labels to narrow results.
+- **Updating** — status, priority, labels, and assignees can all be changed using `update_ticket`.
+
+Tickets created from Claude Code appear in Kombuse alongside tickets created through the UI. All standard ticket features work — statuses, priorities, labels, and assignees.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotTicketList} alt="Tickets in Kombuse created and managed by Claude Code agents" />
+</WindowFrame>
+
+## Working with Comments and Agents
+
+Claude Code agents can read ticket comments using `get_ticket` and post responses using `add_comment`. Comments support `@agent` mentions and `#ticket` references.
+
+A typical workflow: a user describes an issue in a ticket, then mentions an agent in a comment to investigate. The agent reads the ticket context and all previous comments, analyzes the codebase, and posts its findings. The user reviews and can mention another agent to implement the fix.
+
+When an agent is configured with triggers in Kombuse, mentioning it in a ticket comment automatically starts a new agent session. The agent receives the full ticket context and can read all prior comments before responding. This creates a natural conversation loop where users and agents collaborate directly on tickets.
+
+<WindowFrame section>
+  <Image src={screenshotTicketAgentComments} alt="A ticket showing a conversation between a user and agents in the comment thread" />
+</WindowFrame>
+
+Agents include a `kombuse_session_id` when posting comments, which lets Kombuse track and display which session produced each response.
+
+## MCP Tools Reference
+
+The following tools are available when Kombuse is connected to Claude Code.
+
+**Tickets and Projects**
+
+| Tool | Description |
+|------|-------------|
+| `create_ticket` | Create a new ticket with title, description, and optional fields |
+| `get_ticket` | Read a ticket with its comments, labels, and metadata |
+| `list_tickets` | List tickets with filtering by status, assignee, and labels |
+| `search_tickets` | Full-text search across ticket titles, bodies, and comments |
+| `update_ticket` | Update status, priority, labels, assignee, title, or body |
+| `list_projects` | List all projects in the workspace |
+| `list_labels` | List all labels available in a project |
+
+**Comments**
+
+| Tool | Description |
+|------|-------------|
+| `add_comment` | Add a comment to a ticket (supports @agent and #ticket mentions) |
+| `get_ticket_comment` | Read a single comment by ID |
+| `update_comment` | Edit a previously posted comment |
+
+**Agents**
+
+| Tool | Description |
+|------|-------------|
+| `list_agents` | List agents with optional project and status filters |
+| `create_agent` | Create a new agent with system prompt, permissions, and triggers |
+| `update_agent` | Update an agent's prompt, permissions, config, or enabled state |
+
+**Database**
+
+| Tool | Description |
+|------|-------------|
+| `query_db` | Run read-only SQL queries against the Kombuse database |
+| `list_tables` | List all tables and views in the database |
+| `describe_table` | Show the schema of a specific table |
+
+**API**
+
+| Tool | Description |
+|------|-------------|
+| `list_api_endpoints` | Discover all available Kombuse REST API endpoints |
+| `call_api` | Call a GET endpoint on the Kombuse API |

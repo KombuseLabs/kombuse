@@ -1,6 +1,8 @@
 ---
 title: "Tickets"
 description: "Create, organize, and track work with tickets"
+sidebar:
+  order: 3
 ---
 import { Image } from 'astro:assets';
 import WindowFrame from '../../../components/WindowFrame.astro';
@@ -117,7 +119,7 @@ Milestones group related tickets to track progress toward a goal. A milestone ba
 To assign a milestone, edit mode is entered and "Set milestone..." is clicked to open the selector. The selector supports searching milestones and creating new ones with a title, optional description, and optional due date.
 
 <WindowFrame title="Kombuse">
-  <Image src={screenshotMilestoneSelector} alt="The milestone selector dropdown showing search and create milestone options" />
+  <Image src={screenshotMilestoneSelector} alt="The milestone selector dropdown showing available milestones with search and create options" />
 </WindowFrame>
 
 In the ticket list, milestones appear as filter buttons alongside labels. Milestone badges are color-coded: blue for open milestones, gray for closed ones.
@@ -129,7 +131,7 @@ The ticket list header shows status counts as clickable filters: **All**, **Open
 Below the status bar, label and milestone buttons allow further filtering. Clicking a label or milestone toggles it as a filter. A **More** button reveals additional labels in a popover with a search input.
 
 <WindowFrame title="Kombuse">
-  <Image src={screenshotFiltersActive} alt="The ticket list with status and label filters active" />
+  <Image src={screenshotFiltersActive} alt="The ticket list filtered by In Progress status with matching result count" />
 </WindowFrame>
 
 Sort controls allow ordering tickets by created date, updated date, last activity, or priority — in ascending or descending order. All filter and sort state is stored in the URL, so filtered views are shareable.

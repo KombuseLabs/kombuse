@@ -1,0 +1,120 @@
+---
+title: "Agent Permissions"
+description: "Control what resources and tools agents can access"
+sidebar:
+  order: 6
+---
+import { Image } from 'astro:assets';
+import WindowFrame from '../../../components/WindowFrame.astro';
+import screenshotPermissionsSection from '../../../assets/agent-permissions/permissions-section.png';
+import screenshotAddResourcePermission from '../../../assets/agent-permissions/add-resource-permission.png';
+import screenshotAddToolPermission from '../../../assets/agent-permissions/add-tool-permission.png';
+import screenshotPermissionBar from '../../../assets/agent-permissions/permission-bar.png';
+import screenshotDecisionLog from '../../../assets/agent-permissions/decision-log.png';
+import screenshotAutoApprovedTools from '../../../assets/agent-permissions/auto-approved-tools.png';
+
+Agent permissions control what an agent can access and do within the workspace. By defining explicit permission rules on each agent, administrators can limit the scope of agent activity to only the resources and tools that are needed.
+
+## Overview
+
+There are two types of permission rules:
+
+**Resource permissions** govern access to data entities such as tickets, comments, labels, and profiles. Each resource permission specifies one or more actions — Read, Create, Update, or Delete — and can be restricted to a particular scope. The wildcard (`*`) grants access to all resources with all actions.
+
+**Tool permissions** govern which tools an agent may invoke during execution, including Bash commands, file operations (Read, Write, Edit), and Kombuse MCP tools. A wildcard tool permission grants access to all tools.
+
+Permissions are configured per agent in the agent's Configuration tab.
+
+## Configuring Permissions
+
+The **Permissions** section is located in the agent's Configuration tab, displayed as a collapsible panel with a Shield icon. When permission rules have been defined, the count appears in parentheses next to the heading (e.g. "Permissions (3 rules)").
+
+<WindowFrame section cursorX={92} cursorY={55}>
+  <Image src={screenshotPermissionsSection} alt="The Permissions section in the agent Configuration tab showing a collapsible panel with a Shield icon and Add Permission button" />
+</WindowFrame>
+
+Clicking **Add Permission** opens an inline form. The **Permission Type** dropdown switches the form between Resource and Tool modes.
+
+For **Resource permissions**, the form presents:
+- **Resource** — a dropdown with preset options (All Resources, Tickets, Comments, Labels, Profiles) and a "Custom pattern…" entry for arbitrary patterns
+- **Actions** — checkboxes for Read, Create, Update, and Delete; selecting "All Actions" disables the individual checkboxes
+- **Filter** — an optional text field to restrict the permission to matching resources (e.g. `project:my-project, status:open`)
+- **Scope** — a dropdown selecting the breadth of the rule (see [Permission Scopes](#permission-scopes) below)
+
+<WindowFrame section>
+  <Image src={screenshotAddResourcePermission} alt="The permission form with Resource type selected, showing resource dropdown, action checkboxes, and scope selector" />
+</WindowFrame>
+
+Switching the Permission Type to **Tool** replaces the resource and action fields with a single **Tool** dropdown. Options include individual MCP tools (such as Get Ticket, Add Comment, Search Tickets), file operation tools (File Read, File Write, File Edit), shell tools (Bash Command), and preset groups (All Tools, All Kombuse Tools).
+
+<WindowFrame section>
+  <Image src={screenshotAddToolPermission} alt="The permission form with Tool type selected, showing the tool dropdown and scope selector" />
+</WindowFrame>
+
+Clicking **Add Permission** saves the new rule. Existing rules appear as bordered cards showing the resource or tool name, the configured actions, the scope badge, and edit and delete icon buttons.
+
+## Permission Scopes
+
+Each permission rule has a **Scope** that defines how broadly the rule applies:
+
+| Scope | Description |
+|-------|-------------|
+| **Invocation** | The permission applies only during the current agent session. Once the session ends, the permission expires. |
+| **Project** | The permission applies to all of the agent's sessions within the same project. |
+| **Global** | The permission applies across every project in the workspace. |
+
+For most use cases, Project scope provides a good balance between security and convenience. Global scope should be used sparingly, as it grants the agent access across the entire workspace.
+
+## Interactive Permission Approval
+
+When an agent attempts to use a tool or access a resource that is not covered by its pre-configured rules, a **Permission Request** bar appears at the bottom of the chat interface during execution.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotPermissionBar} alt="The chat interface where the Permission Request bar appears during agent execution" />
+</WindowFrame>
+
+The Permission Request bar displays:
+- A Shield icon and the uppercase label **Permission Request**
+- A monospace badge with the tool name (e.g. `Bash`, `mcp__kombuse__add_comment`)
+- A description of what the agent wants to do
+- For Bash commands: the full command text in a code block
+- For file operations: the file path
+
+Four response buttons are available:
+
+| Button | Behavior |
+|--------|----------|
+| **Allow** | Permits this single request and lets the agent continue |
+| **Always Allow** | Permits the request and persists the approval — future identical requests are automatically approved without prompting |
+| **Reject** | Denies the request; the agent receives a denial and may try an alternative approach |
+| **Suggest** | Opens a text input where an alternative can be provided; submitting sends a denial with the suggestion as feedback to the agent |
+
+The **Always Allow** action stores approvals persistently: for Bash commands, the command prefix is saved (e.g. `git`) so similar commands are auto-approved in the future; for other tools, the tool name is added to the agent's auto-approved tools list.
+
+## The Permissions Page
+
+The **Permissions** page provides a centralized view of all permission activity across agents in a project. It is accessible from the project sidebar (Shield icon, labeled "Permissions") or via the Command Palette (**Cmd+K** → "Go to Permissions").
+
+The page organizes content into three tabs:
+
+### Decision Log
+
+The default tab shows a chronological history of permission requests. Two filter dropdowns narrow the list by tool name and by behavior (Allowed, Denied, Auto-approved, Pending). A **Refresh** button reloads the list, and a **Load More** button at the bottom paginates results in groups of 50.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotDecisionLog} alt="The Permissions page showing the Decision Log tab with filters for tool name and behavior" />
+</WindowFrame>
+
+Each entry displays a tool-specific icon, a colored behavior badge, the tool name, a description of the action, links to the related ticket or session, and a relative timestamp.
+
+### Auto-Approved Tools
+
+The **Auto-Approved Tools** tab lists agents alongside their effective auto-approved tools and Bash command prefix overrides. Each agent entry can be opened for editing to add or remove auto-approved tool patterns and Bash command prefixes, or to reset the configuration to the agent's preset defaults.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotAutoApprovedTools} alt="The Auto-Approved Tools tab showing per-agent tool override configuration" />
+</WindowFrame>
+
+### Permission Rules
+
+The **Permission Rules** tab provides a read-only overview of all agents and their explicitly configured permission rules. Each agent's name, preset type (if any), rule count, and full permission list are shown for quick reference.
