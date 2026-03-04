@@ -95,10 +95,12 @@ These constraints are non-negotiable. Violations have caused full session failur
 2. **For each screenshot in the script:**
    a. Open an isolated window with `open_window({ isolated: true, width, height })` — use `window_width`/`window_height` from the script entry, or default to 1400×900 if not specified. Reuse an existing window with `navigate_to` when dimensions match.
    b. Navigate to the specified path
-   c. Perform any `actions_before_screenshot` if specified
-   d. Clean up UI state before capture (see UI State Cleanup below)
-   e. Save the screenshot using `save_screenshot` to `apps/docs/src/assets/{filename}`. If the script entry has `focus_rect`, pass it as the `rect` parameter to capture only that region, and set `is_section: true` in the manifest entry for this screenshot.
-   f. Record any issues encountered during this screenshot (selector failures, navigation errors, workarounds) for the execution summary.
+   c. If the script entry has `hide_list_panel: true`, click the layout toggle button (`button[aria-label="Hide list panel"]`) to hide the list panel. This produces a clean full-window screenshot without the list. These are NOT section screenshots — do not set `is_section: true`.
+   d. Perform any `actions_before_screenshot` if specified
+   e. Clean up UI state before capture (see UI State Cleanup below)
+   f. Save the screenshot using `save_screenshot` to `apps/docs/src/assets/{filename}`. If the script entry has `focus_rect`, pass it as the `rect` parameter to capture only that region, and set `is_section: true` in the manifest entry for this screenshot.
+   g. If the list panel was hidden in step c, click the toggle button (`button[aria-label="Show list panel"]`) to restore it for subsequent screenshots.
+   h. Record any issues encountered during this screenshot (selector failures, navigation errors, workarounds) for the execution summary.
 3. **Post a screenshot manifest** as a comment (JSON format below).
 4. **Post an execution summary** as a separate comment (JSON format below). This step is mandatory — post even if no issues were encountered.
 5. **Close all windows** using `close_window`.
@@ -219,6 +221,20 @@ Before taking each screenshot, clean up distracting UI state using `execute_js`:
 
 Always perform cleanup AFTER completing `actions_before_screenshot` and BEFORE calling `save_screenshot`.
 
+## Canonical Interaction Patterns
+
+Use `window.__kombuse` helpers for all UI interactions. These handle Radix UI event quirks reliably — do NOT use manual DOM workarounds.
+
+- **Input values**: `window.__kombuse.setInputValue(selector, value)` — sets value and triggers React state updates
+- **Radix Tabs**: `window.__kombuse.activateTab(selector)` — focuses and presses Space to activate a tab
+- **Radix Select**: `window.__kombuse.openSelect(selector)` — focuses and presses ArrowDown to open a dropdown
+- **Radix Checkbox**: `window.__kombuse.toggleCheckbox(selector)` — dispatches pointer event sequence at element center
+- **Scrolling**: `window.__kombuse.scrollTo(selector)` or `element.scrollIntoView({ behavior: 'instant', block: 'start' })` — the only supported scroll methods. `scrollTop` and `window.scrollTo` do NOT work.
+- **Rect calculation**: `window.__kombuse.getElementRect(selector)` — returns `{x, y, width, height}` for `focus_rect` values in `save_screenshot`
+- **Path redaction**: Call `window.__kombuse.redactPaths()` before every `save_screenshot` call to replace personal filesystem paths with `/Users/demo/...`
+- **Plugin pages**: Use `timeout_ms: 15000` or higher on `navigate_to` for plugin-related pages (filesystem scanning causes slow first loads)
+- **Escape key**: Never press Escape to close a dropdown — it also dismisses the parent dialog. Click outside the dropdown or click a specific option instead.
+
 ## Tips
 
 - Create the asset subdirectory structure by including the full path in `save_screenshot` — the tool creates parent directories automatically
@@ -226,7 +242,7 @@ Always perform cleanup AFTER completing `actions_before_screenshot` and BEFORE c
 - Reuse windows when possible — navigate an existing window instead of opening a new one for each screenshot
 - Use `execute_js` to trigger UI interactions before screenshots. **Important:** top-level `await` does NOT work — always wrap code in an IIFE. Use `var` instead of `const`/`let`. Examples:
   - Click a button: `(function() { document.querySelector('[data-testid="open-modal"]').click(); return 'clicked'; })()`
-  - Fill a React controlled input: `(function() { var el = document.querySelector('input[name="search"]'); var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; setter.call(el, 'hello'); el.dispatchEvent(new Event('input', { bubbles: true })); return 'filled'; })()`
+  - Fill an input: `(function() { return window.__kombuse.setInputValue('input[name="search"]', 'hello'); })()`
   - Wait for an element (with timeout): `(function() { return new Promise(function(resolve, reject) { var timeout = setTimeout(function() { reject(new Error('timeout')); }, 5000); var check = function() { if (document.querySelector('.modal')) { clearTimeout(timeout); resolve('found'); } else { requestAnimationFrame(check); } }; check(); }); })()`
   - Read page text: `(function() { var el = document.querySelector('h1'); return el ? el.textContent : null; })()`
 - Use `wait_for_selector` on `navigate_to` to wait for React content before taking a screenshot, e.g. `navigate_to({ window_id, path: '/tickets', wait_for_selector: '.ticket-list' })`

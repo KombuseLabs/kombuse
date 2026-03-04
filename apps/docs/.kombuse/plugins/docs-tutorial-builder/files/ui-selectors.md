@@ -50,9 +50,17 @@ Use these stable selectors when interacting with the Kombuse desktop app via `ex
 - Edit button: `[data-testid="comment-edit-{id}"]`
 - Delete button: `[data-testid="comment-delete-{id}"]`
 
-### Programmatic Input Helper (Desktop Only)
+### Layout Toggle
+- Hide list panel: `button[aria-label="Hide list panel"]`
+- Show list panel: `button[aria-label="Show list panel"]`
 
-To set a controlled input value (e.g. to type into the chat textarea and trigger mention autocomplete):
+### `window.__kombuse` Helpers (Desktop Only)
+
+These helpers are available on `window.__kombuse` in Electron desktop windows (both regular and isolated). They handle Radix UI event quirks so you don't have to. All helpers return `false` or `null` if the selector matches no element.
+
+#### `setInputValue(selector, value)` → `boolean`
+
+Set a controlled input value. Uses the native value setter and dispatches an input event to trigger React state updates.
 
 ```js
 (function() {
@@ -60,4 +68,76 @@ To set a controlled input value (e.g. to type into the chat textarea and trigger
 })()
 ```
 
-This properly triggers React state updates and mention autocomplete detection. Returns `true` on success, `false` if the element was not found.
+#### `activateTab(selector)` → `boolean`
+
+Activate a Radix Tabs trigger. Focuses the element and dispatches a Space keydown.
+
+```js
+(function() {
+  return window.__kombuse.activateTab('[role="tab"][value="configuration"]');
+})()
+```
+
+#### `openSelect(selector)` → `boolean`
+
+Open a Radix Select dropdown. Focuses the trigger and dispatches ArrowDown keydown.
+
+```js
+(function() {
+  return window.__kombuse.openSelect('[data-testid="model-select-trigger"]');
+})()
+```
+
+#### `toggleCheckbox(selector)` → `boolean`
+
+Toggle a Radix Checkbox. Dispatches a full pointer event sequence at the element's center coordinates.
+
+```js
+(function() {
+  return window.__kombuse.toggleCheckbox('[data-testid="enable-checkbox"]');
+})()
+```
+
+#### `scrollTo(selector)` → `boolean`
+
+Scroll an element into view using `scrollIntoView({ behavior: 'instant', block: 'start' })`.
+
+```js
+(function() {
+  return window.__kombuse.scrollTo('[data-testid="agent-basic-info-scroll"]');
+})()
+```
+
+#### `getElementRect(selector)` → `{x, y, width, height} | null`
+
+Get an element's bounding rectangle as a plain object. Useful for calculating `focus_rect` values for `save_screenshot`.
+
+```js
+(function() {
+  return window.__kombuse.getElementRect('[data-testid="ticket-list-shell"]');
+})()
+```
+
+#### `redactPaths()` → `number`
+
+Replace personal filesystem paths (e.g. `/Users/username/...`) with `/Users/demo/...` in all visible text nodes. Returns the count of replacements made. **Call before every `save_screenshot`.**
+
+```js
+(function() {
+  return window.__kombuse.redactPaths();
+})()
+```
+
+### Interaction Notes
+
+#### Scrolling
+
+Use `scrollIntoView({ behavior: 'instant', block: 'start' })` or `window.__kombuse.scrollTo(selector)`. These are the only supported scroll methods — `scrollTop` and `window.scrollTo` do not work in the Electron renderer context.
+
+#### Escape Key
+
+Never press Escape to close a dropdown — it also dismisses the parent dialog. Click outside the dropdown or click a specific option instead.
+
+#### Plugin Pages
+
+Plugin-related pages (e.g. plugin detail, plugin settings) require `timeout_ms: 15000` or higher on `navigate_to` due to filesystem scanning on first load.
