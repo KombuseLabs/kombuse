@@ -9,6 +9,7 @@ import { useIsMobile } from "../hooks/use-is-mobile";
 import { ModeToggle } from "./mode-toggle";
 
 interface HeaderProps extends React.ComponentProps<"header"> {
+  afterTitle?: ReactNode;
   center?: ReactNode;
   minimal?: boolean;
   onNavigateHome?: () => void;
@@ -19,6 +20,7 @@ interface HeaderProps extends React.ComponentProps<"header"> {
 }
 
 function Header({
+  afterTitle,
   className,
   center,
   minimal,
@@ -46,13 +48,16 @@ function Header({
       )}
       {...props}
     >
-      <button
-        type="button"
-        className="shrink-0 text-xl font-semibold cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0 electron-no-drag"
-        onClick={onNavigateHome}
-      >
-        Kombuse
-      </button>
+      <div className="flex shrink-0 items-center gap-2 electron-no-drag">
+        <button
+          type="button"
+          className="text-xl font-semibold cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0"
+          onClick={onNavigateHome}
+        >
+          Kombuse
+        </button>
+        {afterTitle}
+      </div>
       {!minimal && (
         <div className="flex flex-1 justify-center px-[21px] mt-[10px]">
           {showNavArrows && !isMobile && (

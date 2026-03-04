@@ -33,7 +33,7 @@ src/
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components
 │   ├── header.tsx
-│   ├── layout-toggle.tsx        - Segmented layout toggle buttons (list+detail / detail-only)
+│   ├── layout-toggle.tsx        - Layout toggle button for list panel visibility
 │   ├── profile-button.tsx       - Header user menu dropdown (Profile + Settings)
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks
