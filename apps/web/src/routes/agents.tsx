@@ -571,7 +571,7 @@ export function Agents() {
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {showDetailPanel && listPanelHidden ? (
-          <ResizableCardPanel side="detail">
+          <ResizableCardPanel side="detail" className="pl-3 md:pl-6">
             {agentDetailContent}
           </ResizableCardPanel>
         ) : showDetailPanel ? (

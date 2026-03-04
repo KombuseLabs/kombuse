@@ -33,11 +33,11 @@ function LayoutToggle() {
           type="button"
           variant="ghost"
           size="icon"
-          className={cn("size-7", !listPanelHidden && "bg-accent")}
+          className={cn(!listPanelHidden && "bg-accent")}
           onClick={() => execute()}
           aria-label={listPanelHidden ? "Show list panel" : "Hide list panel"}
         >
-          <PanelLeft className="size-3.5" />
+          <PanelLeft className="size-5" />
         </Button>
       </TooltipTrigger>
       <TooltipContent>

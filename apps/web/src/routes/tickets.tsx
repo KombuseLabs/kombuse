@@ -1204,7 +1204,7 @@ export function Tickets() {
               </ResizablePanel>
             </ResizablePanelGroup>
           ) : (
-            <ResizableCardPanel side="detail">
+            <ResizableCardPanel side="detail" className="pl-3 md:pl-6">
               {ticketDetailContent}
             </ResizableCardPanel>
           )

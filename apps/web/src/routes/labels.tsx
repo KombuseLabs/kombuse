@@ -366,7 +366,7 @@ export function Labels() {
     <div className="flex h-full min-h-0">
       <div className="flex flex-1 overflow-hidden">
         {showDetailPanel && listPanelHidden ? (
-          <ResizableCardPanel side="detail">
+          <ResizableCardPanel side="detail" className="pl-3 md:pl-6">
             {labelDetailContent}
           </ResizableCardPanel>
         ) : showDetailPanel ? (
