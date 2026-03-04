@@ -1,5 +1,6 @@
 import {
   agentInvocationsRepository,
+  agentsRepository,
   commentsRepository,
   DEMO_PROJECT_ID,
   profilesRepository,
@@ -36,7 +37,7 @@ import { broadcastTicketAgentStatus, unregisterBackend } from './backend-registr
 import { buildPersistedContent } from './content-helpers'
 import { buildAgentTemplateContext } from './template-context'
 import { broadcastPermissionPending } from './permission-service'
-import { getEffectivePreset, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from '@kombuse/services'
+import { getEffectivePreset, mergeFilePermissions, presetToAllowedTools, shouldAutoApprove, type AgentTypePreset } from '@kombuse/services'
 import { activeBackends, createPermissionKey, setSessionTurnActive, IDLE_TURN_TIMEOUT_MS } from './runtime-state'
 import type {
   AgentExecutionDependencies,
@@ -436,11 +437,24 @@ function handlePermissionRequest(options: {
   sessionId: KombuseSessionId
   ticketNumber: number | undefined
   projectId: string | undefined
-  preset: AgentTypePreset
+  agentId: string | undefined
+  agentPluginId: string | undefined
   logger: SessionLogger
   emit: (event: AgentExecutionEvent) => void
 }): boolean {
-  const { event, backend, sessionId, ticketNumber, projectId, preset, logger, emit } = options
+  const { event, backend, sessionId, ticketNumber, projectId, agentId, agentPluginId, logger, emit } = options
+
+  // Re-read agent from DB on every permission request so "Always Allow" takes effect immediately
+  const freshAgent = agentId ? agentsRepository.get(agentId) : null
+  const agentType = (freshAgent?.config as { type?: string } | undefined)?.type
+  const dbPreset = getEffectivePreset(agentType, freshAgent?.config, agentPluginId)
+
+  // Merge file-based permissions (project + global) — deny > allow
+  const projectPath = projectId
+    ? projectsRepository.get(projectId)?.local_path?.trim() || undefined
+    : undefined
+  const preset = mergeFilePermissions(dbPreset, projectPath)
+
   if (
     shouldAutoApprove(event.toolName, event.input, preset) &&
     backend.respondToPermission
@@ -929,7 +943,8 @@ export function startAgentChatSession(
             sessionId: appSessionId,
             ticketNumber,
             projectId: effectiveProjectId,
-            preset,
+            agentId: agent?.id,
+            agentPluginId: agent?.plugin_id ?? undefined,
             logger: reusedLogger,
             emit,
           })
@@ -1186,7 +1201,8 @@ export function startAgentChatSession(
           sessionId: appSessionId,
           ticketNumber,
           projectId: effectiveProjectId,
-          preset,
+          agentId: agent?.id,
+          agentPluginId: agent?.plugin_id ?? undefined,
           logger,
           emit,
         })
@@ -1319,7 +1335,8 @@ export function startAgentChatSession(
               sessionId: appSessionId,
               ticketNumber,
               projectId: effectiveProjectId,
-              preset,
+              agentId: agent?.id,
+              agentPluginId: agent?.plugin_id ?? undefined,
               logger,
               emit,
             })

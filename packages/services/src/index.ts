@@ -99,4 +99,7 @@ export { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS, CLAUDE_
 export { getTypePreset, getEffectivePreset, presetToAllowedTools, shouldAutoApprove, getAvailableAgentTypes } from './agent-type-preset-service'
 export type { AgentTypePreset } from './agent-type-preset-service'
 
+// File-based permissions
+export { mergeFilePermissions, appendToProjectPermissions, getProjectPermissionsPath } from './permission-file-service'
+
 export { AnalyticsService, analyticsService } from './analytics-service'

@@ -1,6 +1,6 @@
 import { createAppLogger } from '@kombuse/core/logger'
-import { agentsRepository } from '@kombuse/persistence'
-import { sessionPersistenceService } from '@kombuse/services'
+import { agentsRepository, projectsRepository } from '@kombuse/persistence'
+import { appendToProjectPermissions, sessionPersistenceService } from '@kombuse/services'
 import type { AgentConfig, AgentEvent, ServerMessage } from '@kombuse/types'
 import { wsHub } from '../../websocket/hub'
 import {
@@ -342,6 +342,14 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
   // Persist "Always Allow" to the agent's auto-approved config
   if (behavior === 'allow' && message.alwaysAllow && pendingPerm && session?.agent_id) {
     persistAlwaysAllow(session.agent_id, pendingPerm.toolName, pendingPerm.input)
+
+    // Also write to project-level .kombuse/permissions.json
+    if (pendingPerm.projectId) {
+      const projectPath = projectsRepository.get(pendingPerm.projectId)?.local_path?.trim()
+      if (projectPath) {
+        appendToProjectPermissions(projectPath, pendingPerm.toolName, pendingPerm.input)
+      }
+    }
   }
 
   if (session) {
