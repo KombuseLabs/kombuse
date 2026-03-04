@@ -347,7 +347,11 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
     if (pendingPerm.projectId) {
       const projectPath = projectsRepository.get(pendingPerm.projectId)?.local_path?.trim()
       if (projectPath) {
-        appendToProjectPermissions(projectPath, pendingPerm.toolName, pendingPerm.input)
+        try {
+          appendToProjectPermissions(projectPath, pendingPerm.toolName, pendingPerm.input)
+        } catch (err) {
+          log.error(`Failed to write project permissions file: ${err}`)
+        }
       }
     }
   }

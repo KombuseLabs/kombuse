@@ -24,12 +24,14 @@ export function readPermissionFile(filePath: string): PermissionFileContent | nu
   try {
     const raw = readFileSync(filePath, 'utf-8')
     const parsed = JSON.parse(raw)
-    if (
-      parsed?.permissions &&
-      Array.isArray(parsed.permissions.allow) &&
-      Array.isArray(parsed.permissions.deny)
-    ) {
-      return parsed as PermissionFileContent
+    if (parsed?.permissions && typeof parsed.permissions === 'object') {
+      const allow = Array.isArray(parsed.permissions.allow)
+        ? parsed.permissions.allow.filter((e: unknown) => typeof e === 'string')
+        : []
+      const deny = Array.isArray(parsed.permissions.deny)
+        ? parsed.permissions.deny.filter((e: unknown) => typeof e === 'string')
+        : []
+      return { permissions: { allow, deny } }
     }
     // Invalid format — treat as empty
     return null

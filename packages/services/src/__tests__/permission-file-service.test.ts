@@ -60,18 +60,45 @@ describe('readPermissionFile', () => {
     expect(readPermissionFile(filePath)).toBeNull()
   })
 
-  it('returns null for a file with wrong structure', () => {
+  it('defaults non-array allow to empty', () => {
     const filePath = writePermFile(PROJECT_DIR, {
       permissions: { allow: 'not-an-array', deny: [] },
     })
+    expect(readPermissionFile(filePath)).toEqual({
+      permissions: { allow: [], deny: [] },
+    })
+  })
+
+  it('returns null for a file without permissions object', () => {
+    const filePath = writePermFile(PROJECT_DIR, { other: 'data' })
     expect(readPermissionFile(filePath)).toBeNull()
   })
 
-  it('returns null for a file missing deny array', () => {
+  it('defaults missing deny array to empty', () => {
     const filePath = writePermFile(PROJECT_DIR, {
       permissions: { allow: ['Read'] },
     })
-    expect(readPermissionFile(filePath)).toBeNull()
+    expect(readPermissionFile(filePath)).toEqual({
+      permissions: { allow: ['Read'], deny: [] },
+    })
+  })
+
+  it('defaults missing allow array to empty', () => {
+    const filePath = writePermFile(PROJECT_DIR, {
+      permissions: { deny: ['Bash(rm *)'] },
+    })
+    expect(readPermissionFile(filePath)).toEqual({
+      permissions: { allow: [], deny: ['Bash(rm *)'] },
+    })
+  })
+
+  it('filters non-string entries from allow and deny arrays', () => {
+    const filePath = writePermFile(PROJECT_DIR, {
+      permissions: { allow: ['Read', 123, null, 'Write'], deny: ['Bash(rm *)', true] },
+    })
+    expect(readPermissionFile(filePath)).toEqual({
+      permissions: { allow: ['Read', 'Write'], deny: ['Bash(rm *)'] },
+    })
   })
 })
 
