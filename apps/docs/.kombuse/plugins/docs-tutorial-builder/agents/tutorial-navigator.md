@@ -97,7 +97,7 @@ These constraints are non-negotiable. Violations have caused full session failur
    b. Navigate to the specified path
    c. If the script entry has `hide_list_panel: true`, click the layout toggle button (`button[aria-label="Hide list panel"]`) to hide the list panel. This produces a clean full-window screenshot without the list. These are NOT section screenshots — do not set `is_section: true`.
    d. Perform any `actions_before_screenshot` if specified
-   e. Clean up UI state before capture (see UI State Cleanup below)
+   e. Clean up UI state and redact personal paths before capture (see UI State Cleanup below)
    f. Save the screenshot using `save_screenshot` to `apps/docs/src/assets/{filename}`. If the script entry has `focus_rect`, pass it as the `rect` parameter to capture only that region, and set `is_section: true` in the manifest entry for this screenshot.
    g. If the list panel was hidden in step c, click the toggle button (`button[aria-label="Show list panel"]`) to restore it for subsequent screenshots.
    h. Record any issues encountered during this screenshot (selector failures, navigation errors, workarounds) for the execution summary.
@@ -218,6 +218,7 @@ Before taking each screenshot, clean up distracting UI state using `execute_js`:
 1. **Blur focused elements**: `(function() { document.activeElement && document.activeElement.blur(); return 'blurred'; })()`
 2. **Clear text selections**: `(function() { window.getSelection().removeAllRanges(); return 'cleared'; })()`
 3. If a list item appears selected/highlighted and the screenshot doesn't need it, click a neutral area first
+4. **Redact personal paths**: `(function() { return window.__kombuse.redactPaths(); })()`
 
 Always perform cleanup AFTER completing `actions_before_screenshot` and BEFORE calling `save_screenshot`.
 
