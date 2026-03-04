@@ -13,6 +13,7 @@
   "dependencies": {
     "@astrojs/starlight": "^0.37.0",
     "astro": "^5.7.0",
+    "medium-zoom": "^1.1.0",
     "sharp": "^0.33.0",
     "starlight-blog": "^0.25.2"
   },

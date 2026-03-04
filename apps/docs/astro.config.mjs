@@ -10,6 +10,7 @@ export default defineConfig({
     starlight({
       title: 'Kombuse Docs',
       plugins: [starlightBlog()],
+      customCss: ['./src/styles/custom.css'],
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/KombuseLabs/kombuse' },
       ],
