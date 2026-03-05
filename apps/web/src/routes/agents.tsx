@@ -48,7 +48,6 @@ import {
   useUpdatePlugin,
   usePluginFiles,
   useUpdatePluginFile,
-  useAppContext,
   useIsMobile,
   useProfileSetting,
 } from "@kombuse/ui/hooks";
@@ -63,7 +62,6 @@ const LIST_PANEL_HIDDEN_SETTING_KEY = "layout.listPanelHidden";
 export function Agents() {
   const { projectId: pid, agentId } = useParams<{ projectId: string; agentId?: string }>();
   const projectId = pid!;
-  const { currentProjectId } = useAppContext();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY);
@@ -73,7 +71,7 @@ export function Agents() {
   const isCreating = agentId === "new";
   const basePath = `/projects/${projectId}/agents`;
 
-  const { data: agents, isLoading, error } = useAgents({ project_id: currentProjectId ?? "" });
+  const { data: agents, isLoading, error } = useAgents({ project_id: projectId });
   const { data: profiles } = useAgentProfiles();
   const {
     data: selectedAgentData,
@@ -94,8 +92,8 @@ export function Agents() {
   const toggleTriggerMutation = useToggleTrigger();
 
   // Plugin hooks for onboarding and grouping
-  const { data: availablePlugins } = useAvailablePlugins(currentProjectId ?? "");
-  const { data: installedPlugins } = useInstalledPlugins(currentProjectId ?? "");
+  const { data: availablePlugins } = useAvailablePlugins(projectId);
+  const { data: installedPlugins } = useInstalledPlugins(projectId);
   const installPlugin = useInstallPlugin();
   const installRemotePlugin = useInstallRemotePlugin();
   const updatePlugin = useUpdatePlugin();
@@ -177,12 +175,12 @@ export function Agents() {
 
     if (plugin.directory) {
       installPlugin.mutate(
-        { package_path: plugin.directory, project_id: currentProjectId ?? "" },
+        { package_path: plugin.directory, project_id: projectId },
         callbacks
       );
     } else {
       installRemotePlugin.mutate(
-        { name: plugin.name, version: plugin.version, project_id: currentProjectId ?? "" },
+        { name: plugin.name, version: plugin.version, project_id: projectId },
         callbacks
       );
     }
@@ -245,7 +243,7 @@ export function Agents() {
         avatar_url: newAgentAvatar,
         system_prompt: newAgentPrompt,
         is_enabled: true,
-        project_id: currentProjectId ?? "",
+        project_id: projectId,
       },
       {
         onSuccess: (agent) => {
