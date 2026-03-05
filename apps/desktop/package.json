@@ -1,6 +1,6 @@
 {
   "name": "desktop",
-  "version": "1.0.0-rc.5",
+  "version": "1.0.0-rc.6",
   "private": true,
   "main": "dist/shell/main.mjs",
   "scripts": {
