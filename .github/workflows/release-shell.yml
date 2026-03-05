@@ -49,6 +49,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
+      - name: Rename latest-mac.yml for architecture
+        run: mv apps/desktop/release/latest-mac.yml apps/desktop/release/latest-mac-${{ matrix.arch }}.yml
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -56,14 +59,29 @@ jobs:
           path: |
             apps/desktop/release/*.dmg
             apps/desktop/release/*.zip
-            apps/desktop/release/latest-mac.yml
+            apps/desktop/release/latest-mac-${{ matrix.arch }}.yml
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: shell-release-*
+          merge-multiple: true
+
+      - name: Merge latest-mac.yml from both architectures
+        run: |
+          yq eval-all 'select(fileIndex == 0) * {"files": ([select(fileIndex == 0).files[], select(fileIndex == 1).files[]])}' \
+            latest-mac-arm64.yml latest-mac-x64.yml > latest-mac.yml
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            apps/desktop/release/*.dmg
-            apps/desktop/release/*.zip
-            apps/desktop/release/latest-mac.yml
+            *.dmg
+            *.zip
+            latest-mac.yml
           generate_release_notes: true
