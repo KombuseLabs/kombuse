@@ -14,8 +14,8 @@ interface UseUpdatesReturn {
   isChecking: boolean
   /** Whether we're currently installing an update */
   isInstalling: boolean
-  /** Manually check for updates */
-  checkForUpdates: () => void
+  /** Manually check for updates. Pass force to bypass feed cache. */
+  checkForUpdates: (options?: { force?: boolean }) => void
   /** Download and install the available update */
   installUpdate: () => void
   /** Restart the app to apply the installed update */
@@ -81,8 +81,12 @@ export function useUpdates(): UseUpdatesReturn {
 
   // Check for updates mutation
   const checkMutation = useMutation({
-    mutationFn: async (): Promise<UpdateCheckResult> => {
-      const response = await fetch(`${API_BASE}/updates/check`, { method: 'POST' })
+    mutationFn: async (options?: { force?: boolean }): Promise<UpdateCheckResult> => {
+      const response = await fetch(`${API_BASE}/updates/check`, {
+        method: 'POST',
+        headers: options?.force ? { 'Content-Type': 'application/json' } : undefined,
+        body: options?.force ? JSON.stringify({ force: true }) : undefined,
+      })
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Check failed')
@@ -130,7 +134,7 @@ export function useUpdates(): UseUpdatesReturn {
     status: effectiveStatus,
     isChecking: checkMutation.isPending,
     isInstalling: installMutation.isPending,
-    checkForUpdates: () => checkMutation.mutate(),
+    checkForUpdates: (options?: { force?: boolean }) => checkMutation.mutate(options),
     installUpdate: () => installMutation.mutate(),
     restartApp,
     dismiss,

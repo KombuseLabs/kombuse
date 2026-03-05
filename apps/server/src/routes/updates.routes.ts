@@ -44,12 +44,16 @@ export async function updateRoutes(fastify: FastifyInstance) {
   });
 
   // Check for updates
-  fastify.post("/updates/check", async (_request, reply) => {
+  fastify.post<{ Body?: { force?: boolean } }>("/updates/check", async (request, reply) => {
     if (!autoUpdater) {
       return reply.status(503).send({ error: "Updates not available" });
     }
 
     try {
+      const force = request.body?.force === true;
+      if (force && "clearCache" in autoUpdater && typeof autoUpdater.clearCache === "function") {
+        autoUpdater.clearCache();
+      }
       const result = await autoUpdater.checkForUpdates();
       return result;
     } catch (error) {

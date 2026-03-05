@@ -87,6 +87,17 @@ export class AutoUpdater {
   }
 
   /**
+   * Clear all feed caches so the next check fetches fresh data.
+   */
+  clearCache(): void {
+    for (const feed of this.packageManager.getFeeds()) {
+      if ("clearCache" in feed && typeof feed.clearCache === "function") {
+        feed.clearCache();
+      }
+    }
+  }
+
+  /**
    * Check for a newer package version.
    */
   async checkForUpdates(): Promise<UpdateCheckResult> {

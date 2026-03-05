@@ -163,7 +163,7 @@ export function UpdateStatusDialog() {
             size="sm"
             disabled={isAnyChecking}
             onClick={() => {
-              pkg.checkForUpdates()
+              pkg.checkForUpdates({ force: true })
               shell.checkForUpdates()
             }}
             className="gap-1.5"
