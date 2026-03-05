@@ -68,6 +68,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
   private process: Process | null = null
   private skipResultEvents = false
   private options: Required<ClaudeCodeOptions>
+  private stderrBuffer: string[] = []
 
   constructor(options: ClaudeCodeOptions = {}) {
     super()
@@ -86,6 +87,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     this.starting()
     this.clearBackendSessionId()
     this.skipResultEvents = false
+    this.stderrBuffer = []
 
     const args = this.buildArgs(options)
 
@@ -108,6 +110,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
           this.emitEvent(this.createRawEvent({ pid }, 'process_spawn'))
         },
         onStderr: (data) => {
+          this.stderrBuffer.push(data)
           this.emitEvent(this.createRawEvent({ stderr: data }, 'process_stderr'))
         },
         onExit: (code) => {
@@ -126,7 +129,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
                   sessionId: this.getBackendSessionId(),
                   exitCode: code,
                   success: code === 0,
-                  ...(code === 0 ? {} : { errorMessage: `Claude process exited with code ${code}` }),
+                  ...(code === 0 ? {} : { errorMessage: this.formatExitError(code) }),
                 },
           })
         },
@@ -333,7 +336,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
                 sessionId: this.getBackendSessionId(),
                 exitCode: event.code,
                 success: event.code === 0,
-                ...(event.code === 0 ? {} : { errorMessage: `Claude process exited with code ${event.code}` }),
+                ...(event.code === 0 ? {} : { errorMessage: this.formatExitError(event.code) }),
                 raw: event,
               }
             : null,
@@ -492,6 +495,14 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
       lower.includes('no such session') ||
       /\binvalid session(?:[\s_-]*id)?\b/.test(lower) ||
       /\bunknown session(?:[\s_-]*id)?\b/.test(lower)
+  }
+
+  private formatExitError(code: number | null): string {
+    const base = `Claude process exited with code ${code}`
+    const stderr = this.stderrBuffer.join('').trim()
+    if (!stderr) return base
+    const truncated = stderr.length > 500 ? stderr.slice(-500) : stderr
+    return `${base}\n${truncated}`
   }
 
   private createRawEvent(data: unknown, sourceType?: string): AgentEvent {
