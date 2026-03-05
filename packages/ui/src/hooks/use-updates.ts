@@ -60,13 +60,24 @@ export function useUpdates(): UseUpdatesReturn {
   // Initial status fetch
   const { data: initialStatus } = useQuery({
     queryKey: updateKeys.status,
-    queryFn: async () => {
+    queryFn: async (): Promise<UpdateStatus | null> => {
       try {
         const response = await fetch(`${API_BASE}/updates/status`)
-        if (!response.ok) return null
+        if (response.status === 503) return null // Updates not available (web-only)
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+          console.error('[useUpdates] Status fetch failed:', body)
+          return {
+            state: 'error',
+            currentVersion: '?',
+            updateInfo: null,
+            downloadProgress: 0,
+            error: body?.error ?? `Status fetch failed (${response.status})`,
+          }
+        }
         return response.json() as Promise<UpdateStatus>
       } catch {
-        // Updates API not available
+        // Server not reachable
         return null
       }
     },

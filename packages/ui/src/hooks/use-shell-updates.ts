@@ -49,12 +49,24 @@ export function useShellUpdates(): UseShellUpdatesReturn {
 
   const { data: initialStatus } = useQuery({
     queryKey: updateKeys.shellStatus,
-    queryFn: async () => {
+    queryFn: async (): Promise<UpdateStatus | null> => {
       try {
         const response = await fetch(`${API_BASE}/shell-updates/status`)
-        if (!response.ok) return null
+        if (response.status === 503) return null // Shell updates not available (web-only)
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+          console.error('[useShellUpdates] Status fetch failed:', body)
+          return {
+            state: 'error',
+            currentVersion: '?',
+            updateInfo: null,
+            downloadProgress: 0,
+            error: body?.error ?? `Status fetch failed (${response.status})`,
+          }
+        }
         return response.json() as Promise<UpdateStatus>
       } catch {
+        // Server not reachable
         return null
       }
     },
