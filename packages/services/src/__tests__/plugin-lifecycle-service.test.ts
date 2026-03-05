@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -535,6 +535,90 @@ describe('pluginLifecycleService', () => {
       // Cleanup extra dirs
       rmSync(projectBase, { recursive: true })
       rmSync(globalBase, { recursive: true })
+    })
+
+    it('should match installed plugins when feed returns compound name', async () => {
+      // Simulate an HTTP feed returning compound name (e.g. "kombuse/my-plugin")
+      // while installed plugin uses simple name ("my-plugin")
+      pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'my-plugin',
+        version: '1.0.0',
+        directory: '/tmp/test',
+        manifest: JSON.stringify({
+          name: 'my-plugin',
+          version: '1.0.0',
+          author: 'kombuse',
+          kombuse: {
+            plugin_system_version: 'kombuse-plugin-v1',
+            exported_at: new Date().toISOString(),
+            labels: [],
+          },
+        }),
+      })
+
+      const feedBuilder = await import('../plugin-feed-builder')
+      const spy = vi.spyOn(feedBuilder, 'buildPluginPackageManager').mockReturnValue({
+        search: vi.fn().mockResolvedValue([
+          {
+            name: 'kombuse/my-plugin', // compound name from HTTP feed
+            version: '1.0.0',
+            manifest: { name: 'my-plugin', version: '1.0.0', type: 'plugin', author: 'kombuse' },
+            feedId: 'http:https://registry.example.com',
+          },
+        ]),
+      } as any)
+
+      const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const plugin = available.find((p) => p.name === 'kombuse/my-plugin')
+
+      expect(plugin).toBeDefined()
+      expect(plugin!.installed).toBe(true)
+      expect(plugin!.installed_version).toBe('1.0.0')
+
+      spy.mockRestore()
+    })
+
+    it('should detect updates for installed plugins with compound feed names', async () => {
+      pluginsRepository.create({
+        project_id: TEST_PROJECT_ID,
+        name: 'my-plugin',
+        version: '1.0.0',
+        directory: '/tmp/test',
+        manifest: JSON.stringify({
+          name: 'my-plugin',
+          version: '1.0.0',
+          author: 'kombuse',
+          kombuse: {
+            plugin_system_version: 'kombuse-plugin-v1',
+            exported_at: new Date().toISOString(),
+            labels: [],
+          },
+        }),
+      })
+
+      const feedBuilder = await import('../plugin-feed-builder')
+      const spy = vi.spyOn(feedBuilder, 'buildPluginPackageManager').mockReturnValue({
+        search: vi.fn().mockResolvedValue([
+          {
+            name: 'kombuse/my-plugin',
+            version: '2.0.0', // newer version available
+            manifest: { name: 'my-plugin', version: '2.0.0', type: 'plugin', author: 'kombuse' },
+            feedId: 'http:https://registry.example.com',
+          },
+        ]),
+      } as any)
+
+      const available = await pluginLifecycleService.getAvailablePlugins(TEST_PROJECT_ID)
+      const plugin = available.find((p) => p.name === 'kombuse/my-plugin')
+
+      expect(plugin).toBeDefined()
+      expect(plugin!.installed).toBe(true)
+      expect(plugin!.has_update).toBe(true)
+      expect(plugin!.installed_version).toBe('1.0.0')
+      expect(plugin!.latest_version).toBe('2.0.0')
+
+      spy.mockRestore()
     })
   })
 

@@ -79,7 +79,7 @@ export class PluginLifecycleService {
       if (pkg.manifest.type !== 'plugin') continue
       seen.add(pkg.name)
 
-      const existingInstall = installedByName.get(pkg.name)
+      const existingInstall = installedByName.get(pkg.manifest.name)
 
       results.push({
         name: pkg.name,
@@ -107,7 +107,10 @@ export class PluginLifecycleService {
     const { projectPluginsDir, globalPluginsDir, configSources } = resolvePluginConfig(plugin.project_id)
 
     const pm = buildPluginPackageManager(projectPluginsDir, globalPluginsDir, configSources)
-    const result = await pm.checkForUpdates(plugin.name, plugin.version)
+    const queryName = plugin.manifest.author
+      ? `${plugin.manifest.author}/${plugin.name}`
+      : plugin.name
+    const result = await pm.checkForUpdates(queryName, plugin.version)
 
     return {
       plugin_id: plugin.id,
