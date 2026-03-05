@@ -31,7 +31,7 @@
     "better-sqlite3": "^12.6.2",
     "bindings": "^1.5.0",
     "dotenv": "^17.2.3",
-    "electron-updater": "^6.3.9",
+    "electron-updater": "6.8.3",
     "server": "*"
   },
   "devDependencies": {

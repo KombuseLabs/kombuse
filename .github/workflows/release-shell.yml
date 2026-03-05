@@ -3,7 +3,7 @@ name: Release Shell
 on:
   push:
     tags:
-      - "shell-v*"
+      - "v*"
   workflow_dispatch:
 
 permissions:
