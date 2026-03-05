@@ -41,3 +41,4 @@ publish:
   provider: github
   owner: KombuseLabs
   repo: kombuse
+  tagNamePrefix: shell-v
