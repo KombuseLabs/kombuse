@@ -23,6 +23,15 @@ const SIGNING_ERROR_PATTERNS = [
   "a sealed resource is missing or invalid",
 ];
 
+// Error patterns indicating the release feed is inaccessible (private repo, no token, etc.)
+const FEED_ACCESS_ERROR_PATTERNS = [
+  "404",
+  "403",
+  "401",
+  "authentication token",
+  "not found",
+];
+
 export class ShellUpdater {
   private status: UpdateStatus = {
     state: "idle",
@@ -74,6 +83,15 @@ export class ShellUpdater {
       const lowerMessage = message.toLowerCase();
       if (SIGNING_ERROR_PATTERNS.some((p) => lowerMessage.includes(p))) {
         console.warn("[ShellUpdater] Code-signing error detected, disabling shell auto-updates:", message);
+        this.unsignedBuild = true;
+        this.stopPeriodicChecks();
+        this.setState("idle", { error: null });
+        return;
+      }
+
+      // Detect private repo / auth errors and degrade gracefully
+      if (FEED_ACCESS_ERROR_PATTERNS.some((p) => lowerMessage.includes(p))) {
+        console.warn("[ShellUpdater] Release feed inaccessible (private repo?), disabling shell auto-updates:", message);
         this.unsignedBuild = true;
         this.stopPeriodicChecks();
         this.setState("idle", { error: null });
