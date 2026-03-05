@@ -21,6 +21,8 @@ import {
   useClaudeCodeProjects,
   useImportClaudeCodeProjects,
   useDesktop,
+  useUpdates,
+  useShellUpdates,
 } from "@kombuse/ui/hooks";
 import { deriveProjectNameFromPath } from "../utils/projects-path";
 
@@ -28,6 +30,8 @@ export function Home() {
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: discovered, isLoading: scanLoading } = useClaudeCodeProjects();
   const importMutation = useImportClaudeCodeProjects();
+  const { status: appStatus } = useUpdates();
+  const { status: shellStatus } = useShellUpdates();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
@@ -233,6 +237,17 @@ export function Home() {
           </DialogContent>
         </Dialog>
       </div>
+      {(appStatus?.currentVersion || shellStatus?.currentVersion) && (
+        <footer className="kombuse-fade-up kombuse-delay-2 pt-4 pb-8 text-center text-xs text-muted-foreground">
+          {[
+            appStatus?.currentVersion && `v${appStatus.currentVersion}`,
+            shellStatus?.currentVersion &&
+              `shell v${shellStatus.currentVersion}`,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </footer>
+      )}
     </main>
   );
 }
