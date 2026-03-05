@@ -53,6 +53,7 @@ export class ShellUpdater {
     electronAutoUpdater.autoDownload = false;
     electronAutoUpdater.autoInstallOnAppQuit = false;
     electronAutoUpdater.allowPrerelease = true;
+    electronAutoUpdater.channel = "latest";
 
     // Wire event listeners
     electronAutoUpdater.on("checking-for-update", () => {
