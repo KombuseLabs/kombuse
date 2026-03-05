@@ -76,7 +76,7 @@ export function Home() {
   }
 
   return (
-    <main className="flex flex-col items-center min-h-screen">
+    <main className="flex flex-col items-center min-h-full">
       {/* Hero with splash glow */}
       <section className="relative w-full flex flex-col items-center justify-center py-24 overflow-hidden">
         <div className="kombuse-glow" />
@@ -238,7 +238,7 @@ export function Home() {
         </Dialog>
       </div>
       {(appStatus?.currentVersion || shellStatus?.currentVersion) && (
-        <footer className="kombuse-fade-up kombuse-delay-2 pt-4 pb-8 text-center text-xs text-muted-foreground">
+        <footer className="kombuse-fade-up kombuse-delay-2 mt-auto pt-4 pb-8 text-center text-xs text-muted-foreground">
           {[
             appStatus?.currentVersion && `v${appStatus.currentVersion}`,
             shellStatus?.currentVersion &&
