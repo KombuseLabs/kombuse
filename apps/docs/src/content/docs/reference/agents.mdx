@@ -83,6 +83,24 @@ Selecting an agent and opening the **Configuration** tab reveals controls for ho
 
 Agents that work with tickets can also interact with milestones. Milestones group related tickets to track progress toward a shared goal. For full milestone documentation, see the [Tickets reference](/reference/tickets#milestones).
 
+## Choosing a Backend
+
+Kombuse supports two AI backends for running agents. The backend can be set globally in Settings, overridden per-agent in the Configuration tab, or overridden per-session.
+
+| Feature | Claude Code | Codex |
+|---------|-------------|-------|
+| CLI | `claude` | `codex` |
+| Provider | Anthropic | OpenAI |
+| Default model | Claude Opus 4.6 | Backend default |
+| Model selection | Yes (5 preset models) | Yes (dynamic list) |
+| MCP config location | `~/.claude/settings.local.json` | `~/.codex/config.toml` |
+
+**Claude Code** is the default backend. It uses the `claude` CLI and offers five model options: Claude Opus 4.6 (default), Claude Sonnet 4.6, Claude Haiku 4.5, Claude Sonnet 4.5, and Claude Sonnet 4.
+
+**Codex** uses the `codex` CLI via a JSON-RPC protocol. The available model list is fetched dynamically from the Codex process at runtime. To enable MCP integration for Codex, go to **Settings > Chat** and toggle **Enable MCP for Codex** — this writes the Kombuse MCP server entry to `~/.codex/config.toml`. Toggling this setting stops all active Codex backends.
+
+When an agent runs, the backend is resolved in this order: session override → agent configuration override → user default (Settings > Chat) → fallback to Claude Code.
+
 ## Running Agents from Chat
 
 Agents can be run interactively through the **Chat** page. The Chat page is accessible from the sidebar, and a new session is started by clicking **New Chat**.
@@ -111,3 +129,4 @@ Agents can also be triggered automatically by other events — for example, when
 
 - [Agent Permissions](/reference/agent-permissions) — control what resources and tools agents can access
 - [Agent Triggers](/reference/agent-triggers) — automate agent workflows with event-driven triggers
+- [Settings & Configuration](/reference/settings) — configure the default backend and model preferences

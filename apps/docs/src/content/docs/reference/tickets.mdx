@@ -57,6 +57,21 @@ At the bottom is a comment input for adding comments, @mentioning users or agent
   <Image src={screenshotTicketDetail} alt="A ticket detail view showing status, labels, milestone, description, and activity timeline" />
 </WindowFrame>
 
+## Sessions in the Timeline
+
+When an agent performs actions on a ticket — creating comments, changing status, adding labels — each action appears as a timeline event in the ticket's Activity section. These events are automatically linked to the agent's session, making every change traceable back to the session that produced it.
+
+Timeline events with a linked session display a clickable icon next to the event description. A zap icon (⚡) indicates the session was started by a trigger (such as a `label.added` or `mention.created` event). A message icon indicates the session was started from chat. Hovering over the icon shows a "View session" tooltip.
+
+Clicking the icon opens the Session Viewer panel at the bottom of the ticket detail view, where the full session transcript — including tool calls, permission requests, and agent reasoning — can be reviewed. The URL updates to include a `?session=` parameter, making the link shareable and bookmarkable.
+
+For **completed** or **failed** agent events, two additional buttons appear alongside the session icon:
+
+- **Resume** (play icon) — continues the agent session from where it stopped
+- **Rerun** (rotate icon) — starts the agent fresh on the same ticket
+
+This creates a complete audit trail: every agent action is traceable back to its session, and sessions can be inspected in full from the timeline.
+
 ## Editing Tickets
 
 Clicking the pencil icon in the ticket header enters edit mode. The following fields become editable:
@@ -137,6 +152,14 @@ Below the status bar, label and milestone buttons allow further filtering. Click
 Sort controls allow ordering tickets by created date, updated date, last activity, or priority — in ascending or descending order. All filter and sort state is stored in the URL, so filtered views are shareable.
 
 ## Searching Tickets
+
+Every ticket, comment, and agent decision in Kombuse is stored locally and fully indexed. This makes the entire project history — including agent reasoning, code review feedback, and architectural discussions — instantly searchable.
+
+Search is not just navigation; it is a tool for **traceable decision-making**. When an agent analyzes a bug, plans an implementation, or reviews code, its reasoning is preserved in ticket comments and searchable. Weeks later, searching for a function name or design pattern surfaces not just where it was discussed, but *why* specific decisions were made.
+
+Before starting work on a feature, searching for related tickets can surface previous implementations, agent analyses, and review feedback. The indexed history becomes a knowledge base tailored to the codebase.
+
+This is a key advantage of local-first tooling: the decision trail stays on the machine, private and indexed, rather than scattered across cloud services.
 
 Ticket search is available through the command palette. The search bar at the top of the page (labeled "Search commands and tickets...") or the keyboard shortcut **⌘K** (Ctrl+K on Windows/Linux) opens it.
 

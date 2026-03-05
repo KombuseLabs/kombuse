@@ -10,6 +10,7 @@ import screenshotGeneralTab from '../../../assets/settings/general-tab.png';
 import screenshotChatDefaults from '../../../assets/settings/chat-defaults.png';
 import screenshotBackendMcpSettings from '../../../assets/settings/backend-mcp-settings.png';
 import screenshotAgentTab from '../../../assets/settings/agent-tab.png';
+import screenshotActiveAgentsIndicator from '../../../assets/settings/active-agents-indicator.png';
 
 The Settings page provides controls for appearance, chat defaults, backend lifecycle, agent execution limits, and infrastructure-level configuration. Settings can be opened via the command palette (`Cmd+K`, then search "Open Settings") or with the `Cmd+,` keyboard shortcut.
 
@@ -36,6 +37,42 @@ The **Sidebar** card has five toggles that control which optional sections appea
 The always-visible sidebar sections — Tickets, Chats, Agents, and Labels — cannot be hidden.
 
 The **Notifications** card has one toggle: **Scope to current project**. When enabled (the default), only notifications and active agents for the currently open project are shown.
+
+## Notifications
+
+The notification bell icon appears in the header bar. A red badge shows the count of pending requests (displaying "9+" when more than nine are queued). Clicking the bell opens a popover listing all pending items. When the queue is empty, it shows "No pending requests."
+
+Three notification types are delivered through this interface:
+
+**Permission Requests** (Shield icon, labeled "Permission") are triggered when an agent's tool call requires user approval before proceeding. The card shows the tool name as a monospace badge, a description of what the agent is requesting, and a preview of the command or input. Available actions: **Allow** (approve this one instance), **Always** (always allow this tool going forward), **Deny** (reject the request), and **View** (navigate to the session).
+
+**Plan Reviews** (FileCheck icon, labeled "Plan Review") are triggered when an agent calls ExitPlanMode to present its implementation plan for approval. The card shows the plan description and lists the permissions the agent is requesting as monospace badges. Clicking the plan text opens a full Plan Preview dialog for detailed review. Available actions: **Approve** (allow the agent to proceed with its plan), **Reject** (deny the plan), and **Open** (navigate to the session).
+
+**Agent Questions** (HelpCircle icon, labeled "Input Required") are triggered when an agent calls AskUserQuestion to ask for user input — such as a design decision, preference, or clarification. The card shows the question text and up to four answer options as outlined badges. When an agent asks multiple questions, a "+N more questions" indicator appears below. Action: **Reply** (navigate to the session to answer the questions).
+
+Each notification card includes a link that opens the relevant ticket (with the session panel active) or chat session. See [Agent Permissions](/reference/agent-permissions) for configuring which tool calls require approval.
+
+## Active Agents Indicator
+
+The active agents indicator (bot icon) appears in the header bar next to the notification bell. A green badge shows the count of currently running agent sessions.
+
+Clicking the indicator opens a popover titled "Active Agents (N)" that lists each running session:
+
+- **Agent name** with a running status indicator and elapsed duration (for example, "2m" or "1h 30m")
+- **Ticket reference** — the ticket number and title if the agent is working on a ticket, or "Chat" for standalone chat sessions
+- **Backend badge** — shows which backend is running (for example, "Claude Code")
+- **Model badge** — shows which model is in use (for example, "claude-opus-4-6") or "Backend default"
+- **Open button** — navigates directly to the ticket and session, or to the chat session
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotActiveAgentsIndicator} alt="The Active Agents indicator popover in empty state, showing 'No agents running' and the Backend Status section with Claude Code and Codex listed as available" />
+</WindowFrame>
+
+Below the active sessions, a **Backend Status** section shows all configured backends with availability indicators. A green dot means the backend CLI is installed and available (the version number is shown alongside). An amber dot means the backend CLI was not found on the system. A **Check Again** button appears when any backend is unavailable, allowing re-detection after installation.
+
+If the WebSocket connection is interrupted, an amber "Live updates paused — reconnecting" banner appears at the top of the popover.
+
+The active agents indicator respects the same **Scope to current project** setting as the notification bell.
 
 ## Chat Settings
 
@@ -149,3 +186,4 @@ Both `database` and `plugins` keys are optional — Kombuse uses built-in defaul
 
 - [Getting Started](/guides/getting-started) — download Kombuse and set up your first project
 - [Projects](/reference/projects) — create and configure projects to organize your work
+- [Agent Permissions](/reference/agent-permissions) — configure which tool calls require approval
