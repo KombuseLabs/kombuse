@@ -337,7 +337,7 @@ describe('HttpFeed', () => {
       expect(versions[0]!.manifest.type).toBe('app')
     })
 
-    it('should skip versions where both manifest and entry lack type', async () => {
+    it('should include versions where both manifest and entry lack type', async () => {
       const response = {
         versions: [
           {
@@ -355,7 +355,7 @@ describe('HttpFeed', () => {
 
       const versions = await feed.getVersions('acme/pkg')
 
-      expect(versions).toHaveLength(0)
+      expect(versions).toHaveLength(1)
     })
 
     it('should extract checksum from version entries', async () => {

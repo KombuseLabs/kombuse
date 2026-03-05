@@ -33,7 +33,7 @@ export class AutoUpdater {
 
   constructor() {
     this.packageManager = new PackageManager();
-    this.packageManager.addFeed(new HttpFeed({ baseUrl: UPDATE_API_BASE }));
+    this.packageManager.addFeed(new HttpFeed({ baseUrl: UPDATE_API_BASE, cacheTtlMs: 5 * 60 * 1000 }));
     this.initCurrentVersion();
   }
 

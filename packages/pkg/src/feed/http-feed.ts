@@ -114,7 +114,6 @@ export class HttpFeed implements FeedProvider {
       if (!valid(entry.version)) continue
 
       const resolvedType = entry.manifest?.type ?? entry.type
-      if (!resolvedType) continue
 
       const downloadUrl = entry.download_url.startsWith('http')
         ? entry.download_url
