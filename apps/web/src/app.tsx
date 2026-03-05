@@ -64,7 +64,7 @@ function AppContent() {
 
   return (
     <div
-      className="h-dvh flex flex-col overflow-hidden"
+      className="h-dvh flex flex-col"
       style={isDesktop ? { "--header-height": "2.5rem" } as React.CSSProperties : undefined}
     >
       <FindBar />
