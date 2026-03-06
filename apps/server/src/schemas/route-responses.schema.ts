@@ -373,10 +373,11 @@ registerSuccessSchema('POST', '/api/profiles', profileSchema)
 registerSuccessSchema('PATCH', '/api/profiles/:id', profileSchema)
 
 // Project routes
+const projectWithWarningSchema = projectSchema.extend({ warning: z.string().optional() })
 registerSuccessSchema('GET', '/api/projects', z.array(projectSchema))
 registerSuccessSchema('GET', '/api/projects/:id', projectSchema)
-registerSuccessSchema('POST', '/api/projects', projectSchema)
-registerSuccessSchema('PATCH', '/api/projects/:id', projectSchema)
+registerSuccessSchema('POST', '/api/projects', projectWithWarningSchema)
+registerSuccessSchema('PATCH', '/api/projects/:id', projectWithWarningSchema)
 registerSuccessSchema('POST', '/api/projects/:id/init', initProjectResultSchema)
 
 // Analytics routes

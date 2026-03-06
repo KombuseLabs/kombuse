@@ -4436,3 +4436,239 @@ describe('AGENTS.md system prompt injection', () => {
     expect(startCall.systemPrompt ?? '').not.toContain('<project-instructions>')
   })
 })
+
+describe('startAgentChatSession project path validation', () => {
+  function createPassiveBackend(): AgentBackend {
+    return {
+      name: BACKEND_TYPES.CLAUDE_CODE,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+  }
+
+  function createDeps(backend: AgentBackend, projectPath: string | undefined) {
+    return {
+      getAgent: vi.fn(() => null),
+      processEvent: vi.fn(() => []),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'path-validation-test' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => projectPath),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => ({
+          id: 'session-1',
+          kombuse_session_id: 'path-validation-test',
+          backend_type: BACKEND_TYPES.CLAUDE_CODE,
+          backend_session_id: null,
+          ticket_id: null,
+          agent_id: null,
+          status: 'pending',
+          metadata: {},
+          started_at: new Date().toISOString(),
+          completed_at: null,
+          failed_at: null,
+          aborted_at: null,
+          last_event_seq: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+  }
+
+  /** Wait for the emit callback to receive a 'complete' event. */
+  async function waitForCompletion(events: AgentExecutionEvent[]): Promise<void> {
+    for (let i = 0; i < 50; i++) {
+      if (events.some((e) => e.type === 'complete')) return
+      await new Promise((r) => setTimeout(r, 10))
+    }
+    throw new Error('complete event was not emitted within timeout')
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(existsSync).mockReturnValue(false)
+    vi.mocked(ticketsRepository._getInternal).mockReturnValue(null)
+    vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
+  })
+
+  it('fails with handleRuntimeRunFailure when resolveProjectPath returns undefined', async () => {
+    const backend = createPassiveBackend()
+    const deps = createDeps(backend, undefined)
+    const emittedEvents: AgentExecutionEvent[] = []
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'hello',
+        kombuseSessionId: 'path-validation-test' as KombuseSessionId,
+      },
+      (event) => emittedEvents.push(event),
+      deps as any,
+    )
+
+    await waitForCompletion(emittedEvents)
+
+    expect(backend.start).not.toHaveBeenCalled()
+    const failTransitions = deps.stateMachine.transition.mock.calls.filter((call) => call[1] === 'fail')
+    expect(failTransitions).toHaveLength(1)
+    const completionEvent = emittedEvents.find(
+      (e): e is Extract<AgentExecutionEvent, { type: 'complete' }> => e.type === 'complete',
+    )
+    expect(completionEvent?.status).toBe('failed')
+    expect(completionEvent?.errorMessage).toContain('No valid project directory configured')
+  })
+
+  it('fails with handleRuntimeRunFailure when project path does not exist on disk', async () => {
+    const backend = createPassiveBackend()
+    const deps = createDeps(backend, '/nonexistent/project/path')
+    const emittedEvents: AgentExecutionEvent[] = []
+
+    startAgentChatSession(
+      {
+        type: 'agent.invoke' as const,
+        message: 'hello',
+        kombuseSessionId: 'path-validation-test' as KombuseSessionId,
+      },
+      (event) => emittedEvents.push(event),
+      deps as any,
+    )
+
+    await waitForCompletion(emittedEvents)
+
+    expect(backend.start).not.toHaveBeenCalled()
+    const failTransitions = deps.stateMachine.transition.mock.calls.filter((call) => call[1] === 'fail')
+    expect(failTransitions).toHaveLength(1)
+    const completionEvent = emittedEvents.find(
+      (e): e is Extract<AgentExecutionEvent, { type: 'complete' }> => e.type === 'complete',
+    )
+    expect(completionEvent?.status).toBe('failed')
+    expect(completionEvent?.errorMessage).toContain('Project directory does not exist')
+  })
+})
+
+describe('processEventAndRunAgents trigger abort on missing project path', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(ticketsRepository._getInternal).mockReturnValue(null)
+    ;(agentInvocationsRepository.countRecentByTicketId as ReturnType<typeof vi.fn>).mockReturnValue(0)
+  })
+
+  it('fails invocation when no valid project path can be resolved', async () => {
+    const invocation = {
+      id: 501,
+      agent_id: 'test-agent',
+      trigger_id: 12,
+      event_id: 9734,
+      session_id: null,
+      project_id: '1',
+      kombuse_session_id: null,
+      status: 'pending' as const,
+      attempts: 0,
+      max_attempts: 3,
+      run_at: new Date().toISOString(),
+      context: { ticket_id: 42, project_id: '1' },
+      result: null,
+      error: null,
+      started_at: null,
+      completed_at: null,
+      created_at: new Date().toISOString(),
+    }
+
+    const backend: AgentBackend = {
+      name: BACKEND_TYPES.CLAUDE_CODE,
+      start: vi.fn(async () => {}),
+      stop: vi.fn(async () => {}),
+      send: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      isRunning: vi.fn(() => true),
+      getBackendSessionId: vi.fn(() => undefined),
+    }
+
+    const deps = {
+      getAgent: vi.fn(() => ({
+        id: 'test-agent',
+        system_prompt: '',
+        is_enabled: true,
+        config: { type: 'kombuse' },
+      })),
+      processEvent: vi.fn(() => [invocation]),
+      createBackend: vi.fn(() => backend),
+      generateSessionId: vi.fn(() => 'trigger-test-id' as KombuseSessionId),
+      resolveProjectPath: vi.fn(() => undefined),
+      sessionPersistence: {
+        ensureSession: vi.fn(() => 'session-1'),
+        getSession: vi.fn(() => null),
+        markSessionRunning: vi.fn(),
+        persistEvent: vi.fn(),
+        completeSession: vi.fn(),
+        failSession: vi.fn(),
+        getSessionByKombuseId: vi.fn(() => null),
+        getSessionEvents: vi.fn(() => []),
+      },
+      stateMachine: {
+        transition: vi.fn(),
+        getMetadata: vi.fn(() => ({})),
+        setMetadata: vi.fn(),
+      },
+    }
+
+    // Mock projectsRepository to return a project with no local_path
+    vi.mocked(projectsRepository.getByIdOrSlug).mockReturnValue({
+      id: '1',
+      name: 'Test Project',
+      slug: 'test-project',
+      description: null,
+      owner_id: 'user-1',
+      local_path: null,
+      repo_source: null,
+      repo_owner: null,
+      repo_name: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+
+    const event = {
+      id: 9734,
+      event_type: 'agent.completed',
+      project_id: '1',
+      ticket_id: 42,
+      ticket_number: null,
+      comment_id: null,
+      actor_id: 'other-agent',
+      actor_type: 'agent' as const,
+      kombuse_session_id: 'trigger-upstream',
+      payload: '{}',
+      created_at: new Date().toISOString(),
+      actor: null,
+    }
+
+    await processEventAndRunAgents(event as any, deps as any)
+
+    // Invocation should be marked as failed with a descriptive error
+    const failCalls = (agentInvocationsRepository.update as ReturnType<typeof vi.fn>).mock.calls
+      .filter((args: unknown[]) => {
+        const input = args[1] as Record<string, unknown> | undefined
+        return input?.status === 'failed' && typeof input.error === 'string' && (input.error as string).includes('No valid project directory')
+      })
+    expect(failCalls.length).toBeGreaterThan(0)
+
+    // backend.start should NOT have been called
+    expect(backend.start).not.toHaveBeenCalled()
+  })
+})

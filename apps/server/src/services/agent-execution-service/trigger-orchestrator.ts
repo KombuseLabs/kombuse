@@ -96,7 +96,7 @@ export function resolveProjectPathForProject(projectId: string | null): string |
  * Resolve a deterministic default project path.
  * Uses the first project's local_path to ensure all invocations share the same cwd,
  * regardless of how the server process was started.
- * Falls back to process.cwd() only if no project has local_path configured.
+ * Returns undefined if no project has a valid local_path configured.
  */
 export function resolveDefaultProjectPath(): string | undefined {
   const projects = projectService.list()
