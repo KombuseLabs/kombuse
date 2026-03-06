@@ -277,7 +277,7 @@ describe('ClaudeCodeBackend', () => {
       }
     })
 
-    it('should emit complete event for result type and update session ID', () => {
+    it('should emit message and complete events for successful result with text', () => {
       const msg: ParsedClaudeMessage = {
         data: {
           type: 'result',
@@ -298,14 +298,48 @@ describe('ClaudeCodeBackend', () => {
 
       callHandleMessage(backend, msg)
 
+      expect(events).toHaveLength(3)
+      expect(events[0]!.type).toBe('raw')
+      expect(events[1]!.type).toBe('message')
+      if (events[1]!.type === 'message') {
+        expect(events[1]!.role).toBe('assistant')
+        expect(events[1]!.content).toBe('Success')
+      }
+      expect(events[2]!.type).toBe('complete')
+      if (events[2]!.type === 'complete') {
+        expect(events[2]!.success).toBe(true)
+        expect(events[2]!.errorMessage).toBeUndefined()
+      }
+      expect(backend.getBackendSessionId()).toBe('session_abc')
+    })
+
+    it('should emit only complete event for successful result with empty text', () => {
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'success',
+          uuid: 'test-uuid',
+          session_id: 'session_empty',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: false,
+          num_turns: 1,
+          result: '  ',
+          total_cost_usd: 0.01,
+          usage: { input_tokens: 10, output_tokens: 20 },
+          modelUsage: {},
+          permission_denials: []
+        }
+      }
+
+      callHandleMessage(backend, msg)
+
       expect(events).toHaveLength(2)
       expect(events[0]!.type).toBe('raw')
       expect(events[1]!.type).toBe('complete')
       if (events[1]!.type === 'complete') {
         expect(events[1]!.success).toBe(true)
-        expect(events[1]!.errorMessage).toBeUndefined()
       }
-      expect(backend.getBackendSessionId()).toBe('session_abc')
     })
 
     it('should emit complete before error for failed result', () => {

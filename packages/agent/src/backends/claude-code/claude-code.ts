@@ -448,6 +448,18 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     const errorMessage = isSuccess ? undefined : this.getResultErrorMessage(event)
     const resumeFailed = !isSuccess && this.isResumeFailure(errorMessage)
 
+    if (isSuccess && 'result' in event && typeof event.result === 'string' && event.result.trim()) {
+      events.push({
+        type: 'message',
+        eventId: crypto.randomUUID(),
+        backend: this.name,
+        timestamp: Date.now(),
+        role: 'assistant',
+        content: event.result,
+        raw: event,
+      })
+    }
+
     events.push({
       type: 'complete',
       eventId: crypto.randomUUID(),
