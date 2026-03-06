@@ -29,9 +29,8 @@ mac:
     - dmg
     - zip
   artifactName: "${productName}-${version}-${arch}.${ext}"
-  # Code signing disabled for now - add later:
-  # identity: "Developer ID Application: Your Name (TEAM_ID)"
-  # notarize: true
+  identity: "Philipp Langhans (H7SA7BKZZ2)"
+  notarize: true
 
 # Create symlink for native modules in package directory
 afterPack: ./build/afterPack.cjs
