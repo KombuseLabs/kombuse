@@ -165,11 +165,10 @@ export class ShellUpdater {
 
   quitAndInstall(): void {
     console.log("[ShellUpdater] Quit and install requested");
-    // electron-updater's quitAndInstall fails to relaunch unsigned macOS apps.
-    // The update is already extracted, so we just need to restart.
-    electronAutoUpdater.autoInstallOnAppQuit = true;
-    app.relaunch();
-    app.exit(0);
+    // isSilent=true: no installer UI; isForceRunAfter=true: attempt relaunch.
+    // Relaunch may not work on unsigned macOS builds, but the update will
+    // still be applied — users can manually reopen the app.
+    electronAutoUpdater.quitAndInstall(true, true);
   }
 
   startPeriodicChecks(intervalMs = 24 * 60 * 60 * 1000, initialDelayMs = 10_000): void {
