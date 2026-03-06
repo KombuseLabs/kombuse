@@ -81,10 +81,39 @@ jobs:
 
       - name: Validate updater manifest and release artifacts
         run: |
+          set -euo pipefail
+          echo "--- Validating latest-mac.yml ---"
+
+          # File must exist and be non-empty
           test -s latest-mac.yml
-          grep -q '^files:' latest-mac.yml
-          grep -q 'arm64' latest-mac.yml
-          grep -q 'x64' latest-mac.yml
+
+          # version must be present and non-null
+          VERSION=$(yq '.version' latest-mac.yml)
+          test -n "$VERSION" && test "$VERSION" != "null"
+          echo "version: $VERSION"
+
+          # Exactly 2 file entries (arm64 + x64)
+          FILE_COUNT=$(yq '.files | length' latest-mac.yml)
+          test "$FILE_COUNT" -eq 2
+          echo "files count: $FILE_COUNT"
+
+          # Every files[].sha512 must be non-empty
+          yq -e '[.files[] | .sha512 | length > 0] | all' latest-mac.yml > /dev/null
+
+          # Every files[].url must be non-empty
+          yq -e '[.files[] | .url | length > 0] | all' latest-mac.yml > /dev/null
+
+          # Top-level sha512 must be non-empty
+          yq -e '.sha512 | length > 0' latest-mac.yml > /dev/null
+
+          # Top-level path must be non-empty
+          yq -e '.path | length > 0' latest-mac.yml > /dev/null
+
+          # Both architectures must be represented in file URLs
+          yq -e '[.files[].url] | any(test("arm64"))' latest-mac.yml > /dev/null
+          yq -e '[.files[].url] | any(test("x64"))' latest-mac.yml > /dev/null
+
+          echo "--- Manifest validation passed ---"
           ls -lh *.dmg *.zip latest-mac*.yml
 
       - name: Create GitHub Release
