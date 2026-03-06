@@ -48,6 +48,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import Database from 'better-sqlite3'
+import * as Sentry from '@sentry/node'
 
 const log = createAppLogger('ChatSessionRunner')
 
@@ -976,6 +977,20 @@ export function startAgentChatSession(
           kombuseSessionId: appSessionId,
         })
 
+        if (!followUpLastAssistantMessage.trim()) {
+          Sentry.captureEvent({
+            level: 'warning',
+            message: 'Session completed with no assistant message output',
+            extra: {
+              sessionId: appSessionId,
+              agentId: agent?.id,
+              backendType: resolvedBackendType,
+              ticketNumber,
+              projectId: effectiveProjectId,
+            },
+          })
+        }
+
         emit({
           type: 'complete',
           kombuseSessionId: appSessionId,
@@ -1248,6 +1263,20 @@ export function startAgentChatSession(
         logger,
       })
 
+      if (!lastAssistantMessage.trim()) {
+        Sentry.captureEvent({
+          level: 'warning',
+          message: 'Session completed with no assistant message output',
+          extra: {
+            sessionId: appSessionId,
+            agentId: agent?.id,
+            backendType: resolvedBackendType,
+            ticketNumber,
+            projectId: effectiveProjectId,
+          },
+        })
+      }
+
       emit({
         type: 'complete',
         kombuseSessionId: appSessionId,
@@ -1374,6 +1403,21 @@ export function startAgentChatSession(
             agentId: agent?.id,
             kombuseSessionId: appSessionId,
           })
+
+          if (!lastAssistantMessage.trim()) {
+            Sentry.captureEvent({
+              level: 'warning',
+              message: 'Session completed with no assistant message output',
+              extra: {
+                sessionId: appSessionId,
+                agentId: agent?.id,
+                backendType: resolvedBackendType,
+                ticketNumber,
+                projectId: effectiveProjectId,
+              },
+            })
+          }
+
           emit({
             type: 'complete',
             kombuseSessionId: appSessionId,
