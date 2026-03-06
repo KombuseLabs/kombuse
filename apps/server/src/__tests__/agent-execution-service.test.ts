@@ -97,11 +97,11 @@ describe('shouldAutoApprove', () => {
     expect(shouldAutoApprove('Bash', { command: 'git log --oneline' }, kombusePreset)).toBe(true)
     expect(shouldAutoApprove('Bash', { command: 'git branch -a' }, kombusePreset)).toBe(true)
     expect(shouldAutoApprove('Bash', { command: 'git rev-parse HEAD' }, kombusePreset)).toBe(true)
+    expect(shouldAutoApprove('Bash', { command: 'ls' }, kombusePreset)).toBe(true)
   })
 
   it('rejects non-approved Bash commands for kombuse preset', () => {
     expect(shouldAutoApprove('Bash', { command: 'bun test' }, kombusePreset)).toBe(false)
-    expect(shouldAutoApprove('Bash', { command: 'ls' }, kombusePreset)).toBe(false)
     expect(shouldAutoApprove('Bash', { command: 'git push' }, kombusePreset)).toBe(false)
     expect(shouldAutoApprove('Bash', { command: 'git commit -m "x"' }, kombusePreset)).toBe(false)
   })
