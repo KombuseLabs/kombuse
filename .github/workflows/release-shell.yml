@@ -74,8 +74,10 @@ jobs:
 
       - name: Merge latest-mac.yml from both architectures
         run: |
-          yq eval-all 'select(fileIndex == 0) * {"files": ([select(fileIndex == 0).files[], select(fileIndex == 1).files[]])}' \
-            latest-mac-arm64.yml latest-mac-x64.yml > latest-mac.yml
+          yq eval-all '
+            select(fileIndex == 0) |
+            .files = [select(fileIndex == 0).files[], select(fileIndex == 1).files[]]
+          ' latest-mac-arm64.yml latest-mac-x64.yml > latest-mac.yml
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
