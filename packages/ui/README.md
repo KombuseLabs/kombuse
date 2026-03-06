@@ -2069,7 +2069,8 @@ import { extractPermissionDetail } from '@kombuse/ui/lib/permission-utils'
 const detail = extractPermissionDetail('Bash', { command: 'git checkout main', description: 'Checkout main' })
 // => { label: 'Command', value: 'git checkout main' }
 
-// Supported tools: Bash (command), Read/Write/Edit (file_path),
+// Supported tools: Bash (command), Read/Edit (file_path),
+// Write (file_path for Claude Code, reason+grantRoot for Codex),
 // Grep/Glob (pattern + path), WebFetch (url)
 // Falls back to JSON of input for unknown tools
 // Returns null if detail matches description or no meaningful detail exists

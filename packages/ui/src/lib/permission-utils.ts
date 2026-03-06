@@ -25,10 +25,18 @@ export function extractPermissionDetail(
       break
     }
     case 'Read':
-    case 'Write':
     case 'Edit': {
       if (typeof input.file_path === 'string' && input.file_path) {
         detail = { label: 'File', value: input.file_path }
+      }
+      break
+    }
+    case 'Write': {
+      if (typeof input.file_path === 'string' && input.file_path) {
+        detail = { label: 'File', value: input.file_path }
+      } else if (typeof input.reason === 'string' && input.reason) {
+        const path = typeof input.grantRoot === 'string' ? input.grantRoot : null
+        detail = { label: 'Reason', value: path ? `${input.reason} (${path})` : input.reason }
       }
       break
     }

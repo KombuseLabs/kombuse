@@ -585,8 +585,6 @@ export class CodexBackend extends BaseAgentBackend {
         input: {
           grantRoot: params.grantRoot ?? undefined,
           reason: params.reason ?? undefined,
-          threadId: params.threadId,
-          turnId: params.turnId,
         },
         raw: message,
       })
