@@ -137,6 +137,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     )
 
     try {
+      logger.info('Starting Claude Code', { cliPath: this.options.cliPath, projectPath: options.projectPath })
       await this.process.spawn()
       await waitForRunning(this.process)
       this.started()
@@ -151,9 +152,10 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
         },
       })
     } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      logger.error('Claude Code start failed', { cliPath: this.options.cliPath, error: err.message })
       this.process = null
       if (this.getLifecycleState() !== 'failed' && this.getLifecycleState() !== 'stopped') {
-        const err = error instanceof Error ? error : new Error(String(error))
         this.failed(err.message, {
           reason: 'start_failed',
           error: err,

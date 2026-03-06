@@ -2,6 +2,9 @@ import { execSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
 import type { ProcessBehavior, Process } from '../../types'
 import type { ClaudeEvent } from './types'
+import { createAppLogger } from '@kombuse/core/logger'
+
+const logger = createAppLogger('ClaudeCodeUtils')
 
 /**
  * Parsed message from Claude CLI with optional PID for control requests
@@ -23,6 +26,7 @@ export interface JsonLineCallbacks {
  */
 export function resolveClaudePath(): string {
   if (process.env.CLAUDE_PATH) {
+    logger.info('Resolved claude path from CLAUDE_PATH env', { path: process.env.CLAUDE_PATH })
     return process.env.CLAUDE_PATH
   }
 
@@ -49,12 +53,14 @@ export function resolveClaudePath(): string {
   for (const path of possiblePaths) {
     try {
       accessSync(path, constants.X_OK)
+      logger.info('Resolved claude path', { path })
       return path
     } catch {
       // continue to next path
     }
   }
 
+  logger.warn('Could not find claude binary, falling back to PATH lookup', { triedPaths: possiblePaths })
   return 'claude' // Fallback to PATH lookup
 }
 
@@ -92,6 +98,7 @@ export function createCleanEnv(options?: {
     }
   }
   env.PATH = pathParts.join(':')
+  logger.debug('Constructed clean env', { PATH: env.PATH })
 
   // Enable extended thinking via environment variable
   // This is the documented method (MAX_THINKING_TOKENS sets the token budget)

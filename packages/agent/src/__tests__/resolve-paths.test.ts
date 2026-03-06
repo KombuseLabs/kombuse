@@ -5,10 +5,14 @@ vi.mock('node:fs', () => ({
   accessSync: (...args: unknown[]) => mockAccessSync(...args),
   constants: { X_OK: 1 },
 }))
-vi.mock('fs', () => ({
-  accessSync: (...args: unknown[]) => mockAccessSync(...args),
-  constants: { X_OK: 1 },
-}))
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>()
+  return {
+    ...actual,
+    accessSync: (...args: unknown[]) => mockAccessSync(...args),
+    constants: { X_OK: 1 },
+  }
+})
 
 const mockExecSync = vi.fn()
 vi.mock('node:child_process', () => ({

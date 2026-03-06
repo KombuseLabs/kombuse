@@ -13,6 +13,9 @@ import type {
   Process as IProcess,
 } from '../types'
 import { createProcessError } from '../errors'
+import { createAppLogger } from '@kombuse/core/logger'
+
+const logger = createAppLogger('Process')
 
 // Detect Bun runtime
 const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== 'undefined'
@@ -112,6 +115,8 @@ export class Process implements IProcess {
         ? { ...process.env, ...options.env }
         : options.env || {}
 
+    logger.info('Spawning process', { command: options.command, cwd: options.cwd, runtime: isBun ? 'bun' : 'node' })
+
     try {
       if (isBun) {
         await this._spawnBun(options, env as Record<string, string>)
@@ -129,6 +134,7 @@ export class Process implements IProcess {
         `Failed to spawn ${this.command}: ${err instanceof Error ? err.message : String(err)}`,
         err instanceof Error ? err : undefined
       )
+      logger.error('Process spawn failed', { command: this.command, error: error.message })
       this._status = { state: 'error', error }
       this._callbacks.onError?.(error)
       for (const behavior of this._behaviors) {
@@ -219,6 +225,7 @@ export class Process implements IProcess {
 
     this._subprocess = subprocess
     this._pid = subprocess.pid
+    logger.info('Process spawned (bun)', { pid: subprocess.pid })
     this._status = {
       state: 'running',
       pid: subprocess.pid,
@@ -233,6 +240,7 @@ export class Process implements IProcess {
 
     Promise.all([stdoutDone, stderrDone, subprocess.exited]).then(([,, code]) => {
       const signal = null // Bun doesn't provide signal info on normal exit
+      logger.info('Process exited (bun)', { pid: this._pid, code, signal })
       this._status = {
         state: 'exited',
         pid: this._pid!,
@@ -246,6 +254,7 @@ export class Process implements IProcess {
       }
     }).catch((err) => {
       const error = err instanceof Error ? err : new Error(String(err))
+      logger.error('Process error (bun)', { pid: this._pid, error: error.message })
       this._status = { state: 'error', error }
       this._callbacks.onError?.(error)
       for (const behavior of this._behaviors) {
@@ -268,6 +277,7 @@ export class Process implements IProcess {
 
     this._subprocess = child
     this._pid = child.pid || 0
+    logger.info('Process spawned (node)', { pid: this._pid })
     this._status = { state: 'running', pid: this._pid, startedAt: new Date() }
     this._callbacks.onSpawn?.(this._pid)
 
@@ -280,6 +290,7 @@ export class Process implements IProcess {
     })
 
     child.on('close', (code, signal) => {
+      logger.info('Process exited (node)', { pid: this._pid, code, signal })
       this._status = {
         state: 'exited',
         pid: this._pid!,
@@ -295,6 +306,7 @@ export class Process implements IProcess {
 
     child.on('error', (err) => {
       const error = createProcessError('SPAWN_FAILED', err.message, err)
+      logger.error('Process error (node)', { pid: this._pid, error: error.message })
       this._status = { state: 'error', error }
       this._callbacks.onError?.(error)
       for (const behavior of this._behaviors) {
