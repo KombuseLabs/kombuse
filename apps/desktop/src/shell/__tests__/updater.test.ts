@@ -50,6 +50,15 @@ vi.mock("../package-loader", () => ({
   getPackageManifest: mockGetPackageManifest,
 }));
 
+vi.mock("@kombuse/core/logger", () => ({
+  createAppLogger: () => ({
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+  }),
+}));
+
 import {
   ensurePackagesDir,
   installPackage,

@@ -42,7 +42,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Mocks — must be hoisted before ShellUpdater import
 // ---------------------------------------------------------------------------
 
-const { mockApp, mockAutoUpdater, eventHandlers, resetEventHandlers } = vi.hoisted(() => {
+const { mockApp, mockAutoUpdater, eventHandlers, resetEventHandlers, mockLogger } = vi.hoisted(() => {
   const handlers: Record<string, Function> = {};
   return {
     mockApp: {
@@ -66,12 +66,21 @@ const { mockApp, mockAutoUpdater, eventHandlers, resetEventHandlers } = vi.hoist
         delete handlers[key];
       }
     },
+    mockLogger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
   };
 });
 
 vi.mock("electron", () => ({ app: mockApp }));
 vi.mock("electron-updater", () => ({
   default: { autoUpdater: mockAutoUpdater },
+}));
+vi.mock("@kombuse/core/logger", () => ({
+  createAppLogger: () => mockLogger,
 }));
 
 import { ShellUpdater } from "../shell-updater";
@@ -119,8 +128,6 @@ const MOCK_EU_UPDATE_INFO_NO_DATE = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-let errorSpy: ReturnType<typeof vi.spyOn>;
-
 function createUpdater(): ShellUpdater {
   return new ShellUpdater();
 }
@@ -139,7 +146,7 @@ function fireEvent(event: string, ...args: unknown[]) {
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
-  errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
 
   // Reset mock state
   mockAutoUpdater.autoDownload = true;
@@ -151,6 +158,10 @@ beforeEach(() => {
   mockAutoUpdater.quitAndInstall.mockClear();
   mockApp.getVersion.mockReturnValue("1.0.0-rc.13");
   mockApp.exit.mockClear();
+  mockLogger.debug.mockClear();
+  mockLogger.info.mockClear();
+  mockLogger.warn.mockClear();
+  mockLogger.error.mockClear();
   resetEventHandlers();
 });
 
@@ -627,8 +638,8 @@ describe("periodic checks", () => {
     // Flush the rejected promise
     await vi.advanceTimersByTimeAsync(0);
 
-    // Error should be logged, not thrown
-    expect(errorSpy).toHaveBeenCalled();
+    // Error should be logged via the logger, not thrown
+    expect(mockLogger.error).toHaveBeenCalled();
     // Updater should still be functional
     expect(updater.getStatus().state).toBe("idle");
   });
