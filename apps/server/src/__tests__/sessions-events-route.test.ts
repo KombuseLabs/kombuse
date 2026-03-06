@@ -172,4 +172,69 @@ describe('GET /sessions/:id/events route', () => {
     expect(sinceBody.events).toHaveLength(5)
     expect(sinceBody.events.map((event) => event.seq)).toEqual([201, 203, 205, 207, 209])
   })
+
+  it('excludes cli_pre_normalization events from the response', async () => {
+    const kombuseId = 'chat-pre-norm-filter' as KombuseSessionId
+    const session = sessionsRepository.create({
+      id: 'session-pre-norm-filter',
+      kombuse_session_id: kombuseId,
+    })
+
+    sessionEventsRepository.createMany([
+      {
+        session_id: session.id,
+        kombuse_session_id: kombuseId,
+        seq: 1,
+        event_type: 'message',
+        payload: createEventPayload(1),
+      },
+      {
+        session_id: session.id,
+        kombuse_session_id: kombuseId,
+        seq: 2,
+        event_type: 'raw',
+        payload: {
+          type: 'raw',
+          sourceType: 'cli_pre_normalization',
+          content: 'pre-norm data',
+        },
+      },
+      {
+        session_id: session.id,
+        kombuse_session_id: kombuseId,
+        seq: 3,
+        event_type: 'message',
+        payload: createEventPayload(3),
+      },
+      {
+        session_id: session.id,
+        kombuse_session_id: kombuseId,
+        seq: 4,
+        event_type: 'raw',
+        payload: {
+          type: 'raw',
+          sourceType: 'cli_pre_normalization',
+          content: 'more pre-norm data',
+        },
+      },
+      {
+        session_id: session.id,
+        kombuse_session_id: kombuseId,
+        seq: 5,
+        event_type: 'message',
+        payload: createEventPayload(5),
+      },
+    ])
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/sessions/chat-pre-norm-filter/events',
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json() as SessionEventsResponse
+    expect(body.total).toBe(3)
+    expect(body.events).toHaveLength(3)
+    expect(body.events.map((event) => event.seq)).toEqual([1, 3, 5])
+  })
 })

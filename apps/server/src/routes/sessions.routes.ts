@@ -141,6 +141,12 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       events = events.filter((e) => e.event_type === event_type)
     }
 
+    // Exclude cli_pre_normalization events from session viewer (persisted for debugging, see #738)
+    events = events.filter((e) => {
+      const p = e.payload as Record<string, unknown>
+      return !(p?.type === 'raw' && p?.sourceType === 'cli_pre_normalization')
+    })
+
     const pagedEvents = since_seq === undefined
       ? events.slice(-limit)
       : events.slice(0, limit)
