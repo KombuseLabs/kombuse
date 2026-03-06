@@ -81,6 +81,8 @@ export {
   readUserBackendIdleTimeoutMinutes,
   readMcpAnonymousWriteAccess,
   readNotificationScope,
+  FILE_LOGGING_ENABLED_SETTING_KEY,
+  readFileLoggingEnabled,
 } from './session-preferences-service'
 export type {
   ResolveBackendTypeInput,

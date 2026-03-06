@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { profileSettingsRepository } from '@kombuse/persistence'
-import { CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY } from '@kombuse/services'
+import { CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY, FILE_LOGGING_ENABLED_SETTING_KEY } from '@kombuse/services'
+import { setLogTarget } from '../logger'
 import { upsertProfileSettingSchema } from '../schemas/profile-settings.schema'
 import { rescheduleAllIdleTimeouts } from '../services/agent-execution-service'
 
@@ -35,6 +36,12 @@ export async function profileSettingsRoutes(fastify: FastifyInstance) {
       rescheduleAllIdleTimeouts()
     }
 
+    if (parseResult.data.setting_key === FILE_LOGGING_ENABLED_SETTING_KEY) {
+      if (!process.env.KOMBUSE_LOG_TARGET) {
+        setLogTarget(parseResult.data.setting_value === 'true' ? 'file' : 'console')
+      }
+    }
+
     return setting
   })
 
@@ -52,6 +59,12 @@ export async function profileSettingsRoutes(fastify: FastifyInstance) {
 
     if (request.params.key === CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY) {
       rescheduleAllIdleTimeouts()
+    }
+
+    if (request.params.key === FILE_LOGGING_ENABLED_SETTING_KEY) {
+      if (!process.env.KOMBUSE_LOG_TARGET) {
+        setLogTarget('console')
+      }
     }
 
     return reply.status(204).send()

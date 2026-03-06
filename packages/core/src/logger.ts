@@ -19,8 +19,32 @@ export type LogTarget = 'file' | 'console'
 export type LogLevel = 'info' | 'debug'
 export type AppLogLevel = 'debug' | 'info' | 'warn' | 'error'
 
+let _configuredLogDir: string | null = null
+let _configuredLogTarget: LogTarget | null = null
+
+export function setLogDir(dir: string): void {
+  _configuredLogDir = dir
+}
+
+export function getConfiguredLogDir(): string {
+  return _configuredLogDir ?? join(process.cwd(), 'logs')
+}
+
+export function setLogTarget(target: LogTarget): void {
+  _configuredLogTarget = target
+  closeAppLogger()
+}
+
+export function resetLogConfig(): void {
+  _configuredLogDir = null
+  _configuredLogTarget = null
+}
+
 function resolveLogTarget(): LogTarget {
-  return process.env.KOMBUSE_LOG_TARGET === 'console' ? 'console' : 'file'
+  if (process.env.KOMBUSE_LOG_TARGET === 'console') return 'console'
+  if (process.env.KOMBUSE_LOG_TARGET === 'file') return 'file'
+  if (_configuredLogTarget) return _configuredLogTarget
+  return 'file'
 }
 
 function resolveLogLevel(): LogLevel {
@@ -36,7 +60,7 @@ function resolveAppLogLevel(): AppLogLevel {
 }
 
 function getLogDir(): string {
-  return join(process.cwd(), 'logs')
+  return _configuredLogDir ?? join(process.cwd(), 'logs')
 }
 
 // ---------------------------------------------------------------------------

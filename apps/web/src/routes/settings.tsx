@@ -43,6 +43,7 @@ const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout
 const NOTIFICATIONS_SCOPE_SETTING_KEY = 'notifications.scope_to_project'
 const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
 const LIST_PANEL_HIDDEN_SETTING_KEY = 'layout.listPanelHidden'
+const FILE_LOGGING_ENABLED_SETTING_KEY = 'logging.file_enabled'
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
@@ -58,6 +59,7 @@ export function Settings() {
   const { data: notificationScopeSetting } = useProfileSetting(USER_PROFILE_ID, NOTIFICATIONS_SCOPE_SETTING_KEY)
   const { data: mcpAnonWriteSetting } = useProfileSetting(USER_PROFILE_ID, MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY)
   const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY)
+  const { data: fileLoggingSetting } = useProfileSetting(USER_PROFILE_ID, FILE_LOGGING_ENABLED_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const { data: claudeCodeMcpStatus, isLoading: claudeCodeMcpStatusLoading } = useClaudeCodeMcpStatus()
@@ -78,6 +80,7 @@ export function Settings() {
   const claudeCodeMcpEnabled = claudeCodeMcpStatus?.enabled === true
   const mcpAnonymousWriteAllowed = mcpAnonWriteSetting?.setting_value === 'allowed'
   const showListPanel = listPanelSetting?.setting_value !== 'true'
+  const fileLoggingEnabled = fileLoggingSetting?.setting_value === 'true'
 
   useEffect(() => {
     setMaxChainDepthValue(maxChainDepthSetting?.setting_value ?? '')
@@ -286,6 +289,36 @@ export function Settings() {
                     profile_id: USER_PROFILE_ID,
                     setting_key: NOTIFICATIONS_SCOPE_SETTING_KEY,
                     setting_value: checked ? 'project' : 'all',
+                  })
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Logging */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Logging</CardTitle>
+            <CardDescription>Configure diagnostic logging.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="file-logging-enabled" className="font-normal">Enable file logging</Label>
+                <p className="text-sm text-muted-foreground">
+                  Write diagnostic logs to <code>~/.kombuse/logs/</code> for troubleshooting.
+                  Logs are automatically pruned after 7 days.
+                </p>
+              </div>
+              <Switch
+                id="file-logging-enabled"
+                checked={fileLoggingEnabled}
+                onCheckedChange={(checked) => {
+                  upsertSetting.mutate({
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: FILE_LOGGING_ENABLED_SETTING_KEY,
+                    setting_value: checked ? 'true' : 'false',
                   })
                 }}
               />

@@ -56,7 +56,10 @@ import {
 } from "./services/agent-execution-service";
 import { createResponseValidationHook } from "./schemas/response-validation.schema";
 import { resolveProjectSlug } from "./hooks/resolve-project-slug";
-import { createAppLogger, closeAppLogger, pruneOldLogs, setAppLoggerOnLog } from "./logger";
+import { createAppLogger, closeAppLogger, pruneOldLogs, setAppLoggerOnLog, setLogDir, setLogTarget } from "./logger";
+import { readFileLoggingEnabled } from "@kombuse/services";
+import { join } from "node:path";
+import { homedir } from "node:os";
 
 const serverLog = createAppLogger('Server');
 
@@ -114,6 +117,13 @@ export async function createServer({ port, dbPath, desktop, isolated }: ServerOp
       );
     }
   }, 60_000);
+
+  // Point log directory to ~/.kombuse/logs/ and configure target from user setting
+  setLogDir(join(homedir(), '.kombuse', 'logs'))
+  if (!process.env.KOMBUSE_LOG_TARGET) {
+    const fileLoggingEnabled = readFileLoggingEnabled()
+    setLogTarget(fileLoggingEnabled ? 'file' : 'console')
+  }
 
   pruneOldLogs();
 

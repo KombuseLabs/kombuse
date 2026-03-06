@@ -34,6 +34,10 @@ import {
   closeAppLogger,
   pruneOldLogs,
   setAppLoggerOnLog,
+  setLogDir,
+  setLogTarget,
+  getConfiguredLogDir,
+  resetLogConfig,
 } from '../logger'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 
@@ -93,6 +97,7 @@ beforeEach(() => {
   mockEnd.mockClear()
   mockUnlinkSync.mockClear()
   closeAppLogger()
+  resetLogConfig()
   delete process.env.KOMBUSE_LOG_LEVEL
   delete process.env.KOMBUSE_LOG_TARGET
   delete process.env.KOMBUSE_LOG_RETENTION_DAYS
@@ -540,5 +545,75 @@ describe('setAppLoggerOnLog', () => {
     logger.error('test')
 
     expect(callback).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Log configuration tests
+// ---------------------------------------------------------------------------
+
+describe('log configuration', () => {
+  afterEach(() => {
+    resetLogConfig()
+  })
+
+  it('setLogDir changes the directory used by getConfiguredLogDir', () => {
+    setLogDir('/custom/log/path')
+    expect(getConfiguredLogDir()).toBe('/custom/log/path')
+  })
+
+  it('getConfiguredLogDir returns cwd/logs by default', () => {
+    const { join } = require('node:path')
+    expect(getConfiguredLogDir()).toBe(join(process.cwd(), 'logs'))
+  })
+
+  it('setLogTarget to file makes new loggers write to file', () => {
+    setLogTarget('file')
+    const logger = createAppLogger('Test')
+
+    logger.info('file mode')
+
+    expect(mockWrite).toHaveBeenCalledOnce()
+    expect(logSpy).not.toHaveBeenCalled()
+  })
+
+  it('setLogTarget to console makes new loggers use console', () => {
+    setLogTarget('console')
+    const logger = createAppLogger('Test')
+
+    logger.info('console mode')
+
+    expect(logSpy).toHaveBeenCalledOnce()
+    expect(mockWrite).not.toHaveBeenCalled()
+  })
+
+  it('KOMBUSE_LOG_TARGET env var takes precedence over setLogTarget', () => {
+    process.env.KOMBUSE_LOG_TARGET = 'console'
+    setLogTarget('file')
+    const logger = createAppLogger('Test')
+
+    logger.info('env wins')
+
+    expect(logSpy).toHaveBeenCalledOnce()
+    expect(mockWrite).not.toHaveBeenCalled()
+  })
+
+  it('setLogTarget closes existing shared stream', () => {
+    const logger = createAppLogger('Test', { target: 'file' })
+    logger.info('create stream')
+
+    setLogTarget('console')
+
+    expect(mockEnd).toHaveBeenCalledOnce()
+  })
+
+  it('resetLogConfig restores defaults', () => {
+    setLogDir('/custom')
+    setLogTarget('console')
+
+    resetLogConfig()
+
+    const { join } = require('node:path')
+    expect(getConfiguredLogDir()).toBe(join(process.cwd(), 'logs'))
   })
 })

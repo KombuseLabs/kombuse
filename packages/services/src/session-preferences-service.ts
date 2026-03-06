@@ -8,6 +8,7 @@ export const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chai
 export const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_timeout_minutes'
 export const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
 export const NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY = 'notifications.scope_to_project'
+export const FILE_LOGGING_ENABLED_SETTING_KEY = 'logging.file_enabled'
 export const MAX_CHAIN_DEPTH = 15
 
 interface BackendCapability {
@@ -137,4 +138,11 @@ export function readNotificationScope(
   const setting = profileSettingsRepository.get(profileId, NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY)
   if (setting?.setting_value === 'all') return 'all'
   return 'project'
+}
+
+export function readFileLoggingEnabled(
+  profileId: string = DEFAULT_PREFERENCE_PROFILE_ID
+): boolean {
+  const setting = profileSettingsRepository.get(profileId, FILE_LOGGING_ENABLED_SETTING_KEY)
+  return setting?.setting_value === 'true'
 }
