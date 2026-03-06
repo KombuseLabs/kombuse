@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
@@ -116,9 +117,20 @@ export async function createServer({ port, dbPath, desktop, isolated }: ServerOp
 
   pruneOldLogs();
 
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV || "development",
+      release: process.env.SENTRY_RELEASE,
+      tracesSampleRate: 0.1,
+    });
+  }
+
   const fastify = Fastify({
     logger: false,
   });
+
+  Sentry.setupFastifyErrorHandler(fastify);
 
   fastify.addHook("preSerialization", createResponseValidationHook());
   fastify.addHook("preHandler", resolveProjectSlug);
