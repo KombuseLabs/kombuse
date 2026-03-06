@@ -27,6 +27,8 @@ import * as Sentry from "@sentry/electron";
 
 Sentry.init({
   dsn: "https://5812d23da71018e134e320af2e175115@o4510997023555584.ingest.us.sentry.io/4510997025193984",
+  release: app.getVersion(),
+  environment: process.env.NODE_ENV || "production",
   integrations: [Sentry.captureConsoleIntegration({ levels: ['warn', 'error'] })],
 });
 
