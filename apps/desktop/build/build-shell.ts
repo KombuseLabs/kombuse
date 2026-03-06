@@ -47,6 +47,7 @@ async function buildShell() {
       js: "import{createRequire}from'module';const require=createRequire(import.meta.url);",
     },
     outfile: join(ROOT, "dist/shell/main.mjs"),
+    logOverride: { "import-is-undefined": "silent" },
     plugins: [...sentryPlugins],
   });
 
@@ -60,6 +61,7 @@ async function buildShell() {
     format: "cjs",
     external: ["electron"],
     outfile: join(ROOT, "dist/shell/preload.cjs"),
+    logOverride: { "import-is-undefined": "silent" },
     plugins: [...sentryPlugins],
   });
 
