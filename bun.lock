@@ -16,8 +16,9 @@
     },
     "apps/desktop": {
       "name": "desktop",
-      "version": "1.0.0-rc.13",
+      "version": "1.0.0-rc.18",
       "dependencies": {
+        "@kombuse/core": "*",
         "@kombuse/pkg": "*",
         "@kombuse/types": "*",
         "@sentry/electron": "^7.9.0",
@@ -126,6 +127,7 @@
       "name": "@kombuse/agent",
       "version": "0.1.0",
       "dependencies": {
+        "@kombuse/core": "*",
         "@kombuse/types": "*",
         "zod": "^4.0.0",
       },
@@ -195,6 +197,7 @@
       "name": "@kombuse/persistence",
       "version": "0.1.0",
       "dependencies": {
+        "@kombuse/core": "*",
         "@kombuse/types": "*",
       },
       "devDependencies": {

@@ -9,6 +9,9 @@
 import { existsSync, lstatSync, readFileSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { app } from "electron";
+import { createAppLogger } from "@kombuse/core/logger";
+
+const logger = createAppLogger("PackageLoader");
 import { getCurrentPackagePath } from "../paths";
 import { is } from "../env";
 
@@ -77,7 +80,7 @@ export function getPackagePath(): string {
   // First run: fall back to bundled package
   const bundledPath = getBundledPackagePath();
   if (existsSync(bundledPath)) {
-    console.log("No installed package found, using bundled package");
+    logger.info("No installed package found, using bundled package");
     return bundledPath;
   }
 
@@ -122,8 +125,8 @@ export function getPackageInfo(): PackageInfo {
   if (path !== getBundledPackagePath() && manifest.minShellVersion) {
     const shellVersion = app.getVersion();
     if (isVersionLessThan(shellVersion, manifest.minShellVersion)) {
-      console.warn(
-        `[Package] Installed package requires shell >=${manifest.minShellVersion}, ` +
+      logger.warn(
+        `Installed package requires shell >=${manifest.minShellVersion}, ` +
           `current shell is ${shellVersion}. Falling back to bundled package.`
       );
       const bundledPath = getBundledPackagePath();
@@ -164,7 +167,7 @@ function ensureNativeModulesLink(serverBundlePath: string): void {
 
   const nativeModulesDir = join(process.resourcesPath, "app.asar.unpacked", "node_modules");
   if (!existsSync(nativeModulesDir)) {
-    console.warn("[native] Native modules not found:", nativeModulesDir);
+    logger.warn(`Native modules not found: ${nativeModulesDir}`);
     return;
   }
 
@@ -187,7 +190,7 @@ function ensureNativeModulesLink(serverBundlePath: string): void {
   }
 
   symlinkSync(nativeModulesDir, nodeModulesLink);
-  console.log(`[native] Linked: ${nodeModulesLink} -> ${nativeModulesDir}`);
+  logger.info(`Linked: ${nodeModulesLink} -> ${nativeModulesDir}`);
 }
 
 /**

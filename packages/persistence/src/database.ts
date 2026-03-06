@@ -3,7 +3,10 @@ import type { Database as DatabaseType } from 'better-sqlite3'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { join, resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
+import { createAppLogger } from '@kombuse/core/logger'
 import { loadKombuseConfig, getKombuseDir, resolveDbPath } from './config.repository'
+
+const logger = createAppLogger('Database')
 
 export type { Database as DatabaseType } from 'better-sqlite3'
 
@@ -39,7 +42,7 @@ export function initializeDatabase(dbPath?: string): DatabaseType {
     ? resolveDbPath(config.database.path)
     : undefined
   const resolvedPath = dbPath ?? configPath ?? defaultPath
-  console.log(`Initializing database at ${resolve(resolvedPath)}`)
+  logger.info(`Initializing database at ${resolve(resolvedPath)}`)
   // Ensure directory exists
   const dataDir = join(resolvedPath, '..')
   if (!existsSync(dataDir)) {

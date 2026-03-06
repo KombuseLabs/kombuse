@@ -1,6 +1,9 @@
 import { BrowserWindow } from "electron";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { createAppLogger } from "@kombuse/core/logger";
+
+const logger = createAppLogger("DesktopAPI");
 
 export interface DesktopApiOptions {
   createWindow: (opts?: { path?: string; width?: number; height?: number; deferLoad?: boolean }) => BrowserWindow;
@@ -76,7 +79,7 @@ export async function desktopApiPlugin(
       const webContentsId = win.webContents.id;
       opts.windowServerPortMap.set(webContentsId, isolatedServer.port);
       win.on("closed", () => {
-        void isolatedServer.close().catch(console.error);
+        void isolatedServer.close().catch((err) => logger.error("Failed to close isolated server", { error: String(err) }));
         opts.windowServerPortMap.delete(webContentsId);
       });
 

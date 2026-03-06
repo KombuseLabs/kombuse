@@ -7,6 +7,9 @@
  */
 
 import { contextBridge, ipcRenderer } from "electron";
+import { createAppLogger } from "@kombuse/core/logger";
+
+const logger = createAppLogger("Preload");
 
 contextBridge.exposeInMainWorld("electron", {
   /**
@@ -141,5 +144,5 @@ contextBridge.exposeInMainWorld("__kombuse", {
   },
 });
 } catch (err) {
-  console.error("[Preload] Failed to expose __kombuse helpers:", err);
+  logger.error("Failed to expose __kombuse helpers", { error: err instanceof Error ? err.message : String(err) });
 }

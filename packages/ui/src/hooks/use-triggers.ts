@@ -4,7 +4,10 @@ import type {
   CreateAgentTriggerInput,
   UpdateAgentTriggerInput,
 } from '@kombuse/types'
+import { createBrowserLogger } from '@kombuse/core/browser-logger'
 import { triggersApi, labelsApi } from '../lib/api'
+
+const logger = createBrowserLogger('Triggers')
 import { triggerKeys } from '../lib/query-keys'
 import { useAppContext } from './use-app-context'
 
@@ -14,7 +17,7 @@ function useRefreshSmartLabels() {
     if (currentProjectId) {
       labelsApi.getSmartLabelIds(currentProjectId).then((ids) => {
         setSmartLabelIds(new Set(ids))
-      }).catch((err) => console.error('[use-smart-labels] Failed to refresh smart label IDs:', err))
+      }).catch((err) => logger.error('Failed to refresh smart label IDs', { error: err instanceof Error ? err.message : String(err) }))
     }
   }, [currentProjectId, setSmartLabelIds])
 }

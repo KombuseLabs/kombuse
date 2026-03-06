@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback, type ReactNode } from 'react'
 import type { ClientMessage, ServerMessage } from '@kombuse/types'
+import { createBrowserLogger } from '@kombuse/core/browser-logger'
 import { WebSocketCtx, type MessageHandler } from './websocket-context'
+
+const logger = createBrowserLogger('WebSocket')
 
 interface WebSocketProviderProps {
   children: ReactNode
@@ -81,7 +84,7 @@ function createTopicManager(
       activeTopics = new Set()
       const desired = getDesiredTopics()
       if (desired.size > 0) {
-        console.log('[ws] connected, subscribing to:', [...desired])
+        logger.info(`connected, subscribing to: ${[...desired].join(', ')}`)
       }
       reconcile()
     },
@@ -171,11 +174,11 @@ export function WebSocketProvider({
             try {
               handler(message)
             } catch (err) {
-              console.error('[ws-provider] handler error:', err)
+              logger.error('handler error', { error: err instanceof Error ? err.message : String(err) })
             }
           })
         } catch (err) {
-          console.error('[ws-provider] parse error:', err)
+          logger.error('parse error', { error: err instanceof Error ? err.message : String(err) })
         }
       }
 

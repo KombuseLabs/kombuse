@@ -1,4 +1,7 @@
 import { execSync } from 'node:child_process'
+import { createAppLogger } from '@kombuse/core/logger'
+
+const logger = createAppLogger('FixPath')
 
 const DELIM = '__KOMBUSE_PATH__'
 
@@ -21,6 +24,6 @@ export function fixMacOsPath(): void {
       process.env.PATH = match[1]
     }
   } catch (err) {
-    console.warn('[fix-path] Failed to extract PATH from shell:', err instanceof Error ? err.message : err)
+    logger.warn(`Failed to extract PATH from shell: ${err instanceof Error ? err.message : String(err)}`)
   }
 }

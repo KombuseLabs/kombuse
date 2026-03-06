@@ -1,6 +1,9 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, resolve, isAbsolute } from 'path'
 import type { KombuseConfig } from '@kombuse/types'
+import { createAppLogger } from '@kombuse/core/logger'
+
+const logger = createAppLogger('Config')
 
 export function resolveEnvToken(value: string): string {
   if (!value.startsWith('$')) return value
@@ -57,12 +60,12 @@ export function loadKombuseConfig(configPath?: string): KombuseConfig {
     const raw = readFileSync(path, 'utf-8')
     const parsed = JSON.parse(raw)
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      console.warn(`[Kombuse] Invalid config (expected object): ${path}`)
+      logger.warn(`Invalid config (expected object): ${path}`)
       return {}
     }
     return parsed as KombuseConfig
   } catch (err) {
-    console.warn(`[Kombuse] Failed to read config: ${path}`, err)
+    logger.warn(`Failed to read config: ${path}`, { error: err instanceof Error ? err.message : String(err) })
     return {}
   }
 }

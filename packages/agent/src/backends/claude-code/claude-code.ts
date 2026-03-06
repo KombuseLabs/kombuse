@@ -6,7 +6,10 @@ import {
   type StartOptions,
 } from '../../types'
 import { Process, waitForRunning } from '../../utils'
+import { createAppLogger } from '@kombuse/core/logger'
 import { BaseAgentBackend } from '../base-agent-backend'
+
+const logger = createAppLogger('ClaudeCode')
 import { resolveClaudePath, createCleanEnv, createJsonLineBehavior, type ParsedClaudeMessage } from './utils'
 import type { ClaudeAssistantMessage, ClaudeContentBlock, ClaudeEvent, ClaudeResultMessage, ClaudeUserMessage } from './types'
 
@@ -488,7 +491,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
 
     if (isSuccess && !this.hasEmittedAssistantMessage && !emittedMessageFromResult) {
       const resultField = 'result' in event ? event.result : undefined
-      console.warn('[claude-code] Session completed successfully with no assistant message', {
+      logger.warn('Session completed successfully with no assistant message', {
         sessionId: event.session_id,
         resultType: typeof resultField,
         resultLength: typeof resultField === 'string' ? resultField.length : undefined,

@@ -6,7 +6,10 @@
  */
 
 import { join } from "node:path";
+import { createAppLogger } from "@kombuse/core/logger";
 import { PackageManager, HttpFeed } from "@kombuse/pkg";
+
+const logger = createAppLogger("AutoUpdater");
 import type { DownloadProgress } from "@kombuse/pkg";
 import type { UpdateInfo, UpdateStatus, UpdateCheckResult, UpdateState } from "@kombuse/types";
 import { installPackage, listPackages } from "./updater";
@@ -43,19 +46,19 @@ export class AutoUpdater {
       const current = packages.find((p) => p.isCurrent);
       if (current) {
         this.status.currentVersion = current.version;
-        console.log(`[AutoUpdater] Current version from installed packages: ${current.version}`);
+        logger.info(`Current version from installed packages: ${current.version}`);
       } else {
         // Fallback: read version from the bundled package manifest
         try {
           const bundledManifest = getPackageManifest(getBundledPackagePath());
           this.status.currentVersion = bundledManifest.version;
-          console.log(`[AutoUpdater] Current version from bundled package: ${bundledManifest.version}`);
+          logger.info(`Current version from bundled package: ${bundledManifest.version}`);
         } catch {
-          console.log(`[AutoUpdater] No installed or bundled package found, using default: ${this.status.currentVersion}`);
+          logger.info(`No installed or bundled package found, using default: ${this.status.currentVersion}`);
         }
       }
     } catch (err) {
-      console.log(`[AutoUpdater] Error reading packages: ${err}`);
+      logger.info(`Error reading packages: ${err}`);
     }
   }
 
@@ -101,12 +104,12 @@ export class AutoUpdater {
    * Check for a newer package version.
    */
   async checkForUpdates(): Promise<UpdateCheckResult> {
-    console.log(`[AutoUpdater] Checking for updates... (current: ${this.status.currentVersion})`);
+    logger.info(`Checking for updates... (current: ${this.status.currentVersion})`);
     this.setState("checking", { error: null });
 
     try {
       const result = await this.packageManager.checkForUpdates("kombuse/kombuse", this.status.currentVersion);
-      console.log(`[AutoUpdater] Check result: hasUpdate=${result.hasUpdate}, latest=${result.latest?.version ?? "none"}`);
+      logger.info(`Check result: hasUpdate=${result.hasUpdate}, latest=${result.latest?.version ?? "none"}`);
 
       if (!result.hasUpdate || !result.latest) {
         this.setState("idle");
@@ -142,7 +145,7 @@ export class AutoUpdater {
 
     try {
       this.setState("downloading", { downloadProgress: 0 });
-      console.log(`[AutoUpdater] Installing version ${updateInfo.version}`);
+      logger.info(`Installing version ${updateInfo.version}`);
 
       const result = await this.packageManager.install("kombuse/kombuse", updateInfo.version, (progress: DownloadProgress) => {
         if (progress.phase === "downloading") {
@@ -155,7 +158,7 @@ export class AutoUpdater {
         // extracting and caching phases are internal details
       });
 
-      console.log(`[AutoUpdater] Downloaded and cached at ${result.cachePath}`);
+      logger.info(`Downloaded and cached at ${result.cachePath}`);
 
       // Install from cache to packages directory (symlink management)
       const contentPath = join(result.cachePath, "content");

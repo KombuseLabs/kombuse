@@ -8,7 +8,10 @@
  */
 
 import { app } from "electron";
+import { createAppLogger } from "@kombuse/core/logger";
 import pkg from "electron-updater";
+
+const logger = createAppLogger("ShellUpdater");
 const { autoUpdater: electronAutoUpdater } = pkg;
 import type { UpdateInfo, UpdateStatus, UpdateCheckResult, UpdateState } from "@kombuse/types";
 
@@ -74,7 +77,7 @@ export class ShellUpdater {
       // Detect code-signing errors and degrade gracefully
       const lowerMessage = message.toLowerCase();
       if (SIGNING_ERROR_PATTERNS.some((p) => lowerMessage.includes(p))) {
-        console.warn("[ShellUpdater] Code-signing error detected, disabling shell auto-updates:", message);
+        logger.warn(`Code-signing error detected, disabling shell auto-updates: ${message}`);
         this.unsignedBuild = true;
         this.stopPeriodicChecks();
         this.setState("idle", { error: null });
@@ -84,7 +87,7 @@ export class ShellUpdater {
       this.setState("error", { error: message });
     });
 
-    console.log(`[ShellUpdater] Initialized (version: ${this.status.currentVersion})`);
+    logger.info(`Initialized (version: ${this.status.currentVersion})`);
   }
 
   private mapUpdateInfo(info: { version: string; releaseDate: string; releaseNotes?: string | Array<{ note: string | null }> | null }): UpdateInfo {
@@ -126,11 +129,11 @@ export class ShellUpdater {
   async checkForUpdates(): Promise<UpdateCheckResult> {
     // Skip check on unsigned builds
     if (this.unsignedBuild) {
-      console.log("[ShellUpdater] Skipping update check (unsigned build)");
+      logger.info("Skipping update check (unsigned build)");
       return { hasUpdate: false, updateInfo: null, currentVersion: this.status.currentVersion };
     }
 
-    console.log(`[ShellUpdater] Checking for updates... (current: ${this.status.currentVersion})`);
+    logger.info(`Checking for updates... (current: ${this.status.currentVersion})`);
 
     try {
       const result = await electronAutoUpdater.checkForUpdates();
@@ -157,7 +160,7 @@ export class ShellUpdater {
       throw new Error("No update available");
     }
 
-    console.log(`[ShellUpdater] Downloading update v${this.status.updateInfo.version}...`);
+    logger.info(`Downloading update v${this.status.updateInfo.version}...`);
     this.setState("downloading", { downloadProgress: 0 });
 
     await electronAutoUpdater.downloadUpdate();
@@ -165,7 +168,7 @@ export class ShellUpdater {
   }
 
   quitAndInstall(): void {
-    console.log("[ShellUpdater] Quit and install requested");
+    logger.info("Quit and install requested");
     // isSilent=true: no installer UI; isForceRunAfter=true: attempt relaunch.
     // Relaunch may not work on unsigned macOS builds, but the update will
     // still be applied — users can manually reopen the app.
@@ -178,7 +181,7 @@ export class ShellUpdater {
     const doCheck = () => {
       if (this.status.state !== "idle" && this.status.state !== "error") return;
       this.checkForUpdates().catch((err) => {
-        console.error("[ShellUpdater] Periodic update check failed:", err);
+        logger.error("Periodic update check failed", { error: err instanceof Error ? err.message : String(err) });
       });
     };
 
@@ -187,7 +190,7 @@ export class ShellUpdater {
       this.periodicTimer = setInterval(doCheck, intervalMs);
     }, initialDelayMs);
 
-    console.log(`[ShellUpdater] Periodic checks started (every ${intervalMs / 3600000}h, first in ${initialDelayMs / 1000}s)`);
+    logger.info(`Periodic checks started (every ${intervalMs / 3600000}h, first in ${initialDelayMs / 1000}s)`);
   }
 
   stopPeriodicChecks(): void {

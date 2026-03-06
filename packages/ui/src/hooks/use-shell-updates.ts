@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UpdateStatus, UpdateCheckResult, ServerMessage } from '@kombuse/types'
+import { createBrowserLogger } from '@kombuse/core/browser-logger'
 import { useWebSocket } from './use-websocket'
 import { getServerPort } from '../lib/api'
+
+const logger = createBrowserLogger('ShellUpdates')
 import { updateKeys } from '../lib/query-keys'
 import { computeEffectiveStatus } from './update-utils'
 
@@ -56,7 +59,7 @@ export function useShellUpdates(): UseShellUpdatesReturn {
         if (response.status === 503) return null // Shell updates not available (web-only)
         if (!response.ok) {
           const body = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
-          console.error('[useShellUpdates] Status fetch failed:', body)
+          logger.error('Status fetch failed', { error: body?.error ?? `HTTP ${response.status}` })
           return {
             state: 'error',
             currentVersion: '?',

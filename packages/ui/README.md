@@ -436,6 +436,8 @@ const { defaultBackendType, setDefaultBackendType } = useDefaultBackendType()
 import { CommandProvider, ThemeProvider } from '@kombuse/ui/providers'
 ```
 
+Providers and hooks use `createBrowserLogger` from `@kombuse/core/browser-logger` for structured logging instead of raw `console.*` calls.
+
 ### Components
 
 ```typescript

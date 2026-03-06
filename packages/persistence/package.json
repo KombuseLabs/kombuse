@@ -21,6 +21,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@kombuse/core": "*",
     "@kombuse/types": "*"
   },
   "peerDependencies": {

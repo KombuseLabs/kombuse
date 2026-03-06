@@ -14,7 +14,10 @@ import type {
   BackendType,
 } from '@kombuse/types'
 import { BACKEND_TYPES } from '@kombuse/types'
+import { createBrowserLogger } from '@kombuse/core/browser-logger'
 import { AppCtx } from './app-context'
+
+const logger = createBrowserLogger('AppProvider')
 import { useWebSocket } from '../hooks/use-websocket'
 import { syncApi, labelsApi } from '../lib/api'
 import { sessionKeys, ticketKeys } from '../lib/query-keys'
@@ -211,7 +214,7 @@ export function AppProvider({
           break
         }
         case 'agent.permission_pending': {
-          console.log('[client] received permission_pending:', message)
+          logger.info('received permission_pending')
           addPendingPermission({
             permissionKey: message.permissionKey,
             sessionId: message.sessionId,
@@ -277,7 +280,7 @@ export function AppProvider({
         addActiveSession(session)
       }
     }).catch((err) => {
-      console.error('[app-provider] Failed to fetch sync state:', err)
+      logger.error('Failed to fetch sync state', { error: err instanceof Error ? err.message : String(err) })
     })
     return () => { cancelled = true }
   }, [addPendingPermission, updateTicketAgentStatus, addActiveSession])
@@ -345,7 +348,7 @@ export function AppProvider({
         setSmartLabelIds(new Set(ids))
       }
     }).catch((err) => {
-      console.error('[app-provider] Failed to fetch smart label IDs:', err)
+      logger.error('Failed to fetch smart label IDs', { error: err instanceof Error ? err.message : String(err) })
     })
     return () => { cancelled = true }
   }, [currentProjectId, setSmartLabelIds])

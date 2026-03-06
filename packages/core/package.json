@@ -23,6 +23,10 @@
     "./logger": {
       "types": "./src/logger.ts",
       "default": "./src/logger.ts"
+    },
+    "./browser-logger": {
+      "types": "./src/browser-logger.ts",
+      "default": "./src/browser-logger.ts"
     }
   },
   "scripts": {

@@ -25,6 +25,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@kombuse/core": "*",
     "@kombuse/pkg": "*",
     "@kombuse/types": "*",
     "@sentry/electron": "^7.9.0",

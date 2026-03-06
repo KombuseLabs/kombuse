@@ -1,6 +1,9 @@
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from "@tanstack/react-query";
 import * as Sentry from "@sentry/react";
+import { createBrowserLogger } from "@kombuse/core/browser-logger";
+
+const logger = createBrowserLogger("ReactQuery");
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
 import { Header, UpdateNotification, ShellUpdateNotification, UpdateStatusDialog, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar, LayoutToggle } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
@@ -37,7 +40,7 @@ const queryClient = new QueryClient({
     onError: (error, query) => {
       if (query.meta?.silent) return;
       if (import.meta.env.DEV) {
-        console.warn("[React Query] Query failed:", query.queryKey, error);
+        logger.warn(`Query failed: ${JSON.stringify(query.queryKey)}`, { error: error.message });
       }
       const msg =
         (query.meta?.errorMessage as string) ??

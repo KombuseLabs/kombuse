@@ -54,17 +54,6 @@ function buildTriggerPrompt(
   )
 
   const userMessage = lines.join('\n')
-  /** For debugging trigger prompt construction — can be verbose, so only log for events that create invocations. */
- /*
-  console.log('[Server] Built trigger prompt for event:', {
-    eventId: event.id,
-    eventType: event.event_type,
-    ticketId: event.ticket_id,
-    projectId: event.project_id,
-    systemPromptLength: systemPrompt.length,
-    userMessage,
-  })
-  */
 
   return { systemPrompt, userMessage }
 }

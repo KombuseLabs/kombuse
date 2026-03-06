@@ -15,7 +15,10 @@ import {
   readlinkSync,
 } from "node:fs";
 import { join } from "node:path";
+import { createAppLogger } from "@kombuse/core/logger";
 import type { PackageManifest } from "./package-loader";
+
+const logger = createAppLogger("Updater");
 import { getPackageManifest } from "./package-loader";
 import {
   getKombuseDir,
@@ -62,10 +65,10 @@ export function installPackage(sourcePath: string): string {
 
   if (existsSync(destPath)) {
     // Remove existing version
-    console.log(`Removing existing v${version}...`);
+    logger.info(`Removing existing v${version}...`);
     cpSync(sourcePath, destPath, { recursive: true, force: true });
   } else {
-    console.log(`Installing v${version}...`);
+    logger.info(`Installing v${version}...`);
     cpSync(sourcePath, destPath, { recursive: true });
   }
 
@@ -98,7 +101,7 @@ export function updateCurrentSymlink(version: string): void {
 
   // Create new symlink
   symlinkSync(targetPath, symlinkPath);
-  console.log(`Current package set to v${version}`);
+  logger.info(`Current package set to v${version}`);
 }
 
 /**
@@ -176,7 +179,7 @@ export function rollbackPackage(version: string): void {
   }
 
   updateCurrentSymlink(version);
-  console.log(`Rolled back to v${version}`);
+  logger.info(`Rolled back to v${version}`);
 }
 
 /**

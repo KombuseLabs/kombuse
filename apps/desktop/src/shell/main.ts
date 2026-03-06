@@ -56,7 +56,10 @@ import { desktopApiPlugin } from "./desktop-api";
 import { autoUpdater } from "./auto-updater";
 import { ShellUpdater } from "./shell-updater";
 import { buildAppMenu, refreshMenu } from "./menu";
+import { createAppLogger } from "@kombuse/core/logger";
 import { is, getMode } from "../env";
+
+const logger = createAppLogger("Main");
 
 const shellUpdater = new ShellUpdater();
 
@@ -88,7 +91,7 @@ async function startDevServer() {
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
   writeFileSync(PORT_FILE, String(serverPort));
-  console.log(`Dev server running on port ${serverPort}`);
+  logger.info(`Dev server running on port ${serverPort}`);
   return { server };
 }
 
@@ -97,7 +100,7 @@ async function startDevServer() {
  */
 async function startPackageServer() {
   const pkg = getPackageInfo();
-  console.log(`Loading package v${pkg.manifest.version} from ${pkg.path}`);
+  logger.info(`Loading package v${pkg.manifest.version} from ${pkg.path}`);
 
   const { createServer, setAutoUpdater: setPackageAutoUpdater, setShellAutoUpdater: setPackageShellAutoUpdater } = await loadPackage(pkg.serverBundle);
   _createServerForIsolated = createServer;
@@ -112,7 +115,7 @@ async function startPackageServer() {
   serverPort = new URL(address).port ? Number(new URL(address).port) : 0;
 
   writeFileSync(PORT_FILE, String(serverPort));
-  console.log(`Server running on port ${serverPort}`);
+  logger.info(`Server running on port ${serverPort}`);
   return { server, pkg };
 }
 
@@ -227,7 +230,7 @@ ipcMain.on("app:homedir", (event) => {
 
 // IPC handler for app restart (used by auto-updater UI)
 ipcMain.handle("app:restart", () => {
-  console.log("[Main] Restart requested, relaunching app...");
+  logger.info("Restart requested, relaunching app...");
   // In production (packaged app), relaunch works correctly.
   // In development, the app will quit and needs manual restart.
   app.relaunch();
@@ -236,7 +239,7 @@ ipcMain.handle("app:restart", () => {
 
 // IPC handler for shell update quit-and-install
 ipcMain.handle("shell:update:quit-and-install", () => {
-  console.log("[Main] Shell update: quit and install requested");
+  logger.info("Shell update: quit and install requested");
   shellUpdater.quitAndInstall();
 });
 
@@ -277,7 +280,7 @@ ipcMain.handle("dialog:openDirectory", async () => {
 
 app.whenReady().then(async () => {
   const mode = getMode();
-  console.log(`Starting in ${mode} mode`);
+  logger.info(`Starting in ${mode} mode`);
 
   // Set dock icon in dev mode (packaged builds use icon.icns from build-resources)
   if (is.dev() && process.platform === "darwin") {
@@ -320,9 +323,9 @@ app.whenReady().then(async () => {
     // Auto-check for updates after startup (prod mode only)
     if (is.prod()) {
       setTimeout(() => {
-        console.log("Checking for package updates...");
+        logger.info("Checking for package updates...");
         autoUpdater.checkForUpdates().catch((err) => {
-          console.error("Package update check failed:", err);
+          logger.error("Package update check failed", { error: err instanceof Error ? err.message : String(err) });
         });
       }, 5000);
 

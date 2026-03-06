@@ -16,6 +16,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@kombuse/core": "*",
     "@kombuse/types": "*",
     "zod": "^4.0.0"
   },

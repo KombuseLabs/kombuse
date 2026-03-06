@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Highlighter } from 'shiki'
+import { createBrowserLogger } from '@kombuse/core/browser-logger'
+
+const logger = createBrowserLogger('Shiki')
 
 let highlighterPromise: Promise<Highlighter> | null = null
 let highlighterInstance: Highlighter | null = null
@@ -51,7 +54,7 @@ export function useShiki() {
           setReady(true)
         }
       })
-      .catch(console.error)
+      .catch((err) => logger.error('Failed to load highlighter', { error: err instanceof Error ? err.message : String(err) }))
 
     return () => { mounted = false }
   }, [])
@@ -68,7 +71,7 @@ export function useShiki() {
         defaultColor: 'light',
       })
     } catch (e) {
-      console.warn('Shiki highlight error:', e)
+      logger.warn('Shiki highlight error', { error: e instanceof Error ? e.message : String(e) })
       return null
     }
   }, [])
