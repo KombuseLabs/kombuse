@@ -41,6 +41,7 @@ function Header({
     <header
       className={cn(
         "flex items-center",
+        "mt-[5px]",
         isMobile ? "px-3" : "px-6",
         isDesktop ? "h-10 electron-drag" : "h-16",
         isMac && !isMobile && "pl-24",
