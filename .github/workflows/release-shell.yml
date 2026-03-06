@@ -75,9 +75,17 @@ jobs:
       - name: Merge latest-mac.yml from both architectures
         run: |
           yq eval-all '
-            select(fileIndex == 0) |
-            .files = [select(fileIndex == 0).files[], select(fileIndex == 1).files[]]
+            select(fileIndex == 0).files += select(fileIndex == 1).files |
+            select(fileIndex == 0)
           ' latest-mac-arm64.yml latest-mac-x64.yml > latest-mac.yml
+
+      - name: Validate updater manifest and release artifacts
+        run: |
+          test -s latest-mac.yml
+          grep -q '^files:' latest-mac.yml
+          grep -q 'arm64' latest-mac.yml
+          grep -q 'x64' latest-mac.yml
+          ls -lh *.dmg *.zip latest-mac*.yml
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -86,4 +94,8 @@ jobs:
             *.dmg
             *.zip
             latest-mac.yml
+            latest-mac-arm64.yml
+            latest-mac-x64.yml
+          fail_on_unmatched_files: true
+          overwrite_files: true
           generate_release_notes: true
