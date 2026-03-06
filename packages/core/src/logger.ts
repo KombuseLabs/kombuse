@@ -8,6 +8,7 @@ import {
   unlinkSync,
 } from 'node:fs'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
 import type { WriteStream } from 'node:fs'
 import type { AgentEvent, KombuseSessionId } from '@kombuse/types'
 
@@ -27,7 +28,7 @@ export function setLogDir(dir: string): void {
 }
 
 export function getConfiguredLogDir(): string {
-  return _configuredLogDir ?? join(process.cwd(), 'logs')
+  return _configuredLogDir ?? join(homedir(), '.kombuse', 'logs')
 }
 
 export function setLogTarget(target: LogTarget): void {
@@ -60,7 +61,7 @@ function resolveAppLogLevel(): AppLogLevel {
 }
 
 function getLogDir(): string {
-  return _configuredLogDir ?? join(process.cwd(), 'logs')
+  return _configuredLogDir ?? join(homedir(), '.kombuse', 'logs')
 }
 
 // ---------------------------------------------------------------------------

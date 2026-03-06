@@ -12,6 +12,14 @@ const { mockWrite, mockEnd, mockUnlinkSync } = vi.hoisted(() => ({
   mockUnlinkSync: vi.fn(),
 }))
 
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>()
+  return {
+    ...actual,
+    homedir: vi.fn(() => '/mock-home'),
+  }
+})
+
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs')>()
   return {
@@ -562,9 +570,9 @@ describe('log configuration', () => {
     expect(getConfiguredLogDir()).toBe('/custom/log/path')
   })
 
-  it('getConfiguredLogDir returns cwd/logs by default', () => {
+  it('getConfiguredLogDir returns homedir/.kombuse/logs by default', () => {
     const { join } = require('node:path')
-    expect(getConfiguredLogDir()).toBe(join(process.cwd(), 'logs'))
+    expect(getConfiguredLogDir()).toBe(join('/mock-home', '.kombuse', 'logs'))
   })
 
   it('setLogTarget to file makes new loggers write to file', () => {
@@ -614,6 +622,6 @@ describe('log configuration', () => {
     resetLogConfig()
 
     const { join } = require('node:path')
-    expect(getConfiguredLogDir()).toBe(join(process.cwd(), 'logs'))
+    expect(getConfiguredLogDir()).toBe(join('/mock-home', '.kombuse', 'logs'))
   })
 })

@@ -56,9 +56,10 @@ import { desktopApiPlugin } from "./desktop-api";
 import { autoUpdater } from "./auto-updater";
 import { ShellUpdater } from "./shell-updater";
 import { buildAppMenu, refreshMenu } from "./menu";
-import { createAppLogger } from "@kombuse/core/logger";
+import { createAppLogger, setLogDir } from "@kombuse/core/logger";
 import { is, getMode } from "../env";
 
+setLogDir(join(homedir(), ".kombuse", "logs"));
 const logger = createAppLogger("Main");
 
 if (process.env.SENTRY_DSN) {
