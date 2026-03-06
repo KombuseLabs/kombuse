@@ -122,26 +122,6 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
           this.stderrBuffer.push(data)
           this.emitEvent(this.createRawEvent({ stderr: data }, 'process_stderr'))
         },
-        onExit: (code) => {
-          this.process = null
-          const lifecycleState = this.getLifecycleState()
-          const wasStopping = lifecycleState === 'stopping' || lifecycleState === 'stopped'
-          if (!wasStopping) {
-            this.stopping('process_exit')
-          }
-          this.stopped({
-            reason: 'process_exit',
-            complete: wasStopping
-              ? null
-              : {
-                  reason: 'process_exit',
-                  sessionId: this.getBackendSessionId(),
-                  exitCode: code,
-                  success: code === 0,
-                  ...(code === 0 ? {} : { errorMessage: this.formatExitError(code) }),
-                },
-          })
-        },
         onError: (error) => {
           this.process = null
           this.failed(error.message, {

@@ -527,6 +527,10 @@ function handleRuntimeRunFailure(options: {
     error: new Error(messageText),
   }
   dependencies.sessionPersistence.persistEvent(persistentSessionId, errorEvent)
+  Sentry.captureException(new Error(messageText), {
+    tags: { sessionId: persistentSessionId, failureReason },
+    extra: { appSessionId, ticketId, ticketNumber, projectId },
+  })
   dependencies.stateMachine.transition(persistentSessionId, 'fail', {
     kombuseSessionId: appSessionId,
     ticketId,

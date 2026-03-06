@@ -226,12 +226,12 @@ export class Process implements IProcess {
     }
     this._callbacks.onSpawn?.(subprocess.pid)
 
-    // Stream stdout
-    this._streamBunOutput(subprocess.stdout, 'stdout')
-    this._streamBunOutput(subprocess.stderr, 'stderr')
+    // Stream stdout/stderr and wait for both streams to drain before firing exit callbacks.
+    // This prevents a race where subprocess.exited resolves before buffered output is read.
+    const stdoutDone = this._streamBunOutput(subprocess.stdout, 'stdout')
+    const stderrDone = this._streamBunOutput(subprocess.stderr, 'stderr')
 
-    // Wait for exit
-    subprocess.exited.then((code: number) => {
+    Promise.all([stdoutDone, stderrDone, subprocess.exited]).then(([,, code]) => {
       const signal = null // Bun doesn't provide signal info on normal exit
       this._status = {
         state: 'exited',
@@ -243,6 +243,13 @@ export class Process implements IProcess {
       this._callbacks.onExit?.(code, signal)
       for (const behavior of this._behaviors) {
         behavior.onExit?.(code, signal, this)
+      }
+    }).catch((err) => {
+      const error = err instanceof Error ? err : new Error(String(err))
+      this._status = { state: 'error', error }
+      this._callbacks.onError?.(error)
+      for (const behavior of this._behaviors) {
+        behavior.onError?.(error, this)
       }
     })
   }
