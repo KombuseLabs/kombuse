@@ -53,6 +53,7 @@ src/
 │   ├── use-desktop.ts         - Electron desktop detection hook
 │   ├── use-is-mobile.ts       - Mobile viewport detection hook
 │   ├── use-shell-updates.ts   - Shell (Electron) auto-update hook
+│   ├── update-utils.ts        - Pure helpers for update status computation
 │   ├── use-labels.ts          - Label CRUD hooks
 │   ├── use-milestones.ts      - Milestone CRUD hooks
 │   ├── use-analytics.ts       - Analytics query hooks (sessions, duration, tool usage)

@@ -4,6 +4,7 @@ import type { UpdateStatus, UpdateCheckResult, ServerMessage } from '@kombuse/ty
 import { useWebSocket } from './use-websocket'
 import { getServerPort } from '../lib/api'
 import { updateKeys } from '../lib/query-keys'
+import { computeEffectiveStatus } from './update-utils'
 
 const API_BASE = `http://localhost:${getServerPort()}/api`
 
@@ -133,13 +134,8 @@ export function useUpdates(): UseUpdatesReturn {
     }
   }, [status])
 
-  // Return null status if dismissed version matches the available update
-  const effectiveStatus =
-    dismissedVersion != null &&
-    status?.state === 'available' &&
-    status?.updateInfo?.version === dismissedVersion
-      ? null
-      : status
+  // Suppress dismissed updates while preserving currentVersion for the dialog
+  const effectiveStatus = computeEffectiveStatus(status, dismissedVersion)
 
   return {
     status: effectiveStatus,
