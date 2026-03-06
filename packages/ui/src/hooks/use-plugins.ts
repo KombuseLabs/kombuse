@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PluginExportInput, PluginInstallInput, PluginRemoteInstallInput } from '@kombuse/types'
 import { pluginFilesApi, pluginsApi } from '../lib/api'
-import { pluginKeys, pluginFileKeys, agentKeys, labelKeys } from '../lib/query-keys'
+import { pluginKeys, pluginFileKeys, agentKeys, labelKeys, profileKeys } from '../lib/query-keys'
 
 export function useExportPlugin() {
   return useMutation({
@@ -33,6 +33,7 @@ export function useInstallPlugin() {
       queryClient.invalidateQueries({ queryKey: pluginKeys.all })
       queryClient.invalidateQueries({ queryKey: agentKeys.all })
       queryClient.invalidateQueries({ queryKey: labelKeys.all })
+      queryClient.invalidateQueries({ queryKey: profileKeys.all })
     },
   })
 }
@@ -97,6 +98,7 @@ export function useInstallRemotePlugin() {
       queryClient.invalidateQueries({ queryKey: pluginKeys.all })
       queryClient.invalidateQueries({ queryKey: agentKeys.all })
       queryClient.invalidateQueries({ queryKey: labelKeys.all })
+      queryClient.invalidateQueries({ queryKey: profileKeys.all })
     },
   })
 }
@@ -109,6 +111,7 @@ export function usePullPluginUpdate() {
       queryClient.invalidateQueries({ queryKey: pluginKeys.all })
       queryClient.invalidateQueries({ queryKey: agentKeys.all })
       queryClient.invalidateQueries({ queryKey: labelKeys.all })
+      queryClient.invalidateQueries({ queryKey: profileKeys.all })
     },
   })
 }
