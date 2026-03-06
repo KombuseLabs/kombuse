@@ -7,12 +7,14 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   realpathSync,
   renameSync,
   symlinkSync,
+  unlinkSync,
   rmSync
 } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, basename, relative, resolve, isAbsolute } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
@@ -22,6 +24,43 @@ const nodeModulesDir = resolve(desktopDir, 'node_modules')
 const bunStoreDir = resolve(desktopDir, '..', '..', 'node_modules', '.bun')
 
 const localOnlyPackages = ['electron', 'better-sqlite3']
+
+/**
+ * Walk the .app bundle and fix any symlinks that point outside the bundle
+ * (i.e. back to the bun store) by replacing them with proper relative symlinks.
+ *
+ * cpSync with dereference copies files but preserves internal framework symlinks
+ * as absolute paths pointing to the bun store. We detect these by checking if the
+ * target contains a known .app path segment, extract the relative-to-app portion,
+ * and rewrite the symlink to point within the local copy.
+ */
+function fixFrameworkSymlinks(appPath) {
+  function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const fullPath = resolve(dir, entry)
+      const stat = lstatSync(fullPath)
+      if (stat.isSymbolicLink()) {
+        const target = readlinkSync(fullPath)
+        if (isAbsolute(target) && !target.startsWith(appPath)) {
+          // Extract the path relative to the original .app and remap to local copy
+          const appBasename = basename(appPath) // e.g. "Electron.app"
+          const marker = `/${appBasename}/`
+          const idx = target.indexOf(marker)
+          if (idx !== -1) {
+            const relativeToApp = target.slice(idx + marker.length)
+            const localTarget = resolve(appPath, relativeToApp)
+            const relTarget = relative(dirname(fullPath), localTarget)
+            unlinkSync(fullPath)
+            symlinkSync(relTarget, fullPath)
+          }
+        }
+      } else if (stat.isDirectory()) {
+        walk(fullPath)
+      }
+    }
+  }
+  walk(appPath)
+}
 
 function findBunNodeModulesDir(packageName, version) {
   if (!existsSync(bunStoreDir)) {
@@ -129,15 +168,22 @@ function replaceSymlinkWithLocalCopy(packageName) {
 
     console.log(`[native] localized ${packageName}`)
 
-    // Re-sign Electron.app after copy — cpSync with dereference breaks the
-    // macOS code signature, which prevents Chromium sub-processes from launching.
-    if (packageName === 'electron') {
+    // Fix macOS framework bundles and re-sign after copy.
+    // cpSync with dereference copies the actual files but leaves internal
+    // framework symlinks pointing at absolute bun-store paths. We need to
+    // rebuild them as proper relative symlinks, then re-sign.
+    if (packageName === 'electron' && process.platform === 'darwin') {
       const electronApp = resolve(packagePath, 'dist', 'Electron.app')
       if (existsSync(electronApp)) {
-        execFileSync('codesign', ['--force', '--deep', '--sign', '-', electronApp], {
-          stdio: 'inherit'
-        })
-        console.log('[native] re-signed Electron.app')
+        fixFrameworkSymlinks(electronApp)
+        if (process.env.CODESIGN_ELECTRON !== '0') {
+          execFileSync('codesign', ['--force', '--deep', '--sign', '-', electronApp], {
+            stdio: 'inherit'
+          })
+          console.log('[native] re-signed Electron.app')
+        } else {
+          console.log('[native] skipped codesign (CODESIGN_ELECTRON=0)')
+        }
       }
     }
   } else {
