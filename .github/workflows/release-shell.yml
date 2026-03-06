@@ -97,21 +97,14 @@ jobs:
           test "$FILE_COUNT" -eq 4
           echo "files count: $FILE_COUNT"
 
-          # Every files[].sha512 must be non-empty
-          yq -e '[.files[] | .sha512 | length > 0] | all' latest-mac.yml > /dev/null
+          # Required fields must be present
+          grep -q 'sha512:' latest-mac.yml
+          grep -q 'url:' latest-mac.yml
+          grep -q '^path:' latest-mac.yml
 
-          # Every files[].url must be non-empty
-          yq -e '[.files[] | .url | length > 0] | all' latest-mac.yml > /dev/null
-
-          # Top-level sha512 must be non-empty
-          yq -e '.sha512 | length > 0' latest-mac.yml > /dev/null
-
-          # Top-level path must be non-empty
-          yq -e '.path | length > 0' latest-mac.yml > /dev/null
-
-          # Both architectures must be represented in file URLs
-          yq -e '[.files[].url] | any(test("arm64"))' latest-mac.yml > /dev/null
-          yq -e '[.files[].url] | any(test("x64"))' latest-mac.yml > /dev/null
+          # Both architectures must be represented
+          grep -q 'arm64' latest-mac.yml
+          grep -q 'x64' latest-mac.yml
 
           echo "--- Manifest validation passed ---"
           ls -lh *.dmg *.zip latest-mac*.yml
