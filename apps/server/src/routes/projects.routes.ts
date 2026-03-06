@@ -13,18 +13,21 @@ import {
 
 const log = createAppLogger('ProjectRoutes')
 
-function configureCodexForProject(localPath: string | null | undefined): void {
+function configureCodexForProject(localPath: string | null | undefined): { success: boolean; error?: string } {
   if (!localPath) {
-    return
+    return { success: true }
   }
   try {
     ensureCodexProjectTrust(localPath)
     initializeProjectCodexConfig(localPath)
+    return { success: true }
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
     log.warn(
       `Failed to configure Codex for project path: ${localPath}`,
-      { error: error instanceof Error ? error.message : String(error) }
+      { error: message }
     )
+    return { success: false, error: message }
   }
 }
 
@@ -58,7 +61,10 @@ export async function projectRoutes(fastify: FastifyInstance) {
     }
 
     const project = projectService.create(parseResult.data)
-    configureCodexForProject(project.local_path)
+    const codexResult = configureCodexForProject(project.local_path)
+    if (!codexResult.success) {
+      return reply.status(201).send({ ...project, warning: `Codex configuration failed: ${codexResult.error}` })
+    }
     return reply.status(201).send(project)
   })
 
@@ -79,7 +85,10 @@ export async function projectRoutes(fastify: FastifyInstance) {
     try {
       const project = projectService.update(existing.id, parseResult.data)
       if (parseResult.data.local_path !== undefined) {
-        configureCodexForProject(project.local_path)
+        const codexResult = configureCodexForProject(project.local_path)
+        if (!codexResult.success) {
+          return { ...project, warning: `Codex configuration failed: ${codexResult.error}` }
+        }
       }
       return project
     } catch (error) {

@@ -98,7 +98,7 @@ export function resolveProjectPathForProject(projectId: string | null): string |
  * regardless of how the server process was started.
  * Falls back to process.cwd() only if no project has local_path configured.
  */
-export function resolveDefaultProjectPath(): string {
+export function resolveDefaultProjectPath(): string | undefined {
   const projects = projectService.list()
   // Iterate oldest-first so the fallback path is stable when new projects are added
   for (let i = projects.length - 1; i >= 0; i--) {
@@ -107,7 +107,8 @@ export function resolveDefaultProjectPath(): string {
     const resolved = resolveProjectPathForProject(project.id)
     if (resolved) return resolved
   }
-  return process.cwd()
+  log.warn('No project with a valid local_path found — cannot resolve a default project path')
+  return undefined
 }
 
 const AGENT_LIFECYCLE_EVENTS = [
@@ -301,6 +302,25 @@ export async function processEventAndRunAgents(
     const projectPathOverride =
       resolveProjectPathForProject(event.project_id ?? null) ??
       dependencies.resolveProjectPath()
+
+    if (!projectPathOverride) {
+      const errorMsg = `No valid project directory for agent ${agent.id} (invocation ${invocation.id}) — aborting trigger`
+      log.warn(errorMsg)
+      agentInvocationsRepository.update(invocation.id, {
+        status: 'failed',
+        error: errorMsg,
+        completed_at: new Date().toISOString(),
+      })
+      emitAgentEvent(
+        EVENT_TYPES.AGENT_FAILED,
+        invocation.agent_id,
+        invocation.id,
+        invocation.context,
+        { error: errorMsg },
+        kombuseSessionId
+      )
+      return
+    }
 
     const ticketIdFromContext = invocation.context.ticket_id as number | undefined
 

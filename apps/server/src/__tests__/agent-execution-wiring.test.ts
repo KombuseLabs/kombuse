@@ -1299,6 +1299,7 @@ describe('startAgentChatSession continuation project scoping', () => {
   })
 
   it('resolves runtime project path from persisted session project, not message project', async () => {
+    vi.mocked(existsSync).mockReturnValue(true)
     let capturedStartOptions: StartOptions | undefined
     const backend: AgentBackend = {
       name: BACKEND_TYPES.CLAUDE_CODE,
@@ -4291,16 +4292,18 @@ describe('AGENTS.md system prompt injection', () => {
     }
   }
 
+  const TEST_PROJECT_PATH = '/test/project'
+
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(existsSync).mockReturnValue(false)
+    vi.mocked(existsSync).mockImplementation((p) => String(p) === TEST_PROJECT_PATH)
     vi.mocked(ticketsRepository._getInternal).mockReturnValue(null)
     vi.mocked(sessionsRepository.list as ReturnType<typeof vi.fn>).mockReturnValue([])
   })
 
   it('prepends AGENTS.md content to system prompt when file exists', async () => {
     vi.mocked(existsSync).mockImplementation((p) =>
-      String(p).endsWith('AGENTS.md')
+      String(p) === TEST_PROJECT_PATH || String(p).endsWith('AGENTS.md')
     )
     vi.mocked(readFileSync).mockImplementation(((p: string) => {
       if (String(p).endsWith('AGENTS.md')) {
@@ -4333,7 +4336,7 @@ describe('AGENTS.md system prompt injection', () => {
 
   it('prepends AGENTS.md before agent-specific system prompt', async () => {
     vi.mocked(existsSync).mockImplementation((p) =>
-      String(p).endsWith('AGENTS.md')
+      String(p) === TEST_PROJECT_PATH || String(p).endsWith('AGENTS.md')
     )
     vi.mocked(readFileSync).mockImplementation(((p: string) => {
       if (String(p).endsWith('AGENTS.md')) {
@@ -4382,7 +4385,7 @@ describe('AGENTS.md system prompt injection', () => {
   })
 
   it('does not inject anything when AGENTS.md does not exist', async () => {
-    vi.mocked(existsSync).mockReturnValue(false)
+    vi.mocked(existsSync).mockImplementation((p) => String(p) === TEST_PROJECT_PATH)
 
     const backend = createPassiveBackend()
     const deps = createDeps(backend)
@@ -4405,7 +4408,7 @@ describe('AGENTS.md system prompt injection', () => {
 
   it('does not inject anything when AGENTS.md is empty', async () => {
     vi.mocked(existsSync).mockImplementation((p) =>
-      String(p).endsWith('AGENTS.md')
+      String(p) === TEST_PROJECT_PATH || String(p).endsWith('AGENTS.md')
     )
     vi.mocked(readFileSync).mockImplementation(((p: string) => {
       if (String(p).endsWith('AGENTS.md')) {

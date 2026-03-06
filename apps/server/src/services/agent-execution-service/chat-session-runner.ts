@@ -1107,6 +1107,27 @@ export function startAgentChatSession(
   }
 
   const effectiveProjectPath = projectPathOverride ?? dependencies.resolveProjectPath()
+
+  if (!effectiveProjectPath || !existsSync(effectiveProjectPath)) {
+    const errorMsg = effectiveProjectPath
+      ? `Project directory does not exist: ${effectiveProjectPath}`
+      : 'No valid project directory configured'
+    handleRuntimeRunFailure({
+      dependencies,
+      emit,
+      logger,
+      backend,
+      persistentSessionId,
+      appSessionId,
+      ticketId,
+      ticketNumber,
+      projectId: effectiveProjectId,
+      continuationInvocationId,
+      messageText: errorMsg,
+    })
+    return
+  }
+
   const agentsMdContent = readAgentsMd(effectiveProjectPath)
   if (agentsMdContent) {
     const agentsMdSection = `<project-instructions>\n${agentsMdContent}\n</project-instructions>`

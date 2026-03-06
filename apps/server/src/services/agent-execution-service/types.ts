@@ -18,7 +18,7 @@ export interface AgentExecutionDependencies {
   processEvent: (event: EventWithActor) => ReturnType<typeof agentService.processEvent>
   createBackend: (backendType: BackendType) => AgentBackend
   generateSessionId: () => KombuseSessionId
-  resolveProjectPath: () => string
+  resolveProjectPath: () => string | undefined
   resolveProjectPathForProject?: (projectId: string | null) => string | undefined
   sessionPersistence: ISessionPersistenceService
   stateMachine: SessionStateMachine
