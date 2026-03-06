@@ -26,7 +26,7 @@ src/
 │   ├── prompt-editor/    - System prompt editor with template variables
 │   ├── mobile-list-detail.tsx - Mobile list/detail navigation wrapper
 │   ├── sidebar/          - Sidebar navigation (panel + icon rail variants), bottom nav + backend status indicator
-│   ├── backend-status-banner.tsx - Warning banner for missing CLI backends
+│   ├── backend-status-banner.tsx - Warning banner for outdated CLI backends or Node.js versions
 │   ├── find-bar.tsx              - Find-in-page bar for Electron desktop app
 │   ├── no-backend-screen.tsx     - Full-page blocking screen when no backends found
 │   ├── permissions/      - Permission decision log components
@@ -247,7 +247,7 @@ import { useBackendStatus, useRefreshBackendStatus } from '@kombuse/ui/hooks'
 
 // Query backend CLI availability (claude-code, codex)
 const { data: statuses, isLoading } = useBackendStatus()
-// statuses => BackendStatus[] with { backendType, available, version, path }
+// statuses => BackendStatus[] with { backendType, available, version, path, meetsMinimum, nodeVersion, meetsNodeMinimum, ... }
 
 // Refresh mutation (clears server cache, re-checks)
 const refreshMutation = useRefreshBackendStatus()

@@ -68,9 +68,6 @@ export function createCleanEnv(options?: {
   thinkingEnabled?: boolean
 }): Record<string, string> {
   const homeDir = process.env.HOME || process.env.USERPROFILE || ''
-  const cleanPath = process.env.PATH?.split(':')
-    .filter((p) => !p.includes('node_modules/.bin'))
-    .join(':')
 
   const { ANTHROPIC_API_KEY: _, ...restEnv } = process.env
 
@@ -81,7 +78,20 @@ export function createCleanEnv(options?: {
     }
   }
 
-  env.PATH = `${homeDir}/.local/bin:/usr/local/bin:/usr/bin:/bin${cleanPath ? ':' + cleanPath : ''}`
+  // Prepend essential dirs, keep the original PATH (minus node_modules/.bin),
+  // and deduplicate so prepended dirs take priority without bloating the value.
+  const prependDirs = [`${homeDir}/.local/bin`, '/usr/local/bin', '/usr/bin', '/bin']
+  const existingDirs = (process.env.PATH || '').split(':')
+    .filter((p) => p && !p.includes('node_modules/.bin'))
+  const seen = new Set<string>()
+  const pathParts: string[] = []
+  for (const dir of [...prependDirs, ...existingDirs]) {
+    if (!seen.has(dir)) {
+      seen.add(dir)
+      pathParts.push(dir)
+    }
+  }
+  env.PATH = pathParts.join(':')
 
   // Enable extended thinking via environment variable
   // This is the documented method (MAX_THINKING_TOKENS sets the token budget)

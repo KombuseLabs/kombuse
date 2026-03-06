@@ -45,8 +45,8 @@ describe('useAvailableBackends', () => {
 
   it('returns both backends when both are available', async () => {
     const statuses: BackendStatus[] = [
-      { backendType: 'claude-code', available: true, version: '1.0.0', path: '/usr/bin/claude', meetsMinimum: true, minimumVersion: '1.0.40' },
-      { backendType: 'codex', available: true, version: '0.3.0', path: '/usr/bin/codex', meetsMinimum: true, minimumVersion: '0.100.0' },
+      { backendType: 'claude-code', available: true, version: '1.0.0', path: '/usr/bin/claude', meetsMinimum: true, minimumVersion: '1.0.40', nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
+      { backendType: 'codex', available: true, version: '0.3.0', path: '/usr/bin/codex', meetsMinimum: true, minimumVersion: '0.100.0', nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
     ]
     mockGetStatus.mockResolvedValue(statuses)
 
@@ -64,8 +64,8 @@ describe('useAvailableBackends', () => {
 
   it('returns only available backends when one is missing', async () => {
     const statuses: BackendStatus[] = [
-      { backendType: 'claude-code', available: true, version: '1.0.0', path: '/usr/bin/claude', meetsMinimum: true, minimumVersion: '1.0.40' },
-      { backendType: 'codex', available: false, version: null, path: null, meetsMinimum: false, minimumVersion: '0.100.0' },
+      { backendType: 'claude-code', available: true, version: '1.0.0', path: '/usr/bin/claude', meetsMinimum: true, minimumVersion: '1.0.40', nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
+      { backendType: 'codex', available: false, version: null, path: null, meetsMinimum: false, minimumVersion: '0.100.0', nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
     ]
     mockGetStatus.mockResolvedValue(statuses)
 
@@ -83,8 +83,8 @@ describe('useAvailableBackends', () => {
 
   it('returns empty list and noneAvailable when no backends are available', async () => {
     const statuses: BackendStatus[] = [
-      { backendType: 'claude-code', available: false, version: null, path: null, meetsMinimum: false, minimumVersion: '1.0.40' },
-      { backendType: 'codex', available: false, version: null, path: null, meetsMinimum: false, minimumVersion: '0.100.0' },
+      { backendType: 'claude-code', available: false, version: null, path: null, meetsMinimum: false, minimumVersion: '1.0.40', nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
+      { backendType: 'codex', available: false, version: null, path: null, meetsMinimum: false, minimumVersion: '0.100.0', nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
     ]
     mockGetStatus.mockResolvedValue(statuses)
 
@@ -100,9 +100,9 @@ describe('useAvailableBackends', () => {
 
   it('excludes mock from availableBackends even if available', async () => {
     const statuses: BackendStatus[] = [
-      { backendType: 'claude-code', available: true, version: '1.0.0', path: '/usr/bin/claude', meetsMinimum: true, minimumVersion: '1.0.40' },
-      { backendType: 'codex', available: false, version: null, path: null, meetsMinimum: false, minimumVersion: '0.100.0' },
-      { backendType: 'mock', available: true, version: null, path: null, meetsMinimum: true, minimumVersion: null },
+      { backendType: 'claude-code', available: true, version: '1.0.0', path: '/usr/bin/claude', meetsMinimum: true, minimumVersion: '1.0.40', nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
+      { backendType: 'codex', available: false, version: null, path: null, meetsMinimum: false, minimumVersion: '0.100.0', nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
+      { backendType: 'mock', available: true, version: null, path: null, meetsMinimum: true, minimumVersion: null, nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null },
     ]
     mockGetStatus.mockResolvedValue(statuses)
 

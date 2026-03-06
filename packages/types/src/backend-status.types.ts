@@ -7,4 +7,7 @@ export interface BackendStatus {
   path: string | null
   meetsMinimum: boolean
   minimumVersion: string | null
+  nodeVersion: string | null
+  meetsNodeMinimum: boolean
+  minimumNodeVersion: string | null
 }

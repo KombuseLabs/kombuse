@@ -8,6 +8,9 @@ export const backendStatusSchema = z.object({
   path: z.string().nullable(),
   meetsMinimum: z.boolean(),
   minimumVersion: z.string().nullable(),
+  nodeVersion: z.string().nullable(),
+  meetsNodeMinimum: z.boolean(),
+  minimumNodeVersion: z.string().nullable(),
 })
 
 export const timestampSchema = z.string().min(1)

@@ -9,8 +9,13 @@ export const MIN_SUPPORTED_VERSIONS: Record<string, string> = {
   'codex': '0.100.0',
 }
 
+export const MIN_NODE_VERSIONS: Record<string, string> = {
+  'claude-code': '20.0.0',
+}
+
 const CACHE_TTL_MS = 60_000
 let cache: { statuses: BackendStatus[]; fetchedAt: number } | null = null
+let cachedNodeVersion: string | null | undefined = undefined
 
 function isExecutableAtPath(resolvedPath: string): boolean {
   if (!resolvedPath.includes('/')) return false
@@ -37,11 +42,41 @@ function getVersion(binaryPath: string): string | null {
   }
 }
 
+function getNodeVersion(): string | null {
+  try {
+    const output = execFileSync('node', ['--version'], {
+      timeout: 5_000,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    const match = output.trim().match(/v?(\d+\.\d+\.\d+)/)
+    return match?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+function resolveNodeFields(backendType: BackendType): Pick<BackendStatus, 'nodeVersion' | 'meetsNodeMinimum' | 'minimumNodeVersion'> {
+  const minimumNodeVersion = MIN_NODE_VERSIONS[backendType] ?? null
+  if (minimumNodeVersion === null) {
+    return { nodeVersion: null, meetsNodeMinimum: true, minimumNodeVersion: null }
+  }
+  if (cachedNodeVersion === undefined) {
+    cachedNodeVersion = getNodeVersion()
+  }
+  const nodeVersion = cachedNodeVersion
+  const meetsNodeMinimum = nodeVersion !== null
+    ? meetsMinimumVersion(nodeVersion, minimumNodeVersion)
+    : true // can't determine — don't warn
+  return { nodeVersion, meetsNodeMinimum, minimumNodeVersion }
+}
+
 export function checkSingleBackend(backendType: BackendType): BackendStatus {
   const minimumVersion = MIN_SUPPORTED_VERSIONS[backendType] ?? null
+  const nodeFields = resolveNodeFields(backendType)
 
   if (backendType === BACKEND_TYPES.MOCK) {
-    return { backendType, available: true, version: null, path: null, meetsMinimum: true, minimumVersion: null }
+    return { backendType, available: true, version: null, path: null, meetsMinimum: true, minimumVersion: null, ...nodeFields }
   }
 
   const resolvedPath =
@@ -56,7 +91,7 @@ export function checkSingleBackend(backendType: BackendType): BackendStatus {
     const meets = version !== null && minimumVersion !== null
       ? meetsMinimumVersion(version, minimumVersion)
       : true
-    return { backendType, available: true, version, path: resolvedPath, meetsMinimum: meets, minimumVersion }
+    return { backendType, available: true, version, path: resolvedPath, meetsMinimum: meets, minimumVersion, ...nodeFields }
   }
 
   // Bare-name fallback — try PATH resolution via --version
@@ -65,9 +100,9 @@ export function checkSingleBackend(backendType: BackendType): BackendStatus {
     const meets = minimumVersion !== null
       ? meetsMinimumVersion(version, minimumVersion)
       : true
-    return { backendType, available: true, version, path: null, meetsMinimum: meets, minimumVersion }
+    return { backendType, available: true, version, path: null, meetsMinimum: meets, minimumVersion, ...nodeFields }
   }
-  return { backendType, available: false, version: null, path: null, meetsMinimum: false, minimumVersion }
+  return { backendType, available: false, version: null, path: null, meetsMinimum: false, minimumVersion, ...nodeFields }
 }
 
 export function checkAllBackendStatuses(): BackendStatus[] {
@@ -86,5 +121,6 @@ export function checkAllBackendStatuses(): BackendStatus[] {
 
 export function refreshBackendStatuses(): BackendStatus[] {
   cache = null
+  cachedNodeVersion = undefined
   return checkAllBackendStatuses()
 }

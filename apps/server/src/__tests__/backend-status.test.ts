@@ -22,6 +22,7 @@ import {
   checkAllBackendStatuses,
   refreshBackendStatuses,
   MIN_SUPPORTED_VERSIONS,
+  MIN_NODE_VERSIONS,
 } from '../services/backend-status'
 
 beforeEach(() => {
@@ -339,5 +340,91 @@ describe('minimum version checking', () => {
 
     const codex = statuses.find((s) => s.backendType === 'codex')
     expect(codex?.minimumVersion).toBe('0.100.0')
+  })
+})
+
+describe('node version checking', () => {
+  it('exports MIN_NODE_VERSIONS with claude-code entry', () => {
+    expect(MIN_NODE_VERSIONS['claude-code']).toBe('20.0.0')
+  })
+
+  it('populates nodeVersion when node is available', () => {
+    mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
+    mockResolveCodexPath.mockReturnValue('codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return
+      throw new Error('not found')
+    })
+    mockExecFileSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.40\n'
+      if (path === 'node') return 'v22.5.0\n'
+      throw new Error('not found')
+    })
+
+    const statuses = refreshBackendStatuses()
+    const claude = statuses.find((s) => s.backendType === 'claude-code')
+
+    expect(claude?.nodeVersion).toBe('22.5.0')
+    expect(claude?.meetsNodeMinimum).toBe(true)
+    expect(claude?.minimumNodeVersion).toBe('20.0.0')
+  })
+
+  it('meetsNodeMinimum is false when node < 20', () => {
+    mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
+    mockResolveCodexPath.mockReturnValue('codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return
+      throw new Error('not found')
+    })
+    mockExecFileSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.40\n'
+      if (path === 'node') return 'v18.19.0\n'
+      throw new Error('not found')
+    })
+
+    const statuses = refreshBackendStatuses()
+    const claude = statuses.find((s) => s.backendType === 'claude-code')
+
+    expect(claude?.nodeVersion).toBe('18.19.0')
+    expect(claude?.meetsNodeMinimum).toBe(false)
+  })
+
+  it('meetsNodeMinimum is true when node is not found (graceful)', () => {
+    mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
+    mockResolveCodexPath.mockReturnValue('codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return
+      throw new Error('not found')
+    })
+    mockExecFileSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.40\n'
+      throw new Error('not found')
+    })
+
+    const statuses = refreshBackendStatuses()
+    const claude = statuses.find((s) => s.backendType === 'claude-code')
+
+    expect(claude?.nodeVersion).toBeNull()
+    expect(claude?.meetsNodeMinimum).toBe(true)
+  })
+
+  it('does not check node version for codex', () => {
+    mockResolveClaudePath.mockReturnValue('claude')
+    mockResolveCodexPath.mockReturnValue('/usr/local/bin/codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex') return
+      throw new Error('not found')
+    })
+    mockExecFileSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex') return 'codex 0.100.0\n'
+      throw new Error('not found')
+    })
+
+    const statuses = refreshBackendStatuses()
+    const codex = statuses.find((s) => s.backendType === 'codex')
+
+    expect(codex?.nodeVersion).toBeNull()
+    expect(codex?.meetsNodeMinimum).toBe(true)
+    expect(codex?.minimumNodeVersion).toBeNull()
   })
 })

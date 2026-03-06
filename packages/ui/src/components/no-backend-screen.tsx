@@ -25,6 +25,9 @@ function NoBackendScreen() {
         path: null,
         meetsMinimum: false,
         minimumVersion: null,
+        nodeVersion: null,
+        meetsNodeMinimum: true,
+        minimumNodeVersion: null,
       }));
 
   return (
