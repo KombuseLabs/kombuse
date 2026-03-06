@@ -92,9 +92,9 @@ jobs:
           test -n "$VERSION" && test "$VERSION" != "null"
           echo "version: $VERSION"
 
-          # Exactly 2 file entries (arm64 + x64)
+          # 4 file entries expected (zip + dmg for each of arm64 + x64)
           FILE_COUNT=$(yq '.files | length' latest-mac.yml)
-          test "$FILE_COUNT" -eq 2
+          test "$FILE_COUNT" -eq 4
           echo "files count: $FILE_COUNT"
 
           # Every files[].sha512 must be non-empty
