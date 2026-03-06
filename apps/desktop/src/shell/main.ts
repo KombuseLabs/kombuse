@@ -61,6 +61,12 @@ import { is, getMode } from "../env";
 
 const logger = createAppLogger("Main");
 
+if (process.env.SENTRY_DSN) {
+  logger.info("Sentry initialized");
+} else {
+  logger.warn("Sentry disabled: no DSN configured");
+}
+
 const shellUpdater = new ShellUpdater();
 
 const DEV_WEB_URL = "http://localhost:3333";

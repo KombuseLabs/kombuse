@@ -31,12 +31,17 @@ jobs:
 
       - name: Build all packages
         run: bun run build
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Build package
         run: bun run --filter desktop build:package
 
       - name: Build shell
         run: bun run --filter desktop build:shell
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Rebuild native modules for Electron
         run: npx @electron/rebuild -f -w better-sqlite3 --arch ${{ matrix.arch }}

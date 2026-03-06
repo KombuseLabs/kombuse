@@ -43,6 +43,9 @@ async function buildShell() {
     platform: "node",
     format: "esm",
     external: ["electron", "better-sqlite3", "electron-updater"],
+    define: {
+      'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN ?? ''),
+    },
     banner: {
       js: "import{createRequire}from'module';const require=createRequire(import.meta.url);",
     },
