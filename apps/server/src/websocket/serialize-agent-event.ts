@@ -84,6 +84,9 @@ export function serializeAgentStreamEvent(event: AgentEvent): AgentStreamEvent |
   if (serialized.type === 'complete' || serialized.type === 'lifecycle') {
     return null
   }
+  if (serialized.type === 'raw' && 'sourceType' in serialized && serialized.sourceType === 'cli_pre_normalization') {
+    return null
+  }
   return serialized
 }
 

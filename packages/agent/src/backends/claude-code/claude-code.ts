@@ -67,6 +67,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
 
   private process: Process | null = null
   private skipResultEvents = false
+  private hasEmittedAssistantMessage = false
   private options: Required<ClaudeCodeOptions>
   private stderrBuffer: string[] = []
 
@@ -79,6 +80,13 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     }
   }
 
+  protected override emitEvent(event: AgentEvent): void {
+    if (event.type === 'message' && 'role' in event && event.role === 'assistant') {
+      this.hasEmittedAssistantMessage = true
+    }
+    super.emitEvent(event)
+  }
+
   async start(options: StartOptions): Promise<void> {
     if (this.isRunning()) {
       throw new Error('Claude Code backend is already running')
@@ -87,6 +95,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     this.starting()
     this.clearBackendSessionId()
     this.skipResultEvents = false
+    this.hasEmittedAssistantMessage = false
     this.stderrBuffer = []
 
     const args = this.buildArgs(options)
@@ -447,8 +456,10 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     const isSuccess = event.subtype === 'success' && !event.is_error
     const errorMessage = isSuccess ? undefined : this.getResultErrorMessage(event)
     const resumeFailed = !isSuccess && this.isResumeFailure(errorMessage)
+    let emittedMessageFromResult = false
 
     if (isSuccess && 'result' in event && typeof event.result === 'string' && event.result.trim()) {
+      emittedMessageFromResult = true
       events.push({
         type: 'message',
         eventId: crypto.randomUUID(),
@@ -458,6 +469,28 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
         content: event.result,
         raw: event,
       })
+    }
+
+    if (!emittedMessageFromResult && isSuccess && 'result' in event && Array.isArray(event.result)) {
+      const textParts: string[] = []
+      for (const block of event.result) {
+        if (typeof block === 'object' && block !== null && block.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
+          textParts.push(block.text)
+        }
+      }
+      const combined = textParts.join('\n')
+      if (combined.trim()) {
+        emittedMessageFromResult = true
+        events.push({
+          type: 'message',
+          eventId: crypto.randomUUID(),
+          backend: this.name,
+          timestamp: Date.now(),
+          role: 'assistant',
+          content: combined,
+          raw: event,
+        })
+      }
     }
 
     events.push({
@@ -472,6 +505,17 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
       ...(resumeFailed ? { resumeFailed } : {}),
       raw: event,
     })
+
+    if (isSuccess && !this.hasEmittedAssistantMessage && !emittedMessageFromResult) {
+      const resultField = 'result' in event ? event.result : undefined
+      console.warn('[claude-code] Session completed successfully with no assistant message', {
+        sessionId: event.session_id,
+        resultType: typeof resultField,
+        resultLength: typeof resultField === 'string' ? resultField.length : undefined,
+        resultIsArray: Array.isArray(resultField),
+        numTurns: event.num_turns,
+      })
+    }
 
     if (!isSuccess) {
       events.push(this.createErrorEvent(errorMessage!, undefined, event))

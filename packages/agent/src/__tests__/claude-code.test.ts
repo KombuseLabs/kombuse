@@ -342,6 +342,77 @@ describe('ClaudeCodeBackend', () => {
       }
     })
 
+    it('should extract text from array result.result', () => {
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'success',
+          uuid: 'test-uuid',
+          session_id: 'session_array',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: false,
+          num_turns: 1,
+          result: [{ type: 'text', text: 'Hello from array' }, { type: 'thinking', thinking: 'hmm' }] as any,
+          total_cost_usd: 0.01,
+          usage: { input_tokens: 10, output_tokens: 20 },
+          modelUsage: {},
+          permission_denials: []
+        }
+      }
+
+      callHandleMessage(backend, msg)
+
+      expect(events).toHaveLength(3)
+      expect(events[0]!.type).toBe('raw')
+      expect(events[1]!.type).toBe('message')
+      if (events[1]!.type === 'message') {
+        expect(events[1]!.role).toBe('assistant')
+        expect(events[1]!.content).toBe('Hello from array')
+      }
+      expect(events[2]!.type).toBe('complete')
+      if (events[2]!.type === 'complete') {
+        expect(events[2]!.success).toBe(true)
+      }
+    })
+
+    it('should warn when session completes with no assistant message and empty result', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'success',
+          uuid: 'test-uuid',
+          session_id: 'session_no_msg',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: false,
+          num_turns: 1,
+          result: '',
+          total_cost_usd: 0.01,
+          usage: { input_tokens: 10, output_tokens: 20 },
+          modelUsage: {},
+          permission_denials: []
+        }
+      }
+
+      callHandleMessage(backend, msg)
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[claude-code] Session completed successfully with no assistant message',
+        expect.objectContaining({
+          sessionId: 'session_no_msg',
+          resultType: 'string',
+          resultLength: 0,
+          resultIsArray: false,
+          numTurns: 1,
+        })
+      )
+
+      warnSpy.mockRestore()
+    })
+
     it('should emit complete before error for failed result', () => {
       const msg: ParsedClaudeMessage = {
         data: {

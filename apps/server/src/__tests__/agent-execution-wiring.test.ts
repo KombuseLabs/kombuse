@@ -3449,7 +3449,7 @@ describe('cli_pre_normalization event filtering', () => {
     vi.mocked(createSessionLogger).mockClear()
   })
 
-  it('logs cli_pre_normalization events but does not persist or emit them', async () => {
+  it('persists cli_pre_normalization events but does not emit them', async () => {
     delete process.env.KOMBUSE_LOG_LEVEL
     const { backend, fireEvent } = createEventDrivenBackend()
     const deps = createDeps(backend)
@@ -3476,7 +3476,7 @@ describe('cli_pre_normalization event filtering', () => {
 
     const loggerInstance = vi.mocked(createSessionLogger).mock.results[0]?.value
     expect(loggerInstance.logEvent).toHaveBeenCalled()
-    expect(deps.sessionPersistence.persistEvent).not.toHaveBeenCalled()
+    expect(deps.sessionPersistence.persistEvent).toHaveBeenCalledOnce()
     expect(emitSpy).not.toHaveBeenCalled()
   })
 
@@ -3510,7 +3510,7 @@ describe('cli_pre_normalization event filtering', () => {
     expect(emitSpy).toHaveBeenCalledOnce()
   })
 
-  it('persists cli_pre_normalization events when KOMBUSE_LOG_LEVEL=debug', async () => {
+  it('persists cli_pre_normalization events regardless of KOMBUSE_LOG_LEVEL', async () => {
     process.env.KOMBUSE_LOG_LEVEL = 'debug'
     const { backend, fireEvent } = createEventDrivenBackend()
     const deps = createDeps(backend)
@@ -3537,7 +3537,7 @@ describe('cli_pre_normalization event filtering', () => {
     const loggerInstance = vi.mocked(createSessionLogger).mock.results[0]?.value
     expect(loggerInstance.logEvent).toHaveBeenCalled()
     expect(deps.sessionPersistence.persistEvent).toHaveBeenCalledOnce()
-    expect(emitSpy).toHaveBeenCalledOnce()
+    expect(emitSpy).not.toHaveBeenCalled()
   })
 })
 

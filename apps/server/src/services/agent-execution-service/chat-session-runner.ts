@@ -922,7 +922,8 @@ export function startAgentChatSession(
       onEvent: (event: AgentEvent) => {
         reusedLogger.logEvent(event)
 
-        if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
+        if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization') {
+          dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
           return
         }
         if (event.type === 'lifecycle') {
@@ -1126,7 +1127,8 @@ export function startAgentChatSession(
     onEvent: (event: AgentEvent) => {
       logger.logEvent(event)
 
-      if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
+      if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization') {
+        dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
         return
       }
       if (event.type === 'lifecycle') {
@@ -1314,7 +1316,8 @@ export function startAgentChatSession(
         onEvent: (event: AgentEvent) => {
           logger.logEvent(event)
 
-          if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization' && process.env.KOMBUSE_LOG_LEVEL !== 'debug') {
+          if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization') {
+            dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
             return
           }
           if (event.type === 'lifecycle') {
