@@ -223,6 +223,19 @@ export interface AppLoggerOptions {
   level?: AppLogLevel
 }
 
+export type AppLogCallback = (
+  level: 'warn' | 'error',
+  component: string,
+  message: string,
+  data?: Record<string, unknown>,
+) => void
+
+let _globalOnLog: AppLogCallback | null = null
+
+export function setAppLoggerOnLog(callback: AppLogCallback | null): void {
+  _globalOnLog = callback
+}
+
 const APP_LOG_LEVEL_PRIORITY: Record<AppLogLevel, number> = {
   debug: 0,
   info: 1,
@@ -277,19 +290,24 @@ export function createAppLogger(
       } else {
         fn(`[${component}]`, message)
       }
-      return
+    } else {
+      const entry: Record<string, unknown> = {
+        ts: new Date().toISOString(),
+        level,
+        component,
+        msg: message,
+      }
+      if (data) {
+        entry.data = data
+      }
+      ensureAppStream().write(JSON.stringify(entry) + '\n')
     }
 
-    const entry: Record<string, unknown> = {
-      ts: new Date().toISOString(),
-      level,
-      component,
-      msg: message,
+    // Forward warn/error to global callback (e.g., Sentry) only for non-console
+    // targets — console targets are already covered by captureConsoleIntegration.
+    if (_globalOnLog && target !== 'console' && (level === 'warn' || level === 'error')) {
+      _globalOnLog(level, component, message, data)
     }
-    if (data) {
-      entry.data = data
-    }
-    ensureAppStream().write(JSON.stringify(entry) + '\n')
   }
 
   return {

@@ -56,7 +56,7 @@ import {
 } from "./services/agent-execution-service";
 import { createResponseValidationHook } from "./schemas/response-validation.schema";
 import { resolveProjectSlug } from "./hooks/resolve-project-slug";
-import { createAppLogger, closeAppLogger, pruneOldLogs } from "./logger";
+import { createAppLogger, closeAppLogger, pruneOldLogs, setAppLoggerOnLog } from "./logger";
 
 const serverLog = createAppLogger('Server');
 
@@ -122,7 +122,15 @@ export async function createServer({ port, dbPath, desktop, isolated }: ServerOp
       dsn: process.env.SENTRY_DSN,
       environment: process.env.NODE_ENV || "development",
       release: process.env.SENTRY_RELEASE,
+      integrations: [Sentry.captureConsoleIntegration({ levels: ['warn', 'error'] })],
       tracesSampleRate: 0.1,
+    });
+
+    setAppLoggerOnLog((level, component, message, data) => {
+      Sentry.captureMessage(`[${component}] ${message}`, {
+        level: level === 'error' ? 'error' : 'warning',
+        extra: data,
+      });
     });
   }
 

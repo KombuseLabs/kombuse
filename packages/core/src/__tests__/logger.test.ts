@@ -33,6 +33,7 @@ import {
   createAppLogger,
   closeAppLogger,
   pruneOldLogs,
+  setAppLoggerOnLog,
 } from '../logger'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 
@@ -100,6 +101,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   closeAppLogger()
+  setAppLoggerOnLog(null)
 })
 
 // ---------------------------------------------------------------------------
@@ -477,5 +479,66 @@ describe('pruneOldLogs', () => {
     const count = pruneOldLogs({ logDir: '/tmp/logs' })
 
     expect(count).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// setAppLoggerOnLog tests
+// ---------------------------------------------------------------------------
+
+describe('setAppLoggerOnLog', () => {
+  it('calls onLog for warn when target is file', () => {
+    const callback = vi.fn()
+    setAppLoggerOnLog(callback)
+    const logger = createAppLogger('Test', { target: 'file', level: 'info' })
+
+    logger.warn('something wrong', { key: 'val' })
+
+    expect(callback).toHaveBeenCalledOnce()
+    expect(callback).toHaveBeenCalledWith('warn', 'Test', 'something wrong', { key: 'val' })
+  })
+
+  it('calls onLog for error when target is file', () => {
+    const callback = vi.fn()
+    setAppLoggerOnLog(callback)
+    const logger = createAppLogger('Test', { target: 'file', level: 'info' })
+
+    logger.error('fatal', { code: 500 })
+
+    expect(callback).toHaveBeenCalledOnce()
+    expect(callback).toHaveBeenCalledWith('error', 'Test', 'fatal', { code: 500 })
+  })
+
+  it('does NOT call onLog for info or debug', () => {
+    const callback = vi.fn()
+    setAppLoggerOnLog(callback)
+    const logger = createAppLogger('Test', { target: 'file', level: 'debug' })
+
+    logger.debug('d')
+    logger.info('i')
+
+    expect(callback).not.toHaveBeenCalled()
+  })
+
+  it('does NOT call onLog when target is console', () => {
+    const callback = vi.fn()
+    setAppLoggerOnLog(callback)
+    const logger = createAppLogger('Test', { target: 'console', level: 'info' })
+
+    logger.warn('test')
+    logger.error('test')
+
+    expect(callback).not.toHaveBeenCalled()
+  })
+
+  it('handles null callback (clears)', () => {
+    const callback = vi.fn()
+    setAppLoggerOnLog(callback)
+    setAppLoggerOnLog(null)
+    const logger = createAppLogger('Test', { target: 'file', level: 'info' })
+
+    logger.error('test')
+
+    expect(callback).not.toHaveBeenCalled()
   })
 })

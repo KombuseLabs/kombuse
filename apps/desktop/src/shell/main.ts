@@ -27,6 +27,7 @@ import * as Sentry from "@sentry/electron";
 
 Sentry.init({
   dsn: "https://5812d23da71018e134e320af2e175115@o4510997023555584.ingest.us.sentry.io/4510997025193984",
+  integrations: [Sentry.captureConsoleIntegration({ levels: ['warn', 'error'] })],
 });
 
 // Register app:// as a privileged scheme so it gets localStorage, cookies, fetch, etc.
