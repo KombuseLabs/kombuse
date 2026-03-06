@@ -262,28 +262,18 @@ function CreateProjectDialog({
   const { isDesktop, selectDirectory } = useDesktop();
   const createProject = useCreateProject();
   const [localPath, setLocalPath] = useState("");
-  const [name, setName] = useState("");
-  const [nameTouched, setNameTouched] = useState(false);
-
   function resetForm() {
     setLocalPath("");
-    setName("");
-    setNameTouched(false);
   }
 
   useEffect(() => {
     if (!open) {
       setLocalPath("");
-      setName("");
-      setNameTouched(false);
     }
   }, [open]);
 
   function updatePath(nextPath: string) {
     setLocalPath(nextPath);
-    if (!nameTouched) {
-      setName(deriveProjectNameFromPath(nextPath));
-    }
   }
 
   async function handleSelectDirectory() {
@@ -294,12 +284,13 @@ function CreateProjectDialog({
   }
 
   async function handleCreate() {
-    const trimmedName = name.trim();
     const trimmedPath = localPath.trim();
-    if (!trimmedName || !trimmedPath) return;
+    if (!trimmedPath) return;
+    const derivedName = deriveProjectNameFromPath(trimmedPath);
+    if (!derivedName) return;
 
     await createProject.mutateAsync({
-      name: trimmedName,
+      name: derivedName,
       owner_id: "user-1",
       local_path: trimmedPath,
     });
@@ -318,8 +309,8 @@ function CreateProjectDialog({
       <DialogHeader>
         <DialogTitle>Create Project</DialogTitle>
         <DialogDescription>
-          Choose a local directory to create a project. The folder name is used
-          as the default project name.
+          Select a local directory. The folder name will be used as the project
+          name. You can change it later in project settings.
         </DialogDescription>
       </DialogHeader>
 
@@ -353,18 +344,6 @@ function CreateProjectDialog({
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="project-name">Project name</Label>
-          <Input
-            id="project-name"
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              setNameTouched(true);
-            }}
-            placeholder="my-project"
-          />
-        </div>
       </div>
 
       <DialogFooter>
@@ -373,7 +352,7 @@ function CreateProjectDialog({
         </Button>
         <Button
           onClick={handleCreate}
-          disabled={createProject.isPending || !name.trim() || !localPath.trim()}
+          disabled={createProject.isPending || !localPath.trim()}
         >
           {createProject.isPending && (
             <Loader2 className="size-4 mr-2 animate-spin" />
