@@ -35,6 +35,7 @@ src/
 │   ├── header.tsx
 │   ├── layout-toggle.tsx        - Layout toggle button for list panel visibility (size-icon, size-5 icon — matches header icons)
 │   ├── profile-button.tsx       - Header user menu dropdown (Profile + Settings)
+│   ├── update-notification.tsx  - Update toast notifications (app + shell updater)
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks
 │   ├── use-agents.ts          - Agent CRUD, profile, toggle, and export hooks

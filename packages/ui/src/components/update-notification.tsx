@@ -15,7 +15,7 @@ interface UpdateAvailableToastProps {
 
 function UpdateAvailableToast({ version, onInstall, onDismiss }: UpdateAvailableToastProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2">
       <p className="text-sm font-medium">Update Available</p>
       <p className="text-sm text-muted-foreground">
         Version {version} is ready to download.
@@ -34,7 +34,7 @@ function UpdateAvailableToast({ version, onInstall, onDismiss }: UpdateAvailable
 
 function DownloadProgressToast({ progress }: { progress: number }) {
   return (
-    <div className="flex flex-col gap-2 w-full min-w-[200px]">
+    <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2 w-full min-w-[200px]">
       <p className="text-sm font-medium">Downloading Update...</p>
       <Progress value={progress} className="w-full" />
       <p className="text-xs text-muted-foreground">{progress}%</p>
@@ -44,7 +44,7 @@ function DownloadProgressToast({ progress }: { progress: number }) {
 
 function VerifyingToast() {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2">
       <p className="text-sm font-medium">Verifying Update...</p>
       <p className="text-xs text-muted-foreground">Checking integrity</p>
     </div>
@@ -59,7 +59,7 @@ interface UpdateReadyToastProps {
 
 function UpdateReadyToast({ version, onRestart, onDismiss }: UpdateReadyToastProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2">
       <p className="text-sm font-medium">Update Ready</p>
       <p className="text-sm text-muted-foreground">
         Version {version} installed. Restart to apply.
@@ -171,7 +171,7 @@ export function UpdateNotification() {
 
 function ShellUpdateAvailableToast({ version, onInstall, onDismiss }: UpdateAvailableToastProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2">
       <p className="text-sm font-medium">App Update Available</p>
       <p className="text-sm text-muted-foreground">
         Shell version {version} is ready to download.
@@ -190,7 +190,7 @@ function ShellUpdateAvailableToast({ version, onInstall, onDismiss }: UpdateAvai
 
 function ShellDownloadProgressToast({ progress }: { progress: number }) {
   return (
-    <div className="flex flex-col gap-2 w-full min-w-[200px]">
+    <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2 w-full min-w-[200px]">
       <p className="text-sm font-medium">Downloading App Update...</p>
       <Progress value={progress} className="w-full" />
       <p className="text-xs text-muted-foreground">{progress}%</p>
@@ -200,7 +200,7 @@ function ShellDownloadProgressToast({ progress }: { progress: number }) {
 
 function ShellUpdateReadyToast({ version, onRestart, onDismiss }: UpdateReadyToastProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2">
       <p className="text-sm font-medium">App Update Ready</p>
       <p className="text-sm text-muted-foreground">
         Quit and update to version {version}.
