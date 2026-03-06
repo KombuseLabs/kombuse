@@ -14,6 +14,10 @@
 import { config } from "dotenv";
 config();
 
+// Fix PATH for macOS GUI-launched apps (before any PATH-dependent code)
+import { fixMacOsPath } from "./fix-path";
+fixMacOsPath();
+
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";

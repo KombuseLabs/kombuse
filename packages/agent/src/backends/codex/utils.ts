@@ -54,9 +54,6 @@ export function resolveCodexPath(): string {
  */
 export function createCleanEnv(): Record<string, string> {
   const homeDir = process.env.HOME || process.env.USERPROFILE || ''
-  const cleanPath = process.env.PATH?.split(':')
-    .filter((p) => !p.includes('node_modules/.bin'))
-    .join(':')
 
   const env: Record<string, string> = {}
   for (const [key, value] of Object.entries(process.env)) {
@@ -65,7 +62,20 @@ export function createCleanEnv(): Record<string, string> {
     }
   }
 
-  env.PATH = `${homeDir}/.local/bin:/usr/local/bin:/usr/bin:/bin${cleanPath ? ':' + cleanPath : ''}`
+  // Prepend essential dirs, keep the original PATH (minus node_modules/.bin),
+  // and deduplicate so prepended dirs take priority without bloating the value.
+  const prependDirs = [`${homeDir}/.local/bin`, '/usr/local/bin', '/usr/bin', '/bin']
+  const existingDirs = (process.env.PATH || '').split(':')
+    .filter((p) => p && !p.includes('node_modules/.bin'))
+  const seen = new Set<string>()
+  const pathParts: string[] = []
+  for (const dir of [...prependDirs, ...existingDirs]) {
+    if (!seen.has(dir)) {
+      seen.add(dir)
+      pathParts.push(dir)
+    }
+  }
+  env.PATH = pathParts.join(':')
 
   return env
 }

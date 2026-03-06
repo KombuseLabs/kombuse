@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process'
-import { accessSync, constants } from 'fs'
+import { accessSync, constants } from 'node:fs'
 import type { ProcessBehavior, Process } from '../../types'
 import type { ClaudeEvent } from './types'
 
