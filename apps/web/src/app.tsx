@@ -1,5 +1,6 @@
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from "@tanstack/react-query";
+import * as Sentry from "@sentry/react";
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
 import { Header, UpdateNotification, ShellUpdateNotification, UpdateStatusDialog, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar, LayoutToggle } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
@@ -46,6 +47,7 @@ const queryClient = new QueryClient({
   }),
   mutationCache: new MutationCache({
     onError: (error) => {
+      Sentry.captureException(error);
       toast.error(error.message || "An error occurred");
     },
   }),
@@ -142,6 +144,23 @@ function AppContent() {
   );
 }
 
+function ErrorFallback() {
+  return (
+    <div className="flex h-dvh items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold">Something went wrong</h1>
+        <p className="mt-2 text-muted-foreground">An unexpected error occurred. Please reload the page.</p>
+        <button
+          className="mt-4 rounded-md bg-primary px-4 py-2 text-primary-foreground"
+          onClick={() => window.location.reload()}
+        >
+          Reload
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -166,3 +185,7 @@ export function App() {
     </QueryClientProvider>
   );
 }
+
+export const AppWithErrorBoundary = Sentry.withErrorBoundary(App, {
+  fallback: <ErrorFallback />,
+});
