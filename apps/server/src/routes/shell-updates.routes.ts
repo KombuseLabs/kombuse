@@ -62,3 +62,8 @@ export async function shellUpdateRoutes(fastify: FastifyInstance) {
     }
   });
 }
+
+/** Test-only: reset module-level shell auto-updater to null */
+export function _resetShellAutoUpdater() {
+  shellAutoUpdater = null;
+}

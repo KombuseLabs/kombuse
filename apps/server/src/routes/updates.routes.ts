@@ -79,3 +79,8 @@ export async function updateRoutes(fastify: FastifyInstance) {
     }
   });
 }
+
+/** Test-only: reset module-level auto-updater to null */
+export function _resetAutoUpdater() {
+  autoUpdater = null;
+}
