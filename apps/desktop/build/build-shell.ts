@@ -17,8 +17,8 @@ const sentryPlugins = process.env.SENTRY_AUTH_TOKEN
   ? [
       sentryEsbuildPlugin({
         authToken: process.env.SENTRY_AUTH_TOKEN,
-        org: "philipplgh",
-        project: "electron",
+        org: process.env.SENTRY_ORG ?? "philipplgh",
+        project: process.env.SENTRY_PROJECT ?? "electron",
       }),
     ]
   : [];

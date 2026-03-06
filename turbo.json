@@ -1,7 +1,7 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
-  "globalEnv": ["UPDATE_API_BASE", "SENTRY_DSN", "SENTRY_AUTH_TOKEN"],
+  "globalEnv": ["UPDATE_API_BASE", "SENTRY_DSN", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "SENTRY_RELEASE"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

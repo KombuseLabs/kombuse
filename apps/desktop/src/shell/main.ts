@@ -25,12 +25,14 @@ import { homedir } from "node:os";
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from "electron";
 import * as Sentry from "@sentry/electron";
 
-Sentry.init({
-  dsn: "https://5812d23da71018e134e320af2e175115@o4510997023555584.ingest.us.sentry.io/4510997025193984",
-  release: app.getVersion(),
-  environment: process.env.NODE_ENV || "production",
-  integrations: [Sentry.captureConsoleIntegration({ levels: ['warn', 'error'] })],
-});
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    release: app.getVersion(),
+    environment: process.env.NODE_ENV || "production",
+    integrations: [Sentry.captureConsoleIntegration({ levels: ['warn', 'error'] })],
+  });
+}
 
 // Register app:// as a privileged scheme so it gets localStorage, cookies, fetch, etc.
 // Must be called before app.whenReady().
