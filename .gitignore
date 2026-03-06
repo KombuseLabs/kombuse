@@ -38,6 +38,10 @@ yarn-error.log*
 # Logs
 logs
 
+# Sentry
+.sentryclirc
+.env.sentry-build-plugin
+
 # Misc
 .DS_Store
 *.pem
