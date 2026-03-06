@@ -20,7 +20,7 @@ export function fixMacOsPath(): void {
     if (match?.[1]) {
       process.env.PATH = match[1]
     }
-  } catch {
-    // Keep existing PATH as fallback
+  } catch (err) {
+    console.warn('[fix-path] Failed to extract PATH from shell:', err instanceof Error ? err.message : err)
   }
 }

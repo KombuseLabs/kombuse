@@ -124,7 +124,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
         },
         onError: (error) => {
           this.process = null
-          this.failed(error.message, {
+          this.failed(`CLI path: ${this.options.cliPath} — ${error.message}`, {
             reason: 'process_error',
             error,
           })

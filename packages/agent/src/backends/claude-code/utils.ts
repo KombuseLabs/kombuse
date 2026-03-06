@@ -80,7 +80,7 @@ export function createCleanEnv(options?: {
 
   // Prepend essential dirs, keep the original PATH (minus node_modules/.bin),
   // and deduplicate so prepended dirs take priority without bloating the value.
-  const prependDirs = [`${homeDir}/.local/bin`, '/usr/local/bin', '/usr/bin', '/bin']
+  const prependDirs = [`${homeDir}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin']
   const existingDirs = (process.env.PATH || '').split(':')
     .filter((p) => p && !p.includes('node_modules/.bin'))
   const seen = new Set<string>()
