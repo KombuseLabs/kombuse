@@ -16,6 +16,7 @@ vi.mock('../../labels/label-badge', () => ({
 }))
 
 type TicketSortBy = NonNullable<TicketFilters['sort_by']>
+type TicketDateSortBy = Exclude<TicketSortBy, 'priority'>
 
 function buildTicket(overrides: Partial<TicketWithLabels> = {}): TicketWithLabels {
   return {
@@ -48,7 +49,7 @@ function buildTicket(overrides: Partial<TicketWithLabels> = {}): TicketWithLabel
   }
 }
 
-const sortDateLabelPrefixes: Record<TicketSortBy, string> = {
+const sortDateLabelPrefixes: Record<TicketDateSortBy, string> = {
   created_at: 'Created',
   updated_at: 'Updated',
   opened_at: 'Opened',
@@ -56,7 +57,7 @@ const sortDateLabelPrefixes: Record<TicketSortBy, string> = {
   closed_at: 'Closed',
 }
 
-function formatDateLabel(date: string, sortBy: TicketSortBy) {
+function formatDateLabel(date: string, sortBy: TicketDateSortBy) {
   const formatted = new Date(date).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -68,8 +69,8 @@ function formatDateLabel(date: string, sortBy: TicketSortBy) {
 }
 
 const sortFieldCases: Array<[
-  TicketSortBy,
-  'created_at' | 'updated_at' | 'opened_at' | 'last_activity_at' | 'closed_at',
+  TicketDateSortBy,
+  TicketDateSortBy,
 ]> = [
   ['created_at', 'created_at'],
   ['updated_at', 'updated_at'],
