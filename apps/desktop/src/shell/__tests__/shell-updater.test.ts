@@ -558,9 +558,9 @@ describe("periodic checks", () => {
   it("skips check when state is not idle or error", () => {
     const updater = createUpdater();
 
-    // Put into "downloading" state
+    // Put into "available" state
     fireEvent("update-available", MOCK_EU_UPDATE_INFO_RC15);
-    // Manually trigger downloading state
+    // Put into "checking" state
     fireEvent("checking-for-update");
 
     updater.startPeriodicChecks(10_000, 1_000);
@@ -630,7 +630,7 @@ describe("periodic checks", () => {
     // Error should be logged, not thrown
     expect(errorSpy).toHaveBeenCalled();
     // Updater should still be functional
-    expect(updater.getStatus().state).not.toBe("error");
+    expect(updater.getStatus().state).toBe("idle");
   });
 });
 
@@ -695,6 +695,8 @@ describe("status listeners", () => {
     const states: string[] = [];
     updater.onStatusChange((s) => states.push(s.state));
 
+    // Note: download-progress normally only fires during an active download,
+    // but the handler has no state guards — this tests the data path in isolation.
     fireEvent("download-progress", { percent: 50 });
 
     // State remains "idle" (download-progress only updates downloadProgress)
