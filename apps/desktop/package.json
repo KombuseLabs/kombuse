@@ -1,6 +1,6 @@
 {
   "name": "desktop",
-  "version": "1.0.0-rc.21",
+  "version": "1.0.0-rc.22",
   "private": true,
   "type": "module",
   "main": "dist/shell/main.mjs",
