@@ -436,7 +436,7 @@ export function registerTicketTools(server: McpServer): void {
     'get_ticket',
     {
       description:
-        'Get a ticket by ID with a hard byte cap (25,000 UTF-8 bytes). Supports overview, filtered comments, and image attachment metadata (file paths only).',
+        'Get a ticket by ID with a hard byte cap (25,000 UTF-8 bytes). Supports overview, filtered comments, and image attachment metadata (file paths only). Attachment counts (total + images) are always included.',
       inputSchema: {
         project_id: z
           .string()
@@ -487,6 +487,12 @@ export function registerTicketTools(server: McpServer): void {
 
       const response: Record<string, unknown> = {
         ticket: buildTicketSummary(ticket, ticketBodyPreviewChars, forceFull),
+      }
+
+      const ticketAttachments = attachmentsRepository.getByTicket(ticket.id)
+      ;(response.ticket as Record<string, unknown>).attachment_counts = {
+        total: ticketAttachments.length,
+        images: ticketAttachments.filter(isImageAttachment).length,
       }
 
       const allOverviewComments = includeOverview
@@ -609,7 +615,6 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       if (includeImages) {
-        const ticketAttachments = attachmentsRepository.getByTicket(ticket.id)
         const attachmentsByComment = attachmentsRepository.getByTicketComments(ticket.id)
 
         response.ticket_attachments = ticketAttachments

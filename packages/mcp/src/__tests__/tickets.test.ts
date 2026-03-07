@@ -107,9 +107,77 @@ describe('get_ticket', () => {
     expect(data.ticket.author.name).toBe('Test User')
     expect(data.ticket.assignee).toBeNull()
     expect(data.comments).toEqual([])
+    expect(data.ticket.attachment_counts).toEqual({ total: 0, images: 0 })
     expect(data.ticket_attachments).toBeUndefined()
     expect(data.comment_attachments).toBeUndefined()
     expect(countImageBlocks(result)).toBe(0)
+  })
+
+  it('should return attachment_counts with mixed attachment types', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const imgPath = '2026/02/test-img.png'
+    writeTestFile(imgPath, TINY_PNG)
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'screenshot.png',
+      mime_type: 'image/png',
+      size_bytes: TINY_PNG.length,
+      storage_path: imgPath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const pdfPath = '2026/02/test-doc.pdf'
+    writeTestFile(pdfPath, Buffer.from('fake-pdf'))
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'report.pdf',
+      mime_type: 'application/pdf',
+      size_bytes: 8,
+      storage_path: pdfPath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.ticket.attachment_counts).toEqual({ total: 2, images: 1 })
+    expect(data.ticket_attachments).toBeUndefined()
+  })
+
+  it('should return attachment_counts alongside ticket_attachments when config.images is true', async () => {
+    const ticket = ticketsRepository.create({
+      title: 'Test ticket',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+
+    const storagePath = '2026/02/test-img2.png'
+    writeTestFile(storagePath, TINY_PNG)
+    attachmentsRepository.create({
+      ticket_id: ticket.id,
+      filename: 'screenshot.png',
+      mime_type: 'image/png',
+      size_bytes: TINY_PNG.length,
+      storage_path: storagePath,
+      uploaded_by_id: TEST_USER_ID,
+    })
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number, config: { images: true } },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.ticket.attachment_counts).toEqual({ total: 1, images: 1 })
+    expect(data.ticket_attachments).toHaveLength(1)
   })
 
   it('should return error for non-existent ticket', async () => {
