@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"><defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A0A14"></stop>
+      <stop offset="100%" stop-color="#140A0F"></stop>
+    </linearGradient>
+    <linearGradient id="sunrise" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43678"></stop>
+      <stop offset="50%" stop-color="#FB7B3C"></stop>
+      <stop offset="100%" stop-color="#FBBF24"></stop>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="b"></feGaussianBlur>
+      <feMerge>
+        <feMergeNode in="b"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+  </defs><rect width="1024" height="1024" rx="224" fill="url(#bg)"></rect><path d="M 230 590 Q 220 740, 270 810 Q 310 860, 400 866 L 624 866 Q 714 860, 754 810 Q 804 740, 794 590 Z" fill="url(#sunrise)" opacity="0.85"></path><rect x="195" y="568" width="634" height="44" rx="22" fill="url(#sunrise)"></rect><g filter="url(#glow)">
+    <!-- Left bracket < — 50% transparent -->
+    <path d="M 395 530 L 305 400 L 395 270" fill="none" stroke="#FFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"></path>
+    <!-- Right bracket > -->
+    <path d="M 629 530 L 719 400 L 629 270" fill="none" stroke="#FFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"></path>
+    <!-- Spoon-slash — amber, dips into pot -->
+    <line x1="555" y1="240" x2="469" y2="650" stroke="#FBBF24" stroke-width="46" stroke-linecap="round"></line>
+  </g></svg>

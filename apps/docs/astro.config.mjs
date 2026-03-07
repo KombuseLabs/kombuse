@@ -9,6 +9,40 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Kombuse Docs',
+      favicon: '/favicon.svg',
+      head: [
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'icon',
+            href: '/favicon.ico',
+            sizes: '32x32',
+          },
+        },
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'icon',
+            href: '/favicon-96x96.png',
+            sizes: '96x96',
+            type: 'image/png',
+          },
+        },
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'apple-touch-icon',
+            href: '/apple-touch-icon.png',
+          },
+        },
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'manifest',
+            href: '/site.webmanifest',
+          },
+        },
+      ],
       plugins: [starlightBlog()],
       customCss: ['./src/styles/custom.css'],
       social: [
