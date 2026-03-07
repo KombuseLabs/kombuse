@@ -7,6 +7,7 @@
 
 import { build } from "esbuild";
 import { sentryEsbuildPlugin } from "@sentry/esbuild-plugin";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -67,6 +68,23 @@ async function buildShell() {
     logOverride: { "import-is-undefined": "silent" },
     plugins: [...sentryPlugins],
   });
+
+  // Verify preload bundle is free of Node built-in requires (sandbox safety)
+  const preloadOutput = readFileSync(
+    join(ROOT, "dist/shell/preload.cjs"),
+    "utf-8",
+  );
+  const nodeRequires = preloadOutput.match(/require\("node:[^"]+"\)/g);
+  if (nodeRequires) {
+    console.error(
+      "ERROR: Preload bundle contains Node built-in require() calls.",
+    );
+    console.error(
+      "This will crash in the Electron sandbox. Found:",
+      nodeRequires,
+    );
+    process.exit(1);
+  }
 
   console.log("Shell build complete.");
 }

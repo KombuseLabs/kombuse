@@ -285,6 +285,11 @@ function ensureAppStream(): WriteStream {
   return sharedAppStream
 }
 
+/**
+ * @remarks **Not safe for Electron preloads or browser contexts** — this module
+ * imports `node:fs`, `node:os`, and `node:path` at the top level. Use
+ * {@link createBrowserLogger} from `@kombuse/core/browser-logger` instead.
+ */
 export function createAppLogger(
   component: string,
   options?: AppLoggerOptions,
