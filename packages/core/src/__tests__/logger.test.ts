@@ -630,9 +630,10 @@ describe('log configuration', () => {
     expect(getConfiguredLogDir()).toBe('/custom/log/path')
   })
 
-  it('getConfiguredLogDir returns homedir/.kombuse/logs by default', () => {
+  it('getConfiguredLogDir returns homedir/.kombuse/logs by default', async () => {
+    const os = await vi.importActual<typeof import('node:os')>('node:os')
     const { join } = require('node:path')
-    expect(getConfiguredLogDir()).toBe(join('/mock-home', '.kombuse', 'logs'))
+    expect(getConfiguredLogDir()).toBe(join(os.homedir(), '.kombuse', 'logs'))
   })
 
   it('setLogTarget to file makes new loggers write to file', () => {
@@ -675,13 +676,14 @@ describe('log configuration', () => {
     expect(mockEnd).toHaveBeenCalledOnce()
   })
 
-  it('resetLogConfig restores defaults', () => {
+  it('resetLogConfig restores defaults', async () => {
     setLogDir('/custom')
     setLogTarget('console')
 
     resetLogConfig()
 
+    const os = await vi.importActual<typeof import('node:os')>('node:os')
     const { join } = require('node:path')
-    expect(getConfiguredLogDir()).toBe(join('/mock-home', '.kombuse', 'logs'))
+    expect(getConfiguredLogDir()).toBe(join(os.homedir(), '.kombuse', 'logs'))
   })
 })

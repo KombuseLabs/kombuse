@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createSessionId } from '@kombuse/types'
+
+vi.mock('@kombuse/core/logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@kombuse/core/logger')>()
+  return {
+    ...actual,
+    createAppLogger: (name: string, opts?: Record<string, unknown>) =>
+      actual.createAppLogger(name, { ...opts, target: 'console' }),
+  }
+})
+
 import { ClaudeCodeBackend } from '../backends/claude-code'
 import type { ParsedClaudeMessage } from '../backends/claude-code'
 import { type AgentEvent } from '../types'
@@ -512,7 +522,8 @@ describe('ClaudeCodeBackend', () => {
       callHandleMessage(backend, msg)
 
       expect(warnSpy).toHaveBeenCalledWith(
-        '[claude-code] Session completed successfully with no assistant message',
+        '[ClaudeCode]',
+        'Session completed successfully with no assistant message',
         expect.objectContaining({
           sessionId: 'session_no_msg',
           resultType: 'string',
