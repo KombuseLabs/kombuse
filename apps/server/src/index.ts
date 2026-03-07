@@ -79,6 +79,9 @@ export interface ServerOptions {
  * Initializes and seeds the database internally.
  */
 export async function createServer({ port, dbPath, desktop, isolated }: ServerOptions) {
+  // Point log directory to ~/.kombuse/logs/ before any code that might log
+  setLogDir(join(homedir(), '.kombuse', 'logs'))
+
   const db = initializeDatabase(dbPath);
   seedDatabase(db);
   if (isolated) {
@@ -88,6 +91,12 @@ export async function createServer({ port, dbPath, desktop, isolated }: ServerOp
   // Isolated server skips this so it never clobbers the primary server's global ref.
   if (!isolated) {
     setDatabase(db);
+  }
+
+  // Configure log target from user setting (needs global DB, only available for primary server)
+  if (!process.env.KOMBUSE_LOG_TARGET && !isolated) {
+    const fileLoggingEnabled = readFileLoggingEnabled()
+    setLogTarget(fileLoggingEnabled ? 'file' : 'console')
   }
 
   // Isolated servers have no agent sessions, so orphan cleanup is unnecessary.
@@ -117,13 +126,6 @@ export async function createServer({ port, dbPath, desktop, isolated }: ServerOp
       );
     }
   }, 60_000);
-
-  // Point log directory to ~/.kombuse/logs/ and configure target from user setting
-  setLogDir(join(homedir(), '.kombuse', 'logs'))
-  if (!process.env.KOMBUSE_LOG_TARGET) {
-    const fileLoggingEnabled = readFileLoggingEnabled()
-    setLogTarget(fileLoggingEnabled ? 'file' : 'console')
-  }
 
   pruneOldLogs();
 

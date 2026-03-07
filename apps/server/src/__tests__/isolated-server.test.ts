@@ -24,6 +24,8 @@ vi.mock('../logger', () => ({
   createAppLogger: vi.fn(() => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() })),
   closeAppLogger: vi.fn(),
   pruneOldLogs: vi.fn(),
+  setLogDir: vi.fn(),
+  setLogTarget: vi.fn(),
 }))
 
 // ─────────────────────────────────────────────────────────────────────────────

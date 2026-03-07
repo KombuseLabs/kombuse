@@ -59,7 +59,9 @@ import { buildAppMenu, refreshMenu } from "./menu";
 import { createAppLogger, setLogDir } from "@kombuse/core/logger";
 import { is, getMode } from "../env";
 
-setLogDir(join(homedir(), ".kombuse", "logs"));
+const logDir = join(homedir(), ".kombuse", "logs");
+setLogDir(logDir);
+process.env.KOMBUSE_LOG_DIR = logDir;
 const logger = createAppLogger("Main");
 
 if (process.env.SENTRY_DSN) {
@@ -341,6 +343,15 @@ app.whenReady().then(async () => {
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    // Attempt to download a fixed package before giving up — breaks the crash loop
+    if (is.prod()) {
+      try {
+        logger.info("Startup failed, checking for package updates before quitting...");
+        await autoUpdater.checkForUpdates();
+      } catch {
+        // Update check failed — proceed to error dialog
+      }
+    }
     dialog.showErrorBox("Kombuse failed to start", msg);
     app.quit();
   }

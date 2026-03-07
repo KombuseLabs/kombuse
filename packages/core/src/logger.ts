@@ -28,7 +28,7 @@ export function setLogDir(dir: string): void {
 }
 
 export function getConfiguredLogDir(): string {
-  return _configuredLogDir ?? join(homedir(), '.kombuse', 'logs')
+  return _configuredLogDir ?? process.env.KOMBUSE_LOG_DIR ?? join(homedir(), '.kombuse', 'logs')
 }
 
 export function setLogTarget(target: LogTarget): void {
@@ -61,7 +61,7 @@ function resolveAppLogLevel(): AppLogLevel {
 }
 
 function getLogDir(): string {
-  return _configuredLogDir ?? join(homedir(), '.kombuse', 'logs')
+  return _configuredLogDir ?? process.env.KOMBUSE_LOG_DIR ?? join(homedir(), '.kombuse', 'logs')
 }
 
 // ---------------------------------------------------------------------------
