@@ -93,6 +93,7 @@ export function UnifiedUpdateNotification() {
   const shell = useShellUpdates()
   const toastIdRef = useRef<string | number | null>(null)
   const lastKeyRef = useRef<string | null>(null)
+  const lastErrorKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     const shellActive = shell.status && ACTIVE_STATES.has(shell.status.state)
@@ -103,14 +104,25 @@ export function UnifiedUpdateNotification() {
     const status = track === 'shell' ? shell.status : track === 'package' ? pkg.status : null
 
     if (!track || !status) {
-      // Handle error states even when not "active"
-      if (shell.status?.state === 'error') {
-        toast.error(`App update failed: ${shell.status.error}`)
-      } else if (pkg.status?.state === 'error') {
-        toast.error(`Update failed: ${pkg.status.error}`)
+      // Handle error states even when not "active", with dedup guard
+      const errorKey = shell.status?.state === 'error'
+        ? `shell:${shell.status.error}`
+        : pkg.status?.state === 'error'
+          ? `pkg:${pkg.status.error}`
+          : null
+
+      if (errorKey && errorKey !== lastErrorKeyRef.current) {
+        lastErrorKeyRef.current = errorKey
+        if (shell.status?.state === 'error') {
+          toast.error(`App update failed: ${shell.status.error}`)
+        } else if (pkg.status?.state === 'error') {
+          toast.error(`Update failed: ${pkg.status.error}`)
+        }
       }
       return
     }
+    // Clear error ref when back to active state
+    lastErrorKeyRef.current = null
 
     const key = `${track}:${status.state}`
 
@@ -174,9 +186,6 @@ export function UnifiedUpdateNotification() {
             { duration: Infinity }
           )
           break
-        case 'error':
-          toast.error(`App update failed: ${status.error}`)
-          break
       }
     } else {
       switch (status.state) {
@@ -223,9 +232,6 @@ export function UnifiedUpdateNotification() {
             ),
             { duration: Infinity }
           )
-          break
-        case 'error':
-          toast.error(`Update failed: ${status.error}`)
           break
       }
     }
