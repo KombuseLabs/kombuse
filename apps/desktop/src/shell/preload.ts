@@ -7,9 +7,9 @@
  */
 
 import { contextBridge, ipcRenderer } from "electron";
-import { createAppLogger } from "@kombuse/core/logger";
+import { createBrowserLogger } from "@kombuse/core/browser-logger";
 
-const logger = createAppLogger("Preload");
+const logger = createBrowserLogger("Preload");
 
 contextBridge.exposeInMainWorld("electron", {
   /**
