@@ -72,7 +72,7 @@ interface GetTicketPruneStats {
   commentsDropped: number
   commentAttachmentGroupsDropped: number
   ticketAttachmentsDropped: number
-  overviewParticipantsDropped: number
+  participantsDropped: number
   commentBodiesRemoved: boolean
 }
 
@@ -227,18 +227,6 @@ function buildTicketSummary(
       name: label.name,
       color: label.color,
     })),
-    assignee: ticket.assignee
-      ? {
-        id: ticket.assignee.id,
-        type: ticket.assignee.type,
-        name: ticket.assignee.name,
-      }
-      : null,
-    author: {
-      id: ticket.author.id,
-      type: ticket.author.type,
-      name: ticket.author.name,
-    },
   }
 
   if (includeFullBody) {
@@ -284,7 +272,7 @@ function pruneGetTicketPayloadToHardCap(
     commentsDropped: 0,
     commentAttachmentGroupsDropped: 0,
     ticketAttachmentsDropped: 0,
-    overviewParticipantsDropped: 0,
+    participantsDropped: 0,
     commentBodiesRemoved: false,
   }
 
@@ -338,24 +326,22 @@ function pruneGetTicketPayloadToHardCap(
     ? working.overview as Record<string, unknown>
     : null
 
-  const participants = overview && Array.isArray(overview.participants)
-    ? overview.participants as Array<Record<string, unknown>>
+  const commentActivity = overview && Array.isArray(overview.comment_activity)
+    ? overview.comment_activity as Array<Record<string, unknown>>
     : null
 
-  if (participants && bytes > maxBytes) {
-    for (const participant of participants) {
-      if ('description' in participant) {
-        delete participant.description
-      }
-    }
+  while (commentActivity && commentActivity.length > 0 && bytes > maxBytes) {
+    commentActivity.pop()
     bytes = measure()
   }
 
-  while (participants && participants.length > 0 && bytes > maxBytes) {
-    participants.pop()
-    stats.overviewParticipantsDropped += 1
-    bytes = measure()
-  }
+  const participants = (
+    working.participants
+    && typeof working.participants === 'object'
+    && !Array.isArray(working.participants)
+  )
+    ? working.participants as Record<string, Record<string, unknown>>
+    : null
 
   const ticket = (
     working.ticket
@@ -364,6 +350,32 @@ function pruneGetTicketPayloadToHardCap(
   )
     ? working.ticket as Record<string, unknown>
     : null
+
+  const protectedIds = new Set<string>()
+  if (ticket) {
+    if (typeof ticket.author_id === 'string') protectedIds.add(ticket.author_id)
+    if (typeof ticket.assignee_id === 'string') protectedIds.add(ticket.assignee_id)
+  }
+
+  if (participants && bytes > maxBytes) {
+    for (const entry of Object.values(participants)) {
+      if ('description' in entry) {
+        delete entry.description
+      }
+    }
+    bytes = measure()
+  }
+
+  if (participants && bytes > maxBytes) {
+    const ids = Object.keys(participants).filter((id) => !protectedIds.has(id))
+    for (const id of ids) {
+      if (bytes <= maxBytes) break
+      delete participants[id]
+      stats.participantsDropped += 1
+      bytes = measure()
+    }
+  }
+
   if (ticket && bytes > maxBytes) {
     delete ticket.body_preview
     delete ticket.body_preview_truncated
@@ -436,7 +448,7 @@ export function registerTicketTools(server: McpServer): void {
     'get_ticket',
     {
       description:
-        'Get a ticket by ID with a hard byte cap (25,000 UTF-8 bytes). Supports overview, filtered comments, and image attachment metadata (file paths only). Attachment counts (total + images) are always included.',
+        'Get a ticket by ID with a hard byte cap (25,000 UTF-8 bytes). Returns a top-level participants map for author lookup. Supports overview, filtered comments, and image attachment metadata (file paths only). Attachment counts (total + images) are always included.',
       inputSchema: {
         project_id: z
           .string()
@@ -511,31 +523,45 @@ export function registerTicketTools(server: McpServer): void {
         return agentType
       }
 
+      const participantsMap: Record<string, { type: string; name: string; agent_type?: string | null; description?: string | null }> = {}
+
+      const addParticipant = (id: string, type: string, name: string, agentType?: string | null, description?: string | null) => {
+        if (participantsMap[id]) return
+        const entry: { type: string; name: string; agent_type?: string | null; description?: string | null } = { type, name }
+        if (type === 'agent') {
+          entry.agent_type = agentType ?? null
+          entry.description = description ?? null
+        }
+        participantsMap[id] = entry
+      }
+
+      addParticipant(ticket.author.id, ticket.author.type, ticket.author.name,
+        ticket.author.type === 'agent' ? (agentTypeCache.get(ticket.author.id) ?? (() => { const a = agentsRepository.get(ticket.author.id); const t = typeof a?.config?.type === 'string' ? a.config.type : null; agentTypeCache.set(ticket.author.id, t); return t })()) : null,
+        ticket.author.type === 'agent' ? (ticket.author as { description?: string | null }).description ?? null : null)
+      if (ticket.assignee) {
+        addParticipant(ticket.assignee.id, ticket.assignee.type, ticket.assignee.name,
+          ticket.assignee.type === 'agent' ? (agentTypeCache.get(ticket.assignee.id) ?? (() => { const a = agentsRepository.get(ticket.assignee.id); const t = typeof a?.config?.type === 'string' ? a.config.type : null; agentTypeCache.set(ticket.assignee.id, t); return t })()) : null,
+          ticket.assignee.type === 'agent' ? (ticket.assignee as { description?: string | null }).description ?? null : null)
+      }
+
       if (includeOverview) {
-        const participantMap = new Map<string, {
+        const activityMap = new Map<string, {
           author_id: string
-          actor_type: 'user' | 'agent'
-          name: string
-          description: string | null
-          agent_type: string | null
           comment_count: number
           first_commented_at: string
           last_commented_at: string
         }>()
 
         for (const comment of allOverviewComments) {
-          const existing = participantMap.get(comment.author_id)
           const description = comment.author.description
             ? truncateText(comment.author.description, 240).value
             : null
+          addParticipant(comment.author_id, comment.author.type, comment.author.name, resolveCommentAgentType(comment), description)
 
+          const existing = activityMap.get(comment.author_id)
           if (!existing) {
-            participantMap.set(comment.author_id, {
+            activityMap.set(comment.author_id, {
               author_id: comment.author_id,
-              actor_type: comment.author.type,
-              name: comment.author.name,
-              description,
-              agent_type: resolveCommentAgentType(comment),
               comment_count: 1,
               first_commented_at: comment.created_at,
               last_commented_at: comment.created_at,
@@ -552,15 +578,15 @@ export function registerTicketTools(server: McpServer): void {
           }
         }
 
-        const participants = [...participantMap.values()].sort((a, b) => {
+        const commentActivity = [...activityMap.values()].sort((a, b) => {
           if (b.comment_count !== a.comment_count) return b.comment_count - a.comment_count
           return b.last_commented_at.localeCompare(a.last_commented_at)
         })
 
         response.overview = {
           total_comments: allOverviewComments.length,
-          participant_count: participants.length,
-          participants,
+          participant_count: commentActivity.length,
+          comment_activity: commentActivity,
         }
       }
 
@@ -586,13 +612,14 @@ export function registerTicketTools(server: McpServer): void {
 
       if (includeComments) {
         response.comments = pagedComments.map((comment) => {
+          addParticipant(comment.author_id, comment.author.type, comment.author.name, resolveCommentAgentType(comment),
+            comment.author.description ? truncateText(comment.author.description, 240).value : null)
+
           const commentPayload: Record<string, unknown> = {
             id: comment.id,
             ticket_id: comment.ticket_id,
             author_id: comment.author_id,
-            author_name: comment.author.name,
             actor_type: comment.author.type,
-            agent_type: resolveCommentAgentType(comment),
             parent_id: comment.parent_id,
             is_edited: comment.is_edited,
             created_at: comment.created_at,
@@ -631,6 +658,8 @@ export function registerTicketTools(server: McpServer): void {
           }))
           .filter((entry) => entry.attachments.length > 0)
       }
+
+      response.participants = participantsMap
 
       response.meta = {
         cap_bytes: MAX_GET_TICKET_RESPONSE_BYTES,
