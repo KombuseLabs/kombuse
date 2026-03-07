@@ -153,7 +153,7 @@ export {
   getScopeLabel,
   getActionLabel,
 } from './permission-editor'
-export { UpdateNotification, ShellUpdateNotification } from './update-notification'
+export { UnifiedUpdateNotification } from './update-notification'
 export { UpdateStatusDialog } from './update-status-dialog'
 export { StatusIndicator, statusIndicatorVariants, type StatusIndicatorProps, type StatusIndicatorStatus } from './status-indicator'
 export { ActiveAgentsIndicator, type ActiveAgentsIndicatorProps } from './active-agents-indicator'

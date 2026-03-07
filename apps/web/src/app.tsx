@@ -5,7 +5,7 @@ import { createBrowserLogger } from "@kombuse/core/browser-logger";
 
 const logger = createBrowserLogger("ReactQuery");
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UpdateNotification, ShellUpdateNotification, UpdateStatusDialog, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar, LayoutToggle } from "@kombuse/ui/components";
+import { Header, UnifiedUpdateNotification, UpdateStatusDialog, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar, LayoutToggle } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { getWsUrl } from "@kombuse/ui/lib/api";
 import { useDesktop, useAvailableBackends } from "@kombuse/ui/hooks";
@@ -180,8 +180,7 @@ export function App() {
             </CommandSetup>
           </AppProvider>
           <Toaster />
-          <UpdateNotification />
-          <ShellUpdateNotification />
+          <UnifiedUpdateNotification />
           <UpdateStatusDialog />
         </WebSocketProvider>
       </ThemeProvider>

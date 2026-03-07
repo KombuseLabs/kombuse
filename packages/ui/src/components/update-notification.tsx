@@ -76,33 +76,57 @@ function UpdateReadyToast({ version, onRestart, onDismiss }: UpdateReadyToastPro
   )
 }
 
+const ACTIVE_STATES = new Set(['available', 'downloading', 'verifying', 'ready'])
+
 /**
- * Component that listens for update status changes and shows
- * appropriate toast notifications.
+ * Unified component that listens for both package and shell update status
+ * changes and shows a single toast notification at a time.
+ *
+ * Shell updates take priority over package updates (since installing the
+ * shell bundles the latest package).
  *
  * Place this once in your app root (e.g., alongside Toaster).
  * Only shows notifications in the desktop app.
  */
-export function UpdateNotification() {
-  const { status, installUpdate, restartApp, dismiss } = useUpdates()
+export function UnifiedUpdateNotification() {
+  const pkg = useUpdates()
+  const shell = useShellUpdates()
   const toastIdRef = useRef<string | number | null>(null)
-  const lastStateRef = useRef<string | null>(null)
+  const lastKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!status) return
+    const shellActive = shell.status && ACTIVE_STATES.has(shell.status.state)
+    const pkgActive = pkg.status && ACTIVE_STATES.has(pkg.status.state)
 
-    // Only react to state changes
-    if (status.state === lastStateRef.current) {
+    // Determine which track to show (shell takes priority)
+    const track = shellActive ? 'shell' : pkgActive ? 'package' : null
+    const status = track === 'shell' ? shell.status : track === 'package' ? pkg.status : null
+
+    if (!track || !status) {
+      // Handle error states even when not "active"
+      if (shell.status?.state === 'error') {
+        toast.error(`App update failed: ${shell.status.error}`)
+      } else if (pkg.status?.state === 'error') {
+        toast.error(`Update failed: ${pkg.status.error}`)
+      }
+      return
+    }
+
+    const key = `${track}:${status.state}`
+
+    // Only react to state/track changes
+    if (key === lastKeyRef.current) {
       // Special case: update progress during download
       if (status.state === 'downloading' && toastIdRef.current) {
+        const ProgressComponent = track === 'shell' ? ShellDownloadProgressToast : DownloadProgressToast
         toast.custom(
-          () => <DownloadProgressToast progress={status.downloadProgress} />,
+          () => <ProgressComponent progress={status.downloadProgress} />,
           { id: toastIdRef.current, duration: Infinity }
         )
       }
       return
     }
-    lastStateRef.current = status.state
+    lastKeyRef.current = key
 
     // Dismiss previous toast
     if (toastIdRef.current) {
@@ -110,62 +134,103 @@ export function UpdateNotification() {
       toastIdRef.current = null
     }
 
-    switch (status.state) {
-      case 'available':
-        if (status.updateInfo) {
+    if (track === 'shell') {
+      switch (status.state) {
+        case 'available':
+          if (status.updateInfo) {
+            toastIdRef.current = toast.custom(
+              (t) => (
+                <ShellUpdateAvailableToast
+                  version={status.updateInfo!.version}
+                  onInstall={shell.installUpdate}
+                  onDismiss={() => {
+                    toast.dismiss(t)
+                    shell.dismiss()
+                  }}
+                />
+              ),
+              { duration: Infinity }
+            )
+          }
+          break
+        case 'downloading':
+          toastIdRef.current = toast.custom(
+            () => <ShellDownloadProgressToast progress={status.downloadProgress} />,
+            { duration: Infinity }
+          )
+          break
+        case 'ready':
           toastIdRef.current = toast.custom(
             (t) => (
-              <UpdateAvailableToast
-                version={status.updateInfo!.version}
-                onInstall={installUpdate}
+              <ShellUpdateReadyToast
+                version={status.updateInfo?.version ?? status.currentVersion}
+                onRestart={shell.quitAndInstall}
                 onDismiss={() => {
                   toast.dismiss(t)
-                  dismiss()
+                  shell.dismiss()
                 }}
               />
             ),
             { duration: Infinity }
           )
-        }
-        break
-
-      case 'downloading':
-        toastIdRef.current = toast.custom(
-          () => <DownloadProgressToast progress={status.downloadProgress} />,
-          { duration: Infinity }
-        )
-        break
-
-      case 'verifying':
-        toastIdRef.current = toast.custom(
-          () => <VerifyingToast />,
-          { duration: Infinity }
-        )
-        break
-
-      case 'ready':
-        toastIdRef.current = toast.custom(
-          (t) => (
-            <UpdateReadyToast
-              version={status.currentVersion}
-              onRestart={restartApp}
-              onDismiss={() => {
-                toast.dismiss(t)
-                dismiss()
-              }}
-            />
-          ),
-          { duration: Infinity }
-        )
-        break
-
-      case 'error':
-        toast.error(`Update failed: ${status.error}`)
-        break
+          break
+        case 'error':
+          toast.error(`App update failed: ${status.error}`)
+          break
+      }
+    } else {
+      switch (status.state) {
+        case 'available':
+          if (status.updateInfo) {
+            toastIdRef.current = toast.custom(
+              (t) => (
+                <UpdateAvailableToast
+                  version={status.updateInfo!.version}
+                  onInstall={pkg.installUpdate}
+                  onDismiss={() => {
+                    toast.dismiss(t)
+                    pkg.dismiss()
+                  }}
+                />
+              ),
+              { duration: Infinity }
+            )
+          }
+          break
+        case 'downloading':
+          toastIdRef.current = toast.custom(
+            () => <DownloadProgressToast progress={status.downloadProgress} />,
+            { duration: Infinity }
+          )
+          break
+        case 'verifying':
+          toastIdRef.current = toast.custom(
+            () => <VerifyingToast />,
+            { duration: Infinity }
+          )
+          break
+        case 'ready':
+          toastIdRef.current = toast.custom(
+            (t) => (
+              <UpdateReadyToast
+                version={status.currentVersion}
+                onRestart={pkg.restartApp}
+                onDismiss={() => {
+                  toast.dismiss(t)
+                  pkg.dismiss()
+                }}
+              />
+            ),
+            { duration: Infinity }
+          )
+          break
+        case 'error':
+          toast.error(`Update failed: ${status.error}`)
+          break
+      }
     }
-  }, [status, installUpdate, restartApp, dismiss])
+  }, [pkg, shell])
 
-  // This component only manages toasts, no visible UI
   return null
 }
 
@@ -217,84 +282,3 @@ function ShellUpdateReadyToast({ version, onRestart, onDismiss }: UpdateReadyToa
   )
 }
 
-/**
- * Component that listens for shell update status changes and shows
- * appropriate toast notifications.
- *
- * Place alongside UpdateNotification in your app root.
- * Only shows notifications in the desktop app.
- */
-export function ShellUpdateNotification() {
-  const { status, installUpdate, quitAndInstall, dismiss } = useShellUpdates()
-  const toastIdRef = useRef<string | number | null>(null)
-  const lastStateRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (!status) return
-
-    if (status.state === lastStateRef.current) {
-      if (status.state === 'downloading' && toastIdRef.current) {
-        toast.custom(
-          () => <ShellDownloadProgressToast progress={status.downloadProgress} />,
-          { id: toastIdRef.current, duration: Infinity }
-        )
-      }
-      return
-    }
-    lastStateRef.current = status.state
-
-    if (toastIdRef.current) {
-      toast.dismiss(toastIdRef.current)
-      toastIdRef.current = null
-    }
-
-    switch (status.state) {
-      case 'available':
-        if (status.updateInfo) {
-          toastIdRef.current = toast.custom(
-            (t) => (
-              <ShellUpdateAvailableToast
-                version={status.updateInfo!.version}
-                onInstall={installUpdate}
-                onDismiss={() => {
-                  toast.dismiss(t)
-                  dismiss()
-                }}
-              />
-            ),
-            { duration: Infinity }
-          )
-        }
-        break
-
-      case 'downloading':
-        toastIdRef.current = toast.custom(
-          () => <ShellDownloadProgressToast progress={status.downloadProgress} />,
-          { duration: Infinity }
-        )
-        break
-
-      case 'ready':
-        toastIdRef.current = toast.custom(
-          (t) => (
-            <ShellUpdateReadyToast
-              version={status.updateInfo?.version ?? status.currentVersion}
-              onRestart={quitAndInstall}
-              onDismiss={() => {
-                toast.dismiss(t)
-                dismiss()
-              }}
-            />
-          ),
-          { duration: Infinity }
-        )
-        break
-
-      case 'error':
-        toast.error(`App update failed: ${status.error}`)
-        break
-    }
-  }, [status, installUpdate, quitAndInstall, dismiss])
-
-  return null
-}
