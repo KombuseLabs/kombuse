@@ -2,6 +2,7 @@
   "name": "@kombuse/ui",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "sideEffects": ["**/*.css"],
   "exports": {
     "./providers": "./src/providers/index.ts",

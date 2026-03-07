@@ -2,6 +2,7 @@
   "name": "desktop",
   "version": "1.0.0-rc.21",
   "private": true,
+  "type": "module",
   "main": "dist/shell/main.mjs",
   "scripts": {
     "dev": "bun run build:server && bun run build:shell && bun run rebuild && KOMBUSE_PORT=3331 KOMBUSE_MODE=dev ELECTRON_RUN_AS_NODE= electron .",

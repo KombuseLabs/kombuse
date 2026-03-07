@@ -6,5 +6,9 @@ export default defineWorkspace([
   'packages/mcp',
   'packages/ui',
   'packages/agent',
+  'packages/core',
+  'packages/pkg',
   'apps/server',
+  'apps/web',
+  'apps/desktop',
 ])
