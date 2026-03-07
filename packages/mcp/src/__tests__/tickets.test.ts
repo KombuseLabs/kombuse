@@ -690,6 +690,135 @@ describe('get_ticket', () => {
     expect(data.ticket_attachments[0].filename).toBe('missing.png')
     expect(data.ticket_attachments[0].file_path).toContain('2026/02/nonexistent.png')
   })
+
+  it('should include assignee in participants map', async () => {
+    const assigneeId = `assignee-agent-${Date.now()}`
+    profilesRepository.create({ id: assigneeId, type: 'agent', name: 'Assignee Bot', description: 'Handles assignments' })
+    agentsRepository.create({
+      id: assigneeId,
+      name: 'Assignee Bot',
+      description: 'Handles assignments',
+      system_prompt: 'Assign',
+      permissions: [],
+      config: { type: 'coder' },
+    })
+
+    const ticket = ticketsRepository.create({
+      title: 'Assignee participant test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    ticketsRepository.update(ticket.id, { assignee_id: assigneeId })
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.participants[assigneeId]).toBeDefined()
+    expect(data.participants[assigneeId].type).toBe('agent')
+    expect(data.participants[assigneeId].name).toBe('Assignee Bot')
+    expect(data.participants[assigneeId].agent_type).toBe('coder')
+    expect(data.participants[TEST_USER_ID]).toBeDefined()
+    expect(data.participants[TEST_USER_ID].type).toBe('user')
+  })
+
+  it('should populate participants from comments when overview is disabled', async () => {
+    const commenterId = `commenter-${Date.now()}`
+    profilesRepository.create({ id: commenterId, type: 'agent', name: 'Commenter Agent' })
+    agentsRepository.create({
+      id: commenterId,
+      name: 'Commenter Agent',
+      description: 'Comments',
+      system_prompt: 'Comment',
+      permissions: [],
+      config: { type: 'reviewer' },
+    })
+
+    const ticket = ticketsRepository.create({
+      title: 'Comments-only participants test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    commentsRepository.create({ ticket_id: ticket.id, author_id: commenterId, body: 'Agent review' })
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: {
+        project_id: TEST_PROJECT_ID,
+        ticket_number: ticket.ticket_number,
+        config: { overview: false, comments: true },
+      },
+    })
+    const data = parseContent(result) as any
+
+    expect(data.overview).toBeUndefined()
+    expect(data.participants[commenterId]).toBeDefined()
+    expect(data.participants[commenterId].type).toBe('agent')
+    expect(data.participants[commenterId].agent_type).toBe('reviewer')
+    expect(data.participants[TEST_USER_ID]).toBeDefined()
+  })
+
+  it('should protect ticket author and assignee participants during pruning', async () => {
+    const assigneeId = `prune-assignee-${Date.now()}`
+    profilesRepository.create({ id: assigneeId, type: 'agent', name: 'Prune Assignee' })
+    agentsRepository.create({
+      id: assigneeId,
+      name: 'Prune Assignee',
+      description: 'Test',
+      system_prompt: 'Test',
+      permissions: [],
+      config: { type: 'coder' },
+    })
+
+    const ticket = ticketsRepository.create({
+      title: 'Pruning protected IDs test',
+      project_id: TEST_PROJECT_ID,
+      author_id: TEST_USER_ID,
+    })
+    ticketsRepository.update(ticket.id, { assignee_id: assigneeId })
+
+    // Create many agents with long comments to push over the 25KB cap
+    const extraAgentIds: string[] = []
+    for (let i = 0; i < 15; i++) {
+      const agentId = `extra-agent-${i}-${Date.now()}`
+      profilesRepository.create({ id: agentId, type: 'agent', name: `Extra Agent ${i}`, description: 'A'.repeat(200) })
+      agentsRepository.create({
+        id: agentId,
+        name: `Extra Agent ${i}`,
+        description: 'A'.repeat(200),
+        system_prompt: 'Test',
+        permissions: [],
+        config: { type: 'tester' },
+      })
+      extraAgentIds.push(agentId)
+      commentsRepository.create({
+        ticket_id: ticket.id,
+        author_id: agentId,
+        body: 'X'.repeat(2000),
+      })
+    }
+
+    const result = await client.callTool({
+      name: 'get_ticket',
+      arguments: { project_id: TEST_PROJECT_ID, ticket_number: ticket.ticket_number },
+    })
+    const data = parseContent(result) as any
+
+    // Author and assignee must always be preserved
+    expect(data.participants[TEST_USER_ID]).toBeDefined()
+    expect(data.participants[assigneeId]).toBeDefined()
+
+    // If pruning happened, some extra agents may have been removed
+    const meta = data.meta
+    if (meta.truncated) {
+      const prune = meta.prune_stats
+      // At least verify the stats exist and are consistent
+      expect(typeof prune.participantsDropped).toBe('number')
+      expect(typeof prune.commentActivityDropped).toBe('number')
+    }
+  })
 })
 
 describe('get_ticket_comment', () => {

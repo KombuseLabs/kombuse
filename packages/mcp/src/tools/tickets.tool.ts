@@ -73,6 +73,7 @@ interface GetTicketPruneStats {
   commentAttachmentGroupsDropped: number
   ticketAttachmentsDropped: number
   participantsDropped: number
+  commentActivityDropped: number
   commentBodiesRemoved: boolean
 }
 
@@ -273,6 +274,7 @@ function pruneGetTicketPayloadToHardCap(
     commentAttachmentGroupsDropped: 0,
     ticketAttachmentsDropped: 0,
     participantsDropped: 0,
+    commentActivityDropped: 0,
     commentBodiesRemoved: false,
   }
 
@@ -332,6 +334,7 @@ function pruneGetTicketPayloadToHardCap(
 
   while (commentActivity && commentActivity.length > 0 && bytes > maxBytes) {
     commentActivity.pop()
+    stats.commentActivityDropped += 1
     bytes = measure()
   }
 
@@ -512,15 +515,17 @@ export function registerTicketTools(server: McpServer): void {
         : []
       const agentTypeCache = new Map<string, string | null>()
 
+      const resolveAgentType = (id: string): string | null => {
+        if (agentTypeCache.has(id)) return agentTypeCache.get(id) ?? null
+        const agent = agentsRepository.get(id)
+        const agentType = typeof agent?.config?.type === 'string' ? agent.config.type : null
+        agentTypeCache.set(id, agentType)
+        return agentType
+      }
+
       const resolveCommentAgentType = (comment: CommentWithAuthor): string | null => {
         if (comment.author.type !== 'agent') return null
-        if (agentTypeCache.has(comment.author_id)) {
-          return agentTypeCache.get(comment.author_id) ?? null
-        }
-        const agent = agentsRepository.get(comment.author_id)
-        const agentType = typeof agent?.config?.type === 'string' ? agent.config.type : null
-        agentTypeCache.set(comment.author_id, agentType)
-        return agentType
+        return resolveAgentType(comment.author_id)
       }
 
       const participantsMap: Record<string, { type: string; name: string; agent_type?: string | null; description?: string | null }> = {}
@@ -536,11 +541,11 @@ export function registerTicketTools(server: McpServer): void {
       }
 
       addParticipant(ticket.author.id, ticket.author.type, ticket.author.name,
-        ticket.author.type === 'agent' ? (agentTypeCache.get(ticket.author.id) ?? (() => { const a = agentsRepository.get(ticket.author.id); const t = typeof a?.config?.type === 'string' ? a.config.type : null; agentTypeCache.set(ticket.author.id, t); return t })()) : null,
+        ticket.author.type === 'agent' ? resolveAgentType(ticket.author.id) : null,
         ticket.author.type === 'agent' ? (ticket.author as { description?: string | null }).description ?? null : null)
       if (ticket.assignee) {
         addParticipant(ticket.assignee.id, ticket.assignee.type, ticket.assignee.name,
-          ticket.assignee.type === 'agent' ? (agentTypeCache.get(ticket.assignee.id) ?? (() => { const a = agentsRepository.get(ticket.assignee.id); const t = typeof a?.config?.type === 'string' ? a.config.type : null; agentTypeCache.set(ticket.assignee.id, t); return t })()) : null,
+          ticket.assignee.type === 'agent' ? resolveAgentType(ticket.assignee.id) : null,
           ticket.assignee.type === 'agent' ? (ticket.assignee as { description?: string | null }).description ?? null : null)
       }
 
