@@ -83,6 +83,8 @@ export {
   readNotificationScope,
   FILE_LOGGING_ENABLED_SETTING_KEY,
   readFileLoggingEnabled,
+  CRASH_REPORTING_ENABLED_SETTING_KEY,
+  readCrashReportingEnabled,
 } from './session-preferences-service'
 export type {
   ResolveBackendTypeInput,

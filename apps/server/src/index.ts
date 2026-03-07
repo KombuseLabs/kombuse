@@ -57,6 +57,8 @@ import {
 import { createResponseValidationHook } from "./schemas/response-validation.schema";
 import { resolveProjectSlug } from "./hooks/resolve-project-slug";
 import { createAppLogger, closeAppLogger, pruneOldLogs, setAppLoggerOnLog, setLogDir, setLogTarget } from "./logger";
+import { readCrashReportingEnabled } from "@kombuse/services";
+import { isSentryEnabled, setSentryEnabled } from "./sentry-gate";
 import { readFileLoggingEnabled } from "@kombuse/services";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -130,15 +132,20 @@ export async function createServer({ port, dbPath, desktop, isolated }: ServerOp
   pruneOldLogs();
 
   if (process.env.SENTRY_DSN) {
+    setSentryEnabled(readCrashReportingEnabled());
+
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
       environment: process.env.NODE_ENV || "development",
       release: process.env.SENTRY_RELEASE,
       integrations: [Sentry.captureConsoleIntegration({ levels: ['warn', 'error'] })],
       tracesSampleRate: 0.1,
+      beforeSend: (event) => isSentryEnabled() ? event : null,
+      beforeSendTransaction: (event) => isSentryEnabled() ? event : null,
     });
 
     setAppLoggerOnLog((level, component, message, data) => {
+      if (!isSentryEnabled()) return;
       Sentry.captureMessage(`[${component}] ${message}`, {
         level: level === 'error' ? 'error' : 'warning',
         extra: data,

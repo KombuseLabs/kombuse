@@ -2,6 +2,7 @@ import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from "@tanstack/react-query";
 import * as Sentry from "@sentry/react";
 import { createBrowserLogger } from "@kombuse/core/browser-logger";
+import { isSentryEnabled } from "./sentry-gate";
 
 const logger = createBrowserLogger("ReactQuery");
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
@@ -50,7 +51,7 @@ const queryClient = new QueryClient({
   }),
   mutationCache: new MutationCache({
     onError: (error) => {
-      Sentry.captureException(error);
+      if (isSentryEnabled()) Sentry.captureException(error);
       toast.error(error.message || "An error occurred");
     },
   }),

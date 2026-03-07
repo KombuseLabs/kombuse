@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import { profileSettingsRepository } from '@kombuse/persistence'
-import { CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY, FILE_LOGGING_ENABLED_SETTING_KEY } from '@kombuse/services'
+import { CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY, CRASH_REPORTING_ENABLED_SETTING_KEY, FILE_LOGGING_ENABLED_SETTING_KEY } from '@kombuse/services'
 import { setLogTarget } from '../logger'
+import { setSentryEnabled } from '../sentry-gate'
 import { upsertProfileSettingSchema } from '../schemas/profile-settings.schema'
 import { rescheduleAllIdleTimeouts } from '../services/agent-execution-service'
 
@@ -42,6 +43,10 @@ export async function profileSettingsRoutes(fastify: FastifyInstance) {
       }
     }
 
+    if (parseResult.data.setting_key === CRASH_REPORTING_ENABLED_SETTING_KEY) {
+      setSentryEnabled(parseResult.data.setting_value !== 'false')
+    }
+
     return setting
   })
 
@@ -65,6 +70,10 @@ export async function profileSettingsRoutes(fastify: FastifyInstance) {
       if (!process.env.KOMBUSE_LOG_TARGET) {
         setLogTarget('console')
       }
+    }
+
+    if (request.params.key === CRASH_REPORTING_ENABLED_SETTING_KEY) {
+      setSentryEnabled(true)
     }
 
     return reply.status(204).send()

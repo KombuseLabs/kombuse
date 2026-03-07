@@ -29,6 +29,7 @@ import {
   toast,
 } from '@kombuse/ui/base'
 import { Sun, Moon, Monitor } from 'lucide-react'
+import { setSentryEnabled } from '../sentry-gate'
 
 const USER_PROFILE_ID = 'user-1'
 const SIDEBAR_EVENTS_SETTING_KEY = 'sidebar.hidden.events'
@@ -44,6 +45,7 @@ const NOTIFICATIONS_SCOPE_SETTING_KEY = 'notifications.scope_to_project'
 const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
 const LIST_PANEL_HIDDEN_SETTING_KEY = 'layout.listPanelHidden'
 const FILE_LOGGING_ENABLED_SETTING_KEY = 'logging.file_enabled'
+const CRASH_REPORTING_ENABLED_SETTING_KEY = 'telemetry.crash_reporting_enabled'
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
@@ -60,6 +62,7 @@ export function Settings() {
   const { data: mcpAnonWriteSetting } = useProfileSetting(USER_PROFILE_ID, MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY)
   const { data: listPanelSetting } = useProfileSetting(USER_PROFILE_ID, LIST_PANEL_HIDDEN_SETTING_KEY)
   const { data: fileLoggingSetting } = useProfileSetting(USER_PROFILE_ID, FILE_LOGGING_ENABLED_SETTING_KEY)
+  const { data: crashReportingSetting } = useProfileSetting(USER_PROFILE_ID, CRASH_REPORTING_ENABLED_SETTING_KEY)
   const { data: codexMcpStatus, isLoading: codexMcpStatusLoading } = useCodexMcpStatus()
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const { data: claudeCodeMcpStatus, isLoading: claudeCodeMcpStatusLoading } = useClaudeCodeMcpStatus()
@@ -81,6 +84,7 @@ export function Settings() {
   const mcpAnonymousWriteAllowed = mcpAnonWriteSetting?.setting_value === 'allowed'
   const showListPanel = listPanelSetting?.setting_value !== 'true'
   const fileLoggingEnabled = fileLoggingSetting?.setting_value === 'true'
+  const crashReportingEnabled = crashReportingSetting?.setting_value !== 'false'
 
   useEffect(() => {
     setMaxChainDepthValue(maxChainDepthSetting?.setting_value ?? '')
@@ -320,6 +324,37 @@ export function Settings() {
                     setting_key: FILE_LOGGING_ENABLED_SETTING_KEY,
                     setting_value: checked ? 'true' : 'false',
                   })
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Privacy */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Privacy</CardTitle>
+            <CardDescription>Control what data is shared with external services.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="crash-reporting-enabled" className="font-normal">Send crash reports</Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically send error and crash reports to help improve Kombuse.
+                  No personal data or project content is included.
+                </p>
+              </div>
+              <Switch
+                id="crash-reporting-enabled"
+                checked={crashReportingEnabled}
+                onCheckedChange={(checked) => {
+                  upsertSetting.mutate({
+                    profile_id: USER_PROFILE_ID,
+                    setting_key: CRASH_REPORTING_ENABLED_SETTING_KEY,
+                    setting_value: checked ? 'true' : 'false',
+                  })
+                  setSentryEnabled(checked)
                 }}
               />
             </div>

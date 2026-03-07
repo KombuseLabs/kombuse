@@ -25,12 +25,16 @@ import { homedir } from "node:os";
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from "electron";
 import * as Sentry from "@sentry/electron";
 
+let desktopSentryEnabled = true;
+
 if (process.env.SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     release: app.getVersion(),
     environment: process.env.NODE_ENV || "production",
     integrations: [Sentry.captureConsoleIntegration({ levels: ['warn', 'error'] })],
+    beforeSend: (event) => desktopSentryEnabled ? event : null,
+    beforeSendTransaction: (event) => desktopSentryEnabled ? event : null,
   });
 }
 
@@ -229,7 +233,7 @@ function createWindow(opts?: { path?: string; width?: number; height?: number; d
         if (port <= 0) {
           const detail = port === 0 ? "fallback bridge" : "bridge missing";
           logger.warn(`Preload bridge failure detected (${detail})`);
-          if (process.env.SENTRY_DSN) {
+          if (process.env.SENTRY_DSN && desktopSentryEnabled) {
             Sentry.captureMessage("Preload bridge failure", {
               level: "error",
               extra: { serverPort: port, detail },
@@ -333,6 +337,18 @@ app.whenReady().then(async () => {
       const { pkg } = await startPackageServer();
       registerAppProtocol(pkg.webRoot);
       webUrl = "app://./";
+    }
+
+    // Read crash reporting preference after server is available
+    if (process.env.SENTRY_DSN && serverPort > 0) {
+      fetch(`http://localhost:${serverPort}/api/profiles/user-1/settings/telemetry.crash_reporting_enabled`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((setting) => {
+          if (setting?.setting_value === "false") {
+            desktopSentryEnabled = false;
+          }
+        })
+        .catch(() => {});
     }
 
     buildAppMenu({

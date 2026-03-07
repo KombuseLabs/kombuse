@@ -49,6 +49,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import Database from 'better-sqlite3'
 import * as Sentry from '@sentry/node'
+import { isSentryEnabled } from '../../sentry-gate'
 
 const log = createAppLogger('ChatSessionRunner')
 
@@ -527,10 +528,12 @@ function handleRuntimeRunFailure(options: {
     error: new Error(messageText),
   }
   dependencies.sessionPersistence.persistEvent(persistentSessionId, errorEvent)
-  Sentry.captureException(new Error(messageText), {
-    tags: { sessionId: persistentSessionId, failureReason },
-    extra: { appSessionId, ticketId, ticketNumber, projectId },
-  })
+  if (isSentryEnabled()) {
+    Sentry.captureException(new Error(messageText), {
+      tags: { sessionId: persistentSessionId, failureReason },
+      extra: { appSessionId, ticketId, ticketNumber, projectId },
+    })
+  }
   dependencies.stateMachine.transition(persistentSessionId, 'fail', {
     kombuseSessionId: appSessionId,
     ticketId,
@@ -981,7 +984,7 @@ export function startAgentChatSession(
           kombuseSessionId: appSessionId,
         })
 
-        if (!followUpLastAssistantMessage.trim()) {
+        if (!followUpLastAssistantMessage.trim() && isSentryEnabled()) {
           Sentry.captureEvent({
             level: 'warning',
             message: 'Session completed with no assistant message output',
@@ -1288,7 +1291,7 @@ export function startAgentChatSession(
         logger,
       })
 
-      if (!lastAssistantMessage.trim()) {
+      if (!lastAssistantMessage.trim() && isSentryEnabled()) {
         Sentry.captureEvent({
           level: 'warning',
           message: 'Session completed with no assistant message output',
@@ -1429,7 +1432,7 @@ export function startAgentChatSession(
             kombuseSessionId: appSessionId,
           })
 
-          if (!lastAssistantMessage.trim()) {
+          if (!lastAssistantMessage.trim() && isSentryEnabled()) {
             Sentry.captureEvent({
               level: 'warning',
               message: 'Session completed with no assistant message output',

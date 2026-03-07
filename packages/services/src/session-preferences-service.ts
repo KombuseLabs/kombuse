@@ -9,6 +9,7 @@ export const CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY = 'chat.backend_idle_
 export const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
 export const NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY = 'notifications.scope_to_project'
 export const FILE_LOGGING_ENABLED_SETTING_KEY = 'logging.file_enabled'
+export const CRASH_REPORTING_ENABLED_SETTING_KEY = 'telemetry.crash_reporting_enabled'
 export const MAX_CHAIN_DEPTH = 15
 
 interface BackendCapability {
@@ -145,4 +146,11 @@ export function readFileLoggingEnabled(
 ): boolean {
   const setting = profileSettingsRepository.get(profileId, FILE_LOGGING_ENABLED_SETTING_KEY)
   return setting?.setting_value === 'true'
+}
+
+export function readCrashReportingEnabled(
+  profileId: string = DEFAULT_PREFERENCE_PROFILE_ID
+): boolean {
+  const setting = profileSettingsRepository.get(profileId, CRASH_REPORTING_ENABLED_SETTING_KEY)
+  return setting?.setting_value !== 'false'
 }
