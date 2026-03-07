@@ -309,8 +309,37 @@ describe('ClaudeCodeBackend', () => {
       if (events[2]!.type === 'complete') {
         expect(events[2]!.success).toBe(true)
         expect(events[2]!.errorMessage).toBeUndefined()
+        expect(events[2]!.numTurns).toBe(1)
       }
       expect(backend.getBackendSessionId()).toBe('session_abc')
+    })
+
+    it('should include numTurns in complete event when present in result', () => {
+      const msg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'success',
+          uuid: 'test-uuid',
+          session_id: 'session_turns',
+          duration_ms: 500,
+          duration_api_ms: 200,
+          is_error: false,
+          num_turns: 5,
+          result: 'Done',
+          total_cost_usd: 0.05,
+          usage: { input_tokens: 100, output_tokens: 200 },
+          modelUsage: {},
+          permission_denials: []
+        }
+      }
+
+      callHandleMessage(backend, msg)
+
+      const completeEvent = events.find(e => e.type === 'complete')
+      expect(completeEvent).toBeDefined()
+      if (completeEvent?.type === 'complete') {
+        expect(completeEvent.numTurns).toBe(5)
+      }
     })
 
     it('should not emit duplicate message from result when assistant message was already emitted', () => {

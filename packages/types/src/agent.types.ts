@@ -156,6 +156,8 @@ export interface AgentCompleteEvent extends AgentEventBase {
   errorMessage?: string
   /** True when the CLI returned a "session does not exist" or similar resume error */
   resumeFailed?: boolean
+  /** Number of conversation turns reported by the backend */
+  numTurns?: number
   raw?: unknown
 }
 

@@ -187,22 +187,19 @@ describe('SessionLogger', () => {
       expect((preview as string).length).toBe(203) // 200 + '...'
     })
 
-    it('writes slim format for raw events with only source_type', () => {
+    it('suppresses raw events at info level', () => {
       const logger = makeSessionLogger({ logLevel: 'info' })
       const event = makeRawEvent('cli_pre_normalization', { big: 'payload' })
 
       logger.logEvent(event)
 
-      expect(logSpy).toHaveBeenCalledOnce()
-      const args = logSpy.mock.calls[0]!
-      expect(args).toContain('cli_pre_normalization')
-      expect(args).not.toContainEqual({ big: 'payload' })
+      expect(logSpy).not.toHaveBeenCalled()
     })
   })
 
   describe('raw event log level', () => {
-    it('writes raw events with level debug to file', () => {
-      const logger = makeSessionLogger({ target: 'file' })
+    it('writes raw events with level debug to file when logLevel is debug', () => {
+      const logger = makeSessionLogger({ target: 'file', logLevel: 'debug' })
       const event = makeRawEvent('cli_pre_normalization', { some: 'data' })
 
       logger.logEvent(event)
@@ -211,6 +208,15 @@ describe('SessionLogger', () => {
       const written = JSON.parse(mockWrite.mock.calls[0]![0] as string)
       expect(written.level).toBe('debug')
       expect(written.event_type).toBe('raw')
+    })
+
+    it('suppresses raw events when logLevel is info (default)', () => {
+      const logger = makeSessionLogger({ target: 'file' })
+      const event = makeRawEvent('cli_pre_normalization', { some: 'data' })
+
+      logger.logEvent(event)
+
+      expect(mockWrite).not.toHaveBeenCalled()
     })
 
     it('writes message events with level info to file', () => {
@@ -233,6 +239,24 @@ describe('SessionLogger', () => {
       expect(mockWrite).toHaveBeenCalledOnce()
       const written = JSON.parse(mockWrite.mock.calls[0]![0] as string)
       expect(written.level).toBe('error')
+    })
+
+    it('always writes error events regardless of logLevel', () => {
+      const logger = makeSessionLogger({ target: 'console' })
+      const event = makeErrorEvent('critical failure')
+
+      logger.logEvent(event)
+
+      expect(errorSpy).toHaveBeenCalledOnce()
+    })
+
+    it('writes message events at info level', () => {
+      const logger = makeSessionLogger({ target: 'console' })
+      const event = makeMessageEvent('hello')
+
+      logger.logEvent(event)
+
+      expect(logSpy).toHaveBeenCalledOnce()
     })
   })
 

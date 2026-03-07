@@ -923,12 +923,18 @@ export function startAgentChatSession(
     })
     let followUpDidCallAddComment = false
     let followUpLastAssistantMessage = ''
+    const followUpStartTime = Date.now()
+    let followUpMessageCount = 0
+    let followUpToolCallCount = 0
 
+    reusedLogger.info('session_start', { agent_id: agent?.id, backend_type: resolvedBackendType, ticket_number: ticketNumber })
     setSessionTurnActive(appSessionId, true)
     runFollowUpChat(existingBackend, userMessage, appSessionId, {
       projectPath: '',
       onEvent: (event: AgentEvent) => {
         reusedLogger.logEvent(event)
+        if (event.type === 'message') followUpMessageCount++
+        if (event.type === 'tool_use') followUpToolCallCount++
 
         if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization') {
           dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
@@ -967,6 +973,7 @@ export function startAgentChatSession(
         emit({ type: 'event', kombuseSessionId: appSessionId, event })
       },
       onComplete: (context: ConversationContext) => {
+        reusedLogger.info('session_end', { duration_ms: Date.now() - followUpStartTime, message_count: followUpMessageCount, tool_call_count: followUpToolCallCount })
         setSessionTurnActive(appSessionId, false)
         reusedLogger.close()
         dependencies.stateMachine.transition(persistentSessionId, 'complete', {
@@ -1009,6 +1016,7 @@ export function startAgentChatSession(
         })
       },
       onStopped: (reason: string) => {
+        reusedLogger.info('session_stopped', { duration_ms: Date.now() - followUpStartTime, stop_reason: reason })
         handleRuntimeRunStopped({
           dependencies,
           emit,
@@ -1024,6 +1032,7 @@ export function startAgentChatSession(
         })
       },
       onError: (error: Error) => {
+        reusedLogger.error('session_error', { duration_ms: Date.now() - followUpStartTime, error: error.message })
         handleRuntimeRunFailure({
           dependencies,
           emit,
@@ -1158,7 +1167,11 @@ export function startAgentChatSession(
   let lastAssistantMessage = restoredMetadata.lastAssistantMessage ?? ''
   let planCommentId = restoredMetadata.planCommentId
   let exitPlanModeToolUseId = restoredMetadata.exitPlanModeToolUseId
+  const mainStartTime = Date.now()
+  let mainMessageCount = 0
+  let mainToolCallCount = 0
 
+  logger.info('session_start', { agent_id: agent?.id, backend_type: resolvedBackendType, ticket_number: ticketNumber })
   setSessionTurnActive(appSessionId, true)
   runAgentChat(backend, userMessage, appSessionId, {
     projectPath: effectiveProjectPath,
@@ -1169,6 +1182,8 @@ export function startAgentChatSession(
     permissionMode: preset.permissionMode,
     onEvent: (event: AgentEvent) => {
       logger.logEvent(event)
+      if (event.type === 'message') mainMessageCount++
+      if (event.type === 'tool_use') mainToolCallCount++
 
       if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization') {
         dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
@@ -1234,7 +1249,7 @@ export function startAgentChatSession(
               logger.info('plan comment created', { commentId: planCommentId, ticketId })
             }
           } catch (planCommentError) {
-            logger.info('plan comment failed', { ticketId, error: String(planCommentError) })
+            logger.error('plan comment failed', { ticketId, error: String(planCommentError) })
           }
         }
       }
@@ -1265,6 +1280,7 @@ export function startAgentChatSession(
       })
     },
     onComplete: (context: ConversationContext) => {
+      logger.info('session_end', { duration_ms: Date.now() - mainStartTime, message_count: mainMessageCount, tool_call_count: mainToolCallCount })
       setSessionTurnActive(appSessionId, false)
       logger.close()
 
@@ -1316,6 +1332,7 @@ export function startAgentChatSession(
       })
     },
     onStopped: (reason: string) => {
+      logger.info('session_stopped', { duration_ms: Date.now() - mainStartTime, stop_reason: reason })
       handleRuntimeRunStopped({
         dependencies,
         emit,
@@ -1364,6 +1381,10 @@ export function startAgentChatSession(
         metadataPatch: clearTerminalMetadataPatch(),
       })
 
+      const retryStartTime = Date.now()
+      let retryMessageCount = 0
+      let retryToolCallCount = 0
+      logger.info('session_start', { agent_id: agent?.id, backend_type: resolvedBackendType, ticket_number: ticketNumber, retry: true })
       setSessionTurnActive(appSessionId, true)
       runAgentChat(retryBackend, userMessage, appSessionId, {
         projectPath: effectiveProjectPath,
@@ -1372,6 +1393,8 @@ export function startAgentChatSession(
         permissionMode: preset.permissionMode,
         onEvent: (event: AgentEvent) => {
           logger.logEvent(event)
+          if (event.type === 'message') retryMessageCount++
+          if (event.type === 'tool_use') retryToolCallCount++
 
           if (event.type === 'raw' && event.sourceType === 'cli_pre_normalization') {
             dependencies.sessionPersistence.persistEvent(persistentSessionId, event)
@@ -1410,6 +1433,7 @@ export function startAgentChatSession(
           emit({ type: 'event', kombuseSessionId: appSessionId, event })
         },
         onComplete: (context: ConversationContext) => {
+          logger.info('session_end', { duration_ms: Date.now() - retryStartTime, message_count: retryMessageCount, tool_call_count: retryToolCallCount })
           setSessionTurnActive(appSessionId, false)
           logger.close()
           const retrySentinelUnsub = retryBackend.subscribe((event) => {
@@ -1457,6 +1481,7 @@ export function startAgentChatSession(
           })
         },
         onStopped: (reason: string) => {
+          logger.info('session_stopped', { duration_ms: Date.now() - retryStartTime, stop_reason: reason })
           handleRuntimeRunStopped({
             dependencies,
             emit,
@@ -1472,6 +1497,7 @@ export function startAgentChatSession(
           })
         },
         onError: (error: Error) => {
+          logger.error('session_error', { duration_ms: Date.now() - retryStartTime, error: error.message })
           handleRuntimeRunFailure({
             dependencies,
             emit,
@@ -1513,6 +1539,7 @@ export function startAgentChatSession(
       })
     } : undefined,
     onError: (error: Error) => {
+      logger.error('session_error', { duration_ms: Date.now() - mainStartTime, error: error.message })
       handleRuntimeRunFailure({
         dependencies,
         emit,

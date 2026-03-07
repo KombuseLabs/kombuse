@@ -488,6 +488,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
       success: isSuccess,
       errorMessage,
       ...(resumeFailed ? { resumeFailed } : {}),
+      ...(event.num_turns != null ? { numTurns: event.num_turns } : {}),
       raw: event,
     })
 

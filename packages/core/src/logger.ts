@@ -121,9 +121,13 @@ export function createSessionLogger(options: SessionLoggerOptions): SessionLogge
   }
 
   function logEvent(event: AgentEvent): void {
+    const entryLevel = event.type === 'error' ? 'error' : event.type === 'raw' ? 'debug' : 'info'
+    const minPriority = SESSION_LOG_LEVEL_PRIORITY[logLevel] ?? 0
+    if ((SESSION_LOG_LEVEL_PRIORITY[entryLevel] ?? 0) < minPriority) return
+
     const base = {
       ts: new Date().toISOString(),
-      level: event.type === 'error' ? 'error' : event.type === 'raw' ? 'debug' : 'info',
+      level: entryLevel,
       session: options.kombuseSessionId,
       event_type: event.type,
     }
@@ -260,6 +264,13 @@ let _globalOnLog: AppLogCallback | null = null
 
 export function setAppLoggerOnLog(callback: AppLogCallback | null): void {
   _globalOnLog = callback
+}
+
+const SESSION_LOG_LEVEL_PRIORITY: Record<string, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
 }
 
 const APP_LOG_LEVEL_PRIORITY: Record<AppLogLevel, number> = {
