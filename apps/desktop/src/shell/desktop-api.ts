@@ -6,7 +6,7 @@ import { createAppLogger } from "@kombuse/core/logger";
 const logger = createAppLogger("DesktopAPI");
 
 export interface DesktopApiOptions {
-  createWindow: (opts?: { path?: string; width?: number; height?: number; deferLoad?: boolean }) => BrowserWindow;
+  createWindow: (opts?: { path?: string; width?: number; height?: number; deferLoad?: boolean; port?: number }) => BrowserWindow;
   getWebUrl: () => string;
   windowServerPortMap: Map<number, number>;
   startIsolatedServer: (dbPath: string) => Promise<{ port: number; close: () => Promise<void> }>;
@@ -83,9 +83,10 @@ export async function desktopApiPlugin(
         opts.windowServerPortMap.delete(webContentsId);
       });
 
-      // Now it's safe to load the URL.
-      const loadUrl = path ? new URL(path, opts.getWebUrl()).href : opts.getWebUrl();
-      win.loadURL(loadUrl);
+      // Now it's safe to load the URL. Append port as query param for preload-failure fallback.
+      const baseUrl = path ? new URL(path, opts.getWebUrl()).href : opts.getWebUrl();
+      const separator = baseUrl.includes("?") ? "&" : "?";
+      win.loadURL(`${baseUrl}${separator}port=${isolatedServer.port}`);
 
       await new Promise<void>((resolve) => {
         if (win.webContents.isLoading()) {

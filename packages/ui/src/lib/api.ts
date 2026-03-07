@@ -103,7 +103,18 @@ declare global {
 }
 
 export function getServerPort(): number {
-  return window.electron?.serverPort ?? 3331
+  const bridgePort = window.electron?.serverPort
+  if (bridgePort) return bridgePort
+
+  // Fallback: read port from URL query param (set by Electron main process).
+  // This works even when the preload bridge fails completely.
+  const urlPort = new URL(window.location.href).searchParams.get('port')
+  if (urlPort) {
+    const parsed = Number(urlPort)
+    if (parsed > 0) return parsed
+  }
+
+  return 3331
 }
 
 function getServerHost(): string {
@@ -117,7 +128,9 @@ export function getWsUrl(): string {
   return `ws://${getServerHost()}:${getServerPort()}/ws`
 }
 
-const API_BASE = `http://${getServerHost()}:${getServerPort()}/api`
+function getApiBase(): string {
+  return `http://${getServerHost()}:${getServerPort()}/api`
+}
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -162,18 +175,18 @@ export const ticketsApi = {
     if (filters?.sort_order) params.set('sort_order', filters.sort_order)
     if (filters?.viewer_id) params.set('viewer_id', filters.viewer_id)
 
-    const url = `${API_BASE}/tickets${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/tickets${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<TicketWithLabels[]>(response)
   },
 
   async getByNumber(projectId: string, ticketNumber: number): Promise<TicketWithRelations> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}`)
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}`)
     return handleResponse<TicketWithRelations>(response)
   },
 
   async markViewed(projectId: string, ticketNumber: number, profileId: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/view`, {
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/view`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profile_id: profileId }),
@@ -182,7 +195,7 @@ export const ticketsApi = {
   },
 
   async create(input: CreateTicketInput): Promise<Ticket> {
-    const response = await fetch(`${API_BASE}/tickets`, {
+    const response = await fetch(`${getApiBase()}/tickets`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -191,7 +204,7 @@ export const ticketsApi = {
   },
 
   async update(projectId: string, ticketNumber: number, input: UpdateTicketInput): Promise<Ticket> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}`, {
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -200,21 +213,21 @@ export const ticketsApi = {
   },
 
   async delete(projectId: string, ticketNumber: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}`, {
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
   },
 
   async statusCounts(projectId: string): Promise<TicketStatusCounts> {
-    const response = await fetch(`${API_BASE}/tickets/counts?project_id=${encodeURIComponent(projectId)}`)
+    const response = await fetch(`${getApiBase()}/tickets/counts?project_id=${encodeURIComponent(projectId)}`)
     return handleResponse<TicketStatusCounts>(response)
   },
 }
 
 export const commentsApi = {
   async get(id: number): Promise<CommentWithAuthor> {
-    const response = await fetch(`${API_BASE}/comments/${id}`)
+    const response = await fetch(`${getApiBase()}/comments/${id}`)
     return handleResponse<CommentWithAuthor>(response)
   },
 
@@ -223,7 +236,7 @@ export const commentsApi = {
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
-    const url = `${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/comments${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/comments${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<CommentWithAuthor[]>(response)
   },
@@ -233,7 +246,7 @@ export const commentsApi = {
     ticketNumber: number,
     input: Omit<CreateCommentInput, 'ticket_id'>
   ): Promise<CommentWithAuthor> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/comments`, {
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -242,7 +255,7 @@ export const commentsApi = {
   },
 
   async update(id: number, input: UpdateCommentInput): Promise<CommentWithAuthor> {
-    const response = await fetch(`${API_BASE}/comments/${id}`, {
+    const response = await fetch(`${getApiBase()}/comments/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -251,7 +264,7 @@ export const commentsApi = {
   },
 
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/comments/${id}`, {
+    const response = await fetch(`${getApiBase()}/comments/${id}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
@@ -266,13 +279,13 @@ export const labelsApi = {
     if (filters?.usage_scope) params.set('usage_scope', filters.usage_scope)
     if (filters?.is_enabled !== undefined) params.set('is_enabled', String(filters.is_enabled))
 
-    const url = `${API_BASE}/projects/${projectId}/labels${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/projects/${projectId}/labels${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<Label[]>(response)
   },
 
   async getTicketLabels(projectId: string, ticketNumber: number): Promise<Label[]> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels`)
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels`)
     return handleResponse<Label[]>(response)
   },
 
@@ -283,7 +296,7 @@ export const labelsApi = {
     addedById?: string
   ): Promise<void> {
     const response = await fetch(
-      `${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels/${labelId}`,
+      `${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels/${labelId}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -295,7 +308,7 @@ export const labelsApi = {
 
   async removeFromTicket(projectId: string, ticketNumber: number, labelId: number, removedById?: string): Promise<void> {
     const response = await fetch(
-      `${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels/${labelId}`,
+      `${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/labels/${labelId}`,
       {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -309,7 +322,7 @@ export const labelsApi = {
     projectId: string,
     input: Omit<CreateLabelInput, 'project_id'>
   ): Promise<Label> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/labels`, {
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/labels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -318,7 +331,7 @@ export const labelsApi = {
   },
 
   async update(id: number, input: UpdateLabelInput): Promise<Label> {
-    const response = await fetch(`${API_BASE}/labels/${id}`, {
+    const response = await fetch(`${getApiBase()}/labels/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -327,14 +340,14 @@ export const labelsApi = {
   },
 
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/labels/${id}`, {
+    const response = await fetch(`${getApiBase()}/labels/${id}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
   },
 
   async getSmartLabelIds(projectId: string): Promise<number[]> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/smart-label-ids`)
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/smart-label-ids`)
     const data = await handleResponse<{ label_ids: number[] }>(response)
     return data.label_ids
   },
@@ -342,12 +355,12 @@ export const labelsApi = {
 
 export const milestonesApi = {
   async listByProject(projectId: string): Promise<MilestoneWithStats[]> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/milestones`)
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/milestones`)
     return handleResponse<MilestoneWithStats[]>(response)
   },
 
   async get(id: number): Promise<MilestoneWithStats> {
-    const response = await fetch(`${API_BASE}/milestones/${id}`)
+    const response = await fetch(`${getApiBase()}/milestones/${id}`)
     return handleResponse<MilestoneWithStats>(response)
   },
 
@@ -355,7 +368,7 @@ export const milestonesApi = {
     projectId: string,
     input: Omit<CreateMilestoneInput, 'project_id'>
   ): Promise<Milestone> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/milestones`, {
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/milestones`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -364,7 +377,7 @@ export const milestonesApi = {
   },
 
   async update(id: number, input: UpdateMilestoneInput): Promise<Milestone> {
-    const response = await fetch(`${API_BASE}/milestones/${id}`, {
+    const response = await fetch(`${getApiBase()}/milestones/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -373,7 +386,7 @@ export const milestonesApi = {
   },
 
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/milestones/${id}`, {
+    const response = await fetch(`${getApiBase()}/milestones/${id}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
@@ -392,18 +405,18 @@ export const agentsApi = {
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
-    const url = `${API_BASE}/agents${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/agents${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<Agent[]>(response)
   },
 
   async get(id: string): Promise<Agent> {
-    const response = await fetch(`${API_BASE}/agents/${id}`)
+    const response = await fetch(`${getApiBase()}/agents/${id}`)
     return handleResponse<Agent>(response)
   },
 
   async create(input: CreateAgentInput): Promise<Agent> {
-    const response = await fetch(`${API_BASE}/agents`, {
+    const response = await fetch(`${getApiBase()}/agents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -412,7 +425,7 @@ export const agentsApi = {
   },
 
   async update(id: string, input: UpdateAgentInput): Promise<Agent> {
-    const response = await fetch(`${API_BASE}/agents/${id}`, {
+    const response = await fetch(`${getApiBase()}/agents/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -421,14 +434,14 @@ export const agentsApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/agents/${id}`, {
+    const response = await fetch(`${getApiBase()}/agents/${id}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
   },
 
   async export(input: { directory: string; agent_ids?: string[] }): Promise<AgentExportResult> {
-    const response = await fetch(`${API_BASE}/agents/export`, {
+    const response = await fetch(`${getApiBase()}/agents/export`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -450,18 +463,18 @@ export const profilesApi = {
       params.set('has_agent', String(filters.has_agent))
     if (filters?.project_id) params.set('project_id', filters.project_id)
 
-    const url = `${API_BASE}/profiles${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/profiles${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<Profile[]>(response)
   },
 
   async get(id: string): Promise<Profile> {
-    const response = await fetch(`${API_BASE}/profiles/${id}`)
+    const response = await fetch(`${getApiBase()}/profiles/${id}`)
     return handleResponse<Profile>(response)
   },
 
   async create(input: CreateProfileInput): Promise<Profile> {
-    const response = await fetch(`${API_BASE}/profiles`, {
+    const response = await fetch(`${getApiBase()}/profiles`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -470,7 +483,7 @@ export const profilesApi = {
   },
 
   async update(id: string, input: UpdateProfileInput): Promise<Profile> {
-    const response = await fetch(`${API_BASE}/profiles/${id}`, {
+    const response = await fetch(`${getApiBase()}/profiles/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -481,12 +494,12 @@ export const profilesApi = {
 
 export const triggersApi = {
   async list(agentId: string): Promise<AgentTrigger[]> {
-    const response = await fetch(`${API_BASE}/agents/${agentId}/triggers`)
+    const response = await fetch(`${getApiBase()}/agents/${agentId}/triggers`)
     return handleResponse<AgentTrigger[]>(response)
   },
 
   async get(id: number): Promise<AgentTrigger> {
-    const response = await fetch(`${API_BASE}/triggers/${id}`)
+    const response = await fetch(`${getApiBase()}/triggers/${id}`)
     return handleResponse<AgentTrigger>(response)
   },
 
@@ -494,7 +507,7 @@ export const triggersApi = {
     agentId: string,
     input: Omit<CreateAgentTriggerInput, 'agent_id'>
   ): Promise<AgentTrigger> {
-    const response = await fetch(`${API_BASE}/agents/${agentId}/triggers`, {
+    const response = await fetch(`${getApiBase()}/agents/${agentId}/triggers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -503,7 +516,7 @@ export const triggersApi = {
   },
 
   async update(id: number, input: UpdateAgentTriggerInput): Promise<AgentTrigger> {
-    const response = await fetch(`${API_BASE}/triggers/${id}`, {
+    const response = await fetch(`${getApiBase()}/triggers/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -512,14 +525,14 @@ export const triggersApi = {
   },
 
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/triggers/${id}`, {
+    const response = await fetch(`${getApiBase()}/triggers/${id}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
   },
 
   async listByLabel(labelId: number): Promise<AgentTrigger[]> {
-    const response = await fetch(`${API_BASE}/labels/${labelId}/triggers`)
+    const response = await fetch(`${getApiBase()}/labels/${labelId}/triggers`)
     return handleResponse<AgentTrigger[]>(response)
   },
 }
@@ -533,18 +546,18 @@ export const projectsApi = {
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
-    const url = `${API_BASE}/projects${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/projects${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<Project[]>(response)
   },
 
   async get(id: string): Promise<Project> {
-    const response = await fetch(`${API_BASE}/projects/${id}`)
+    const response = await fetch(`${getApiBase()}/projects/${id}`)
     return handleResponse<Project>(response)
   },
 
   async create(input: CreateProjectInput): Promise<Project> {
-    const response = await fetch(`${API_BASE}/projects`, {
+    const response = await fetch(`${getApiBase()}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -553,7 +566,7 @@ export const projectsApi = {
   },
 
   async update(id: string, input: UpdateProjectInput): Promise<Project> {
-    const response = await fetch(`${API_BASE}/projects/${id}`, {
+    const response = await fetch(`${getApiBase()}/projects/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -562,14 +575,14 @@ export const projectsApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/projects/${id}`, {
+    const response = await fetch(`${getApiBase()}/projects/${id}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
   },
 
   async initProject(id: string): Promise<InitProjectResult> {
-    const response = await fetch(`${API_BASE}/projects/${id}/init`, {
+    const response = await fetch(`${getApiBase()}/projects/${id}/init`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -590,7 +603,7 @@ export const eventsApi = {
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
-    const url = `${API_BASE}/events${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/events${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<EventWithActor[]>(response)
   },
@@ -607,7 +620,7 @@ export const permissionsApi = {
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
-    const url = `${API_BASE}/projects/${projectId}/permissions${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/projects/${projectId}/permissions${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<PermissionLogEntry[]>(response)
   },
@@ -615,12 +628,12 @@ export const permissionsApi = {
 
 export const databaseApi = {
   async listTables(): Promise<DatabaseTablesResponse> {
-    const response = await fetch(`${API_BASE}/database/tables`)
+    const response = await fetch(`${getApiBase()}/database/tables`)
     return handleResponse<DatabaseTablesResponse>(response)
   },
 
   async query(input: DatabaseQueryInput): Promise<DatabaseQueryResponse> {
-    const response = await fetch(`${API_BASE}/database/query`, {
+    const response = await fetch(`${getApiBase()}/database/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -631,7 +644,7 @@ export const databaseApi = {
 
 export const timelineApi = {
   async getTicketTimeline(projectId: string, ticketNumber: number): Promise<TicketTimeline> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/timeline`)
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/timeline`)
     return handleResponse<TicketTimeline>(response)
   },
 }
@@ -676,7 +689,7 @@ export const sessionsApi = {
     if (filters?.limit) params.set('limit', String(filters.limit))
     if (filters?.offset) params.set('offset', String(filters.offset))
 
-    const url = `${API_BASE}/sessions${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/sessions${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<PublicSession[]>(response)
   },
@@ -685,17 +698,17 @@ export const sessionsApi = {
     const params = new URLSearchParams()
     params.set('recent_limit', String(recentLimit))
 
-    const response = await fetch(`${API_BASE}/sessions/diagnostics?${params}`)
+    const response = await fetch(`${getApiBase()}/sessions/diagnostics?${params}`)
     return handleResponse<SessionDiagnostics>(response)
   },
 
   async get(kombuseSessionId: string): Promise<PublicSession> {
-    const response = await fetch(`${API_BASE}/sessions/${kombuseSessionId}`)
+    const response = await fetch(`${getApiBase()}/sessions/${kombuseSessionId}`)
     return handleResponse<PublicSession>(response)
   },
 
   async create(input?: { backend_type?: BackendType; agent_id?: string; model_preference?: string; project_id?: string }): Promise<PublicSession> {
-    const response = await fetch(`${API_BASE}/sessions`, {
+    const response = await fetch(`${getApiBase()}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input ?? {}),
@@ -712,13 +725,13 @@ export const sessionsApi = {
     if (filters?.event_type) params.set('event_type', filters.event_type)
     if (filters?.limit) params.set('limit', String(filters.limit))
 
-    const url = `${API_BASE}/sessions/${kombuseSessionId}/events${params.toString() ? `?${params}` : ''}`
+    const url = `${getApiBase()}/sessions/${kombuseSessionId}/events${params.toString() ? `?${params}` : ''}`
     const response = await fetch(url)
     return handleResponse<{ session_id: string; events: SessionEvent[]; total: number }>(response)
   },
 
   async delete(kombuseSessionId: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/sessions/${kombuseSessionId}`, {
+    const response = await fetch(`${getApiBase()}/sessions/${kombuseSessionId}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
@@ -727,7 +740,7 @@ export const sessionsApi = {
 
 export const attachmentsApi = {
   async listByComment(commentId: number): Promise<Attachment[]> {
-    const response = await fetch(`${API_BASE}/comments/${commentId}/attachments`)
+    const response = await fetch(`${getApiBase()}/comments/${commentId}/attachments`)
     return handleResponse<Attachment[]>(response)
   },
 
@@ -735,7 +748,7 @@ export const attachmentsApi = {
     const formData = new FormData()
     formData.append('uploaded_by_id', uploadedById)
     formData.append('file', file)
-    const response = await fetch(`${API_BASE}/comments/${commentId}/attachments`, {
+    const response = await fetch(`${getApiBase()}/comments/${commentId}/attachments`, {
       method: 'POST',
       body: formData,
     })
@@ -743,7 +756,7 @@ export const attachmentsApi = {
   },
 
   async listByTicket(projectId: string, ticketNumber: number): Promise<Attachment[]> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/attachments`)
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/attachments`)
     return handleResponse<Attachment[]>(response)
   },
 
@@ -751,7 +764,7 @@ export const attachmentsApi = {
     const formData = new FormData()
     formData.append('uploaded_by_id', uploadedById)
     formData.append('file', file)
-    const response = await fetch(`${API_BASE}/projects/${projectId}/tickets/by-number/${ticketNumber}/attachments`, {
+    const response = await fetch(`${getApiBase()}/projects/${projectId}/tickets/by-number/${ticketNumber}/attachments`, {
       method: 'POST',
       body: formData,
     })
@@ -759,14 +772,14 @@ export const attachmentsApi = {
   },
 
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/attachments/${id}`, {
+    const response = await fetch(`${getApiBase()}/attachments/${id}`, {
       method: 'DELETE',
     })
     await handleEmptyResponse(response)
   },
 
   downloadUrl(id: number): string {
-    return `${API_BASE}/attachments/${id}/download`
+    return `${getApiBase()}/attachments/${id}/download`
   },
 }
 
@@ -817,12 +830,12 @@ export interface ClaudeCodeSessionContent {
 
 export const claudeCodeApi = {
   async scanProjects(): Promise<ClaudeCodeProjectWithStatus[]> {
-    const response = await fetch(`${API_BASE}/claude-code/projects`)
+    const response = await fetch(`${getApiBase()}/claude-code/projects`)
     return handleResponse<ClaudeCodeProjectWithStatus[]>(response)
   },
 
   async importProjects(paths: string[]): Promise<Project[]> {
-    const response = await fetch(`${API_BASE}/claude-code/projects/import`, {
+    const response = await fetch(`${getApiBase()}/claude-code/projects/import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ paths }),
@@ -832,13 +845,13 @@ export const claudeCodeApi = {
 
   async listSessions(projectPath: string): Promise<{ sessions: ClaudeCodeSessionEntry[] }> {
     const params = new URLSearchParams({ path: projectPath })
-    const response = await fetch(`${API_BASE}/claude-code/sessions?${params}`)
+    const response = await fetch(`${getApiBase()}/claude-code/sessions?${params}`)
     return handleResponse<{ sessions: ClaudeCodeSessionEntry[] }>(response)
   },
 
   async getSessionContent(projectPath: string, sessionId: string): Promise<ClaudeCodeSessionContent> {
     const params = new URLSearchParams({ path: projectPath })
-    const response = await fetch(`${API_BASE}/claude-code/sessions/${sessionId}?${params}`)
+    const response = await fetch(`${getApiBase()}/claude-code/sessions/${sessionId}?${params}`)
     return handleResponse<ClaudeCodeSessionContent>(response)
   },
 }
@@ -846,20 +859,20 @@ export const claudeCodeApi = {
 export const profileSettingsApi = {
   async get(profileId: string, key: string): Promise<ProfileSetting | null> {
     const response = await fetch(
-      `${API_BASE}/profiles/${profileId}/settings/${encodeURIComponent(key)}`
+      `${getApiBase()}/profiles/${profileId}/settings/${encodeURIComponent(key)}`
     )
     return handleResponse<ProfileSetting | null>(response)
   },
 
   async getAll(profileId: string): Promise<ProfileSetting[]> {
     const response = await fetch(
-      `${API_BASE}/profiles/${encodeURIComponent(profileId)}/settings`
+      `${getApiBase()}/profiles/${encodeURIComponent(profileId)}/settings`
     )
     return handleResponse<ProfileSetting[]>(response)
   },
 
   async upsert(input: UpsertProfileSettingInput): Promise<ProfileSetting> {
-    const response = await fetch(`${API_BASE}/profile-settings`, {
+    const response = await fetch(`${getApiBase()}/profile-settings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -870,12 +883,12 @@ export const profileSettingsApi = {
 
 export const codexApi = {
   async getMcpStatus(): Promise<CodexMcpStatus> {
-    const response = await fetch(`${API_BASE}/codex/mcp`)
+    const response = await fetch(`${getApiBase()}/codex/mcp`)
     return handleResponse<CodexMcpStatus>(response)
   },
 
   async setMcpEnabled(enabled: boolean): Promise<CodexMcpStatus> {
-    const response = await fetch(`${API_BASE}/codex/mcp`, {
+    const response = await fetch(`${getApiBase()}/codex/mcp`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled }),
@@ -886,12 +899,12 @@ export const codexApi = {
 
 export const claudeCodeMcpApi = {
   async getMcpStatus(): Promise<ClaudeCodeMcpStatus> {
-    const response = await fetch(`${API_BASE}/claude-code/mcp`)
+    const response = await fetch(`${getApiBase()}/claude-code/mcp`)
     return handleResponse<ClaudeCodeMcpStatus>(response)
   },
 
   async setMcpEnabled(enabled: boolean): Promise<ClaudeCodeMcpStatus> {
-    const response = await fetch(`${API_BASE}/claude-code/mcp`, {
+    const response = await fetch(`${getApiBase()}/claude-code/mcp`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled }),
@@ -903,19 +916,19 @@ export const claudeCodeMcpApi = {
 export const modelsApi = {
   async getModels(backendType: string): Promise<ModelCatalogResponse> {
     const params = new URLSearchParams({ backend_type: backendType })
-    const response = await fetch(`${API_BASE}/models?${params}`)
+    const response = await fetch(`${getApiBase()}/models?${params}`)
     return handleResponse<ModelCatalogResponse>(response)
   },
 }
 
 export const backendStatusApi = {
   async getStatus(): Promise<BackendStatus[]> {
-    const response = await fetch(`${API_BASE}/backend-status`)
+    const response = await fetch(`${getApiBase()}/backend-status`)
     return handleResponse<BackendStatus[]>(response)
   },
 
   async refreshStatus(): Promise<BackendStatus[]> {
-    const response = await fetch(`${API_BASE}/backend-status/refresh`, {
+    const response = await fetch(`${getApiBase()}/backend-status/refresh`, {
       method: 'POST',
     })
     return handleResponse<BackendStatus[]>(response)
@@ -924,7 +937,7 @@ export const backendStatusApi = {
 
 export const pluginsApi = {
   async exportPlugin(input: PluginExportInput): Promise<PluginExportResult> {
-    const response = await fetch(`${API_BASE}/plugins/export`, {
+    const response = await fetch(`${getApiBase()}/plugins/export`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -934,23 +947,23 @@ export const pluginsApi = {
 
   async list(projectId: string): Promise<Plugin[]> {
     const params = new URLSearchParams({ project_id: projectId })
-    const response = await fetch(`${API_BASE}/plugins?${params}`)
+    const response = await fetch(`${getApiBase()}/plugins?${params}`)
     return handleResponse<Plugin[]>(response)
   },
 
   async get(id: string): Promise<Plugin> {
-    const response = await fetch(`${API_BASE}/plugins/${id}`)
+    const response = await fetch(`${getApiBase()}/plugins/${id}`)
     return handleResponse<Plugin>(response)
   },
 
   async available(projectId: string): Promise<AvailablePlugin[]> {
     const params = new URLSearchParams({ project_id: projectId })
-    const response = await fetch(`${API_BASE}/plugins/available?${params}`)
+    const response = await fetch(`${getApiBase()}/plugins/available?${params}`)
     return handleResponse<AvailablePlugin[]>(response)
   },
 
   async install(input: PluginInstallInput): Promise<PluginInstallResult> {
-    const response = await fetch(`${API_BASE}/plugins/install`, {
+    const response = await fetch(`${getApiBase()}/plugins/install`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -959,7 +972,7 @@ export const pluginsApi = {
   },
 
   async update(id: string, input: { is_enabled?: boolean }): Promise<Plugin> {
-    const response = await fetch(`${API_BASE}/plugins/${id}`, {
+    const response = await fetch(`${getApiBase()}/plugins/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -969,19 +982,19 @@ export const pluginsApi = {
 
   async uninstall(id: string, mode: 'orphan' | 'delete' = 'orphan'): Promise<void> {
     const params = new URLSearchParams({ mode })
-    const response = await fetch(`${API_BASE}/plugins/${id}?${params}`, {
+    const response = await fetch(`${getApiBase()}/plugins/${id}?${params}`, {
       method: 'DELETE',
     })
     return handleEmptyResponse(response)
   },
 
   async checkUpdates(pluginId: string): Promise<PluginUpdateCheckResult> {
-    const response = await fetch(`${API_BASE}/plugins/${pluginId}/check-updates`)
+    const response = await fetch(`${getApiBase()}/plugins/${pluginId}/check-updates`)
     return handleResponse<PluginUpdateCheckResult>(response)
   },
 
   async installRemote(input: PluginRemoteInstallInput): Promise<PluginInstallResult> {
-    const response = await fetch(`${API_BASE}/plugins/install-remote`, {
+    const response = await fetch(`${getApiBase()}/plugins/install-remote`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -990,7 +1003,7 @@ export const pluginsApi = {
   },
 
   async pull(pluginId: string): Promise<PluginInstallResult> {
-    const response = await fetch(`${API_BASE}/plugins/${pluginId}/pull`, {
+    const response = await fetch(`${getApiBase()}/plugins/${pluginId}/pull`, {
       method: 'POST',
     })
     return handleResponse<PluginInstallResult>(response)
@@ -999,17 +1012,17 @@ export const pluginsApi = {
 
 export const pluginFilesApi = {
   async list(pluginId: string): Promise<PluginFile[]> {
-    const response = await fetch(`${API_BASE}/plugins/${pluginId}/files`)
+    const response = await fetch(`${getApiBase()}/plugins/${pluginId}/files`)
     return handleResponse<PluginFile[]>(response)
   },
 
   async get(pluginId: string, fileId: number): Promise<PluginFile> {
-    const response = await fetch(`${API_BASE}/plugins/${pluginId}/files/${fileId}`)
+    const response = await fetch(`${getApiBase()}/plugins/${pluginId}/files/${fileId}`)
     return handleResponse<PluginFile>(response)
   },
 
   async update(pluginId: string, fileId: number, input: { content: string }): Promise<PluginFile> {
-    const response = await fetch(`${API_BASE}/plugins/${pluginId}/files/${fileId}`, {
+    const response = await fetch(`${getApiBase()}/plugins/${pluginId}/files/${fileId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -1034,7 +1047,7 @@ export interface PluginSourcesResponse {
 export const pluginSourcesApi = {
   async get(projectId: string): Promise<PluginSourcesResponse> {
     const params = new URLSearchParams({ project_id: projectId })
-    const response = await fetch(`${API_BASE}/plugin-sources?${params}`)
+    const response = await fetch(`${getApiBase()}/plugin-sources?${params}`)
     return handleResponse<PluginSourcesResponse>(response)
   },
 
@@ -1042,7 +1055,7 @@ export const pluginSourcesApi = {
     projectId: string,
     sources: PluginSourceConfig[]
   ): Promise<PluginSourcesResponse> {
-    const response = await fetch(`${API_BASE}/plugin-sources`, {
+    const response = await fetch(`${getApiBase()}/plugin-sources`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ project_id: projectId, sources }),
@@ -1123,7 +1136,7 @@ export const analyticsApi = {
     params.set('project_id', projectId)
     if (days !== undefined) params.set('days', String(days))
 
-    const response = await fetch(`${API_BASE}/analytics/sessions-per-day?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/sessions-per-day?${params}`)
     return handleResponse<SessionsPerDayEntry[]>(response)
   },
 
@@ -1135,7 +1148,7 @@ export const analyticsApi = {
     params.set('project_id', projectId)
     if (days !== undefined) params.set('days', String(days))
 
-    const response = await fetch(`${API_BASE}/analytics/duration-percentiles?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/duration-percentiles?${params}`)
     return handleResponse<SessionDurationPercentileEntry[]>(response)
   },
 
@@ -1147,7 +1160,7 @@ export const analyticsApi = {
     params.set('project_id', projectId)
     if (days !== undefined) params.set('days', String(days))
 
-    const response = await fetch(`${API_BASE}/analytics/pipeline-stage-duration?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/pipeline-stage-duration?${params}`)
     return handleResponse<PipelineStageDurationEntry[]>(response)
   },
 
@@ -1161,7 +1174,7 @@ export const analyticsApi = {
     if (days !== undefined) params.set('days', String(days))
     if (limit !== undefined) params.set('limit', String(limit))
 
-    const response = await fetch(`${API_BASE}/analytics/most-frequent-reads?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/most-frequent-reads?${params}`)
     return handleResponse<ToolReadFrequencyEntry[]>(response)
   },
 
@@ -1175,7 +1188,7 @@ export const analyticsApi = {
     if (days !== undefined) params.set('days', String(days))
     if (agentId !== undefined) params.set('agent_id', agentId)
 
-    const response = await fetch(`${API_BASE}/analytics/tool-calls-per-session?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/tool-calls-per-session?${params}`)
     return handleResponse<ToolCallsPerSessionEntry[]>(response)
   },
 
@@ -1184,7 +1197,7 @@ export const analyticsApi = {
     params.set('project_id', projectId)
     if (days !== undefined) params.set('days', String(days))
 
-    const response = await fetch(`${API_BASE}/analytics/slowest-tools?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/slowest-tools?${params}`)
     return handleResponse<ToolDurationPercentileEntry[]>(response)
   },
 
@@ -1193,7 +1206,7 @@ export const analyticsApi = {
     params.set('project_id', projectId)
     if (days !== undefined) params.set('days', String(days))
 
-    const response = await fetch(`${API_BASE}/analytics/tool-call-volume?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/tool-call-volume?${params}`)
     return handleResponse<ToolCallVolumeEntry[]>(response)
   },
 
@@ -1209,7 +1222,7 @@ export const analyticsApi = {
     if (milestoneId !== undefined) params.set('milestone_id', String(milestoneId))
     if (labelId !== undefined) params.set('label_id', String(labelId))
 
-    const response = await fetch(`${API_BASE}/analytics/ticket-burndown?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/ticket-burndown?${params}`)
     return handleResponse<BurndownEntry[]>(response)
   },
 
@@ -1221,14 +1234,14 @@ export const analyticsApi = {
     params.set('project_id', projectId)
     if (limit !== undefined) params.set('limit', String(limit))
 
-    const response = await fetch(`${API_BASE}/analytics/agent-runtime-per-ticket?${params}`)
+    const response = await fetch(`${getApiBase()}/analytics/agent-runtime-per-ticket?${params}`)
     return handleResponse<AgentRuntimeSegmentEntry[]>(response)
   },
 }
 
 export const syncApi = {
   async getState(): Promise<SyncState> {
-    const response = await fetch(`${API_BASE}/sync/state`)
+    const response = await fetch(`${getApiBase()}/sync/state`)
     return handleResponse<SyncState>(response)
   },
 }

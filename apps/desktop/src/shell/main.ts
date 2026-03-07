@@ -163,7 +163,12 @@ function isSafeExternalUrl(url: string): boolean {
 
 let webUrl = DEV_WEB_URL;
 
-function createWindow(opts?: { path?: string; width?: number; height?: number; deferLoad?: boolean }): BrowserWindow {
+function appendPortParam(url: string, port: number): string {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}port=${port}`;
+}
+
+function createWindow(opts?: { path?: string; width?: number; height?: number; deferLoad?: boolean; port?: number }): BrowserWindow {
   const focused = BrowserWindow.getFocusedWindow();
   const bounds = focused?.getBounds();
   const x = bounds ? bounds.x + 20 : undefined;
@@ -218,7 +223,28 @@ function createWindow(opts?: { path?: string; width?: number; height?: number; d
     mainWindow.show();
   });
 
-  const loadUrl = opts?.path ? new URL(opts.path, webUrl).href : webUrl;
+  mainWindow.webContents.once("did-finish-load", () => {
+    mainWindow.webContents.executeJavaScript("window.electron?.serverPort ?? -1")
+      .then((port: number) => {
+        if (port <= 0) {
+          const detail = port === 0 ? "fallback bridge" : "bridge missing";
+          logger.warn(`Preload bridge failure detected (${detail})`);
+          if (process.env.SENTRY_DSN) {
+            Sentry.captureMessage("Preload bridge failure", {
+              level: "error",
+              extra: { serverPort: port, detail },
+            });
+          }
+        }
+      })
+      .catch(() => {
+        // Window may have been closed before JS executed — ignore
+      });
+  });
+
+  const baseUrl = opts?.path ? new URL(opts.path, webUrl).href : webUrl;
+  const portParam = opts?.port ?? serverPort;
+  const loadUrl = portParam ? appendPortParam(baseUrl, portParam) : baseUrl;
   if (!opts?.deferLoad) {
     mainWindow.loadURL(loadUrl);
   }
