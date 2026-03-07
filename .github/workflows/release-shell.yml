@@ -82,6 +82,7 @@ jobs:
           path: |
             apps/desktop/release/*.dmg
             apps/desktop/release/*.zip
+            apps/desktop/release/*.blockmap
             apps/desktop/release/latest-mac-${{ matrix.arch }}.yml
 
   release:
@@ -139,6 +140,7 @@ jobs:
           files: |
             *.dmg
             *.zip
+            *.blockmap
             latest-mac.yml
             latest-mac-arm64.yml
             latest-mac-x64.yml
