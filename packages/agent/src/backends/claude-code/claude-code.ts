@@ -443,7 +443,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     const resumeFailed = !isSuccess && this.isResumeFailure(errorMessage)
     let emittedMessageFromResult = false
 
-    if (isSuccess && 'result' in event && typeof event.result === 'string' && event.result.trim()) {
+    if (!this.hasEmittedAssistantMessage && isSuccess && 'result' in event && typeof event.result === 'string' && event.result.trim()) {
       emittedMessageFromResult = true
       events.push({
         type: 'message',
@@ -456,7 +456,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
       })
     }
 
-    if (!emittedMessageFromResult && isSuccess && 'result' in event && Array.isArray(event.result)) {
+    if (!this.hasEmittedAssistantMessage && !emittedMessageFromResult && isSuccess && 'result' in event && Array.isArray(event.result)) {
       const textParts: string[] = []
       for (const block of event.result) {
         if (typeof block === 'object' && block !== null && block.type === 'text' && typeof block.text === 'string' && block.text.trim()) {

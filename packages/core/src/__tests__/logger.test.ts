@@ -200,6 +200,42 @@ describe('SessionLogger', () => {
     })
   })
 
+  describe('raw event log level', () => {
+    it('writes raw events with level debug to file', () => {
+      const logger = makeSessionLogger({ target: 'file' })
+      const event = makeRawEvent('cli_pre_normalization', { some: 'data' })
+
+      logger.logEvent(event)
+
+      expect(mockWrite).toHaveBeenCalledOnce()
+      const written = JSON.parse(mockWrite.mock.calls[0]![0] as string)
+      expect(written.level).toBe('debug')
+      expect(written.event_type).toBe('raw')
+    })
+
+    it('writes message events with level info to file', () => {
+      const logger = makeSessionLogger({ target: 'file' })
+      const event = makeMessageEvent('test')
+
+      logger.logEvent(event)
+
+      expect(mockWrite).toHaveBeenCalledOnce()
+      const written = JSON.parse(mockWrite.mock.calls[0]![0] as string)
+      expect(written.level).toBe('info')
+    })
+
+    it('writes error events with level error to file', () => {
+      const logger = makeSessionLogger({ target: 'file' })
+      const event = makeErrorEvent('boom')
+
+      logger.logEvent(event)
+
+      expect(mockWrite).toHaveBeenCalledOnce()
+      const written = JSON.parse(mockWrite.mock.calls[0]![0] as string)
+      expect(written.level).toBe('error')
+    })
+  })
+
   describe('logLevel option', () => {
     it('option overrides environment default', () => {
       const debugLogger = makeSessionLogger({ logLevel: 'debug' })

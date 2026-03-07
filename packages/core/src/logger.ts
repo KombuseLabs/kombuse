@@ -123,7 +123,7 @@ export function createSessionLogger(options: SessionLoggerOptions): SessionLogge
   function logEvent(event: AgentEvent): void {
     const base = {
       ts: new Date().toISOString(),
-      level: event.type === 'error' ? 'error' : 'info',
+      level: event.type === 'error' ? 'error' : event.type === 'raw' ? 'debug' : 'info',
       session: options.kombuseSessionId,
       event_type: event.type,
     }

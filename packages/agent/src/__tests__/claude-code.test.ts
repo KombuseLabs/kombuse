@@ -313,6 +313,89 @@ describe('ClaudeCodeBackend', () => {
       expect(backend.getBackendSessionId()).toBe('session_abc')
     })
 
+    it('should not emit duplicate message from result when assistant message was already emitted', () => {
+      // First, emit an assistant event (streaming path)
+      const assistantMsg: ParsedClaudeMessage = {
+        data: {
+          type: 'assistant',
+          uuid: 'test-uuid',
+          session_id: 'test-session',
+          message: {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'Hello!' }]
+          },
+          parent_tool_use_id: null
+        }
+      }
+      callHandleMessage(backend, assistantMsg)
+
+      // Should have raw + message from the assistant event
+      expect(events).toHaveLength(2)
+      expect(events[0]!.type).toBe('raw')
+      expect(events[1]!.type).toBe('message')
+
+      // Now emit a result event with the same text
+      const resultMsg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'success',
+          uuid: 'test-uuid',
+          session_id: 'test-session',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: false,
+          num_turns: 1,
+          result: 'Hello!',
+          total_cost_usd: 0.01,
+          usage: { input_tokens: 10, output_tokens: 20 },
+          modelUsage: {},
+          permission_denials: []
+        }
+      }
+      callHandleMessage(backend, resultMsg)
+
+      // Should have: raw + message (from assistant) + raw + complete (from result)
+      // NOT: raw + message + raw + message + complete (no duplicate message)
+      expect(events).toHaveLength(4)
+      expect(events[2]!.type).toBe('raw')
+      expect(events[3]!.type).toBe('complete')
+      if (events[3]!.type === 'complete') {
+        expect(events[3]!.success).toBe(true)
+      }
+    })
+
+    it('should still emit message from result when no prior assistant event occurred (fallback)', () => {
+      // Directly emit a result event without a prior assistant event
+      const resultMsg: ParsedClaudeMessage = {
+        data: {
+          type: 'result',
+          subtype: 'success',
+          uuid: 'test-uuid',
+          session_id: 'test-session',
+          duration_ms: 100,
+          duration_api_ms: 50,
+          is_error: false,
+          num_turns: 1,
+          result: 'Fallback message',
+          total_cost_usd: 0.01,
+          usage: { input_tokens: 10, output_tokens: 20 },
+          modelUsage: {},
+          permission_denials: []
+        }
+      }
+      callHandleMessage(backend, resultMsg)
+
+      // Should have: raw + message + complete (fallback still works)
+      expect(events).toHaveLength(3)
+      expect(events[0]!.type).toBe('raw')
+      expect(events[1]!.type).toBe('message')
+      if (events[1]!.type === 'message') {
+        expect(events[1]!.role).toBe('assistant')
+        expect(events[1]!.content).toBe('Fallback message')
+      }
+      expect(events[2]!.type).toBe('complete')
+    })
+
     it('should emit only complete event for successful result with empty text', () => {
       const msg: ParsedClaudeMessage = {
         data: {
