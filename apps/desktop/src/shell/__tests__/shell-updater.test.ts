@@ -354,6 +354,175 @@ describe("code-signing error handling", () => {
 });
 
 // ===========================================================================
+// 3b. Error handling — manifest 404 retry (CI race condition, ticket #782)
+// ===========================================================================
+
+describe("manifest 404 retry handling", () => {
+  const MANIFEST_404_MESSAGE =
+    'Cannot find latest-mac.yml in the latest release artifacts (https://github.com/KombuseLabs/kombuse/releases/download/v1.0.0-rc.16/latest-mac.yml): HttpError: 404 "method: GET url: https://github.com/KombuseLabs/kombuse/releases/download/v1.0.0-rc.16/latest-mac.yml"';
+
+  const LATEST_YML_404_MESSAGE =
+    'Cannot find latest.yml in the latest release artifacts: HttpError: 404 "method: GET url: https://github.com/example/latest.yml"';
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockAutoUpdater.checkForUpdates.mockResolvedValue(null);
+  });
+
+  it("404 with latest-mac.yml → state stays idle, no error shown", () => {
+    const updater = createUpdater();
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+
+    const status = updater.getStatus();
+    expect(status.state).toBe("idle");
+    expect(status.error).toBeNull();
+  });
+
+  it("404 with latest.yml → same retry behavior (cross-platform)", () => {
+    const updater = createUpdater();
+    fireEvent("error", { message: LATEST_YML_404_MESSAGE });
+
+    const status = updater.getStatus();
+    expect(status.state).toBe("idle");
+    expect(status.error).toBeNull();
+  });
+
+  it("schedules retry after 30s on first 404", () => {
+    const updater = createUpdater();
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+
+    expect(updater.getStatus().state).toBe("idle");
+
+    // Before 30s — no retry
+    vi.advanceTimersByTime(29_999);
+    expect(mockAutoUpdater.checkForUpdates).not.toHaveBeenCalled();
+
+    // At 30s — retry fires
+    vi.advanceTimersByTime(1);
+    expect(mockAutoUpdater.checkForUpdates).toHaveBeenCalledOnce();
+  });
+
+  it("backoff increases: 30s → 60s → 120s across retries", () => {
+    const updater = createUpdater();
+
+    // First 404 → retry in 30s
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    expect(updater.getStatus().state).toBe("idle");
+    vi.advanceTimersByTime(30_000);
+    expect(mockAutoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
+
+    // Second 404 → retry in 60s
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    expect(updater.getStatus().state).toBe("idle");
+    vi.advanceTimersByTime(59_999);
+    expect(mockAutoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(mockAutoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);
+
+    // Third 404 → retry in 120s
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    expect(updater.getStatus().state).toBe("idle");
+    vi.advanceTimersByTime(119_999);
+    expect(mockAutoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(1);
+    expect(mockAutoUpdater.checkForUpdates).toHaveBeenCalledTimes(3);
+  });
+
+  it("after 3 failed retries, error propagates normally", () => {
+    const updater = createUpdater();
+
+    // Exhaust all 3 retries
+    fireEvent("error", { message: MANIFEST_404_MESSAGE }); // retry 1
+    fireEvent("error", { message: MANIFEST_404_MESSAGE }); // retry 2
+    fireEvent("error", { message: MANIFEST_404_MESSAGE }); // retry 3
+
+    // Fourth 404 → error propagates
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    const status = updater.getStatus();
+    expect(status.state).toBe("error");
+    expect(status.error).toBe(MANIFEST_404_MESSAGE);
+  });
+
+  it("update-available resets retry counter", () => {
+    const updater = createUpdater();
+
+    // Use up 2 retries
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+
+    // Successful check resets counter
+    fireEvent("update-available", {
+      version: "1.0.0-rc.15",
+      releaseDate: "2026-03-06T12:00:00.000Z",
+      releaseNotes: null,
+    });
+
+    // Should have 3 retries again
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    expect(updater.getStatus().state).toBe("idle"); // retry, not error
+
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    expect(updater.getStatus().state).toBe("idle");
+
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    expect(updater.getStatus().state).toBe("idle");
+
+    // Fourth → error
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    expect(updater.getStatus().state).toBe("error");
+  });
+
+  it("update-not-available resets retry counter", () => {
+    const updater = createUpdater();
+
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+
+    fireEvent("update-not-available");
+
+    // Counter reset — first retry should work
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+    expect(updater.getStatus().state).toBe("idle");
+  });
+
+  it("stopPeriodicChecks clears the retry timer", () => {
+    const updater = createUpdater();
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+
+    updater.stopPeriodicChecks();
+
+    // Timer was cleared — no retry should fire
+    vi.advanceTimersByTime(200_000);
+    expect(mockAutoUpdater.checkForUpdates).not.toHaveBeenCalled();
+  });
+
+  it("non-404 errors are unaffected", () => {
+    const updater = createUpdater();
+    fireEvent("error", { message: "Network timeout" });
+
+    expect(updater.getStatus().state).toBe("error");
+    expect(updater.getStatus().error).toBe("Network timeout");
+  });
+
+  it("404 errors not mentioning manifest files are unaffected", () => {
+    const updater = createUpdater();
+    fireEvent("error", { message: '404 Not Found: some-other-file.zip' });
+
+    expect(updater.getStatus().state).toBe("error");
+    expect(updater.getStatus().error).toBe("404 Not Found: some-other-file.zip");
+  });
+
+  it("logs a warning for each retry attempt", () => {
+    createUpdater();
+    fireEvent("error", { message: MANIFEST_404_MESSAGE });
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("attempt 1/3"),
+    );
+  });
+});
+
+// ===========================================================================
 // 4. checkForUpdates
 // ===========================================================================
 

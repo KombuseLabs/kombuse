@@ -183,7 +183,7 @@ describe("ShellUpdater integration (real HTTP)", () => {
     expect(shellUpdater.getStatus().state).toBe("idle");
   });
 
-  it("throws a human-readable error on 404 (regression guard for #732)", async () => {
+  it("silently retries on manifest 404 instead of showing error (#782)", async () => {
     const { ShellUpdater } = await import("../shell-updater");
     const shellUpdater = new ShellUpdater();
 
@@ -191,7 +191,8 @@ describe("ShellUpdater integration (real HTTP)", () => {
 
     await expect(shellUpdater.checkForUpdates()).rejects.toThrow();
 
-    expect(shellUpdater.getStatus().state).toBe("error");
-    expect(shellUpdater.getStatus().error).toBeTruthy();
+    // First 404 triggers retry logic — state stays idle, no error shown to user
+    expect(shellUpdater.getStatus().state).toBe("idle");
+    expect(shellUpdater.getStatus().error).toBeNull();
   });
 });

@@ -26,6 +26,9 @@ const SIGNING_ERROR_PATTERNS = [
   "a sealed resource is missing or invalid",
 ];
 
+// Retry delays for transient 404 errors on release manifest (CI race condition)
+const MANIFEST_RETRY_DELAYS = [30_000, 60_000, 120_000];
+
 export class ShellUpdater {
   private status: UpdateStatus = {
     state: "idle",
@@ -39,6 +42,8 @@ export class ShellUpdater {
   private periodicTimer: ReturnType<typeof setInterval> | null = null;
   private initialTimer: ReturnType<typeof setTimeout> | null = null;
   private unsignedBuild = false;
+  private manifestRetryCount = 0;
+  private manifestRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.status.currentVersion = app.getVersion();
@@ -55,10 +60,12 @@ export class ShellUpdater {
 
     electronAutoUpdater.on("update-available", (info) => {
       const updateInfo = this.mapUpdateInfo(info);
+      this.manifestRetryCount = 0;
       this.setState("available", { updateInfo });
     });
 
     electronAutoUpdater.on("update-not-available", () => {
+      this.manifestRetryCount = 0;
       this.setState("idle");
     });
 
@@ -82,6 +89,23 @@ export class ShellUpdater {
         this.stopPeriodicChecks();
         this.setState("idle", { error: null });
         return;
+      }
+
+      // Detect transient 404 errors on release manifest (CI race condition)
+      if (message.includes("404") && /latest[-.]mac\.yml|latest\.yml/i.test(message)) {
+        if (this.manifestRetryCount < MANIFEST_RETRY_DELAYS.length) {
+          const delay = MANIFEST_RETRY_DELAYS[this.manifestRetryCount]!;
+          this.manifestRetryCount++;
+          logger.warn(`Release manifest not yet available (attempt ${this.manifestRetryCount}/${MANIFEST_RETRY_DELAYS.length}), retrying in ${delay / 1000}s`);
+          this.setState("idle", { error: null });
+          this.manifestRetryTimer = setTimeout(() => {
+            this.manifestRetryTimer = null;
+            this.checkForUpdates().catch(() => {});
+          }, delay);
+          return;
+        }
+        // Max retries exhausted — fall through to normal error handling
+        this.manifestRetryCount = 0;
       }
 
       this.setState("error", { error: message });
@@ -201,6 +225,10 @@ export class ShellUpdater {
     if (this.periodicTimer) {
       clearInterval(this.periodicTimer);
       this.periodicTimer = null;
+    }
+    if (this.manifestRetryTimer) {
+      clearTimeout(this.manifestRetryTimer);
+      this.manifestRetryTimer = null;
     }
   }
 }
