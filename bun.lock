@@ -16,7 +16,7 @@
     },
     "apps/desktop": {
       "name": "desktop",
-      "version": "1.0.0-rc.18",
+      "version": "1.0.0-rc.21",
       "dependencies": {
         "@kombuse/core": "*",
         "@kombuse/pkg": "*",
