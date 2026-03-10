@@ -45,3 +45,7 @@ Bun, Node >= 18, TypeScript 5.9, React 19, React Router 7, Vite 7, Tailwind CSS 
 ## Documentation
 
 [kombuse.dev](https://kombuse.dev)
+
+## License
+
+[MIT](LICENSE)
