@@ -212,177 +212,19 @@ function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange
           className
         )}
       >
-        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4">
-          <div className="min-w-0 flex-1">
-            {mode === 'view' ? (
-              <div className="md:min-h-[5.25rem] space-y-2">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {onBack && (
-                    <Button variant="ghost" size="icon" onClick={onBack} className="size-7 shrink-0">
-                      <ArrowLeft className="size-4" />
-                    </Button>
-                  )}
-                  <StatusIndicator status={agentStatus} size="default" />
-                  <span className="text-sm text-muted-foreground">#{ticket.ticket_number}</span>
-                  {isEditable ? (
-                    <Tabs
-                      value={ticket.status}
-                      onValueChange={(v) => updateCurrentTicket({ status: v as TicketStatus })}
-                    >
-                      <TabsList className="h-6 p-0.5">
-                        {STATUS_OPTIONS.map((opt) => (
-                          <TabsTrigger
-                            key={opt.value}
-                            value={opt.value}
-                            disabled={isUpdating}
-                            className={cn(
-                              'h-5 px-2 py-0 text-xs',
-                              ticket.status === opt.value && statusColors[opt.value]
-                            )}
-                          >
-                            {opt.label}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                    </Tabs>
-                  ) : (
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-xs font-medium',
-                        statusColors[ticket.status]
-                      )}
-                    >
-                      {ticket.status.replace('_', ' ')}
-                    </span>
-                  )}
-                  {isEditable ? (
-                    <Select
-                      value={priorityToSelectValue(ticket.priority)}
-                      onValueChange={(v) =>
-                        updateCurrentTicket({ priority: selectValueToPriority(v) })
-                      }
-                    >
-                      <SelectTrigger
-                        className="h-6 w-auto min-w-[7rem] gap-1 rounded-full border-0 px-2 text-xs shadow-none"
-                        disabled={isUpdating}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PRIORITY_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      Priority: {getPriorityLabel(ticket.priority)}
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <h1 className="text-lg font-semibold leading-tight tracking-tight">{ticket.title}</h1>
-                  <p className="text-xs text-muted-foreground">Created {createdDate}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="md:min-h-[5.25rem] space-y-2">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <StatusIndicator status={agentStatus} size="default" />
-                  <span className="text-sm text-muted-foreground">#{ticket.ticket_number}</span>
-                  <Tabs
-                    value={editStatus}
-                    onValueChange={(v) => setEditStatus(v as TicketStatus)}
-                  >
-                    <TabsList className="h-6 p-0.5">
-                      {STATUS_OPTIONS.map((opt) => (
-                        <TabsTrigger
-                          key={opt.value}
-                          value={opt.value}
-                          className={cn(
-                            'h-5 px-2 py-0 text-xs',
-                            editStatus === opt.value && statusColors[opt.value]
-                          )}
-                        >
-                          {opt.label}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                  <Select
-                    value={editPriority}
-                    onValueChange={setEditPriority}
-                  >
-                    <SelectTrigger className="h-6 w-auto min-w-[7rem] gap-1 rounded-full border-0 px-2 text-xs shadow-none">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    placeholder="Ticket title"
-                    className="h-9 text-lg font-semibold leading-tight"
-                  />
-                  <p className="text-xs text-muted-foreground">Created {createdDate}</p>
-                </div>
-              </div>
-            )}
-            {!isMobile && (
-              <div className="mt-2 flex flex-wrap items-center gap-1">
-                {ticketLabels.map((label) => (
-                  <LabelBadge
-                    key={label.id}
-                    label={label}
-                    size="sm"
-                    onRemove={isEditable ? () => removeLabel(label.id, 'user-1') : undefined}
-                  />
-                ))}
-                {isEditable && (
-                  <LabelSelector
-                    availableLabels={projectLabels}
-                    selectedLabelIds={ticketLabels.map((l) => l.id)}
-                    onLabelAdd={(labelId) => addLabel(labelId, 'user-1')}
-                    onLabelRemove={(labelId) => removeLabel(labelId, 'user-1')}
-                    onLabelCreate={(data) => createLabel(data)}
-                    onLabelUpdate={(id, data) => updateLabel(id, data)}
-                    onLabelDelete={(id) => deleteLabel(id)}
-                    isCreating={isCreatingLabel}
-                    isUpdating={isUpdatingLabel}
-                    isDeleting={isDeletingLabel}
-                  />
-                )}
-              </div>
-            )}
-            {!isMobile && (
-              <div className="mt-1 flex flex-wrap items-center gap-1">
-                {currentMilestone && !isEditable && (
-                  <MilestoneBadge milestone={currentMilestone} size="sm" showProgress />
-                )}
-                {isEditable && (
-                  <MilestoneSelector
-                    availableMilestones={projectMilestones}
-                    selectedMilestoneId={ticket.milestone_id ?? null}
-                    onSelect={(milestoneId) => updateCurrentTicket({ milestone_id: milestoneId })}
-                    onMilestoneCreate={(data) => createMilestone(data)}
-                    isCreating={isCreatingMilestone}
-                    showProgress
-                  />
-                )}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
+        <div className="space-y-2">
+          {/* Top bar: ticket number + action buttons */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {onBack && (
+                <Button variant="ghost" size="icon" onClick={onBack} className="size-7 shrink-0">
+                  <ArrowLeft className="size-4" />
+                </Button>
+              )}
+              <StatusIndicator status={agentStatus} size="default" />
+              <span className="text-sm text-muted-foreground">#{ticket.ticket_number}</span>
+            </div>
+            <div className="flex items-center gap-1">
             {!isMobile && isEditable && mode === 'view' && (
               <div className="mr-1 flex items-center gap-1.5">
                 <Switch
@@ -491,6 +333,165 @@ function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange
               </Button>
             )}
           </div>
+          </div>
+          {mode === 'view' ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {isEditable ? (
+                  <Tabs
+                    value={ticket.status}
+                    onValueChange={(v) => updateCurrentTicket({ status: v as TicketStatus })}
+                  >
+                    <TabsList className="h-6 p-0.5">
+                      {STATUS_OPTIONS.map((opt) => (
+                        <TabsTrigger
+                          key={opt.value}
+                          value={opt.value}
+                          disabled={isUpdating}
+                          className={cn(
+                            'h-5 px-2 py-0 text-xs',
+                            ticket.status === opt.value && statusColors[opt.value]
+                          )}
+                        >
+                          {opt.label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                ) : (
+                  <span
+                    className={cn(
+                      'rounded-full px-2 py-0.5 text-xs font-medium',
+                      statusColors[ticket.status]
+                    )}
+                  >
+                    {ticket.status.replace('_', ' ')}
+                  </span>
+                )}
+                {isEditable ? (
+                  <Select
+                    value={priorityToSelectValue(ticket.priority)}
+                    onValueChange={(v) =>
+                      updateCurrentTicket({ priority: selectValueToPriority(v) })
+                    }
+                  >
+                    <SelectTrigger
+                      className="h-6 w-auto min-w-[7rem] gap-1 rounded-full border-0 px-2 text-xs shadow-none"
+                      disabled={isUpdating}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Priority: {getPriorityLabel(ticket.priority)}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1">
+                <h1 className="text-lg font-semibold leading-tight tracking-tight">{ticket.title}</h1>
+                <p className="text-xs text-muted-foreground">Created {createdDate}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Tabs
+                  value={editStatus}
+                  onValueChange={(v) => setEditStatus(v as TicketStatus)}
+                >
+                  <TabsList className="h-6 p-0.5">
+                    {STATUS_OPTIONS.map((opt) => (
+                      <TabsTrigger
+                        key={opt.value}
+                        value={opt.value}
+                        className={cn(
+                          'h-5 px-2 py-0 text-xs',
+                          editStatus === opt.value && statusColors[opt.value]
+                        )}
+                      >
+                        {opt.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+                <Select
+                  value={editPriority}
+                  onValueChange={setEditPriority}
+                >
+                  <SelectTrigger className="h-6 w-auto min-w-[7rem] gap-1 rounded-full border-0 px-2 text-xs shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORITY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Ticket title"
+                  className="h-9 text-lg font-semibold leading-tight"
+                />
+                <p className="text-xs text-muted-foreground">Created {createdDate}</p>
+              </div>
+            </div>
+          )}
+          {!isMobile && (
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {ticketLabels.map((label) => (
+                <LabelBadge
+                  key={label.id}
+                  label={label}
+                  size="sm"
+                  onRemove={isEditable ? () => removeLabel(label.id, 'user-1') : undefined}
+                />
+              ))}
+              {isEditable && (
+                <LabelSelector
+                  availableLabels={projectLabels}
+                  selectedLabelIds={ticketLabels.map((l) => l.id)}
+                  onLabelAdd={(labelId) => addLabel(labelId, 'user-1')}
+                  onLabelRemove={(labelId) => removeLabel(labelId, 'user-1')}
+                  onLabelCreate={(data) => createLabel(data)}
+                  onLabelUpdate={(id, data) => updateLabel(id, data)}
+                  onLabelDelete={(id) => deleteLabel(id)}
+                  isCreating={isCreatingLabel}
+                  isUpdating={isUpdatingLabel}
+                  isDeleting={isDeletingLabel}
+                />
+              )}
+            </div>
+          )}
+          {!isMobile && (
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              {currentMilestone && !isEditable && (
+                <MilestoneBadge milestone={currentMilestone} size="sm" showProgress />
+              )}
+              {isEditable && (
+                <MilestoneSelector
+                  availableMilestones={projectMilestones}
+                  selectedMilestoneId={ticket.milestone_id ?? null}
+                  onSelect={(milestoneId) => updateCurrentTicket({ milestone_id: milestoneId })}
+                  onMilestoneCreate={(data) => createMilestone(data)}
+                  isCreating={isCreatingMilestone}
+                  showProgress
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
 
