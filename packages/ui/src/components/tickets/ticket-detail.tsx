@@ -212,7 +212,7 @@ function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange
           className
         )}
       >
-        <div className="flex flex-col gap-2 md:gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4">
           <div className="min-w-0 flex-1">
             {mode === 'view' ? (
               <div className="md:min-h-[5.25rem] space-y-2">
@@ -382,7 +382,7 @@ function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange
               </div>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex items-center gap-1">
             {!isMobile && isEditable && mode === 'view' && (
               <div className="mr-1 flex items-center gap-1.5">
                 <Switch
