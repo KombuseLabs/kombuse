@@ -10,8 +10,8 @@ const DELIM = '__KOMBUSE_PATH__'
  * minimal PATH which doesn't include nvm/fnm/volta directories. This spawns
  * the user's login shell to extract their real PATH.
  */
-export function fixMacOsPath(): void {
-  if (process.platform !== 'darwin') return
+export function fixMacOsPath(): boolean {
+  if (process.platform !== 'darwin') return true
 
   const userShell = process.env.SHELL || '/bin/zsh'
   try {
@@ -22,8 +22,12 @@ export function fixMacOsPath(): void {
     const match = output.match(new RegExp(`${DELIM}(.+?)${DELIM}`))
     if (match?.[1]) {
       process.env.PATH = match[1]
+      return true
     }
+    logger.warn('Shell PATH extraction returned no match — using fallback PATH')
+    return false
   } catch (err) {
     logger.warn(`Failed to extract PATH from shell: ${err instanceof Error ? err.message : String(err)}`)
+    return false
   }
 }

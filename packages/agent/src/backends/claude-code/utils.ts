@@ -3,6 +3,7 @@ import { accessSync, constants } from 'node:fs'
 import type { ProcessBehavior, Process } from '../../types'
 import type { ClaudeEvent } from './types'
 import { createAppLogger } from '@kombuse/core/logger'
+import { buildCleanPath } from '../../env-utils'
 
 const logger = createAppLogger('ClaudeCodeUtils')
 
@@ -73,8 +74,6 @@ export function resolveClaudePath(): string {
 export function createCleanEnv(options?: {
   thinkingEnabled?: boolean
 }): Record<string, string> {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || ''
-
   const { ANTHROPIC_API_KEY: _, ...restEnv } = process.env
 
   const env: Record<string, string> = {}
@@ -84,20 +83,7 @@ export function createCleanEnv(options?: {
     }
   }
 
-  // Prepend essential dirs, keep the original PATH (minus node_modules/.bin),
-  // and deduplicate so prepended dirs take priority without bloating the value.
-  const prependDirs = [`${homeDir}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin']
-  const existingDirs = (process.env.PATH || '').split(':')
-    .filter((p) => p && !p.includes('node_modules/.bin'))
-  const seen = new Set<string>()
-  const pathParts: string[] = []
-  for (const dir of [...prependDirs, ...existingDirs]) {
-    if (!seen.has(dir)) {
-      seen.add(dir)
-      pathParts.push(dir)
-    }
-  }
-  env.PATH = pathParts.join(':')
+  env.PATH = buildCleanPath(process.env.PATH)
   logger.debug('Constructed clean env', { PATH: env.PATH })
 
   // Enable extended thinking via environment variable

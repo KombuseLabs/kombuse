@@ -16,7 +16,7 @@ config();
 
 // Fix PATH for macOS GUI-launched apps (before any PATH-dependent code)
 import { fixMacOsPath } from "./fix-path";
-fixMacOsPath();
+const _pathFixSucceeded = fixMacOsPath();
 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
