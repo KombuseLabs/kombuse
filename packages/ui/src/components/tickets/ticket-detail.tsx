@@ -384,7 +384,7 @@ function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange
           </div>
           <div className="flex items-start gap-1">
             {!isMobile && isEditable && mode === 'view' && (
-              <div className="mr-1 flex items-center gap-1.5 rounded-md border px-2 py-1">
+              <div className="mr-1 flex items-center gap-1.5">
                 <Switch
                   checked={ticket.triggers_enabled}
                   onCheckedChange={(checked) => {
