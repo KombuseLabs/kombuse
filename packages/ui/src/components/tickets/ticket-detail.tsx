@@ -382,7 +382,7 @@ function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {!isMobile && isEditable && mode === 'view' && (
               <div className="mr-1 flex items-center gap-1.5">
                 <Switch
