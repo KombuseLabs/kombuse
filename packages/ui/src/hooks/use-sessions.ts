@@ -51,6 +51,10 @@ export function useDeleteSession() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (kombuseSessionId: string) => sessionsApi.delete(kombuseSessionId),
+    onMutate: (kombuseSessionId) => {
+      queryClient.removeQueries({ queryKey: sessionKeys.byKombuse(kombuseSessionId) })
+      queryClient.removeQueries({ queryKey: sessionKeys.events(kombuseSessionId) })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.all })
     },
