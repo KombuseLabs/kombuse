@@ -28,7 +28,7 @@ src/
 │   ├── sidebar/          - Sidebar navigation (panel + icon rail variants), bottom nav + backend status indicator
 │   ├── backend-status-banner.tsx - Warning banner for outdated CLI backends or Node.js versions
 │   ├── find-bar.tsx              - Find-in-page bar for Electron desktop app
-│   ├── no-backend-screen.tsx     - Full-page blocking screen when no backends found (per-backend "Check again" buttons)
+│   ├── no-backend-screen.tsx     - Full-page blocking screen when no backends found (per-backend "Check again" buttons, native installer command for Claude Code)
 │   ├── permissions/      - Permission decision log components
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components

@@ -19,7 +19,7 @@ export function normalizeBackendType(value?: string | null): BackendType {
 
 export function getInstallCommand(backendType: string): string {
   if (backendType === BACKEND_TYPES.CLAUDE_CODE) {
-    return 'npm install -g @anthropic-ai/claude-code'
+    return 'curl -fsSL https://claude.ai/install.sh | bash'
   }
   if (backendType === BACKEND_TYPES.CODEX) {
     return 'npm install -g @openai/codex'
@@ -28,6 +28,9 @@ export function getInstallCommand(backendType: string): string {
 }
 
 export function getUpdateCommand(backendType: string): string {
+  if (backendType === BACKEND_TYPES.CLAUDE_CODE) {
+    return 'claude update'
+  }
   return getInstallCommand(backendType)
 }
 

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { backendLabel, normalizeBackendType, normalizeBackendChoice } from '../backend-utils'
+import {
+  backendLabel,
+  getInstallCommand,
+  getUpdateCommand,
+  normalizeBackendChoice,
+  normalizeBackendType,
+} from '../backend-utils'
 
 describe('backendLabel', () => {
   it('returns "Claude Code" for claude-code type', () => {
@@ -38,6 +44,34 @@ describe('normalizeBackendType', () => {
 
   it('defaults to claude-code for unknown string', () => {
     expect(normalizeBackendType('unknown')).toBe('claude-code')
+  })
+})
+
+describe('getInstallCommand', () => {
+  it('returns native installer for claude-code', () => {
+    expect(getInstallCommand('claude-code')).toBe('curl -fsSL https://claude.ai/install.sh | bash')
+  })
+
+  it('returns npm command for codex', () => {
+    expect(getInstallCommand('codex')).toBe('npm install -g @openai/codex')
+  })
+
+  it('returns empty string for unknown backend', () => {
+    expect(getInstallCommand('unknown')).toBe('')
+  })
+})
+
+describe('getUpdateCommand', () => {
+  it('returns claude update for claude-code', () => {
+    expect(getUpdateCommand('claude-code')).toBe('claude update')
+  })
+
+  it('returns npm command for codex', () => {
+    expect(getUpdateCommand('codex')).toBe('npm install -g @openai/codex')
+  })
+
+  it('returns empty string for unknown backend', () => {
+    expect(getUpdateCommand('unknown')).toBe('')
   })
 })
 
