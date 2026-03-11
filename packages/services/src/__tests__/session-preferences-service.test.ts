@@ -13,11 +13,13 @@ import {
   readUserDefaultMaxChainDepth,
   readUserBackendIdleTimeoutMinutes,
   readNotificationScope,
+  readCrashReportingEnabled,
   resolveBackendType,
   resolveConfiguredBackendType,
   resolveModelPreference,
   AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
   CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
+  CRASH_REPORTING_ENABLED_SETTING_KEY,
   NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY,
   DEFAULT_PREFERENCE_PROFILE_ID,
 } from '../session-preferences-service'
@@ -281,6 +283,50 @@ describe('readNotificationScope', () => {
     expect(mockGet).toHaveBeenCalledWith(
       'custom-profile',
       NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY,
+    )
+  })
+})
+
+describe('readCrashReportingEnabled', () => {
+  const mockGet = profileSettingsRepository.get as ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockGet.mockReturnValue(null)
+  })
+
+  it('returns true when no setting exists (default)', () => {
+    expect(readCrashReportingEnabled()).toBe(true)
+  })
+
+  it('returns true when setting value is "true"', () => {
+    mockGet.mockReturnValue({ setting_value: 'true' })
+    expect(readCrashReportingEnabled()).toBe(true)
+  })
+
+  it('returns false when setting value is "false"', () => {
+    mockGet.mockReturnValue({ setting_value: 'false' })
+    expect(readCrashReportingEnabled()).toBe(false)
+  })
+
+  it('returns true for unexpected values', () => {
+    mockGet.mockReturnValue({ setting_value: 'something-else' })
+    expect(readCrashReportingEnabled()).toBe(true)
+  })
+
+  it('uses the correct setting key', () => {
+    readCrashReportingEnabled()
+    expect(mockGet).toHaveBeenCalledWith(
+      DEFAULT_PREFERENCE_PROFILE_ID,
+      CRASH_REPORTING_ENABLED_SETTING_KEY,
+    )
+  })
+
+  it('uses custom profileId when provided', () => {
+    readCrashReportingEnabled('custom-profile')
+    expect(mockGet).toHaveBeenCalledWith(
+      'custom-profile',
+      CRASH_REPORTING_ENABLED_SETTING_KEY,
     )
   })
 })

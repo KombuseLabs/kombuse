@@ -57,9 +57,8 @@ import {
 import { createResponseValidationHook } from "./schemas/response-validation.schema";
 import { resolveProjectSlug } from "./hooks/resolve-project-slug";
 import { createAppLogger, closeAppLogger, pruneOldLogs, setAppLoggerOnLog, setLogDir, setLogTarget } from "./logger";
-import { readCrashReportingEnabled } from "@kombuse/services";
+import { readCrashReportingEnabled, readFileLoggingEnabled } from "@kombuse/services";
 import { isSentryEnabled, setSentryEnabled } from "./sentry-gate";
-import { readFileLoggingEnabled } from "@kombuse/services";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
