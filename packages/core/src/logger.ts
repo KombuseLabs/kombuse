@@ -45,7 +45,7 @@ function resolveLogTarget(): LogTarget {
   if (process.env.KOMBUSE_LOG_TARGET === 'console') return 'console'
   if (process.env.KOMBUSE_LOG_TARGET === 'file') return 'file'
   if (_configuredLogTarget) return _configuredLogTarget
-  return 'file'
+  return 'console'
 }
 
 function resolveLogLevel(): LogLevel {

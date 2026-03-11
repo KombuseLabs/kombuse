@@ -60,7 +60,7 @@ import { desktopApiPlugin } from "./desktop-api";
 import { autoUpdater } from "./auto-updater";
 import { ShellUpdater } from "./shell-updater";
 import { buildAppMenu, refreshMenu } from "./menu";
-import { createAppLogger, setLogDir } from "@kombuse/core/logger";
+import { createAppLogger, setLogDir, setLogTarget } from "@kombuse/core/logger";
 import { is, getMode } from "../env";
 
 const logDir = join(homedir(), ".kombuse", "logs");
@@ -340,12 +340,26 @@ app.whenReady().then(async () => {
     }
 
     // Read crash reporting preference after server is available
-    if (process.env.SENTRY_DSN && serverPort > 0) {
-      fetch(`http://localhost:${serverPort}/api/profiles/user-1/settings/telemetry.crash_reporting_enabled`)
+    // keep in sync with CRASH_REPORTING_ENABLED_SETTING_KEY from @kombuse/services
+    const refreshCrashReportingSetting = () => {
+      if (process.env.SENTRY_DSN && serverPort > 0) {
+        fetch(`http://localhost:${serverPort}/api/profiles/user-1/settings/telemetry.crash_reporting_enabled`)
+          .then((res) => res.ok ? res.json() : null)
+          .then((setting) => {
+            desktopSentryEnabled = setting?.setting_value !== "false";
+          })
+          .catch(() => {});
+      }
+    };
+    refreshCrashReportingSetting();
+
+    // Read file logging preference after server is available
+    if (serverPort > 0) {
+      fetch(`http://localhost:${serverPort}/api/profiles/user-1/settings/logging.file_enabled`)
         .then((res) => res.ok ? res.json() : null)
         .then((setting) => {
-          if (setting?.setting_value === "false") {
-            desktopSentryEnabled = false;
+          if (setting?.setting_value === "true") {
+            setLogTarget("file");
           }
         })
         .catch(() => {});
@@ -363,6 +377,7 @@ app.whenReady().then(async () => {
 
     app.on("browser-window-focus", () => {
       refreshMenu();
+      refreshCrashReportingSetting();
     });
 
     app.on("activate", () => {
