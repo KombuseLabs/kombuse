@@ -1,6 +1,6 @@
 import { createAppLogger } from '@kombuse/core/logger'
 import type { FastifyInstance } from 'fastify'
-import { projectService } from '@kombuse/services'
+import { projectService, initProject } from '@kombuse/services'
 import {
   createProjectSchema,
   updateProjectSchema,
@@ -9,6 +9,7 @@ import {
 import {
   ensureCodexProjectTrust,
   initializeProjectCodexConfig,
+  resolveKombuseBridgeCommandConfig,
 } from '../services/codex-mcp-config'
 
 const log = createAppLogger('ProjectRoutes')
@@ -65,6 +66,18 @@ export async function projectRoutes(fastify: FastifyInstance) {
     if (!codexResult.success) {
       return reply.status(201).send({ ...project, warning: `Codex configuration failed: ${codexResult.error}` })
     }
+
+    if (project.local_path) {
+      try {
+        const bridgeConfig = resolveKombuseBridgeCommandConfig()
+        initProject(project.local_path, { mcpBridgeConfig: bridgeConfig })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        log.warn('Failed to initialize project files', { error: message })
+        return reply.status(201).send({ ...project, warning: `Project init failed: ${message}` })
+      }
+    }
+
     return reply.status(201).send(project)
   })
 
