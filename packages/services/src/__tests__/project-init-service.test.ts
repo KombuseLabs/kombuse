@@ -40,6 +40,7 @@ describe('initProject', () => {
     // Verify files exist on disk
     expect(existsSync(join(tempDir, '.mcp.json'))).toBe(true)
     expect(existsSync(join(tempDir, 'AGENTS.md'))).toBe(true)
+    expect(readFileSync(join(tempDir, 'AGENTS.md'), 'utf-8')).toBe('')
     expect(existsSync(join(tempDir, '.kombuse', 'plugins'))).toBe(true)
     expect(existsSync(join(tempDir, '.gitignore'))).toBe(true)
 

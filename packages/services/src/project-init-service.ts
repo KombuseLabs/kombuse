@@ -6,51 +6,6 @@ import type {
   InitProjectFileResult,
 } from '@kombuse/types'
 
-const AGENTS_MD_TEMPLATE = `# Agent Guidance
-
-Instructions for AI coding agents working in this project.
-
-## Core Principles
-
-<!-- Define behavioral rules for agents, e.g.: -->
-<!-- - Think before coding: read existing code, understand context, then act -->
-<!-- - Simplicity first: prefer the smallest correct change -->
-<!-- - Verify your work: run tests and type-check after changes -->
-
-## Critical Rules
-
-<!-- List hard constraints agents must always follow, e.g.: -->
-<!-- - Tests are colocated in \`__tests__/\` directories next to source files -->
-
-## Quick Commands
-
-<!-- List frequently used commands -->
-<!-- \`\`\`bash -->
-<!-- npm install   # Install dependencies -->
-<!-- npm test      # Run tests -->
-<!-- npm run build # Build the project -->
-<!-- \`\`\` -->
-
-## Structure
-
-<!-- Describe your project layout -->
-<!-- \`\`\` -->
-<!-- src/ -->
-<!--   components/  - UI components -->
-<!--   lib/         - Shared utilities -->
-<!--   routes/      - Page routes -->
-<!-- \`\`\` -->
-
-## Key Patterns
-
-<!-- Note naming conventions, import patterns, or rules agents should follow -->
-
-## Agent-Operational Guidance
-
-<!-- Optional: tips for agent efficiency -->
-<!-- List large files, shim re-exports, or confusingly named files -->
-`
-
 function writeMcpJson(
   projectPath: string,
   bridgeConfig: { command: string; args: string[] }
@@ -80,7 +35,7 @@ function writeAgentsMd(projectPath: string): InitProjectFileResult {
     return { file: 'AGENTS.md', action: 'skipped', reason: 'already exists' }
   }
 
-  writeFileSync(filePath, AGENTS_MD_TEMPLATE, 'utf-8')
+  writeFileSync(filePath, '', 'utf-8')
   return { file: 'AGENTS.md', action: 'created' }
 }
 
