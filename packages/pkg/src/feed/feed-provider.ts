@@ -8,7 +8,8 @@ export async function downloadFile(
   url: string,
   destPath: string,
   auth?: FeedAuth,
-  onProgress?: (progress: DownloadProgress) => void
+  onProgress?: (progress: DownloadProgress) => void,
+  expectedSize?: number
 ): Promise<void> {
   const headers: Record<string, string> = {}
   if (auth) {
@@ -27,10 +28,11 @@ export async function downloadFile(
     response.headers.get('content-length') ?? '0',
     10
   )
+  const totalSize = contentLength > 0 ? contentLength : (expectedSize ?? 0)
 
   const reader = response.body.getReader()
   await pipeline(
-    Readable.from(readChunks(reader, contentLength, onProgress)),
+    Readable.from(readChunks(reader, totalSize, onProgress)),
     createWriteStream(destPath)
   )
 }

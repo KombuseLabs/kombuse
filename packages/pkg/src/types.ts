@@ -9,6 +9,7 @@ export interface PackageVersionInfo {
   checksum?: string
   publishedAt?: string
   archiveFormat?: 'tar.gz'
+  archiveSize?: number
   feedId?: string
 }
 
@@ -36,7 +37,8 @@ export interface FeedProvider {
   download(
     info: PackageVersionInfo,
     destPath: string,
-    onProgress?: (progress: DownloadProgress) => void
+    onProgress?: (progress: DownloadProgress) => void,
+    expectedSize?: number
   ): Promise<string>
 }
 

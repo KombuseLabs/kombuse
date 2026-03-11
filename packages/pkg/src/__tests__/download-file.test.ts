@@ -162,6 +162,57 @@ describe('downloadFile', () => {
     ).rejects.toThrow(FeedError)
   })
 
+  it('should use expectedSize when content-length is missing', async () => {
+    const data = 'fallback-size-test-data'
+    fetchMock.mockResolvedValue(createMockResponse(data))
+    const dest = join(tempDir, 'output.bin')
+
+    const progressCalls: Array<{
+      percent: number
+      bytesDownloaded: number
+      bytesTotal: number
+    }> = []
+    await downloadFile(
+      'https://example.com/file.tar.gz',
+      dest,
+      undefined,
+      (p) => {
+        progressCalls.push({
+          percent: p.percent,
+          bytesDownloaded: p.bytesDownloaded,
+          bytesTotal: p.bytesTotal,
+        })
+      },
+      data.length
+    )
+
+    expect(progressCalls.length).toBeGreaterThan(0)
+    expect(progressCalls.every((c) => c.bytesTotal === data.length)).toBe(true)
+
+    const last = progressCalls[progressCalls.length - 1]!
+    expect(last.percent).toBe(100)
+    expect(last.bytesDownloaded).toBe(data.length)
+  })
+
+  it('should prefer content-length over expectedSize', async () => {
+    const data = 'prefer-content-length'
+    fetchMock.mockResolvedValue(createMockResponse(data, data.length))
+    const dest = join(tempDir, 'output.bin')
+
+    const progressCalls: Array<{ bytesTotal: number }> = []
+    await downloadFile(
+      'https://example.com/file.tar.gz',
+      dest,
+      undefined,
+      (p) => {
+        progressCalls.push({ bytesTotal: p.bytesTotal })
+      },
+      99999
+    )
+
+    expect(progressCalls.every((c) => c.bytesTotal === data.length)).toBe(true)
+  })
+
   it('should throw FeedError when response has no body', async () => {
     fetchMock.mockResolvedValue({
       ok: true,

@@ -36,8 +36,8 @@ function DownloadProgressToast({ progress }: { progress: number }) {
   return (
     <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2 w-full min-w-[200px]">
       <p className="text-sm font-medium">Downloading Update...</p>
-      <Progress value={progress} className="w-full" />
-      <p className="text-xs text-muted-foreground">{progress}%</p>
+      <Progress value={progress >= 0 ? progress : undefined} className="w-full" />
+      <p className="text-xs text-muted-foreground">{progress >= 0 ? `${progress}%` : 'Downloading...'}</p>
     </div>
   )
 }
@@ -263,8 +263,8 @@ function ShellDownloadProgressToast({ progress }: { progress: number }) {
   return (
     <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2 w-full min-w-[200px]">
       <p className="text-sm font-medium">Downloading App Update...</p>
-      <Progress value={progress} className="w-full" />
-      <p className="text-xs text-muted-foreground">{progress}%</p>
+      <Progress value={progress >= 0 ? progress : undefined} className="w-full" />
+      <p className="text-xs text-muted-foreground">{progress >= 0 ? `${progress}%` : 'Downloading...'}</p>
     </div>
   )
 }

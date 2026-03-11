@@ -150,7 +150,7 @@ export class AutoUpdater {
       const result = await this.packageManager.install("kombuse/kombuse", updateInfo.version, (progress: DownloadProgress) => {
         if (progress.phase === "downloading") {
           this.setState("downloading", {
-            downloadProgress: progress.percent >= 0 ? progress.percent : 0,
+            downloadProgress: progress.percent,
           });
         } else if (progress.phase === "verifying") {
           this.setState("verifying");

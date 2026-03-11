@@ -134,6 +134,7 @@ export class HttpFeed implements FeedProvider {
         downloadUrl,
         publishedAt: entry.published_at,
         archiveFormat: 'tar.gz',
+        archiveSize: entry.archive_size || undefined,
       })
     }
 
@@ -153,12 +154,13 @@ export class HttpFeed implements FeedProvider {
   async download(
     info: PackageVersionInfo,
     destPath: string,
-    onProgress?: (progress: DownloadProgress) => void
+    onProgress?: (progress: DownloadProgress) => void,
+    expectedSize?: number
   ): Promise<string> {
     if (!info.downloadUrl) {
       throw new FeedError(this.id, 'No download URL available')
     }
-    await downloadFile(info.downloadUrl, destPath, this.auth, onProgress)
+    await downloadFile(info.downloadUrl, destPath, this.auth, onProgress, expectedSize)
     return destPath
   }
 

@@ -83,8 +83,10 @@ function UpdateRow({ label, status, onInstall, onApply, applyLabel }: UpdateRowP
       </div>
       {status?.state === 'downloading' && (
         <div className="flex flex-col gap-1">
-          <Progress value={status.downloadProgress} className="w-full" />
-          <span className="text-xs text-muted-foreground">Downloading... {status.downloadProgress}%</span>
+          <Progress value={status.downloadProgress >= 0 ? status.downloadProgress : undefined} className="w-full" />
+          <span className="text-xs text-muted-foreground">
+            {status.downloadProgress >= 0 ? `Downloading... ${status.downloadProgress}%` : 'Downloading...'}
+          </span>
         </div>
       )}
       {status?.state === 'error' && status.error && (

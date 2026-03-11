@@ -136,7 +136,7 @@ export class PackageManager {
     const tempContent = join(tempDir, 'content')
 
     try {
-      await sourceFeed.download(versionInfo, tempContent, onProgress)
+      await sourceFeed.download(versionInfo, tempContent, onProgress, versionInfo.archiveSize)
 
       // Verify checksum
       if (versionInfo.checksum) {

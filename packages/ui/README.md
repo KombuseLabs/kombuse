@@ -95,6 +95,16 @@ import { Input } from '@kombuse/ui/base'
 
 Available: `Badge`, `Button`, `Card`, `Checkbox`, `Collapsible`, `Command`, `Dialog`, `DropdownMenu`, `HoverCard`, `Input`, `Label`, `Popover`, `Progress`, `RadioGroup`, `Resizable`, `Select`, `Sheet`, `Sonner`, `Tabs`, `Textarea`, `Tooltip`
 
+#### Progress Indeterminate State
+
+The `Progress` component supports an indeterminate state when `value` is `undefined`, `null`, or negative. In this state it renders a pulsing animation instead of a fixed position bar.
+
+```typescript
+<Progress value={50} />          // Determinate: 50% filled
+<Progress value={undefined} />   // Indeterminate: pulsing animation
+<Progress value={-1} />          // Indeterminate: pulsing animation
+```
+
 #### Textarea Auto-Resize
 
 The `Textarea` component supports auto-expanding to fit content:
