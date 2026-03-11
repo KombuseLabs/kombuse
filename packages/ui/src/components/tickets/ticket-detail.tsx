@@ -527,38 +527,6 @@ function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange
                 )}
               </div>
             )}
-            {ticketAttachments && ticketAttachments.length > 0 && (
-              <>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {ticketAttachments.map((attachment, index) => (
-                    <button
-                      key={attachment.id}
-                      type="button"
-                      onClick={() => {
-                        setLightboxIndex(index)
-                        setLightboxOpen(true)
-                      }}
-                      className="group block text-left cursor-pointer"
-                    >
-                      <img
-                        src={attachmentsApi.downloadUrl(attachment.id)}
-                        alt={attachment.filename}
-                        className="max-h-48 rounded border object-cover transition-opacity group-hover:opacity-90"
-                      />
-                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-48">
-                        {attachment.filename}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                <ImageLightbox
-                  attachments={ticketAttachments}
-                  initialIndex={lightboxIndex}
-                  open={lightboxOpen}
-                  onOpenChange={setLightboxOpen}
-                />
-              </>
-            )}
           </>
         ) : (
           <div
@@ -589,6 +557,39 @@ function TicketDetail({ className, onClose, onBack, isEditable, onEditModeChange
               onChange={handleFileInputChange}
             />
           </div>
+        )}
+
+        {ticketAttachments && ticketAttachments.length > 0 && (
+          <>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {ticketAttachments.map((attachment, index) => (
+                <button
+                  key={attachment.id}
+                  type="button"
+                  onClick={() => {
+                    setLightboxIndex(index)
+                    setLightboxOpen(true)
+                  }}
+                  className="group block text-left cursor-pointer"
+                >
+                  <img
+                    src={attachmentsApi.downloadUrl(attachment.id)}
+                    alt={attachment.filename}
+                    className="max-h-48 rounded border object-cover transition-opacity group-hover:opacity-90"
+                  />
+                  <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-48">
+                    {attachment.filename}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <ImageLightbox
+              attachments={ticketAttachments}
+              initialIndex={lightboxIndex}
+              open={lightboxOpen}
+              onOpenChange={setLightboxOpen}
+            />
+          </>
         )}
 
         {ticket.external_url && (

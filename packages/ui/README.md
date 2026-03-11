@@ -960,7 +960,7 @@ Props:
   - Label management
 - `onEditModeChange`: Optional `(mode: 'view' | 'edit') => void` callback fired when the user enters or exits edit mode. Useful for scrolling the parent container to top when editing begins
 - Edit mode supports image attachments via paperclip button, drag-and-drop, and clipboard paste. Staged files are uploaded on save
-- View mode displays ticket attachments as clickable thumbnails with lightbox
+- Ticket attachments are displayed as clickable thumbnails with lightbox in both view and edit modes
 - Delete confirmation warns that related comments and attachments are also removed; confirm action shows `Deleting...` while pending
 - If delete fails, the dialog stays open so users can retry after the app-level error toast
 - Header stays sticky on desktop (`md:sticky`) with elevated separation (`z-20`, `shadow-md`) and translucent blur treatment while content scrolls beneath. On mobile, the header scrolls with the content
