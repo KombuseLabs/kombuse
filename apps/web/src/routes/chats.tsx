@@ -172,10 +172,10 @@ export function Chats() {
         selectedSessionId={selectedSessionId}
         onSessionClick={(session) => handleSelectSession(session.kombuse_session_id!)}
         onSessionDelete={(session) => {
-          deleteSession.mutate(session.kombuse_session_id!)
           if (selectedSessionId === session.kombuse_session_id) {
             navigate(chatsBasePath)
           }
+          deleteSession.mutate(session.kombuse_session_id!)
         }}
         isSessionPendingPermission={sessionHasPendingPermission}
         isLoading={sessionsLoading}
