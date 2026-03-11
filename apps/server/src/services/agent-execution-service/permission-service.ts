@@ -339,11 +339,14 @@ export function respondToPermission(message: PermissionResponseMessage): boolean
 
   const session = sessionPersistenceService.getSessionByKombuseId(kombuseSessionId)
 
-  // Persist "Always Allow" to the agent's auto-approved config
-  if (behavior === 'allow' && message.alwaysAllow && pendingPerm && session?.agent_id) {
-    persistAlwaysAllow(session.agent_id, pendingPerm.toolName, pendingPerm.input)
+  // Persist "Always Allow"
+  if (behavior === 'allow' && message.alwaysAllow && pendingPerm) {
+    // Persist to agent config only when there's an agent
+    if (session?.agent_id) {
+      persistAlwaysAllow(session.agent_id, pendingPerm.toolName, pendingPerm.input)
+    }
 
-    // Also write to project-level .kombuse/permissions.json
+    // Write to project-level .kombuse/permissions.json (works without agent_id)
     if (pendingPerm.projectId) {
       const projectPath = projectsRepository.get(pendingPerm.projectId)?.local_path?.trim()
       if (projectPath) {
