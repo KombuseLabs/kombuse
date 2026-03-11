@@ -65,22 +65,25 @@ function NoBackendScreen() {
                   Minimum required version: {status.minimumVersion}
                 </p>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 w-full"
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+              >
+                <RefreshCw
+                  className={cn(
+                    "mr-1.5 size-3",
+                    refreshMutation.isPending && "animate-spin",
+                  )}
+                />
+                Check again
+              </Button>
             </div>
           ))}
         </div>
 
-        <Button
-          onClick={() => refreshMutation.mutate()}
-          disabled={refreshMutation.isPending}
-        >
-          <RefreshCw
-            className={cn(
-              "mr-2 size-4",
-              refreshMutation.isPending && "animate-spin",
-            )}
-          />
-          Check Again
-        </Button>
       </div>
     </div>
   );

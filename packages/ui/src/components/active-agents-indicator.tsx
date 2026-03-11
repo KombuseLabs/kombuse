@@ -196,33 +196,30 @@ export function ActiveAgentsIndicator({ onNavigate }: ActiveAgentsIndicatorProps
                   <span className="text-sm font-medium">
                     {backendLabel(status.backendType)}
                   </span>
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {status.available
-                      ? status.version ?? 'installed'
-                      : 'not found'}
-                  </span>
+                  {status.available ? (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {status.version ?? 'installed'}
+                    </span>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto h-5 px-1.5 text-xs"
+                      onClick={() => refreshMutation.mutate()}
+                      disabled={refreshMutation.isPending}
+                    >
+                      <RefreshCw
+                        className={cn(
+                          'mr-1 size-3',
+                          refreshMutation.isPending && 'animate-spin',
+                        )}
+                      />
+                      Check again
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
-            {backendStatuses.some((s) => !s.available) && (
-              <div className="border-t px-3 py-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => refreshMutation.mutate()}
-                  disabled={refreshMutation.isPending}
-                >
-                  <RefreshCw
-                    className={cn(
-                      'mr-1.5 size-3',
-                      refreshMutation.isPending && 'animate-spin',
-                    )}
-                  />
-                  Check Again
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </PopoverContent>

@@ -28,7 +28,7 @@ src/
 │   ├── sidebar/          - Sidebar navigation (panel + icon rail variants), bottom nav + backend status indicator
 │   ├── backend-status-banner.tsx - Warning banner for outdated CLI backends or Node.js versions
 │   ├── find-bar.tsx              - Find-in-page bar for Electron desktop app
-│   ├── no-backend-screen.tsx     - Full-page blocking screen when no backends found
+│   ├── no-backend-screen.tsx     - Full-page blocking screen when no backends found (per-backend "Check again" buttons)
 │   ├── permissions/      - Permission decision log components
 │   ├── sessions/         - Session list components
 │   ├── tickets/          - Ticket components
@@ -513,7 +513,7 @@ import { ActiveAgentsIndicator } from '@kombuse/ui/components'
 // Shows Bot icon with green badge count of running agents
 // Popover lists each session with agent name, status, ticket metadata (`#id` + truncated title when available), and duration
 // Includes a "Backend Status" footer section showing availability dots, backend names, and versions
-// When a backend is unavailable, a "Check Again" refresh button appears
+// Each unavailable backend shows an inline "Check again" button (no global button)
 // Props: onNavigate?: (path: string) => void
 
 // CommandPalette supports #ticket search and navigation
