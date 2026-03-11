@@ -71,8 +71,8 @@ export function Settings() {
   const [maxChainDepthValue, setMaxChainDepthValue] = useState(maxChainDepthSetting?.setting_value ?? '')
   const [backendTimeoutValue, setBackendTimeoutValue] = useState(backendTimeoutSetting?.setting_value ?? '30')
 
-  const showEvents = eventsSetting?.setting_value !== 'true'
-  const showPermissions = permissionsSetting?.setting_value !== 'true'
+  const showEvents = eventsSetting?.setting_value === 'false'
+  const showPermissions = permissionsSetting?.setting_value === 'false'
   const showDatabase = databaseSetting?.setting_value === 'false'
   const showPlugins = pluginsSetting?.setting_value === 'false'
   const showAnalytics = analyticsSetting?.setting_value === 'false'
