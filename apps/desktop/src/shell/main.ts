@@ -47,10 +47,23 @@ protocol.registerSchemesAsPrivileged([
 // ESM equivalent of __dirname
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Prefer a colocated bridge script to avoid CWD/package-path drift.
+// Prefer the extraResources copy (outside .asar) so system Node.js can read it.
+// In packaged builds, process.resourcesPath → Contents/Resources/
+// and electron-builder extracts dist/package → Resources/package/.
+const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+const packageBridgePath = resourcesPath
+  ? join(resourcesPath, "package", "server", "mcp-bridge.mjs")
+  : null;
+// Fallback to colocated path for dev mode (no .asar).
 const localBridgePath = join(__dirname, "mcp-bridge.mjs");
-if (existsSync(localBridgePath)) {
-  process.env.KOMBUSE_MCP_BRIDGE_PATH = localBridgePath;
+const bridgePath =
+  packageBridgePath && existsSync(packageBridgePath)
+    ? packageBridgePath
+    : existsSync(localBridgePath)
+      ? localBridgePath
+      : null;
+if (bridgePath) {
+  process.env.KOMBUSE_MCP_BRIDGE_PATH = bridgePath;
 }
 
 import { createServer as createServerDirect, setAutoUpdater, setShellAutoUpdater } from "server";
