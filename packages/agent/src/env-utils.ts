@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { createAppLogger } from '@kombuse/core/logger'
 
@@ -180,8 +180,9 @@ export function createCleanEnv(options?: CleanEnvOptions): Record<string, string
 export function resolveViaLoginShell(binaryName: string): string | null {
   try {
     const shell = process.env.SHELL || '/bin/zsh'
-    const result = execSync(
-      `${shell} -ilc 'command -v ${binaryName}'`,
+    const result = execFileSync(
+      shell,
+      ['-lc', `command -v ${binaryName}`],
       { encoding: 'utf-8', timeout: LOGIN_SHELL_TIMEOUT_MS, stdio: ['pipe', 'pipe', 'pipe'] }
     ).trim()
     return result || null

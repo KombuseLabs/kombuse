@@ -15,8 +15,10 @@ vi.mock('fs', async (importOriginal) => {
 })
 
 const mockExecSync = vi.fn()
+const mockExecFileSync = vi.fn()
 vi.mock('node:child_process', () => ({
   execSync: (...args: unknown[]) => mockExecSync(...args),
+  execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
 }))
 
 import { resolveCodexPath } from '../backends/codex/utils'
@@ -25,6 +27,7 @@ import { resolveClaudePath } from '../backends/claude-code/utils'
 beforeEach(() => {
   mockAccessSync.mockReset()
   mockExecSync.mockReset()
+  mockExecFileSync.mockReset()
   delete process.env.CODEX_PATH
   delete process.env.CLAUDE_PATH
 })
@@ -84,8 +87,11 @@ describe('resolveCodexPath — login-shell fallback', () => {
       if (path === '/Users/user/.nvm/versions/node/v20/bin/codex') return
       throw new Error('not found')
     })
-    mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.includes('command -v')) return '/Users/user/.nvm/versions/node/v20/bin/codex\n'
+    mockExecSync.mockImplementation(() => {
+      throw new Error('not available')
+    })
+    mockExecFileSync.mockImplementation((_shell: string, args: string[]) => {
+      if (args.some((a: string) => a.includes('command -v'))) return '/Users/user/.nvm/versions/node/v20/bin/codex\n'
       throw new Error('not available')
     })
 
@@ -94,8 +100,11 @@ describe('resolveCodexPath — login-shell fallback', () => {
 
   it('prefers hardcoded paths over login-shell result', () => {
     mockAccessSync.mockImplementation(() => {})
-    mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.includes('command -v')) return '/Users/user/.nvm/versions/node/v20/bin/codex\n'
+    mockExecSync.mockImplementation(() => {
+      throw new Error('not available')
+    })
+    mockExecFileSync.mockImplementation((_shell: string, args: string[]) => {
+      if (args.some((a: string) => a.includes('command -v'))) return '/Users/user/.nvm/versions/node/v20/bin/codex\n'
       throw new Error('not available')
     })
 
@@ -108,6 +117,9 @@ describe('resolveCodexPath — login-shell fallback', () => {
       throw new Error('not found')
     })
     mockExecSync.mockImplementation(() => {
+      throw new Error('not available')
+    })
+    mockExecFileSync.mockImplementation(() => {
       throw new Error('not available')
     })
 
@@ -160,8 +172,11 @@ describe('resolveClaudePath — login-shell fallback', () => {
       if (path === '/Users/user/.nvm/versions/node/v20/bin/claude') return
       throw new Error('not found')
     })
-    mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.includes('command -v')) return '/Users/user/.nvm/versions/node/v20/bin/claude\n'
+    mockExecSync.mockImplementation(() => {
+      throw new Error('not available')
+    })
+    mockExecFileSync.mockImplementation((_shell: string, args: string[]) => {
+      if (args.some((a: string) => a.includes('command -v'))) return '/Users/user/.nvm/versions/node/v20/bin/claude\n'
       throw new Error('not available')
     })
 
@@ -173,6 +188,9 @@ describe('resolveClaudePath — login-shell fallback', () => {
       throw new Error('not found')
     })
     mockExecSync.mockImplementation(() => {
+      throw new Error('not available')
+    })
+    mockExecFileSync.mockImplementation(() => {
       throw new Error('not available')
     })
 
