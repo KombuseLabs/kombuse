@@ -10,10 +10,13 @@ const logger = createAppLogger('EnvUtils')
  */
 const PREPEND_DIRS = [
   '~/.local/bin',
+  '~/.volta/bin',            // Volta
+  '~/.asdf/shims',           // asdf
+  '~/.local/share/mise/shims', // mise (formerly rtx)
   '/opt/homebrew/bin',
   '/opt/homebrew/sbin',
-  '/opt/local/bin',         // MacPorts
-  '~/.nix-profile/bin',     // Nix (user profile)
+  '/opt/local/bin',           // MacPorts
+  '~/.nix-profile/bin',       // Nix (user profile)
   '/nix/var/nix/profiles/default/bin', // Nix (system profile)
   '/usr/local/bin',
   '/usr/bin',

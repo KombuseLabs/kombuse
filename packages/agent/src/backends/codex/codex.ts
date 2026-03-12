@@ -8,6 +8,9 @@ import {
 import { Process, waitForRunning } from '../../utils'
 import { BaseAgentBackend } from '../base-agent-backend'
 import { createCleanEnv, createJsonRpcLineBehavior, resolveCodexPath } from './utils'
+import { createAppLogger } from '@kombuse/core/logger'
+
+const logger = createAppLogger('Codex')
 import type {
   CodexCommandApprovalParams,
   CodexCommandApprovalResponse,
@@ -89,6 +92,7 @@ export class CodexBackend extends BaseAgentBackend {
   private emittedAgentMessageItemIds = new Set<string>()
   private recentAssistantMessages: Array<{ content: string; timestamp: number }> = []
   private stderrBuffer: string[] = []
+  private lastSpawnPath: string = ''
 
   constructor(options: CodexBackendOptions = {}) {
     super()
@@ -111,6 +115,9 @@ export class CodexBackend extends BaseAgentBackend {
     this.stderrBuffer = []
 
     const args = this.buildArgs()
+    const env = createCleanEnv()
+    logger.info('Starting Codex', { cliPath: this.options.cliPath, projectPath: options.projectPath, PATH: env.PATH })
+
     const jsonRpcBehavior = createJsonRpcLineBehavior({
       onMessage: (message) => this.handleJsonRpcMessage(message),
       onParseError: (line, _error) => {
@@ -118,12 +125,13 @@ export class CodexBackend extends BaseAgentBackend {
       },
     })
 
+    this.lastSpawnPath = env.PATH ?? ''
     this.process = new Process(
       {
         command: this.options.cliPath,
         args,
         cwd: options.projectPath,
-        env: createCleanEnv(),
+        env,
         inheritEnv: false,
         name: 'codex-app-server',
       },
@@ -1161,8 +1169,16 @@ export class CodexBackend extends BaseAgentBackend {
     const stderr = this.stderrBuffer.join('').trim()
     const truncated = stderr && stderr.length > 500 ? stderr.slice(-500) : stderr
     if (code === 127) {
-      const hint =
-        'The codex binary was not found. Install Codex or configure the path in Settings > Binaries.'
+      const isNodeMissing = truncated.includes('env: node:')
+      const hint = isNodeMissing
+        ? 'Node.js was not found on the system PATH. If you use a version manager (nvm, fnm, volta), ensure it is configured in your login shell.'
+        : 'The codex binary was not found. Install Codex or configure the path in Settings > Binaries.'
+      logger.warn('Codex exit code 127', {
+        cliPath: this.options.cliPath,
+        PATH: this.lastSpawnPath,
+        stderr: truncated,
+        isNodeMissing,
+      })
       if (!truncated) return `${base}\n${hint}`
       return `${base}\n${truncated}\n${hint}`
     }
