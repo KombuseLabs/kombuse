@@ -372,18 +372,20 @@ describe('resolveViaLoginShell', () => {
     expect(mockExecFileSync).toHaveBeenCalledTimes(2)
   })
 
-  it('returns null when both stages fail', () => {
+  it('returns null when all shells fail', () => {
     mockExecFileSync.mockImplementation(() => { throw new Error('timeout') })
 
     expect(resolveViaLoginShell('nonexistent')).toBeNull()
-    expect(mockExecFileSync).toHaveBeenCalledTimes(2)
+    // 2 stages for user shell + 2 stages for fallback = 4
+    expect(mockExecFileSync).toHaveBeenCalledTimes(4)
   })
 
-  it('returns null when both stages return empty', () => {
+  it('returns null when all shells return empty', () => {
     mockExecFileSync.mockReturnValue('')
 
     expect(resolveViaLoginShell('nonexistent')).toBeNull()
-    expect(mockExecFileSync).toHaveBeenCalledTimes(2)
+    // 2 stages for user shell + 2 stages for fallback = 4
+    expect(mockExecFileSync).toHaveBeenCalledTimes(4)
   })
 
   it('defaults to /bin/zsh when SHELL is unset', () => {
@@ -397,5 +399,51 @@ describe('resolveViaLoginShell', () => {
       expect.any(Array),
       expect.any(Object),
     )
+  })
+
+  it('strips ANSI escape sequences from result', () => {
+    mockExecFileSync.mockReturnValueOnce('\x1B[32m/usr/local/bin/claude\x1B[0m\n')
+
+    expect(resolveViaLoginShell('claude')).toBe('/usr/local/bin/claude')
+  })
+
+  it('passes OMZ-safe env vars to execFileSync', () => {
+    mockExecFileSync.mockReturnValueOnce('/usr/local/bin/claude\n')
+
+    resolveViaLoginShell('claude')
+
+    const callEnv = mockExecFileSync.mock.calls[0]![2].env
+    expect(callEnv.DISABLE_AUTO_UPDATE).toBe('true')
+    expect(callEnv.ZSH_TMUX_AUTOSTARTED).toBe('true')
+    expect(callEnv.ZSH_TMUX_AUTOSTART).toBe('false')
+  })
+
+  it('tries fallback shell when user shell fails', () => {
+    process.env.SHELL = '/usr/local/bin/fish'
+
+    // Fish fails both stages
+    mockExecFileSync.mockImplementationOnce(() => { throw new Error('timeout') })
+    mockExecFileSync.mockImplementationOnce(() => { throw new Error('timeout') })
+    // /bin/zsh stage 1 succeeds
+    mockExecFileSync.mockReturnValueOnce('/usr/local/bin/claude\n')
+
+    expect(resolveViaLoginShell('claude')).toBe('/usr/local/bin/claude')
+    expect(mockExecFileSync).toHaveBeenCalledTimes(3)
+    expect(mockExecFileSync).toHaveBeenNthCalledWith(
+      3,
+      '/bin/zsh',
+      expect.any(Array),
+      expect.any(Object),
+    )
+  })
+
+  it('skips fallback shell that matches user shell', () => {
+    process.env.SHELL = '/bin/zsh'
+    mockExecFileSync.mockImplementation(() => { throw new Error('timeout') })
+
+    resolveViaLoginShell('nonexistent')
+
+    const shells = mockExecFileSync.mock.calls.map((c: any[]) => c[0])
+    expect(shells).toEqual(['/bin/zsh', '/bin/zsh', '/bin/bash', '/bin/bash'])
   })
 })

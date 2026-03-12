@@ -5,6 +5,14 @@ const logger = createAppLogger('FixPath')
 
 const DELIM = '__KOMBUSE_PATH__'
 
+/** Strip ANSI SGR escape sequences from a string. */
+function stripAnsi(str: string): string {
+  return str.replace(/\x1B\[[0-9;]*m/g, '')
+}
+
+/** Fallback POSIX shells to try when the user's default shell fails. */
+const FALLBACK_SHELLS = ['/bin/zsh', '/bin/bash']
+
 /** Login shell timeout — keep in sync with packages/agent/src/env-utils.ts */
 const LOGIN_SHELL_TIMEOUT_MS = 10_000
 
@@ -28,10 +36,20 @@ function extractPath(shell: string, flags: string, timeoutMs: number): string | 
     const output = execFileSync(
       shell,
       [flags, `echo ${DELIM}$PATH${DELIM}`],
-      { encoding: 'utf-8', timeout: timeoutMs, stdio: ['pipe', 'pipe', 'pipe'] },
+      {
+        encoding: 'utf-8',
+        timeout: timeoutMs,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          DISABLE_AUTO_UPDATE: 'true',
+          ZSH_TMUX_AUTOSTARTED: 'true',
+          ZSH_TMUX_AUTOSTART: 'false',
+        },
+      },
     )
     const match = output.match(new RegExp(`${DELIM}(.+?)${DELIM}`))
-    return match?.[1] ?? null
+    return match?.[1] ? stripAnsi(match[1]) : null
   } catch {
     return null
   }
@@ -70,8 +88,24 @@ export function fixMacOsPath(): boolean {
     return true
   }
 
-  // Both stages returned only launchd defaults or failed entirely.
-  // If we got *any* result, still apply it — it's at least as good as the current PATH.
+  // Try fallback shells (covers Fish/Nushell users with a POSIX shell available)
+  for (const fallbackShell of FALLBACK_SHELLS.filter((s) => s !== userShell)) {
+    const fb1 = extractPath(fallbackShell, '-lc', timeoutMs)
+    if (fb1 && !isLaunchdOnlyPath(fb1)) {
+      process.env.PATH = fb1
+      logger.info('Shell PATH extraction succeeded (fallback shell, non-interactive)', { shell: fallbackShell })
+      return true
+    }
+
+    const fb2 = extractPath(fallbackShell, '-ilc', timeoutMs)
+    if (fb2 && !isLaunchdOnlyPath(fb2)) {
+      process.env.PATH = fb2
+      logger.info('Shell PATH extraction succeeded (fallback shell, interactive)', { shell: fallbackShell })
+      return true
+    }
+  }
+
+  // All shells exhausted — apply best result we got, if any.
   if (stage1) {
     process.env.PATH = stage1
   }

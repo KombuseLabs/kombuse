@@ -93,14 +93,15 @@ describe('fixMacOsPath', () => {
     expect(process.env.PATH).toBe(RICH_PATH)
   })
 
-  it('returns false when both stages fail', () => {
+  it('returns false when all shells fail', () => {
     mockExecFileSync.mockImplementation(() => { throw new Error('timeout') })
 
     expect(fixMacOsPath()).toBe(false)
-    expect(mockExecFileSync).toHaveBeenCalledTimes(2)
+    // 2 stages for user shell (/bin/zsh) + 2 stages for fallback (/bin/bash)
+    expect(mockExecFileSync).toHaveBeenCalledTimes(4)
   })
 
-  it('returns false when both stages return launchd-only PATH', () => {
+  it('returns false when all shells return launchd-only PATH', () => {
     mockExecFileSync.mockReturnValue(`${DELIM}${LAUNCHD_PATH}${DELIM}\n`)
 
     expect(fixMacOsPath()).toBe(false)
@@ -108,12 +109,62 @@ describe('fixMacOsPath', () => {
     expect(process.env.PATH).toBe(LAUNCHD_PATH)
   })
 
-  it('returns false when stage 1 returns no match and stage 2 fails', () => {
-    // Stage 1: output with no delimiter match
+  it('returns false when stage 1 returns no match and all other attempts fail', () => {
+    mockExecFileSync.mockImplementation(() => { throw new Error('timeout') })
+    // Stage 1 of user shell: output with no delimiter match
     mockExecFileSync.mockReturnValueOnce('some random shell output\n')
-    // Stage 2: throws
-    mockExecFileSync.mockImplementationOnce(() => { throw new Error('timeout') })
 
     expect(fixMacOsPath()).toBe(false)
+  })
+
+  it('strips ANSI escape sequences from extracted PATH', () => {
+    const ansiPath = `\x1B[32m${RICH_PATH}\x1B[0m`
+    mockExecFileSync.mockReturnValueOnce(`${DELIM}${ansiPath}${DELIM}\n`)
+
+    expect(fixMacOsPath()).toBe(true)
+    expect(process.env.PATH).toBe(RICH_PATH)
+  })
+
+  it('passes OMZ-safe env vars to execFileSync', () => {
+    mockExecFileSync.mockReturnValueOnce(`${DELIM}${RICH_PATH}${DELIM}\n`)
+
+    fixMacOsPath()
+
+    const callEnv = mockExecFileSync.mock.calls[0]![2].env
+    expect(callEnv.DISABLE_AUTO_UPDATE).toBe('true')
+    expect(callEnv.ZSH_TMUX_AUTOSTARTED).toBe('true')
+    expect(callEnv.ZSH_TMUX_AUTOSTART).toBe('false')
+  })
+
+  it('tries fallback shell when user shell fails', () => {
+    process.env.SHELL = '/usr/local/bin/fish'
+
+    // Fish fails both stages
+    mockExecFileSync.mockImplementationOnce(() => { throw new Error('timeout') })
+    mockExecFileSync.mockImplementationOnce(() => { throw new Error('timeout') })
+    // /bin/zsh stage 1 succeeds
+    mockExecFileSync.mockReturnValueOnce(`${DELIM}${RICH_PATH}${DELIM}\n`)
+
+    expect(fixMacOsPath()).toBe(true)
+    expect(process.env.PATH).toBe(RICH_PATH)
+    expect(mockExecFileSync).toHaveBeenCalledTimes(3)
+    expect(mockExecFileSync).toHaveBeenNthCalledWith(
+      3,
+      '/bin/zsh',
+      expect.any(Array),
+      expect.any(Object),
+    )
+  })
+
+  it('skips fallback shell that matches user shell', () => {
+    process.env.SHELL = '/bin/zsh'
+    mockExecFileSync.mockImplementation(() => { throw new Error('timeout') })
+
+    fixMacOsPath()
+
+    // Should try /bin/zsh (user shell) x2 + /bin/bash (fallback) x2 = 4
+    // /bin/zsh should NOT be retried as a fallback
+    const shells = mockExecFileSync.mock.calls.map((c: any[]) => c[0])
+    expect(shells).toEqual(['/bin/zsh', '/bin/zsh', '/bin/bash', '/bin/bash'])
   })
 })

@@ -7,6 +7,14 @@ const logger = createAppLogger('EnvUtils')
 /** Login shell timeout — keep in sync with apps/desktop/src/shell/fix-path.ts */
 const LOGIN_SHELL_TIMEOUT_MS = 10_000
 
+/** Strip ANSI SGR escape sequences from a string. */
+function stripAnsi(str: string): string {
+  return str.replace(/\x1B\[[0-9;]*m/g, '')
+}
+
+/** Fallback POSIX shells to try when the user's default shell fails. */
+const FALLBACK_SHELLS = ['/bin/zsh', '/bin/bash']
+
 /**
  * Common directories to prepend to PATH for subprocess spawning.
  * Covers Homebrew (ARM + Intel), MacPorts, Nix, and standard locations.
@@ -185,23 +193,39 @@ export function createCleanEnv(options?: CleanEnvOptions): Record<string, string
  *     configure PATH in .zshrc (e.g. NVM, bun).
  */
 export function resolveViaLoginShell(binaryName: string): string | null {
-  const shell = process.env.SHELL || '/bin/zsh'
+  const userShell = process.env.SHELL || '/bin/zsh'
   const cmd = `command -v ${binaryName}`
-  const opts = { encoding: 'utf-8' as const, timeout: LOGIN_SHELL_TIMEOUT_MS, stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'] }
-
-  // Stage 1: non-interactive login shell (fast, skips .zshrc plugins)
-  try {
-    const result = execFileSync(shell, ['-lc', cmd], opts).trim()
-    if (result) return result
-  } catch {
-    // fall through to stage 2
+  const opts = {
+    encoding: 'utf-8' as const,
+    timeout: LOGIN_SHELL_TIMEOUT_MS,
+    stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      DISABLE_AUTO_UPDATE: 'true',
+      ZSH_TMUX_AUTOSTARTED: 'true',
+      ZSH_TMUX_AUTOSTART: 'false',
+    },
   }
 
-  // Stage 2: interactive login shell (covers PATH-in-.zshrc setups like NVM/bun)
-  try {
-    const result = execFileSync(shell, ['-ilc', cmd], opts).trim()
-    return result || null
-  } catch {
-    return null
+  const shells = [userShell, ...FALLBACK_SHELLS.filter((s) => s !== userShell)]
+
+  for (const shell of shells) {
+    // Stage 1: non-interactive login shell (fast, skips .zshrc plugins)
+    try {
+      const result = stripAnsi(execFileSync(shell, ['-lc', cmd], opts).trim())
+      if (result) return result
+    } catch {
+      // fall through to stage 2
+    }
+
+    // Stage 2: interactive login shell (covers PATH-in-.zshrc setups like NVM/bun)
+    try {
+      const result = stripAnsi(execFileSync(shell, ['-ilc', cmd], opts).trim())
+      if (result) return result
+    } catch {
+      // try next shell
+    }
   }
+
+  return null
 }
