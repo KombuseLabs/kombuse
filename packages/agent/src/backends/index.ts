@@ -3,7 +3,6 @@ export {
   ClaudeCodeBackend,
   type ClaudeCodeOptions,
   resolveClaudePath,
-  createCleanEnv,
   createJsonLineBehavior,
   type ParsedClaudeMessage,
   type JsonLineCallbacks,

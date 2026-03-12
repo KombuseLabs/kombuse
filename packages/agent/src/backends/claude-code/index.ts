@@ -1,7 +1,6 @@
 export { ClaudeCodeBackend, type ClaudeCodeOptions, type ClaudeInputEvent, buildUserContent, type MultimodalContentBlock } from './claude-code'
 export {
   resolveClaudePath,
-  createCleanEnv,
   createJsonLineBehavior,
   type ParsedClaudeMessage,
   type JsonLineCallbacks,

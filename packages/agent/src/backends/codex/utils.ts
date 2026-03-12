@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
 import type { Process, ProcessBehavior } from '../../types'
 import type { JsonRpcMessage } from './types'
-import { buildCleanPath, resolveViaLoginShell } from '../../env-utils'
+import { resolveViaLoginShell } from '../../env-utils'
 
 export interface JsonRpcLineCallbacks {
   onMessage: (message: JsonRpcMessage) => void
@@ -55,22 +55,6 @@ export function resolveCodexPath(configuredPath?: string): string {
   }
 
   return 'codex'
-}
-
-/**
- * Build a clean environment while preserving user auth/session state.
- */
-export function createCleanEnv(): Record<string, string> {
-  const env: Record<string, string> = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined) {
-      env[key] = value
-    }
-  }
-
-  env.PATH = buildCleanPath(process.env.PATH)
-
-  return env
 }
 
 /**

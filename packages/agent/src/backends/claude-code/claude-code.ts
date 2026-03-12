@@ -10,7 +10,8 @@ import { createAppLogger } from '@kombuse/core/logger'
 import { BaseAgentBackend } from '../base-agent-backend'
 
 const logger = createAppLogger('ClaudeCode')
-import { resolveClaudePath, createCleanEnv, createJsonLineBehavior, type ParsedClaudeMessage } from './utils'
+import { resolveClaudePath, createJsonLineBehavior, type ParsedClaudeMessage } from './utils'
+import { createCleanEnv } from '../../env-utils'
 import type { ClaudeAssistantMessage, ClaudeContentBlock, ClaudeEvent, ClaudeResultMessage, ClaudeUserMessage } from './types'
 
 export interface ClaudeCodeOptions {
@@ -103,7 +104,8 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
 
     const args = this.buildArgs(options)
     const env = createCleanEnv({
-      thinkingEnabled: this.options.thinkingEnabled,
+      stripKeys: ['ANTHROPIC_API_KEY'],
+      extraEnv: this.options.thinkingEnabled ? { MAX_THINKING_TOKENS: '32000' } : undefined,
     })
 
     // Add the CLI binary's directory to PATH so co-located binaries (e.g. node

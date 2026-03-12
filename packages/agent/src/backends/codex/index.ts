@@ -47,4 +47,4 @@ export type {
   CodexModelListParams,
   CodexModelListResult,
 } from './types'
-export { resolveCodexPath, createCleanEnv, createJsonRpcLineBehavior, type JsonRpcLineCallbacks } from './utils'
+export { resolveCodexPath, createJsonRpcLineBehavior, type JsonRpcLineCallbacks } from './utils'

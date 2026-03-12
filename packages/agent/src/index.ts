@@ -47,7 +47,6 @@ export {
   type MockClientOptions,
   resolveClaudePath,
   resolveCodexPath,
-  createCleanEnv,
   createJsonLineBehavior,
   createJsonRpcLineBehavior,
   type JsonRpcLineCallbacks,
@@ -74,3 +73,4 @@ export {
   type ClaudeJsonlProgressMessage,
   transformJsonlToAgentEvents,
 } from './backends'
+export { createCleanEnv, type CleanEnvOptions } from './env-utils'

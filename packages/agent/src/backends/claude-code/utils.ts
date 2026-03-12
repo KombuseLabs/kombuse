@@ -3,7 +3,7 @@ import { accessSync, constants } from 'node:fs'
 import type { ProcessBehavior, Process } from '../../types'
 import type { ClaudeEvent } from './types'
 import { createAppLogger } from '@kombuse/core/logger'
-import { buildCleanPath, resolveViaLoginShell } from '../../env-utils'
+import { resolveViaLoginShell } from '../../env-utils'
 
 const logger = createAppLogger('ClaudeCodeUtils')
 
@@ -68,37 +68,6 @@ export function resolveClaudePath(): string {
 
   logger.warn('Could not find claude binary, falling back to PATH lookup', { triedPaths: possiblePaths })
   return 'claude' // Fallback to PATH lookup
-}
-
-/**
- * Create a clean environment for spawning Claude, removing node_modules paths
- * and ANTHROPIC_API_KEY to use Claude's default authentication
- *
- * @param options.thinkingEnabled - Set MAX_THINKING_TOKENS to enable extended thinking
- */
-export function createCleanEnv(options?: {
-  thinkingEnabled?: boolean
-}): Record<string, string> {
-  const { ANTHROPIC_API_KEY: _, ...restEnv } = process.env
-
-  const env: Record<string, string> = {}
-  for (const [key, value] of Object.entries(restEnv)) {
-    if (value !== undefined) {
-      env[key] = value
-    }
-  }
-
-  env.PATH = buildCleanPath(process.env.PATH)
-  logger.debug('Constructed clean env', { PATH: env.PATH })
-
-  // Enable extended thinking via environment variable
-  // This is the documented method (MAX_THINKING_TOKENS sets the token budget)
-  if (options?.thinkingEnabled) {
-    // TODO hardcoded value
-    env.MAX_THINKING_TOKENS = '32000'
-  }
-
-  return env
 }
 
 /**

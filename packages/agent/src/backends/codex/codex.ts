@@ -7,7 +7,8 @@ import {
 } from '../../types'
 import { Process, waitForRunning } from '../../utils'
 import { BaseAgentBackend } from '../base-agent-backend'
-import { createCleanEnv, createJsonRpcLineBehavior, resolveCodexPath } from './utils'
+import { createJsonRpcLineBehavior, resolveCodexPath } from './utils'
+import { createCleanEnv } from '../../env-utils'
 import { createAppLogger } from '@kombuse/core/logger'
 
 const logger = createAppLogger('Codex')
