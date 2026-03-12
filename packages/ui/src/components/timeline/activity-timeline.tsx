@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { TimelineItem, CommentWithAuthor, EventWithActor, Attachment } from '@kombuse/types'
 import { CommentItem } from '../comments/comment-item'
 import { TimelineEventItem } from './timeline-event-item'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 
 interface ActivityTimelineProps {
   items: TimelineItem[]

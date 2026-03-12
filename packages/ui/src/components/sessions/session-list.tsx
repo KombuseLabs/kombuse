@@ -4,7 +4,7 @@ import type { PublicSession } from '@kombuse/types'
 import { parseSessionId } from '@kombuse/types'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { MessageSquare, Trash2, Zap } from 'lucide-react'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 import { StatusIndicator, type StatusIndicatorStatus } from '../status-indicator'
 import {
   Button,
@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '../../base'
+} from '@/base'
 
 function getIndicatorStatus(
   session: PublicSession,

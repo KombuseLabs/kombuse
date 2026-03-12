@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react'
 import type { ActorType, AgentTrigger, AllowedInvoker, MentionType } from '@kombuse/types'
 import { EVENT_TYPES } from '@kombuse/types'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
-import { Label } from '../../base/label'
-import { Switch } from '../../base/switch'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
+import { Label } from '@/base/label'
+import { Switch } from '@/base/switch'
 import {
   Select,
   SelectContent,
@@ -15,15 +15,15 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '../../base/select'
+} from '@/base/select'
 import { ConditionEditor } from './condition-editor'
 import { EVENT_TYPE_OPTIONS, EVENT_TYPE_CATEGORIES } from './event-type-constants'
 import { LabelPicker } from '../labels/label-picker'
 import { MentionTypePicker } from './mention-type-picker'
 import { AuthorFilterPicker } from './author-filter-picker'
 import { AllowedInvokersEditor } from './allowed-invokers-editor'
-import { useProjectLabels, useCreateLabel } from '../../hooks/use-labels'
-import { useAppContext } from '../../hooks/use-app-context'
+import { useProjectLabels, useCreateLabel } from '@/hooks/use-labels'
+import { useAppContext } from '@/hooks/use-app-context'
 
 export interface TriggerFormData {
   event_type: string

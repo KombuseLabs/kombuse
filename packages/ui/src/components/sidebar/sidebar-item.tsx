@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { cn } from "../../lib/utils";
+import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "../../base/tooltip";
+} from "@/base/tooltip";
 
 interface SidebarItemProps {
   icon: React.ReactNode;

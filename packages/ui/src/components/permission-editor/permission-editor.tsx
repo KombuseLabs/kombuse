@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import type { Permission } from '@kombuse/types'
 import { ChevronDown, ChevronRight, Plus, Shield } from 'lucide-react'
-import { Button } from '../../base/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../base/collapsible'
+import { Button } from '@/base/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/base/collapsible'
 import { PermissionRuleList } from './permission-rule-list'
 import { PermissionRuleForm } from './permission-rule-form'
 

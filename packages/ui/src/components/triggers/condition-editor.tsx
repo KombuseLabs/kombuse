@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../base/select'
+} from '@/base/select'
 
 interface ConditionRow {
   id: string

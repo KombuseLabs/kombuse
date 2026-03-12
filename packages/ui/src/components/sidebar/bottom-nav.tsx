@@ -1,7 +1,7 @@
 "use client"
 
 import { NavLink, useLocation } from "react-router-dom"
-import { cn } from "../../lib/utils"
+import { cn } from "@/lib/utils"
 import { Ticket, MessageSquare, Bot, Tags } from "lucide-react"
 import type { ReactNode } from "react"
 

@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "../../lib/utils";
-import { Button } from "../../base/button";
-import { TooltipProvider } from "../../base/tooltip";
+import { cn } from "@/lib/utils";
+import { Button } from "@/base/button";
+import { TooltipProvider } from "@/base/tooltip";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SidebarProps {

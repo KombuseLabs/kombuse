@@ -1,6 +1,6 @@
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { HelpCircle, Check, Sparkles } from 'lucide-react'
-import { cn } from '../../../lib/utils'
+import { cn } from '@/lib/utils'
 import { isValidAskUserInput, AGENT_CHOICE_SENTINEL } from '../ask-user-types'
 import { EventCard } from './event-card'
 import { PermissionRequestRenderer } from './permission-request-renderer'

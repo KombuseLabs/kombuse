@@ -8,7 +8,7 @@ const deleteCurrentTicket = vi.fn()
 const updateCurrentTicket = vi.fn().mockResolvedValue(undefined)
 const uploadTicketAttachmentMutateAsync = vi.fn().mockResolvedValue(undefined)
 
-vi.mock('../../../hooks', () => ({
+vi.mock('@/hooks', () => ({
   useTicketOperations: () => ({
     currentTicket,
     deleteCurrentTicket,
@@ -42,7 +42,7 @@ vi.mock('../../../hooks', () => ({
   }),
 }))
 
-vi.mock('../../../hooks/use-textarea-autocomplete', () => ({
+vi.mock('@/hooks/use-textarea-autocomplete', () => ({
   useTextareaAutocomplete: () => ({
     textareaProps: {
       onChange: () => undefined,
@@ -52,7 +52,7 @@ vi.mock('../../../hooks/use-textarea-autocomplete', () => ({
   }),
 }))
 
-vi.mock('../../../hooks/use-file-staging', () => ({
+vi.mock('@/hooks/use-file-staging', () => ({
   useFileStaging: () => ({
     stagedFiles: [],
     previewUrls: [],

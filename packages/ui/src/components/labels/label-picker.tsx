@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import type { Label } from '@kombuse/types'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Popover, PopoverContent, PopoverTrigger } from '../../base/popover'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/base/popover'
 import {
   Command,
   CommandInput,
@@ -13,10 +13,10 @@ import {
   CommandGroup,
   CommandItem,
   CommandSeparator,
-} from '../../base/command'
+} from '@/base/command'
 import { Check, ChevronsUpDown, Tag, Plus, Zap } from 'lucide-react'
-import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
-import { useSmartLabels } from '../../hooks/use-app-context'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/base/tooltip'
+import { useSmartLabels } from '@/hooks/use-app-context'
 import { LabelForm } from './label-form'
 
 interface LabelPickerProps {

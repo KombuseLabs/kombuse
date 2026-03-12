@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { FileCheck, Check, X, MessageSquare } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
 
 export interface PlanApprovalBarProps {
   permission: SerializedAgentPermissionRequestEvent

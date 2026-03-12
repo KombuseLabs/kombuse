@@ -2144,6 +2144,25 @@ Components use `data-testid` attributes as stable selectors for agent automation
 
 All selectors are documented in `apps/docs/.kombuse/plugins/docs-tutorial-builder/files/ui-selectors.md`.
 
+## Import Alias Convention
+
+Within `packages/ui/src/`, use the `@/` path alias for imports that cross two or more directory levels to reach core directories (`base/`, `hooks/`, `lib/`, `providers/`):
+
+```typescript
+// Good — greppable, consistent
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { useAppContext } from '@/hooks/use-app-context'
+
+// Bad — deep relative paths
+import { cn } from '../../../lib/utils'
+import { Button } from '../../base/button'
+```
+
+Same-directory (`./`) and single-parent (`../`) imports remain relative — they are already short and greppable.
+
+The `@/*` alias is defined in `packages/ui/tsconfig.json` and maps to `./src/*`. Consuming apps must include `vite-tsconfig-paths` in their Vite config to resolve these paths at build time.
+
 ## Adding New Components
 
 1. **Base components** (shadcn/ui): Add to `src/base/` and add an explicit named export in `src/base/index.ts`

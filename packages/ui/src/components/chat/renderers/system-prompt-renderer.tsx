@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import type { SerializedAgentRawEvent } from '@kombuse/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { cn } from '../../../lib/utils'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../base/collapsible'
+import { cn } from '@/lib/utils'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/base/collapsible'
 import { formatEventTime } from './event-card'
 
 export interface SystemPromptRendererProps {

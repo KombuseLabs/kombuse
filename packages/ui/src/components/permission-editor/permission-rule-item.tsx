@@ -2,9 +2,9 @@
 
 import type { Permission } from '@kombuse/types'
 import { Database, Pencil, Trash2, Wrench } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Badge } from '../../base/badge'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Badge } from '@/base/badge'
 import { getResourceLabel, getToolLabel, getScopeLabel, getActionLabel } from './permission-constants'
 
 interface PermissionRuleItemProps {

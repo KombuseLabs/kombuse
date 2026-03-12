@@ -3,18 +3,18 @@
 import { useState, useMemo } from 'react'
 import type { AllowedInvoker, Agent, Profile } from '@kombuse/types'
 import { Bot, Check, ChevronsUpDown, Plus, Shield, Trash2 } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Label } from '../../base/label'
-import { Switch } from '../../base/switch'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Label } from '@/base/label'
+import { Switch } from '@/base/switch'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../base/select'
-import { Popover, PopoverContent, PopoverTrigger } from '../../base/popover'
+} from '@/base/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/base/popover'
 import {
   Command,
   CommandInput,
@@ -22,8 +22,8 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from '../../base/command'
-import { useAgents, useAgentProfiles } from '../../hooks/use-agents'
+} from '@/base/command'
+import { useAgents, useAgentProfiles } from '@/hooks/use-agents'
 
 export interface AllowedInvokersEditorProps {
   value: AllowedInvoker[] | null

@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import type { AgentTrigger } from '@kombuse/types'
 import { ChevronDown, ChevronRight, Plus, Zap } from 'lucide-react'
-import { Button } from '../../base/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../base/collapsible'
+import { Button } from '@/base/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/base/collapsible'
 import { TriggerList } from './trigger-list'
 import { TriggerForm, type TriggerFormData } from './trigger-form'
-import { useProjectLabels } from '../../hooks/use-labels'
-import { useAppContext } from '../../hooks/use-app-context'
+import { useProjectLabels } from '@/hooks/use-labels'
+import { useAppContext } from '@/hooks/use-app-context'
 
 interface TriggerEditorProps {
   agentId: string

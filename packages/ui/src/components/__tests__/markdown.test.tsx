@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { Markdown } from '../markdown'
 
-vi.mock('../../hooks/use-shiki', () => ({
+vi.mock('@/hooks/use-shiki', () => ({
   useShiki: () => ({
     ready: true,
     highlight: () => null,

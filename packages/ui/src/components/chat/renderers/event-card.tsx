@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cn } from '../../../lib/utils'
+import { cn } from '@/lib/utils'
 
 function formatEventTime(timestamp: number): string {
   const date = new Date(timestamp)

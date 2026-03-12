@@ -1,6 +1,6 @@
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { Shield } from 'lucide-react'
-import { extractPermissionDetail } from '../../../lib/permission-utils'
+import { extractPermissionDetail } from '@/lib/permission-utils'
 import { EventCard } from './event-card'
 
 export interface PermissionRequestRendererProps {

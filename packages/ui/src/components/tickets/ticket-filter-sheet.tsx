@@ -3,13 +3,13 @@
 import type { TicketStatus, TicketFilters } from '@kombuse/types'
 import type { Label } from '@kombuse/types'
 import type { MilestoneWithStats } from '@kombuse/types'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../../base/sheet'
-import { Button } from '../../base/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../base/select'
-import { Badge } from '../../base/badge'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/base/sheet'
+import { Button } from '@/base/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/base/select'
+import { Badge } from '@/base/badge'
 import { MilestoneBadge } from '../milestones/milestone-badge'
 import { SlidersHorizontal, ArrowUp, ArrowDown, Check } from 'lucide-react'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 
 interface StatusCountMap {
   all: number

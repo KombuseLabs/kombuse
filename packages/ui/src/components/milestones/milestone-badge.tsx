@@ -1,7 +1,7 @@
 "use client"
 
 import type { MilestoneWithStats } from '@kombuse/types'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 import { Target } from 'lucide-react'
 
 interface MilestoneBadgeProps {

@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { Button } from '../../base/button'
-import { Textarea } from '../../base/textarea'
-import { cn } from '../../lib/utils'
-import { useIsMobile } from '../../hooks/use-is-mobile'
-import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
-import { useFileStaging } from '../../hooks/use-file-staging'
+import { Button } from '@/base/button'
+import { Textarea } from '@/base/textarea'
+import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/hooks/use-is-mobile'
+import { useTextareaAutocomplete } from '@/hooks/use-textarea-autocomplete'
+import { useFileStaging } from '@/hooks/use-file-staging'
 import { StagedFilePreviews } from '../staged-file-previews'
 import { Send, Loader2, X, Paperclip, Square, AlertTriangle } from 'lucide-react'
 

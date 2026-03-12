@@ -13,7 +13,7 @@ vi.mock('../agent-preview-card', () => ({
   },
 }))
 
-vi.mock('../../../base/hover-card', () => ({
+vi.mock('@/base/hover-card', () => ({
   HoverCard: ({ children, onOpenChange }: { children: React.ReactNode; onOpenChange?: (open: boolean) => void }) => (
     <div
       onMouseEnter={() => onOpenChange?.(true)}

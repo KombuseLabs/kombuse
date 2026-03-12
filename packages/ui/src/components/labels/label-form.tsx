@@ -2,10 +2,10 @@
 
 import { useRef, useState } from 'react'
 import type { Label } from '@kombuse/types'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
-import { Textarea } from '../../base/textarea'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
+import { Textarea } from '@/base/textarea'
 import { Check, Pipette } from 'lucide-react'
 
 const PRESET_COLORS = [

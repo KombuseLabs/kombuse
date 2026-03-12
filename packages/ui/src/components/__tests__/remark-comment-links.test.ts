@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { remarkCommentLinks } from '../../lib/remark-comment-links'
+import { remarkCommentLinks } from '@/lib/remark-comment-links'
 import type { Root, Paragraph, Link, Text } from 'mdast'
 
 function makeTree(text: string): Root {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { remarkTicketLinks } from '../../lib/remark-ticket-links'
+import { remarkTicketLinks } from '@/lib/remark-ticket-links'
 import type { Root, Paragraph, Link, Text } from 'mdast'
 
 const PROJECT_ID = 'test-project'

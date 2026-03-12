@@ -1,6 +1,6 @@
 import type { SerializedAgentToolUseEvent, SerializedAgentToolResultEvent, JsonValue } from '@kombuse/types'
 import { Markdown } from '../../markdown'
-import { useCurrentProject } from '../../../hooks/use-app-context'
+import { useCurrentProject } from '@/hooks/use-app-context'
 import { formatEventTime } from './event-card'
 
 function extractTextContent(content: string | JsonValue[]): string {

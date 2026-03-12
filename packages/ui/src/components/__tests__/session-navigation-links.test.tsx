@@ -11,13 +11,13 @@ import type {
 import { CommentItem } from '../comments/comment-item'
 import { TimelineEventItem } from '../timeline/timeline-event-item'
 import { PermissionItem } from '../permissions/permission-item'
-import { useSessionByKombuseId } from '../../hooks/use-sessions'
+import { useSessionByKombuseId } from '@/hooks/use-sessions'
 
-vi.mock('../../hooks/use-sessions', () => ({
+vi.mock('@/hooks/use-sessions', () => ({
   useSessionByKombuseId: vi.fn(),
 }))
 
-vi.mock('../../hooks/use-textarea-autocomplete', () => ({
+vi.mock('@/hooks/use-textarea-autocomplete', () => ({
   useTextareaAutocomplete: () => ({
     textareaProps: {
       onChange: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock('../../hooks/use-textarea-autocomplete', () => ({
   }),
 }))
 
-vi.mock('../../hooks/use-file-staging', () => ({
+vi.mock('@/hooks/use-file-staging', () => ({
   useFileStaging: () => ({
     stagedFiles: [],
     previewUrls: [],

@@ -11,12 +11,12 @@ import {
   CommandGroup,
   CommandEmpty,
   CommandShortcut,
-} from '../../base/command'
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '../../base/popover'
-import { useCommands, useCommandContext, useTicketSearch } from '../../hooks'
+} from '@/base/command'
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/base/popover'
+import { useCommands, useCommandContext, useTicketSearch } from '@/hooks'
 import { formatKeybinding } from '@kombuse/core'
-import { cn } from '../../lib/utils'
-import { statusColors } from '../../lib/ticket-utils'
+import { cn } from '@/lib/utils'
+import { statusColors } from '@/lib/ticket-utils'
 import { SearchBar } from './search-bar'
 
 function HighlightedSnippet({ text }: { text: string }) {

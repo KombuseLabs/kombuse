@@ -31,7 +31,7 @@ const mockUseSessionEvents = vi.fn((
 const mockWebSocketSend = vi.fn()
 let mockWebSocketOnMessage: ((message: ServerMessage) => void) | undefined
 
-vi.mock('../../hooks/use-sessions', () => ({
+vi.mock('@/hooks/use-sessions', () => ({
   useSessionByKombuseId: (kombuseSessionId: string | null) =>
     mockUseSessionByKombuseId(kombuseSessionId),
   useSessionEvents: (
@@ -40,14 +40,14 @@ vi.mock('../../hooks/use-sessions', () => ({
   ) => mockUseSessionEvents(kombuseSessionId, filters),
 }))
 
-vi.mock('../../hooks/use-websocket', () => ({
+vi.mock('@/hooks/use-websocket', () => ({
   useWebSocket: ({ onMessage }: { onMessage: (message: ServerMessage) => void }) => {
     mockWebSocketOnMessage = onMessage
     return { isConnected: false, send: mockWebSocketSend }
   },
 }))
 
-vi.mock('../../hooks/use-app-context', () => ({
+vi.mock('@/hooks/use-app-context', () => ({
   useAppContext: () => ({
     pendingPermissions: mockPendingPermissions,
     currentProjectId: null,

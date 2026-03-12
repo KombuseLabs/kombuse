@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import type { Permission } from '@kombuse/types'
-import { Badge } from '../../base/badge'
-import { cn } from '../../lib/utils'
-import { useAgentWithProfile } from '../../hooks/use-agents'
-import { useTriggers } from '../../hooks/use-triggers'
-import { useCurrentProject } from '../../hooks/use-app-context'
+import { Badge } from '@/base/badge'
+import { cn } from '@/lib/utils'
+import { useAgentWithProfile } from '@/hooks/use-agents'
+import { useTriggers } from '@/hooks/use-triggers'
+import { useCurrentProject } from '@/hooks/use-app-context'
 import { getAvatarIcon } from './avatar-picker'
 
 interface AgentPreviewCardProps {

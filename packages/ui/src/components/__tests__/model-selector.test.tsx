@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ModelCatalogResponse, ModelOption } from '@kombuse/types'
 import { ModelSelector } from '../model-selector'
-import { useModels } from '../../hooks/use-models'
+import { useModels } from '@/hooks/use-models'
 
-vi.mock('../../hooks/use-models', () => ({
+vi.mock('@/hooks/use-models', () => ({
   useModels: vi.fn(),
 }))
 

@@ -4,14 +4,14 @@ import type { MilestoneWithStats } from '@kombuse/types'
 import { MilestoneSelector } from '../milestone-selector'
 
 // Mock Popover to always render open
-vi.mock('../../../base/popover', () => ({
+vi.mock('@/base/popover', () => ({
   Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PopoverTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 // Mock Command components as simple pass-through elements
-vi.mock('../../../base/command', () => ({
+vi.mock('@/base/command', () => ({
   Command: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CommandInput: () => <input placeholder="Search milestones..." />,
   CommandList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

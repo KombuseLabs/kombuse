@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import type { Milestone, MilestoneWithStats } from '@kombuse/types'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Popover, PopoverContent, PopoverTrigger } from '../../base/popover'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/base/popover'
 import {
   Command,
   CommandInput,
@@ -13,7 +13,7 @@ import {
   CommandGroup,
   CommandItem,
   CommandSeparator,
-} from '../../base/command'
+} from '@/base/command'
 import { Check, ChevronsUpDown, Target, Plus } from 'lucide-react'
 import { MilestoneForm } from './milestone-form'
 

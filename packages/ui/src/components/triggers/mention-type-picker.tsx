@@ -7,7 +7,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../base/select'
+} from '@/base/select'
 
 interface MentionTypePickerProps {
   value: MentionType | null

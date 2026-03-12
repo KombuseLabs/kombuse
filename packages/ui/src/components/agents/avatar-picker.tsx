@@ -18,7 +18,7 @@ import {
   Database,
   type LucideIcon,
 } from 'lucide-react'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 
 const PRESET_AVATARS: { icon: LucideIcon; name: string }[] = [
   { icon: Bot, name: 'bot' },

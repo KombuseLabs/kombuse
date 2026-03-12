@@ -2,12 +2,12 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { Bot, Pencil, RotateCcw, Save, Plus, X, Shield, Wrench } from 'lucide-react'
-import { useAgents, useAgentProfiles, useUpdateAgent } from '../../hooks/use-agents'
-import { Badge } from '../../base/badge'
-import { Button } from '../../base/button'
-import { Checkbox } from '../../base/checkbox'
-import { Input } from '../../base/input'
-import { Label } from '../../base/label'
+import { useAgents, useAgentProfiles, useUpdateAgent } from '@/hooks/use-agents'
+import { Badge } from '@/base/badge'
+import { Button } from '@/base/button'
+import { Checkbox } from '@/base/checkbox'
+import { Input } from '@/base/input'
+import { Label } from '@/base/label'
 import { COMMON_TOOLS, getToolLabel } from '../permission-editor/permission-constants'
 import type { Agent, AgentConfig } from '@kombuse/types'
 

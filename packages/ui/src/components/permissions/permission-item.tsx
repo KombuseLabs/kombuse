@@ -1,8 +1,8 @@
 import type { PermissionLogEntry } from '@kombuse/types'
 import { Link } from 'react-router-dom'
-import { cn } from '../../lib/utils'
-import { extractPermissionDetail } from '../../lib/permission-utils'
-import { Badge } from '../../base/badge'
+import { cn } from '@/lib/utils'
+import { extractPermissionDetail } from '@/lib/permission-utils'
+import { Badge } from '@/base/badge'
 import {
   Terminal,
   FileText,

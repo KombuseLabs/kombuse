@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Label } from '../../base/label'
-import { Popover, PopoverContent, PopoverTrigger } from '../../base/popover'
-import { Switch } from '../../base/switch'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Label } from '@/base/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/base/popover'
+import { Switch } from '@/base/switch'
 import type { PublicSession } from '@kombuse/types'
 
 type ViewMode = 'clean' | 'normal'

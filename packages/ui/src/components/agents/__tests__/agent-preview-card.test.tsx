@@ -3,19 +3,19 @@ import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { Agent, AgentTrigger, Permission, Profile } from '@kombuse/types'
 import { AgentPreviewCard } from '../agent-preview-card'
-import { useAgentWithProfile } from '../../../hooks/use-agents'
-import { useTriggers } from '../../../hooks/use-triggers'
-import { useCurrentProject } from '../../../hooks/use-app-context'
+import { useAgentWithProfile } from '@/hooks/use-agents'
+import { useTriggers } from '@/hooks/use-triggers'
+import { useCurrentProject } from '@/hooks/use-app-context'
 
-vi.mock('../../../hooks/use-agents', () => ({
+vi.mock('@/hooks/use-agents', () => ({
   useAgentWithProfile: vi.fn(),
 }))
 
-vi.mock('../../../hooks/use-triggers', () => ({
+vi.mock('@/hooks/use-triggers', () => ({
   useTriggers: vi.fn(),
 }))
 
-vi.mock('../../../hooks/use-app-context', () => ({
+vi.mock('@/hooks/use-app-context', () => ({
   useCurrentProject: vi.fn(() => ({ currentProjectId: 'test-project' })),
 }))
 

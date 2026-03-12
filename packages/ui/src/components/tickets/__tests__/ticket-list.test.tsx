@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import type { TicketFilters, TicketWithLabels } from '@kombuse/types'
 import { TicketList } from '../ticket-list'
 
-vi.mock('../../../hooks', () => ({
+vi.mock('@/hooks', () => ({
   useTicketAgentStatus: () => 'idle',
 }))
 

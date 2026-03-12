@@ -90,17 +90,17 @@ vi.mock('../allowed-invokers-editor', () => ({
   ),
 }))
 
-vi.mock('../../../hooks/use-labels', () => ({
+vi.mock('@/hooks/use-labels', () => ({
   useProjectLabels: () => ({ data: [], isLoading: false }),
   useCreateLabel: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
-vi.mock('../../../hooks/use-app-context', () => ({
+vi.mock('@/hooks/use-app-context', () => ({
   useAppContext: () => ({ currentProjectId: '1' }),
 }))
 
 // Mock base components
-vi.mock('../../../base/select', () => ({
+vi.mock('@/base/select', () => ({
   Select: ({
     children,
     value,
@@ -133,7 +133,7 @@ vi.mock('../../../base/select', () => ({
   SelectValue: () => null,
 }))
 
-vi.mock('../../../base/button', () => ({
+vi.mock('@/base/button', () => ({
   Button: ({
     children,
     ...props
@@ -142,18 +142,18 @@ vi.mock('../../../base/button', () => ({
   ),
 }))
 
-vi.mock('../../../base/input', () => ({
+vi.mock('@/base/input', () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }))
 
-vi.mock('../../../base/label', () => ({
+vi.mock('@/base/label', () => ({
   Label: ({
     children,
     ...props
   }: React.LabelHTMLAttributes<HTMLLabelElement>) => <label {...props}>{children}</label>,
 }))
 
-vi.mock('../../../base/switch', () => ({
+vi.mock('@/base/switch', () => ({
   Switch: ({
     checked,
     onCheckedChange,

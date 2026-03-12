@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { TicketFilters, TicketWithLabels } from '@kombuse/types'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 import { LabelBadge } from '../labels/label-badge'
 import { StatusIndicator } from '../status-indicator'
-import { useTicketAgentStatus } from '../../hooks'
+import { useTicketAgentStatus } from '@/hooks'
 
 type TicketSortBy = NonNullable<TicketFilters['sort_by']>
 type DateSortBy = Exclude<TicketSortBy, 'priority'>

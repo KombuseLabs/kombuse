@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import type { PluginFile } from '@kombuse/types'
 import { ChevronDown, ChevronRight, FileText, Loader2, Save } from 'lucide-react'
-import { Button } from '../../base/button'
-import { Textarea } from '../../base/textarea'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../base/collapsible'
+import { Button } from '@/base/button'
+import { Textarea } from '@/base/textarea'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/base/collapsible'
 
 interface PromptIncludeSectionsProps {
   files: PluginFile[]

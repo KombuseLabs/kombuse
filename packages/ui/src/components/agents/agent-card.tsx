@@ -1,8 +1,8 @@
 'use client'
 
 import type { Agent, Profile } from '@kombuse/types'
-import { cn } from '../../lib/utils'
-import { Switch } from '../../base/switch'
+import { cn } from '@/lib/utils'
+import { Switch } from '@/base/switch'
 import { getAvatarIcon } from './avatar-picker'
 import { Puzzle } from 'lucide-react'
 

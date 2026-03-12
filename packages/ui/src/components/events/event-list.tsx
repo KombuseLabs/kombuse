@@ -1,5 +1,5 @@
 import type { EventWithActor } from '@kombuse/types'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 import { EventItem } from './event-item'
 
 interface EventListProps {

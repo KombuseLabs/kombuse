@@ -2,11 +2,11 @@
 
 import { useState, useRef } from 'react'
 import { Copy, Check, Eye, Edit2, ChevronDown, ChevronRight } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { Textarea } from '../../base/textarea'
-import { Button } from '../../base/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../base/collapsible'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../base/tooltip'
+import { cn } from '@/lib/utils'
+import { Textarea } from '@/base/textarea'
+import { Button } from '@/base/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/base/collapsible'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/base/tooltip'
 import { TEMPLATE_VARIABLE_GROUPS, type TemplateVariableGroup } from './template-variables'
 import { TEMPLATE_ENGINE_NOTE, TEMPLATE_SNIPPET_GROUPS } from './template-snippets'
 

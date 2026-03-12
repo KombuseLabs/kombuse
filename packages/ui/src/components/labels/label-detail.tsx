@@ -2,14 +2,14 @@
 
 import type { Label as LabelType } from '@kombuse/types'
 import { X, Trash2, Zap, ExternalLink, Puzzle } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { Card, CardContent, CardHeader, CardTitle } from '../../base/card'
-import { Badge } from '../../base/badge'
-import { Button } from '../../base/button'
+import { cn } from '@/lib/utils'
+import { Card, CardContent, CardHeader, CardTitle } from '@/base/card'
+import { Badge } from '@/base/badge'
+import { Button } from '@/base/button'
 import { LabelForm } from './label-form'
 import { getEventTypeOption } from '../triggers/event-type-constants'
-import { useTriggersByLabel } from '../../hooks/use-triggers'
-import { useAgentProfiles } from '../../hooks/use-agents'
+import { useTriggersByLabel } from '@/hooks/use-triggers'
+import { useAgentProfiles } from '@/hooks/use-agents'
 
 interface LabelDetailProps {
   label: LabelType

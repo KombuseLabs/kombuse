@@ -1,8 +1,8 @@
 import type { Label } from '@kombuse/types'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 import { X, Zap } from 'lucide-react'
-import { Tooltip, TooltipTrigger, TooltipContent } from '../../base/tooltip'
-import { useSmartLabels } from '../../hooks/use-app-context'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/base/tooltip'
+import { useSmartLabels } from '@/hooks/use-app-context'
 
 interface LabelBadgeProps {
   label: Label

@@ -3,8 +3,8 @@
 import { useCallback, type RefObject } from 'react'
 import type { TicketWithLabels } from '@kombuse/types'
 import { AutocompletePopover } from './autocomplete-popover'
-import { cn } from '../../lib/utils'
-import { statusColors } from '../../lib/ticket-utils'
+import { cn } from '@/lib/utils'
+import { statusColors } from '@/lib/ticket-utils'
 
 interface TicketMentionAutocompleteProps {
   tickets: TicketWithLabels[]

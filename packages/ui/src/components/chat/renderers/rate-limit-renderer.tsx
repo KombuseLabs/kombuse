@@ -1,6 +1,6 @@
 import type { SerializedAgentRawEvent } from '@kombuse/types'
 import { AlertTriangle, Info, OctagonX } from 'lucide-react'
-import { cn } from '../../../lib/utils'
+import { cn } from '@/lib/utils'
 import { EventCard } from './event-card'
 
 export interface RateLimitRendererProps {

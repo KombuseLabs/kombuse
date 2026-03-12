@@ -7,7 +7,7 @@ const mockClearFiles = vi.fn()
 const mockOnKeyDown = vi.fn()
 const mockFileInputRef = { current: null as HTMLInputElement | null }
 
-vi.mock('../../../hooks/use-file-staging', () => ({
+vi.mock('@/hooks/use-file-staging', () => ({
   useFileStaging: () => ({
     stagedFiles: [],
     previewUrls: [],
@@ -22,7 +22,7 @@ vi.mock('../../../hooks/use-file-staging', () => ({
   }),
 }))
 
-vi.mock('../../../hooks/use-textarea-autocomplete', () => ({
+vi.mock('@/hooks/use-textarea-autocomplete', () => ({
   useTextareaAutocomplete: ({ onValueChange }: { onValueChange: (value: string) => void }) => ({
     textareaProps: {
       onChange: (event: { target: { value: string } }) => onValueChange(event.target.value),

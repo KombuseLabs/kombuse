@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { SerializedAgentToolUseEvent, SerializedAgentToolResultEvent, JsonValue } from '@kombuse/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../base/collapsible'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/base/collapsible'
 import { formatEventTime } from './event-card'
 import { CodeViewer } from '../../code-viewer'
 

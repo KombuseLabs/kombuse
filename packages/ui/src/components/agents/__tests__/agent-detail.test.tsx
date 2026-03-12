@@ -3,7 +3,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BACKEND_TYPES, type Agent, type AppContextValue, type Profile } from '@kombuse/types'
 import { AgentDetail, type AgentDetailProps } from '../agent-detail'
-import { AppCtx } from '../../../providers/app-context'
+import { AppCtx } from '@/providers/app-context'
 import type { ReactNode } from 'react'
 
 if (!('ResizeObserver' in globalThis)) {

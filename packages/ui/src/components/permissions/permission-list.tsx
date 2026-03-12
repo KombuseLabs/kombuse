@@ -1,5 +1,5 @@
 import type { PermissionLogEntry } from '@kombuse/types'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 import { PermissionItem } from './permission-item'
 
 interface PermissionListProps {

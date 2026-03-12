@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { HelpCircle, Send, Check, ChevronLeft, ChevronRight, Sparkles, SkipForward } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../base/dialog'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/base/dialog'
 import { type AskUserQuestion, type AskUserAnswers, AGENT_CHOICE_SENTINEL, isValidAskUserInput } from './ask-user-types'
 
 export interface AskUserDialogProps {

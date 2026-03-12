@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react'
 import { Bot, Shield, Wrench } from 'lucide-react'
-import { useAgents, useAgentProfiles } from '../../hooks/use-agents'
+import { useAgents, useAgentProfiles } from '@/hooks/use-agents'
 import { PermissionRuleList } from '../permission-editor/permission-rule-list'
-import { Badge } from '../../base/badge'
+import { Badge } from '@/base/badge'
 import { getToolLabel } from '../permission-editor/permission-constants'
 
 interface PermissionRulesTabProps {

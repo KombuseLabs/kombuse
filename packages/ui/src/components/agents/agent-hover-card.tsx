@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '../../base/hover-card'
+import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/base/hover-card'
 import { AgentPreviewCard } from './agent-preview-card'
 
 interface AgentHoverCardProps {

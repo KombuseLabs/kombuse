@@ -5,8 +5,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../base/select'
-import { Button } from '../../base/button'
+} from '@/base/select'
+import { Button } from '@/base/button'
 import { X } from 'lucide-react'
 
 interface EventFiltersProps {

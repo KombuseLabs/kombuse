@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { Profile } from '@kombuse/types'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Popover, PopoverContent, PopoverTrigger } from '../../base/popover'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/base/popover'
 import {
   Command,
   CommandInput,
@@ -12,10 +12,10 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from '../../base/command'
+} from '@/base/command'
 import { Bot, Check, ChevronsUpDown } from 'lucide-react'
-import { useAgents, useAgentProfiles } from '../../hooks/use-agents'
-import { useCommandContext } from '../../hooks/use-command-context'
+import { useAgents, useAgentProfiles } from '@/hooks/use-agents'
+import { useCommandContext } from '@/hooks/use-command-context'
 
 interface AgentPickerProps {
   value: string | null

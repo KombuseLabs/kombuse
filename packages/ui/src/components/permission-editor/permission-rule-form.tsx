@@ -2,17 +2,17 @@
 
 import { useState } from 'react'
 import type { Permission, ResourcePermission, ToolPermission } from '@kombuse/types'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
-import { Label } from '../../base/label'
-import { Checkbox } from '../../base/checkbox'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
+import { Label } from '@/base/label'
+import { Checkbox } from '@/base/checkbox'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../base/select'
+} from '@/base/select'
 import {
   SCOPE_OPTIONS,
   ACTION_OPTIONS,

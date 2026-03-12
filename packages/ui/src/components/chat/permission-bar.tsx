@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { Shield, ShieldCheck, Check, X, MessageSquare } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { extractPermissionDetail } from '../../lib/permission-utils'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
+import { cn } from '@/lib/utils'
+import { extractPermissionDetail } from '@/lib/permission-utils'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
 
 export interface PermissionBarProps {
   permission: SerializedAgentPermissionRequestEvent

@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import type { Milestone } from '@kombuse/types'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
-import { Textarea } from '../../base/textarea'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
+import { Textarea } from '@/base/textarea'
 
 interface MilestoneFormProps {
   milestone?: Milestone

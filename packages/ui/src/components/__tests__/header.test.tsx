@@ -7,11 +7,11 @@ const { mockUseDesktop, mockExecute } = vi.hoisted(() => ({
   mockExecute: vi.fn(),
 }))
 
-vi.mock('../../hooks/use-desktop', () => ({
+vi.mock('@/hooks/use-desktop', () => ({
   useDesktop: mockUseDesktop,
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('@/hooks', () => ({
   useCommand: () => ({
     execute: mockExecute,
   }),

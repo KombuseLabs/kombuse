@@ -3,7 +3,7 @@
 import { forwardRef } from 'react'
 import { Command as CommandIcon, SearchIcon } from 'lucide-react'
 import { isMacPlatform } from '@kombuse/core'
-import { cn } from '../../lib/utils'
+import { cn } from '@/lib/utils'
 
 export const SearchBar = forwardRef<
   HTMLButtonElement,

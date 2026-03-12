@@ -1,6 +1,6 @@
 import type { SerializedAgentCompleteEvent } from '@kombuse/types'
 import { CheckCircle2, XCircle } from 'lucide-react'
-import { cn } from '../../../lib/utils'
+import { cn } from '@/lib/utils'
 import { EventCard } from './event-card'
 
 export interface CompleteRendererProps {

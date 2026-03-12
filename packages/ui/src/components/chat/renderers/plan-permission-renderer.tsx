@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { SerializedAgentPermissionRequestEvent } from '@kombuse/types'
 import { FileCheck } from 'lucide-react'
-import { Button } from '../../../base/button'
+import { Button } from '@/base/button'
 import {
   Dialog,
   DialogClose,
@@ -12,7 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../../base/dialog'
+} from '@/base/dialog'
 import { Markdown } from '../../markdown'
 import { EventCard } from './event-card'
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { remarkLabelMentions } from '../../lib/remark-label-mentions'
+import { remarkLabelMentions } from '@/lib/remark-label-mentions'
 import type { Root, Paragraph, Link, Text } from 'mdast'
 
 function makeTree(text: string): Root {

@@ -2,9 +2,9 @@
 
 import { useContext, useState, type ReactNode } from 'react'
 import type { SerializedAgentEvent } from '@kombuse/types'
-import { cn } from '../../lib/utils'
-import { ChatCtx } from '../../providers/chat-context'
-import { useWebSocket } from '../../hooks/use-websocket'
+import { cn } from '@/lib/utils'
+import { ChatCtx } from '@/providers/chat-context'
+import { useWebSocket } from '@/hooks/use-websocket'
 import { ChatInput } from '../chat-input/chat-input'
 import { AskUserDialog } from './ask-user-dialog'
 import { isValidAskUserInput } from './ask-user-types'

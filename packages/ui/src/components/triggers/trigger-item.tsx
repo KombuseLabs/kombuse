@@ -3,13 +3,13 @@
 import { useMemo } from 'react'
 import type { AgentTrigger, Label, Profile } from '@kombuse/types'
 import { Pencil, Shield, Trash2, Zap } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Switch } from '../../base/switch'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Switch } from '@/base/switch'
 import { getEventTypeOption } from './event-type-constants'
 import { getMentionTypeLabel } from './mention-type-picker'
 import { getAuthorFilterLabel } from './author-filter-picker'
-import { useAgentProfiles } from '../../hooks/use-agents'
+import { useAgentProfiles } from '@/hooks/use-agents'
 import { summarizeInvokers } from './allowed-invokers-editor'
 
 interface TriggerItemProps {

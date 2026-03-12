@@ -7,7 +7,7 @@ import type { Profile } from '@kombuse/types'
 
 const mockGet = vi.fn()
 
-vi.mock('../../lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   profilesApi: {
     get: (...args: unknown[]) => mockGet(...args),
   },

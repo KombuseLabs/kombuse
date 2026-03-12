@@ -3,20 +3,20 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useMemo, useState, type ReactNode } from 'react'
 import type { AppContextValue, PendingPermission } from '@kombuse/types'
 import { NotificationBell } from '../notification-bell'
-import { useAppContext } from '../../hooks/use-app-context'
-import { AppCtx } from '../../providers/app-context'
-import * as profileSettingsHooks from '../../hooks/use-profile-settings'
+import { useAppContext } from '@/hooks/use-app-context'
+import { AppCtx } from '@/providers/app-context'
+import * as profileSettingsHooks from '@/hooks/use-profile-settings'
 
 const mockSend = vi.fn()
 
-vi.mock('../../hooks/use-websocket', () => ({
+vi.mock('@/hooks/use-websocket', () => ({
   useWebSocket: () => ({
     isConnected: true,
     send: mockSend,
   }),
 }))
 
-vi.mock('../../hooks/use-profile-settings', () => ({
+vi.mock('@/hooks/use-profile-settings', () => ({
   useProfileSetting: vi.fn(() => ({ data: null })),
   useProfileSettings: vi.fn(() => ({ data: null })),
   useUpsertProfileSetting: vi.fn(() => ({ mutate: vi.fn() })),

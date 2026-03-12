@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { useIsMobile } from '../../hooks/use-is-mobile'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { TicketStatus, TicketPriority } from '@kombuse/types'
-import { cn } from '../../lib/utils'
-import { Button } from '../../base/button'
-import { Input } from '../../base/input'
-import { Textarea } from '../../base/textarea'
-import { Switch } from '../../base/switch'
-import { Tabs, TabsList, TabsTrigger } from '../../base/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../base/select'
+import { cn } from '@/lib/utils'
+import { Button } from '@/base/button'
+import { Input } from '@/base/input'
+import { Textarea } from '@/base/textarea'
+import { Switch } from '@/base/switch'
+import { Tabs, TabsList, TabsTrigger } from '@/base/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/base/select'
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '../../base/dialog'
+} from '@/base/dialog'
 import { X, Trash2, Pencil, Paperclip, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
 import { LabelBadge } from '../labels/label-badge'
 import { LabelSelector } from '../labels/label-selector'
@@ -25,10 +25,10 @@ import { MilestoneSelector } from '../milestones/milestone-selector'
 import { StatusIndicator } from '../status-indicator'
 import { Markdown } from '../markdown'
 import { ImageLightbox } from '../image-lightbox'
-import { attachmentsApi } from '../../lib/api'
-import { useTicketOperations, useLabelOperations, useMilestoneOperations, useTicketAgentStatus, useCurrentProject, useTicketAttachments, useUploadTicketAttachment } from '../../hooks'
-import { useTextareaAutocomplete } from '../../hooks/use-textarea-autocomplete'
-import { useFileStaging } from '../../hooks/use-file-staging'
+import { attachmentsApi } from '@/lib/api'
+import { useTicketOperations, useLabelOperations, useMilestoneOperations, useTicketAgentStatus, useCurrentProject, useTicketAttachments, useUploadTicketAttachment } from '@/hooks'
+import { useTextareaAutocomplete } from '@/hooks/use-textarea-autocomplete'
+import { useFileStaging } from '@/hooks/use-file-staging'
 import { StagedFilePreviews } from '../staged-file-previews'
 
 interface TicketDetailProps {

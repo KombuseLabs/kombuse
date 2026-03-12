@@ -1,7 +1,7 @@
 import type { EventWithActor, ActorType } from '@kombuse/types'
 import { EVENT_TYPES } from '@kombuse/types'
-import { cn } from '../../lib/utils'
-import { Badge } from '../../base/badge'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/base/badge'
 import { AgentHoverCard } from '../agents'
 import { TicketMentionChip } from '../ticket-mention-chip'
 import {

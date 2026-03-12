@@ -9,7 +9,7 @@ import { AppCtx } from '../app-context'
 let mockWebSocketHandler: ((message: ServerMessage) => void) | undefined
 const mockGetState = vi.fn()
 
-vi.mock('../../hooks/use-websocket', () => ({
+vi.mock('@/hooks/use-websocket', () => ({
   useWebSocket: ({ onMessage }: { onMessage: (message: ServerMessage) => void }) => {
     mockWebSocketHandler = onMessage
     return {
@@ -19,7 +19,7 @@ vi.mock('../../hooks/use-websocket', () => ({
   },
 }))
 
-vi.mock('../../lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   syncApi: {
     getState: () => mockGetState(),
   },

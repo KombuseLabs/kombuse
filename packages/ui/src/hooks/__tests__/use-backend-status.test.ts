@@ -8,7 +8,7 @@ import type { BackendStatus } from '@kombuse/types'
 const mockGetStatus = vi.fn()
 const mockRefreshStatus = vi.fn()
 
-vi.mock('../../lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   backendStatusApi: {
     getStatus: (...args: unknown[]) => mockGetStatus(...args),
     refreshStatus: (...args: unknown[]) => mockRefreshStatus(...args),

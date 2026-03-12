@@ -4,14 +4,14 @@ import type { Label } from '@kombuse/types'
 import { LabelSelector } from '../label-selector'
 
 // Mock Popover to always render open
-vi.mock('../../../base/popover', () => ({
+vi.mock('@/base/popover', () => ({
   Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PopoverTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 // Mock useSmartLabels (requires AppProvider context)
-vi.mock('../../../hooks/use-app-context', () => ({
+vi.mock('@/hooks/use-app-context', () => ({
   useSmartLabels: () => ({
     smartLabelIds: new Set<number>(),
     isSmartLabel: () => false,
@@ -19,7 +19,7 @@ vi.mock('../../../hooks/use-app-context', () => ({
 }))
 
 // Mock Command components as simple pass-through elements
-vi.mock('../../../base/command', () => ({
+vi.mock('@/base/command', () => ({
   Command: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CommandInput: () => <input placeholder="Search labels..." />,
   CommandList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

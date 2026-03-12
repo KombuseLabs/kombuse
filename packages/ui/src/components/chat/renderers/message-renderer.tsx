@@ -1,8 +1,8 @@
 import type { SerializedAgentMessageEvent } from '@kombuse/types'
 import { Bot, Info, User } from 'lucide-react'
-import { cn } from '../../../lib/utils'
+import { cn } from '@/lib/utils'
 import { Markdown } from '../../markdown'
-import { useCurrentProject } from '../../../hooks/use-app-context'
+import { useCurrentProject } from '@/hooks/use-app-context'
 import { EventCard } from './event-card'
 import { ChatImageGallery } from './chat-image-gallery'
 

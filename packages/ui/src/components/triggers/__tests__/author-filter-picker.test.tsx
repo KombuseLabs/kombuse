@@ -4,7 +4,7 @@ import { AuthorFilterPicker, getAuthorFilterLabel } from '../author-filter-picke
 import type { AuthorFilterValue } from '../author-filter-picker'
 
 // Mock Select components as simple pass-through elements
-vi.mock('../../../base/select', () => ({
+vi.mock('@/base/select', () => ({
   Select: ({
     children,
     value,
@@ -39,7 +39,7 @@ vi.mock('../../../base/select', () => ({
 }))
 
 // Mock Popover+Command as simplified components
-vi.mock('../../../base/popover', () => ({
+vi.mock('@/base/popover', () => ({
   Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PopoverTrigger: ({
     children,
@@ -53,7 +53,7 @@ vi.mock('../../../base/popover', () => ({
   ),
 }))
 
-vi.mock('../../../base/command', () => ({
+vi.mock('@/base/command', () => ({
   Command: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CommandInput: () => <input data-testid="agent-search" />,
   CommandList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -74,7 +74,7 @@ vi.mock('../../../base/command', () => ({
   ),
 }))
 
-vi.mock('../../../base/button', () => ({
+vi.mock('@/base/button', () => ({
   Button: ({
     children,
     ...props
@@ -86,7 +86,7 @@ vi.mock('../../../base/button', () => ({
 }))
 
 // Mock hooks
-vi.mock('../../../hooks/use-agents', () => ({
+vi.mock('@/hooks/use-agents', () => ({
   useAgents: () => ({
     data: [
       { id: 'agent-1', name: 'Agent One', is_enabled: true },

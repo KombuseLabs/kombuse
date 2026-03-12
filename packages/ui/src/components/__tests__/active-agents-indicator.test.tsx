@@ -3,25 +3,25 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { useMemo, type ReactNode } from 'react'
 import type { ActiveSessionInfo, AppContextValue } from '@kombuse/types'
 import { ActiveAgentsIndicator } from '../active-agents-indicator'
-import { AppCtx } from '../../providers/app-context'
-import { WebSocketCtx, type WebSocketContextValue } from '../../providers/websocket-context'
-import * as backendStatusHooks from '../../hooks/use-backend-status'
-import * as profileSettingsHooks from '../../hooks/use-profile-settings'
+import { AppCtx } from '@/providers/app-context'
+import { WebSocketCtx, type WebSocketContextValue } from '@/providers/websocket-context'
+import * as backendStatusHooks from '@/hooks/use-backend-status'
+import * as profileSettingsHooks from '@/hooks/use-profile-settings'
 
 const mockMutate = vi.fn()
 
-vi.mock('../../hooks/use-backend-status', () => ({
+vi.mock('@/hooks/use-backend-status', () => ({
   useBackendStatus: vi.fn(() => ({ data: undefined, isLoading: false })),
   useRefreshBackendStatus: vi.fn(() => ({ mutate: mockMutate, isPending: false })),
 }))
 
-vi.mock('../../hooks/use-profile-settings', () => ({
+vi.mock('@/hooks/use-profile-settings', () => ({
   useProfileSetting: vi.fn(() => ({ data: null })),
   useProfileSettings: vi.fn(() => ({ data: null })),
   useUpsertProfileSetting: vi.fn(() => ({ mutate: vi.fn() })),
 }))
 
-vi.mock('../../hooks/use-profile', () => ({
+vi.mock('@/hooks/use-profile', () => ({
   useCurrentUserProfile: vi.fn(() => ({ data: { id: 'user-1' } })),
   useProfile: vi.fn(() => ({ data: { id: 'user-1' } })),
 }))
