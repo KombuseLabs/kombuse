@@ -7,8 +7,10 @@ vi.mock('@kombuse/agent', () => ({
   resolveCodexPath: () => mockResolveCodexPath(),
 }))
 
+const mockSpawnSync = vi.fn()
 const mockExecFileSync = vi.fn()
 vi.mock('node:child_process', () => ({
+  spawnSync: (...args: unknown[]) => mockSpawnSync(...args),
   execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
 }))
 
@@ -16,6 +18,10 @@ const mockAccessSync = vi.fn()
 vi.mock('node:fs', () => ({
   accessSync: (...args: unknown[]) => mockAccessSync(...args),
   constants: { X_OK: 1 },
+}))
+
+vi.mock('@kombuse/services', () => ({
+  readBinaryPath: () => null,
 }))
 
 import {
@@ -28,6 +34,7 @@ import {
 beforeEach(() => {
   mockResolveClaudePath.mockReset()
   mockResolveCodexPath.mockReset()
+  mockSpawnSync.mockReset()
   mockExecFileSync.mockReset()
   mockAccessSync.mockReset()
 })
@@ -39,6 +46,7 @@ afterEach(() => {
   mockAccessSync.mockImplementation(() => {
     throw new Error('not found')
   })
+  mockSpawnSync.mockReturnValue({ stdout: '', stderr: '', status: 1, error: new Error('not found') })
   mockExecFileSync.mockImplementation(() => {
     throw new Error('not found')
   })
@@ -50,10 +58,10 @@ describe('checkAllBackendStatuses', () => {
     mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
     mockResolveCodexPath.mockReturnValue('/usr/local/bin/codex')
     mockAccessSync.mockImplementation(() => {})
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.16\n'
-      if (path === '/usr/local/bin/codex') return 'codex 0.3.2\n'
-      return ''
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return { stdout: 'claude-code 1.0.16\n', stderr: '', status: 0 }
+      if (path === '/usr/local/bin/codex') return { stdout: 'codex 0.3.2\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1 }
     })
 
     const statuses = refreshBackendStatuses()
@@ -78,9 +86,7 @@ describe('checkAllBackendStatuses', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation(() => {
-      throw new Error('timeout')
-    })
+    mockSpawnSync.mockReturnValue({ stdout: '', stderr: '', status: 1, error: new Error('timeout') })
 
     const statuses = refreshBackendStatuses()
     const claude = statuses.find((s) => s.backendType === 'claude-code')
@@ -93,9 +99,7 @@ describe('checkAllBackendStatuses', () => {
   it('reports unavailable when resolve returns bare name and --version fails', () => {
     mockResolveClaudePath.mockReturnValue('claude')
     mockResolveCodexPath.mockReturnValue('codex')
-    mockExecFileSync.mockImplementation(() => {
-      throw new Error('not found')
-    })
+    mockSpawnSync.mockReturnValue({ stdout: '', stderr: '', status: 1, error: new Error('not found') })
 
     const statuses = refreshBackendStatuses()
 
@@ -109,9 +113,9 @@ describe('checkAllBackendStatuses', () => {
   it('reports available when bare name succeeds with --version via PATH', () => {
     mockResolveClaudePath.mockReturnValue('claude')
     mockResolveCodexPath.mockReturnValue('codex')
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === 'claude') return 'claude-code 1.0.16\n'
-      throw new Error('not found')
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === 'claude') return { stdout: 'claude-code 1.0.16\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
     })
 
     const statuses = refreshBackendStatuses()
@@ -122,18 +126,18 @@ describe('checkAllBackendStatuses', () => {
     expect(claude?.path).toBeNull()
   })
 
-  it('uses execFileSync with array args (no shell)', () => {
+  it('uses spawnSync with array args (no shell)', () => {
     mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
     mockResolveCodexPath.mockReturnValue('codex')
     mockAccessSync.mockImplementation((path: string) => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockReturnValue('1.0.0\n')
+    mockSpawnSync.mockReturnValue({ stdout: '1.0.0\n', stderr: '', status: 0 })
 
     refreshBackendStatuses()
 
-    expect(mockExecFileSync).toHaveBeenCalledWith(
+    expect(mockSpawnSync).toHaveBeenCalledWith(
       '/usr/local/bin/claude',
       ['--version'],
       expect.objectContaining({ timeout: 5_000, encoding: 'utf-8' })
@@ -143,9 +147,7 @@ describe('checkAllBackendStatuses', () => {
   it('caches results for subsequent calls', () => {
     mockResolveClaudePath.mockReturnValue('claude')
     mockResolveCodexPath.mockReturnValue('codex')
-    mockExecFileSync.mockImplementation(() => {
-      throw new Error('not found')
-    })
+    mockSpawnSync.mockReturnValue({ stdout: '', stderr: '', status: 1, error: new Error('not found') })
 
     refreshBackendStatuses()
     checkAllBackendStatuses()
@@ -157,9 +159,7 @@ describe('checkAllBackendStatuses', () => {
   it('refreshBackendStatuses clears cache and re-checks', () => {
     mockResolveClaudePath.mockReturnValue('claude')
     mockResolveCodexPath.mockReturnValue('codex')
-    mockExecFileSync.mockImplementation(() => {
-      throw new Error('not found')
-    })
+    mockSpawnSync.mockReturnValue({ stdout: '', stderr: '', status: 1, error: new Error('not found') })
 
     refreshBackendStatuses()
     refreshBackendStatuses()
@@ -175,9 +175,9 @@ describe('checkAllBackendStatuses', () => {
       if (path === npmGlobalPath) return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === npmGlobalPath) return 'codex 0.3.2\n'
-      throw new Error('not found')
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === npmGlobalPath) return { stdout: 'codex 0.3.2\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
     })
 
     const statuses = refreshBackendStatuses()
@@ -195,16 +195,54 @@ describe('checkAllBackendStatuses', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation((path: string) => {
+    mockSpawnSync.mockImplementation((path: string) => {
       if (path === '/usr/local/bin/claude')
-        return 'Claude Code v1.2.3-beta.1 (built 2025-01-01)'
-      throw new Error('not found')
+        return { stdout: 'Claude Code v1.2.3-beta.1 (built 2025-01-01)', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
     })
 
     const statuses = refreshBackendStatuses()
     const claude = statuses.find((s) => s.backendType === 'claude-code')
 
     expect(claude?.version).toBe('1.2.3-beta.1')
+  })
+
+  it('extracts version from stderr when stdout is empty', () => {
+    mockResolveClaudePath.mockReturnValue('claude')
+    mockResolveCodexPath.mockReturnValue('/usr/local/bin/codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex') return
+      throw new Error('not found')
+    })
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex') return { stdout: '', stderr: 'codex 0.3.2\n', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
+    })
+
+    const statuses = refreshBackendStatuses()
+    const codex = statuses.find((s) => s.backendType === 'codex')
+
+    expect(codex?.available).toBe(true)
+    expect(codex?.version).toBe('0.3.2')
+  })
+
+  it('extracts version when process exits with non-zero code', () => {
+    mockResolveClaudePath.mockReturnValue('claude')
+    mockResolveCodexPath.mockReturnValue('/usr/local/bin/codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex') return
+      throw new Error('not found')
+    })
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex') return { stdout: '', stderr: 'codex 0.3.2\n', status: 1 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
+    })
+
+    const statuses = refreshBackendStatuses()
+    const codex = statuses.find((s) => s.backendType === 'codex')
+
+    expect(codex?.available).toBe(true)
+    expect(codex?.version).toBe('0.3.2')
   })
 })
 
@@ -221,9 +259,9 @@ describe('minimum version checking', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.40\n'
-      throw new Error('not found')
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return { stdout: 'claude-code 1.0.40\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
     })
 
     const statuses = refreshBackendStatuses()
@@ -240,9 +278,9 @@ describe('minimum version checking', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/claude') return 'claude-code 2.0.0\n'
-      throw new Error('not found')
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return { stdout: 'claude-code 2.0.0\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
     })
 
     const statuses = refreshBackendStatuses()
@@ -258,9 +296,9 @@ describe('minimum version checking', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.16\n'
-      throw new Error('not found')
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return { stdout: 'claude-code 1.0.16\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
     })
 
     const statuses = refreshBackendStatuses()
@@ -277,9 +315,7 @@ describe('minimum version checking', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation(() => {
-      throw new Error('timeout')
-    })
+    mockSpawnSync.mockReturnValue({ stdout: '', stderr: '', status: 1, error: new Error('timeout') })
 
     const statuses = refreshBackendStatuses()
     const claude = statuses.find((s) => s.backendType === 'claude-code')
@@ -292,9 +328,7 @@ describe('minimum version checking', () => {
   it('meetsMinimum is false when backend is unavailable', () => {
     mockResolveClaudePath.mockReturnValue('claude')
     mockResolveCodexPath.mockReturnValue('codex')
-    mockExecFileSync.mockImplementation(() => {
-      throw new Error('not found')
-    })
+    mockSpawnSync.mockReturnValue({ stdout: '', stderr: '', status: 1, error: new Error('not found') })
 
     const statuses = refreshBackendStatuses()
 
@@ -310,10 +344,10 @@ describe('minimum version checking', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation((path: string) => {
+    mockSpawnSync.mockImplementation((path: string) => {
       if (path === '/usr/local/bin/claude')
-        return 'Claude Code v1.0.40-beta.1'
-      throw new Error('not found')
+        return { stdout: 'Claude Code v1.0.40-beta.1', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
     })
 
     const statuses = refreshBackendStatuses()
@@ -327,10 +361,10 @@ describe('minimum version checking', () => {
     mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
     mockResolveCodexPath.mockReturnValue('/usr/local/bin/codex')
     mockAccessSync.mockImplementation(() => {})
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.40\n'
-      if (path === '/usr/local/bin/codex') return 'codex 0.100.0\n'
-      return ''
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return { stdout: 'claude-code 1.0.40\n', stderr: '', status: 0 }
+      if (path === '/usr/local/bin/codex') return { stdout: 'codex 0.100.0\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1 }
     })
 
     const statuses = refreshBackendStatuses()
@@ -355,8 +389,11 @@ describe('node version checking', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return { stdout: 'claude-code 1.0.40\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
+    })
     mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.40\n'
       if (path === 'node') return 'v22.5.0\n'
       throw new Error('not found')
     })
@@ -376,8 +413,11 @@ describe('node version checking', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return { stdout: 'claude-code 1.0.40\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
+    })
     mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.40\n'
       if (path === 'node') return 'v18.19.0\n'
       throw new Error('not found')
     })
@@ -396,8 +436,11 @@ describe('node version checking', () => {
       if (path === '/usr/local/bin/claude') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/claude') return 'claude-code 1.0.40\n'
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return { stdout: 'claude-code 1.0.40\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
+    })
+    mockExecFileSync.mockImplementation(() => {
       throw new Error('not found')
     })
 
@@ -415,9 +458,9 @@ describe('node version checking', () => {
       if (path === '/usr/local/bin/codex') return
       throw new Error('not found')
     })
-    mockExecFileSync.mockImplementation((path: string) => {
-      if (path === '/usr/local/bin/codex') return 'codex 0.100.0\n'
-      throw new Error('not found')
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex') return { stdout: 'codex 0.100.0\n', stderr: '', status: 0 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
     })
 
     const statuses = refreshBackendStatuses()

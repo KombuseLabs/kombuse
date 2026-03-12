@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { spawnSync, execFileSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
 import { resolveClaudePath, resolveCodexPath } from '@kombuse/agent'
 import { meetsMinimumVersion } from '@kombuse/pkg'
@@ -30,14 +30,14 @@ function isExecutableAtPath(resolvedPath: string): boolean {
 
 function getVersion(binaryPath: string): string | null {
   try {
-    const output = execFileSync(binaryPath, ['--version'], {
+    const result = spawnSync(binaryPath, ['--version'], {
       timeout: 5_000,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     })
-    const match = output.trim().match(/(\d+\.\d+\.\d+[\w.-]*)/)
-    const trimmed = output.trim()
-    return match?.[1] ?? (trimmed || null)
+    const output = (result.stdout || result.stderr || '').trim()
+    const match = output.match(/(\d+\.\d+\.\d+[\w.-]*)/)
+    return match?.[1] ?? (output || null)
   } catch {
     return null
   }
