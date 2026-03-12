@@ -7,9 +7,9 @@ export function PathFixWarning() {
 
   useEffect(() => {
     if (pathFixSucceeded === false) {
-      toast.warning(
-        'PATH could not be read from your shell. Backends that require version-managed runtimes (Node.js via nvm/fnm) may fail.',
-        { duration: 10000 },
+      toast.info(
+        'Shell PATH could not be fully resolved. Most tools will still work via built-in fallback paths.',
+        { duration: 5000 },
       )
     }
   }, [])
