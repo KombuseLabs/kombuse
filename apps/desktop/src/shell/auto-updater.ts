@@ -151,8 +151,10 @@ export class AutoUpdater {
         if (progress.phase === "downloading") {
           this.setState("downloading", {
             downloadProgress: progress.percent,
+            bytesDownloaded: progress.bytesDownloaded,
           });
         } else if (progress.phase === "verifying") {
+          this.setState("downloading", { downloadProgress: 100 });
           this.setState("verifying");
         }
         // extracting and caching phases are internal details

@@ -86,6 +86,7 @@ export class GitHubFeed implements FeedProvider {
         },
         downloadUrl: asset?.browser_download_url,
         publishedAt: release.published_at,
+        archiveSize: asset?.size,
       })
     }
 

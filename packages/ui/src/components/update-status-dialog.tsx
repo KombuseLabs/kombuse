@@ -14,6 +14,7 @@ import { Badge } from '../base/badge'
 import { Progress } from '../base/progress'
 import { useUpdates } from '../hooks/use-updates'
 import { useShellUpdates } from '../hooks/use-shell-updates'
+import { formatFileSize } from '../hooks/use-file-staging'
 import type { UpdateStatus } from '@kombuse/types'
 
 function StatusBadge({ status }: { status: UpdateStatus | null }) {
@@ -85,7 +86,11 @@ function UpdateRow({ label, status, onInstall, onApply, applyLabel }: UpdateRowP
         <div className="flex flex-col gap-1">
           <Progress value={status.downloadProgress >= 0 ? status.downloadProgress : undefined} className="w-full" />
           <span className="text-xs text-muted-foreground">
-            {status.downloadProgress >= 0 ? `Downloading... ${status.downloadProgress}%` : 'Downloading...'}
+            {status.downloadProgress >= 0
+              ? `Downloading... ${status.downloadProgress}%`
+              : status.bytesDownloaded != null && status.bytesDownloaded > 0
+                ? `Downloading... ${formatFileSize(status.bytesDownloaded)}`
+                : 'Downloading...'}
           </span>
         </div>
       )}

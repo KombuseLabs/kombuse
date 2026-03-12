@@ -167,6 +167,34 @@ describe('GitHubFeed', () => {
       expect(versions).toEqual([])
     })
 
+    it('should populate archiveSize from asset size', async () => {
+      fetchMock.mockResolvedValue(
+        mockJsonResponse([
+          makeRelease('v1.0.0'),
+        ])
+      )
+
+      const versions = await feed.getVersions('my-pkg')
+
+      expect(versions[0]!.archiveSize).toBe(1024)
+    })
+
+    it('should set archiveSize to undefined when no asset matches', async () => {
+      fetchMock.mockResolvedValue(
+        mockJsonResponse([
+          makeRelease('v1.0.0', {
+            assets: [
+              { name: 'app.zip', browser_download_url: 'https://dl/app.zip' },
+            ],
+          }),
+        ])
+      )
+
+      const versions = await feed.getVersions('my-pkg')
+
+      expect(versions[0]!.archiveSize).toBeUndefined()
+    })
+
     it('should set downloadUrl to undefined when no asset matches pattern', async () => {
       fetchMock.mockResolvedValue(
         mockJsonResponse([

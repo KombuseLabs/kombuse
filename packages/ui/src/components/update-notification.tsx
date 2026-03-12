@@ -6,6 +6,7 @@ import { Button } from '../base/button'
 import { Progress } from '../base/progress'
 import { useUpdates } from '../hooks/use-updates'
 import { useShellUpdates } from '../hooks/use-shell-updates'
+import { formatFileSize } from '../hooks/use-file-staging'
 
 interface UpdateAvailableToastProps {
   version: string
@@ -32,12 +33,18 @@ function UpdateAvailableToast({ version, onInstall, onDismiss }: UpdateAvailable
   )
 }
 
-function DownloadProgressToast({ progress }: { progress: number }) {
+function DownloadProgressToast({ progress, bytesDownloaded }: { progress: number; bytesDownloaded?: number }) {
   return (
     <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2 w-full min-w-[200px]">
       <p className="text-sm font-medium">Downloading Update...</p>
       <Progress value={progress >= 0 ? progress : undefined} className="w-full" />
-      <p className="text-xs text-muted-foreground">{progress >= 0 ? `${progress}%` : 'Downloading...'}</p>
+      <p className="text-xs text-muted-foreground">
+        {progress >= 0
+          ? `${progress}%`
+          : bytesDownloaded != null && bytesDownloaded > 0
+            ? `Downloading... ${formatFileSize(bytesDownloaded)}`
+            : 'Downloading...'}
+      </p>
     </div>
   )
 }
@@ -132,7 +139,7 @@ export function UnifiedUpdateNotification() {
       if (status.state === 'downloading' && toastIdRef.current) {
         const ProgressComponent = track === 'shell' ? ShellDownloadProgressToast : DownloadProgressToast
         toast.custom(
-          () => <ProgressComponent progress={status.downloadProgress} />,
+          () => <ProgressComponent progress={status.downloadProgress} bytesDownloaded={status.bytesDownloaded} />,
           { id: toastIdRef.current, duration: Infinity }
         )
       }
@@ -167,7 +174,7 @@ export function UnifiedUpdateNotification() {
           break
         case 'downloading':
           toastIdRef.current = toast.custom(
-            () => <ShellDownloadProgressToast progress={status.downloadProgress} />,
+            () => <ShellDownloadProgressToast progress={status.downloadProgress} bytesDownloaded={status.bytesDownloaded} />,
             { duration: Infinity }
           )
           break
@@ -208,7 +215,7 @@ export function UnifiedUpdateNotification() {
           break
         case 'downloading':
           toastIdRef.current = toast.custom(
-            () => <DownloadProgressToast progress={status.downloadProgress} />,
+            () => <DownloadProgressToast progress={status.downloadProgress} bytesDownloaded={status.bytesDownloaded} />,
             { duration: Infinity }
           )
           break
@@ -259,12 +266,18 @@ function ShellUpdateAvailableToast({ version, onInstall, onDismiss }: UpdateAvai
   )
 }
 
-function ShellDownloadProgressToast({ progress }: { progress: number }) {
+function ShellDownloadProgressToast({ progress, bytesDownloaded }: { progress: number; bytesDownloaded?: number }) {
   return (
     <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 shadow-lg flex flex-col gap-2 w-full min-w-[200px]">
       <p className="text-sm font-medium">Downloading App Update...</p>
       <Progress value={progress >= 0 ? progress : undefined} className="w-full" />
-      <p className="text-xs text-muted-foreground">{progress >= 0 ? `${progress}%` : 'Downloading...'}</p>
+      <p className="text-xs text-muted-foreground">
+        {progress >= 0
+          ? `${progress}%`
+          : bytesDownloaded != null && bytesDownloaded > 0
+            ? `Downloading... ${formatFileSize(bytesDownloaded)}`
+            : 'Downloading...'}
+      </p>
     </div>
   )
 }

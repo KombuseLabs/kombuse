@@ -33,7 +33,8 @@ export interface UpdateStatus {
   state: UpdateState
   currentVersion: string
   updateInfo: UpdateInfo | null
-  downloadProgress: number // 0-100
+  downloadProgress: number // 0-100, or -1 for indeterminate
+  bytesDownloaded?: number
   error: string | null
 }
 

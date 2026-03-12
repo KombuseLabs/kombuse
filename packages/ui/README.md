@@ -562,7 +562,7 @@ import { UpdateStatusDialog } from '@kombuse/ui/components'
 - Opens via Electron menu "Check for Updates..." (IPC) or Cmd+K command palette
 - Shows two rows: **Package** (server+web) and **App** (shell/Electron)
 - Each row displays current version, status badge, and context-sensitive action button
-- Status badges: Up to date, Checking, Update available, Downloading (with progress bar), Verifying, Ready to install, Error
+- Status badges: Up to date, Checking, Update available, Downloading (with progress bar or byte counter when indeterminate), Verifying, Ready to install, Error
 - Auto-triggers update checks when opened
 - "Check All" button re-checks both channels simultaneously
 
