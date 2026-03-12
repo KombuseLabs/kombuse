@@ -12,7 +12,9 @@ export interface JsonRpcLineCallbacks {
 /**
  * Resolve Codex CLI path, preferring explicit env/configured install locations.
  */
-export function resolveCodexPath(): string {
+export function resolveCodexPath(configuredPath?: string): string {
+  if (configuredPath) return configuredPath
+
   if (process.env.CODEX_PATH) {
     return process.env.CODEX_PATH
   }

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { BACKEND_TYPES, type ModelOption } from '@kombuse/types'
 import { CodexBackend } from '@kombuse/agent'
-import { getModelCatalog, getModelCatalogDynamic } from '@kombuse/services'
+import { getModelCatalog, getModelCatalogDynamic, readBinaryPath } from '@kombuse/services'
 import { modelCatalogQuerySchema } from '../schemas/models.schema'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -19,7 +19,8 @@ async function fetchCodexModels(): Promise<ModelOption[]> {
     return cached.models
   }
 
-  const backend = new CodexBackend()
+  const cliPath = readBinaryPath('codex')
+  const backend = new CodexBackend(cliPath ? { cliPath } : {})
   try {
     await backend.spawnAndInitialize(process.cwd())
     const result = await backend.listModels()
