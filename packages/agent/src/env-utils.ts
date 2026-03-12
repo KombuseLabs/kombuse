@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { createAppLogger } from '@kombuse/core/logger'
 
 const logger = createAppLogger('EnvUtils')
@@ -37,18 +37,62 @@ const LAUNCHD_DIRS = new Set(['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin',
 
 /**
  * Resolve the nvm default Node bin directory by reading ~/.nvm/alias/default.
- * Returns the absolute bin path if the alias file and versioned directory exist,
- * otherwise null. Uses synchronous file reads — no shell spawning.
+ * Handles full versions ("v20.10.0"), major-only ("20"), and alias chains
+ * ("lts/iron", "lts/*"). Falls back to the latest installed version if the
+ * alias cannot be resolved to an exact directory.
+ * Returns the absolute bin path or null. Synchronous file reads only.
  */
 export function resolveNvmBinDir(): string | null {
   try {
     const homeDir = process.env.HOME || process.env.USERPROFILE || ''
-    const aliasFile = `${homeDir}/.nvm/alias/default`
-    let version = readFileSync(aliasFile, 'utf-8').trim()
-    if (!version) return null
-    if (!version.startsWith('v')) version = `v${version}`
-    const binDir = `${homeDir}/.nvm/versions/node/${version}/bin`
-    return existsSync(binDir) ? binDir : null
+    const nvmDir = process.env.NVM_DIR || `${homeDir}/.nvm`
+    const versionsDir = `${nvmDir}/versions/node`
+
+    // Read the default alias — may be "v20.10.0", "20", "lts/iron", etc.
+    let alias: string | null = null
+    try {
+      alias = readFileSync(`${nvmDir}/alias/default`, 'utf-8').trim() || null
+    } catch { /* no alias file */ }
+
+    // Resolve alias chains: nvm stores lts/* → lts/iron, lts/iron → 20, etc.
+    if (alias) {
+      for (let i = 0; i < 5; i++) {
+        try {
+          const resolved = readFileSync(`${nvmDir}/alias/${alias}`, 'utf-8').trim()
+          if (resolved) { alias = resolved; continue }
+        } catch { /* not an alias, it's a version */ }
+        break
+      }
+    }
+
+    // Try exact match first
+    if (alias) {
+      const version = alias.startsWith('v') ? alias : `v${alias}`
+      const binDir = `${versionsDir}/${version}/bin`
+      if (existsSync(binDir)) return binDir
+    }
+
+    // Try prefix match for partial versions (e.g. "20" → "v20.10.0")
+    if (alias) {
+      const prefix = alias.startsWith('v') ? alias : `v${alias}`
+      try {
+        const versions = readdirSync(versionsDir).filter((v) => v.startsWith('v')).sort()
+        const match = versions.filter((v) => v === prefix || v.startsWith(`${prefix}.`))
+        if (match.length > 0) {
+          return `${versionsDir}/${match[match.length - 1]}/bin`
+        }
+      } catch { /* versions dir doesn't exist */ }
+    }
+
+    // Last resort: latest installed version
+    try {
+      const versions = readdirSync(versionsDir).filter((v) => v.startsWith('v')).sort()
+      if (versions.length > 0) {
+        return `${versionsDir}/${versions[versions.length - 1]}/bin`
+      }
+    } catch { /* no versions installed */ }
+
+    return null
   } catch {
     return null
   }

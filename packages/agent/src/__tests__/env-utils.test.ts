@@ -15,23 +15,32 @@ vi.mock('node:fs', async () => {
     ...actual,
     readFileSync: vi.fn(actual.readFileSync),
     existsSync: vi.fn(actual.existsSync),
+    readdirSync: vi.fn(actual.readdirSync),
   }
 })
 
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { buildCleanPath, createCleanEnv, resolveNvmBinDir } from '../env-utils'
 
 describe('buildCleanPath', () => {
   const originalPlatform = process.platform
   const originalHome = process.env.HOME
+  const originalNvmDir = process.env.NVM_DIR
 
   beforeEach(() => {
     process.env.HOME = '/Users/testuser'
+    delete process.env.NVM_DIR
+    // Prevent resolveNvmBinDir from finding real nvm on the test machine
+    vi.mocked(readFileSync).mockImplementation(() => { throw new Error('ENOENT') })
+    vi.mocked(readdirSync).mockImplementation(() => { throw new Error('ENOENT') })
   })
 
   afterEach(() => {
     Object.defineProperty(process, 'platform', { value: originalPlatform })
     process.env.HOME = originalHome
+    if (originalNvmDir) process.env.NVM_DIR = originalNvmDir
+    else delete process.env.NVM_DIR
+    vi.restoreAllMocks()
   })
 
   it('prepends common dirs in the correct order', () => {
@@ -207,50 +216,102 @@ describe('createCleanEnv', () => {
 
 describe('resolveNvmBinDir', () => {
   const originalHome = process.env.HOME
+  const originalNvmDir = process.env.NVM_DIR
   const mockedReadFileSync = vi.mocked(readFileSync)
   const mockedExistsSync = vi.mocked(existsSync)
+  const mockedReaddirSync = vi.mocked(readdirSync)
 
   beforeEach(() => {
     process.env.HOME = '/Users/testuser'
+    delete process.env.NVM_DIR
     vi.restoreAllMocks()
   })
 
   afterEach(() => {
     process.env.HOME = originalHome
+    if (originalNvmDir) process.env.NVM_DIR = originalNvmDir
+    else delete process.env.NVM_DIR
   })
 
-  it('resolves versioned bin path from alias file', () => {
-    mockedReadFileSync.mockReturnValue('v22.1.0\n')
+  it('resolves exact version from alias file', () => {
+    mockedReadFileSync.mockImplementation((path: any) => {
+      if (path === '/Users/testuser/.nvm/alias/default') return 'v22.1.0\n'
+      throw new Error('ENOENT')
+    })
     mockedExistsSync.mockReturnValue(true)
 
     expect(resolveNvmBinDir()).toBe('/Users/testuser/.nvm/versions/node/v22.1.0/bin')
-    expect(mockedReadFileSync).toHaveBeenCalledWith('/Users/testuser/.nvm/alias/default', 'utf-8')
-    expect(mockedExistsSync).toHaveBeenCalledWith('/Users/testuser/.nvm/versions/node/v22.1.0/bin')
   })
 
   it('prepends v prefix when missing', () => {
-    mockedReadFileSync.mockReturnValue('22\n')
+    mockedReadFileSync.mockImplementation((path: any) => {
+      if (path === '/Users/testuser/.nvm/alias/default') return '22.1.0\n'
+      throw new Error('ENOENT')
+    })
     mockedExistsSync.mockReturnValue(true)
 
-    expect(resolveNvmBinDir()).toBe('/Users/testuser/.nvm/versions/node/v22/bin')
+    expect(resolveNvmBinDir()).toBe('/Users/testuser/.nvm/versions/node/v22.1.0/bin')
   })
 
-  it('returns null when alias file does not exist', () => {
-    mockedReadFileSync.mockImplementation(() => { throw new Error('ENOENT') })
+  it('resolves partial version via prefix match', () => {
+    mockedReadFileSync.mockImplementation((path: any) => {
+      if (path === '/Users/testuser/.nvm/alias/default') return '20\n'
+      throw new Error('ENOENT')
+    })
+    mockedExistsSync.mockReturnValue(false) // exact v20/bin doesn't exist
+    mockedReaddirSync.mockReturnValue(['v18.19.0', 'v20.10.0', 'v20.11.1'] as any)
 
-    expect(resolveNvmBinDir()).toBeNull()
+    expect(resolveNvmBinDir()).toBe('/Users/testuser/.nvm/versions/node/v20.11.1/bin')
   })
 
-  it('returns null when versioned directory does not exist', () => {
-    mockedReadFileSync.mockReturnValue('v22.1.0\n')
+  it('resolves alias chain (lts/iron → 20)', () => {
+    mockedReadFileSync.mockImplementation((path: any) => {
+      if (path === '/Users/testuser/.nvm/alias/default') return 'lts/iron\n'
+      if (path === '/Users/testuser/.nvm/alias/lts/iron') return '20\n'
+      throw new Error('ENOENT')
+    })
+    mockedExistsSync.mockReturnValue(false) // exact v20/bin doesn't exist
+    mockedReaddirSync.mockReturnValue(['v18.19.0', 'v20.10.0'] as any)
+
+    expect(resolveNvmBinDir()).toBe('/Users/testuser/.nvm/versions/node/v20.10.0/bin')
+  })
+
+  it('falls back to latest installed version when alias is unresolvable', () => {
+    mockedReadFileSync.mockImplementation((path: any) => {
+      if (path === '/Users/testuser/.nvm/alias/default') return 'node\n'
+      throw new Error('ENOENT')
+    })
     mockedExistsSync.mockReturnValue(false)
+    mockedReaddirSync.mockReturnValue(['v18.19.0', 'v22.1.0'] as any)
+
+    expect(resolveNvmBinDir()).toBe('/Users/testuser/.nvm/versions/node/v22.1.0/bin')
+  })
+
+  it('returns null when alias file does not exist and no versions installed', () => {
+    mockedReadFileSync.mockImplementation(() => { throw new Error('ENOENT') })
+    mockedReaddirSync.mockImplementation(() => { throw new Error('ENOENT') })
 
     expect(resolveNvmBinDir()).toBeNull()
   })
 
-  it('returns null when alias file is empty', () => {
-    mockedReadFileSync.mockReturnValue('  \n')
+  it('returns null when alias file is empty and no versions installed', () => {
+    mockedReadFileSync.mockImplementation((path: any) => {
+      if (path === '/Users/testuser/.nvm/alias/default') return '  \n'
+      throw new Error('ENOENT')
+    })
+    mockedReaddirSync.mockImplementation(() => { throw new Error('ENOENT') })
 
     expect(resolveNvmBinDir()).toBeNull()
+  })
+
+  it('respects NVM_DIR env var', () => {
+    process.env.NVM_DIR = '/custom/nvm'
+    mockedReadFileSync.mockImplementation((path: any) => {
+      if (path === '/custom/nvm/alias/default') return 'v22.1.0\n'
+      throw new Error('ENOENT')
+    })
+    mockedExistsSync.mockReturnValue(true)
+
+    expect(resolveNvmBinDir()).toBe('/custom/nvm/versions/node/v22.1.0/bin')
   })
 })
