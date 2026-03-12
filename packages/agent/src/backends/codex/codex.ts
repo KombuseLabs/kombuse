@@ -88,6 +88,7 @@ export class CodexBackend extends BaseAgentBackend {
   private agentMessageBuffers = new Map<string, string>()
   private emittedAgentMessageItemIds = new Set<string>()
   private recentAssistantMessages: Array<{ content: string; timestamp: number }> = []
+  private stderrBuffer: string[] = []
 
   constructor(options: CodexBackendOptions = {}) {
     super()
@@ -107,6 +108,7 @@ export class CodexBackend extends BaseAgentBackend {
     this.clearBackendSessionId()
     this.activeTurnId = undefined
     this.skipTurnCompletionEvents = false
+    this.stderrBuffer = []
 
     const args = this.buildArgs()
     const jsonRpcBehavior = createJsonRpcLineBehavior({
@@ -130,6 +132,7 @@ export class CodexBackend extends BaseAgentBackend {
           this.emitRawIfDebug({ pid }, 'process_spawn')
         },
         onStderr: (data) => {
+          this.stderrBuffer.push(data)
           this.emitRawIfDebug({ stderr: data }, 'process_stderr')
         },
         onExit: (code, signal) => {
@@ -153,7 +156,7 @@ export class CodexBackend extends BaseAgentBackend {
                   sessionId: this.getBackendSessionId(),
                   exitCode: code,
                   success: code === 0,
-                  ...(code === 0 ? {} : { errorMessage: `Codex process exited with code ${code}` }),
+                  ...(code === 0 ? {} : { errorMessage: this.formatExitError(code) }),
                 },
           })
         },
@@ -287,6 +290,7 @@ export class CodexBackend extends BaseAgentBackend {
 
     this.starting()
     this.clearBackendSessionId()
+    this.stderrBuffer = []
 
     const args = this.buildArgs()
     const jsonRpcBehavior = createJsonRpcLineBehavior({
@@ -305,7 +309,9 @@ export class CodexBackend extends BaseAgentBackend {
       },
       {
         onSpawn: () => {},
-        onStderr: () => {},
+        onStderr: (data) => {
+          this.stderrBuffer.push(data)
+        },
         onExit: (_code, _signal) => {
           this.process = null
           this.rejectAllPendingRequests(new Error('Codex process exited'))
@@ -1148,6 +1154,20 @@ export class CodexBackend extends BaseAgentBackend {
       return [this.createRawEvent(data, sourceType)]
     }
     return []
+  }
+
+  private formatExitError(code: number | null): string {
+    const base = `Codex process exited with code ${code}`
+    const stderr = this.stderrBuffer.join('').trim()
+    const truncated = stderr && stderr.length > 500 ? stderr.slice(-500) : stderr
+    if (code === 127) {
+      const hint =
+        'The codex binary was not found. Install Codex or configure the path in Settings > Binaries.'
+      if (!truncated) return `${base}\n${hint}`
+      return `${base}\n${truncated}\n${hint}`
+    }
+    if (!truncated) return base
+    return `${base}\n${truncated}`
   }
 
   private createErrorEvent(message: string, error?: Error, raw?: unknown): AgentEvent {
