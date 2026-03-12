@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
 import type { Process, ProcessBehavior } from '../../types'
 import type { JsonRpcMessage } from './types'
-import { buildCleanPath } from '../../env-utils'
+import { buildCleanPath, resolveViaLoginShell } from '../../env-utils'
 
 export interface JsonRpcLineCallbacks {
   onMessage: (message: JsonRpcMessage) => void
@@ -36,6 +36,11 @@ export function resolveCodexPath(): string {
     }
   } catch {
     // npm not available or timed out — skip
+  }
+
+  const loginShellPath = resolveViaLoginShell('codex')
+  if (loginShellPath) {
+    possiblePaths.push(loginShellPath)
   }
 
   for (const path of possiblePaths) {

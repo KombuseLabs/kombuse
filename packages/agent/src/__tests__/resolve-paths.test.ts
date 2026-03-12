@@ -35,14 +35,20 @@ describe('resolveCodexPath — npm prefix detection', () => {
       if (path === '/custom/npm/prefix/bin/codex') return
       throw new Error('not found')
     })
-    mockExecSync.mockReturnValue('/custom/npm/prefix\n')
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('npm config')) return '/custom/npm/prefix\n'
+      throw new Error('not found')
+    })
 
     expect(resolveCodexPath()).toBe('/custom/npm/prefix/bin/codex')
   })
 
   it('prefers hardcoded paths over npm prefix', () => {
     mockAccessSync.mockImplementation(() => {})
-    mockExecSync.mockReturnValue('/custom/npm/prefix\n')
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('npm config')) return '/custom/npm/prefix\n'
+      throw new Error('not found')
+    })
 
     const result = resolveCodexPath()
     // Should return first hardcoded path, not the npm prefix one
@@ -54,7 +60,7 @@ describe('resolveCodexPath — npm prefix detection', () => {
       throw new Error('not found')
     })
     mockExecSync.mockImplementation(() => {
-      throw new Error('npm not available')
+      throw new Error('not available')
     })
 
     expect(resolveCodexPath()).toBe('codex')
@@ -72,13 +78,53 @@ describe('resolveCodexPath — npm prefix detection', () => {
   })
 })
 
+describe('resolveCodexPath — login-shell fallback', () => {
+  it('finds codex via login shell when hardcoded paths and npm prefix miss', () => {
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/Users/user/.nvm/versions/node/v20/bin/codex') return
+      throw new Error('not found')
+    })
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('command -v')) return '/Users/user/.nvm/versions/node/v20/bin/codex\n'
+      throw new Error('not available')
+    })
+
+    expect(resolveCodexPath()).toBe('/Users/user/.nvm/versions/node/v20/bin/codex')
+  })
+
+  it('prefers hardcoded paths over login-shell result', () => {
+    mockAccessSync.mockImplementation(() => {})
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('command -v')) return '/Users/user/.nvm/versions/node/v20/bin/codex\n'
+      throw new Error('not available')
+    })
+
+    const result = resolveCodexPath()
+    expect(result).not.toBe('/Users/user/.nvm/versions/node/v20/bin/codex')
+  })
+
+  it('falls back to bare name when login shell also fails', () => {
+    mockAccessSync.mockImplementation(() => {
+      throw new Error('not found')
+    })
+    mockExecSync.mockImplementation(() => {
+      throw new Error('not available')
+    })
+
+    expect(resolveCodexPath()).toBe('codex')
+  })
+})
+
 describe('resolveClaudePath — npm prefix detection', () => {
   it('finds claude via npm config get prefix when hardcoded paths miss', () => {
     mockAccessSync.mockImplementation((path: string) => {
       if (path === '/home/user/.nvm/versions/node/v20/bin/claude') return
       throw new Error('not found')
     })
-    mockExecSync.mockReturnValue('/home/user/.nvm/versions/node/v20\n')
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('npm config')) return '/home/user/.nvm/versions/node/v20\n'
+      throw new Error('not found')
+    })
 
     expect(resolveClaudePath()).toBe(
       '/home/user/.nvm/versions/node/v20/bin/claude'
@@ -87,7 +133,10 @@ describe('resolveClaudePath — npm prefix detection', () => {
 
   it('prefers hardcoded paths over npm prefix', () => {
     mockAccessSync.mockImplementation(() => {})
-    mockExecSync.mockReturnValue('/custom/prefix\n')
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('npm config')) return '/custom/prefix\n'
+      throw new Error('not found')
+    })
 
     const result = resolveClaudePath()
     expect(result).not.toBe('/custom/prefix/bin/claude')
@@ -98,7 +147,33 @@ describe('resolveClaudePath — npm prefix detection', () => {
       throw new Error('not found')
     })
     mockExecSync.mockImplementation(() => {
-      throw new Error('npm not available')
+      throw new Error('not available')
+    })
+
+    expect(resolveClaudePath()).toBe('claude')
+  })
+})
+
+describe('resolveClaudePath — login-shell fallback', () => {
+  it('finds claude via login shell when hardcoded paths and npm prefix miss', () => {
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/Users/user/.nvm/versions/node/v20/bin/claude') return
+      throw new Error('not found')
+    })
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('command -v')) return '/Users/user/.nvm/versions/node/v20/bin/claude\n'
+      throw new Error('not available')
+    })
+
+    expect(resolveClaudePath()).toBe('/Users/user/.nvm/versions/node/v20/bin/claude')
+  })
+
+  it('falls back to bare name when login shell also fails', () => {
+    mockAccessSync.mockImplementation(() => {
+      throw new Error('not found')
+    })
+    mockExecSync.mockImplementation(() => {
+      throw new Error('not available')
     })
 
     expect(resolveClaudePath()).toBe('claude')

@@ -3,7 +3,7 @@ import { accessSync, constants } from 'node:fs'
 import type { ProcessBehavior, Process } from '../../types'
 import type { ClaudeEvent } from './types'
 import { createAppLogger } from '@kombuse/core/logger'
-import { buildCleanPath } from '../../env-utils'
+import { buildCleanPath, resolveViaLoginShell } from '../../env-utils'
 
 const logger = createAppLogger('ClaudeCodeUtils')
 
@@ -49,6 +49,11 @@ export function resolveClaudePath(): string {
     }
   } catch {
     // npm not available or timed out — skip
+  }
+
+  const loginShellPath = resolveViaLoginShell('claude')
+  if (loginShellPath) {
+    possiblePaths.push(loginShellPath)
   }
 
   for (const path of possiblePaths) {

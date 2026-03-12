@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { createAppLogger } from '@kombuse/core/logger'
 
 const logger = createAppLogger('EnvUtils')
@@ -61,4 +62,21 @@ export function buildCleanPath(currentPath?: string): string {
     }
   }
   return pathParts.join(':')
+}
+
+/**
+ * Resolve a binary path by spawning the user's login shell.
+ * Works for nvm/fnm/volta-managed installs that aren't on the server PATH.
+ */
+export function resolveViaLoginShell(binaryName: string): string | null {
+  try {
+    const shell = process.env.SHELL || '/bin/zsh'
+    const result = execSync(
+      `${shell} -ilc 'command -v ${binaryName}'`,
+      { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
+    ).trim()
+    return result || null
+  } catch {
+    return null
+  }
 }
