@@ -85,6 +85,9 @@ export {
   readFileLoggingEnabled,
   CRASH_REPORTING_ENABLED_SETTING_KEY,
   readCrashReportingEnabled,
+  BINARIES_CLAUDE_SETTING_KEY,
+  BINARIES_CODEX_SETTING_KEY,
+  readBinaryPath,
 } from './session-preferences-service'
 export type {
   ResolveBackendTypeInput,

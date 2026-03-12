@@ -16,7 +16,7 @@ export type { AgentInvokeMessage, PermissionResponseMessage, AgentExecutionEvent
 export interface AgentExecutionDependencies {
   getAgent: (agentId: string) => ReturnType<typeof agentService.getAgent>
   processEvent: (event: EventWithActor) => ReturnType<typeof agentService.processEvent>
-  createBackend: (backendType: BackendType) => AgentBackend
+  createBackend: (backendType: BackendType, projectId?: string) => AgentBackend
   generateSessionId: () => KombuseSessionId
   resolveProjectPath: () => string | undefined
   resolveProjectPathForProject?: (projectId: string | null) => string | undefined

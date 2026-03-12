@@ -5,8 +5,9 @@ import {
 } from '../services/backend-status'
 
 export async function backendStatusRoutes(fastify: FastifyInstance) {
-  fastify.get('/backend-status', async () => {
-    return checkAllBackendStatuses()
+  fastify.get<{ Querystring: { projectId?: string } }>('/backend-status', async (request) => {
+    const { projectId } = request.query
+    return checkAllBackendStatuses(projectId)
   })
 
   fastify.post('/backend-status/refresh', async () => {

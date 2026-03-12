@@ -1052,7 +1052,7 @@ export function startAgentChatSession(
     return
   }
 
-  const backend = dependencies.createBackend(resolvedBackendType)
+  const backend = dependencies.createBackend(resolvedBackendType, effectiveProjectId)
 
   const sessionForTransition = dependencies.sessionPersistence.getSession(persistentSessionId)
   const transitionEvent = sessionForTransition?.status === 'pending' ? 'start' as const : 'continue' as const
@@ -1373,7 +1373,7 @@ export function startAgentChatSession(
           `\n\n<prior-conversation>\n## Prior Conversation\nThe following is the conversation history from a previous session. Use this context to maintain continuity.\n\n${conversationHistory}\n</prior-conversation>`
       }
 
-      const retryBackend = dependencies.createBackend(resolvedBackendType)
+      const retryBackend = dependencies.createBackend(resolvedBackendType, effectiveProjectId)
       dependencies.stateMachine.transition(persistentSessionId, 'continue', {
         kombuseSessionId: appSessionId,
         ticketId,

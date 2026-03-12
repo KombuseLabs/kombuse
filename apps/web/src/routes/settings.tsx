@@ -5,6 +5,7 @@ import {
   useClaudeCodeMcpStatus,
   useCodexMcpStatus,
   useProfileSetting,
+  useProjects,
   useSetClaudeCodeMcpEnabled,
   useSetCodexMcpEnabled,
   useUpsertProfileSetting,
@@ -46,6 +47,8 @@ const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
 const LIST_PANEL_HIDDEN_SETTING_KEY = 'layout.listPanelHidden'
 const FILE_LOGGING_ENABLED_SETTING_KEY = 'logging.file_enabled'
 const CRASH_REPORTING_ENABLED_SETTING_KEY = 'telemetry.crash_reporting_enabled'
+const BINARIES_CLAUDE_SETTING_KEY = 'binaries.claude'
+const BINARIES_CODEX_SETTING_KEY = 'binaries.codex'
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
@@ -67,9 +70,22 @@ export function Settings() {
   const setCodexMcpEnabled = useSetCodexMcpEnabled()
   const { data: claudeCodeMcpStatus, isLoading: claudeCodeMcpStatusLoading } = useClaudeCodeMcpStatus()
   const setClaudeCodeMcpEnabled = useSetClaudeCodeMcpEnabled()
+  const { data: claudePathSetting } = useProfileSetting(USER_PROFILE_ID, BINARIES_CLAUDE_SETTING_KEY)
+  const { data: codexPathSetting } = useProfileSetting(USER_PROFILE_ID, BINARIES_CODEX_SETTING_KEY)
+  const { data: projects } = useProjects()
   const upsertSetting = useUpsertProfileSetting()
   const [maxChainDepthValue, setMaxChainDepthValue] = useState(maxChainDepthSetting?.setting_value ?? '')
   const [backendTimeoutValue, setBackendTimeoutValue] = useState(backendTimeoutSetting?.setting_value ?? '30')
+  const [claudePathValue, setClaudePathValue] = useState('')
+  const [codexPathValue, setCodexPathValue] = useState('')
+  const [selectedProjectId, setSelectedProjectId] = useState('')
+  const [projectClaudePathValue, setProjectClaudePathValue] = useState('')
+  const [projectCodexPathValue, setProjectCodexPathValue] = useState('')
+
+  const projectClaudeKey = selectedProjectId ? `${BINARIES_CLAUDE_SETTING_KEY}.${selectedProjectId}` : ''
+  const projectCodexKey = selectedProjectId ? `${BINARIES_CODEX_SETTING_KEY}.${selectedProjectId}` : ''
+  const { data: projectClaudePathSetting } = useProfileSetting(USER_PROFILE_ID, projectClaudeKey)
+  const { data: projectCodexPathSetting } = useProfileSetting(USER_PROFILE_ID, projectCodexKey)
 
   const showEvents = eventsSetting?.setting_value === 'false'
   const showPermissions = permissionsSetting?.setting_value === 'false'
@@ -94,6 +110,22 @@ export function Settings() {
     setBackendTimeoutValue(backendTimeoutSetting?.setting_value ?? '30')
   }, [backendTimeoutSetting?.setting_value])
 
+  useEffect(() => {
+    setClaudePathValue(claudePathSetting?.setting_value ?? '')
+  }, [claudePathSetting?.setting_value])
+
+  useEffect(() => {
+    setCodexPathValue(codexPathSetting?.setting_value ?? '')
+  }, [codexPathSetting?.setting_value])
+
+  useEffect(() => {
+    setProjectClaudePathValue(projectClaudePathSetting?.setting_value ?? '')
+  }, [projectClaudePathSetting?.setting_value])
+
+  useEffect(() => {
+    setProjectCodexPathValue(projectCodexPathSetting?.setting_value ?? '')
+  }, [projectCodexPathSetting?.setting_value])
+
   const persistMaxChainDepth = () => {
     const normalizedValue = maxChainDepthValue.trim()
     const currentValue = (maxChainDepthSetting?.setting_value ?? '').trim()
@@ -116,6 +148,52 @@ export function Settings() {
     upsertSetting.mutate({
       profile_id: USER_PROFILE_ID,
       setting_key: CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
+      setting_value: normalizedValue,
+    })
+  }
+
+  const persistClaudePath = () => {
+    const normalizedValue = claudePathValue.trim()
+    const currentValue = (claudePathSetting?.setting_value ?? '').trim()
+    if (normalizedValue === currentValue) return
+    upsertSetting.mutate({
+      profile_id: USER_PROFILE_ID,
+      setting_key: BINARIES_CLAUDE_SETTING_KEY,
+      setting_value: normalizedValue,
+    })
+  }
+
+  const persistCodexPath = () => {
+    const normalizedValue = codexPathValue.trim()
+    const currentValue = (codexPathSetting?.setting_value ?? '').trim()
+    if (normalizedValue === currentValue) return
+    upsertSetting.mutate({
+      profile_id: USER_PROFILE_ID,
+      setting_key: BINARIES_CODEX_SETTING_KEY,
+      setting_value: normalizedValue,
+    })
+  }
+
+  const persistProjectClaudePath = () => {
+    if (!projectClaudeKey) return
+    const normalizedValue = projectClaudePathValue.trim()
+    const currentValue = (projectClaudePathSetting?.setting_value ?? '').trim()
+    if (normalizedValue === currentValue) return
+    upsertSetting.mutate({
+      profile_id: USER_PROFILE_ID,
+      setting_key: projectClaudeKey,
+      setting_value: normalizedValue,
+    })
+  }
+
+  const persistProjectCodexPath = () => {
+    if (!projectCodexKey) return
+    const normalizedValue = projectCodexPathValue.trim()
+    const currentValue = (projectCodexPathSetting?.setting_value ?? '').trim()
+    if (normalizedValue === currentValue) return
+    upsertSetting.mutate({
+      profile_id: USER_PROFILE_ID,
+      setting_key: projectCodexKey,
       setting_value: normalizedValue,
     })
   }
@@ -564,6 +642,84 @@ export function Settings() {
                 Maximum agent invocations per ticket per hour before loop protection triggers.
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Binary Paths */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Binary Paths</CardTitle>
+            <CardDescription>
+              Override auto-detected paths for Claude and Codex CLI binaries. Leave empty to use auto-detection.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="binary-claude-path" className="font-normal">Claude CLI Path</Label>
+              <Input
+                id="binary-claude-path"
+                value={claudePathValue}
+                onChange={(event) => setClaudePathValue(event.target.value)}
+                onBlur={persistClaudePath}
+                placeholder="/usr/local/bin/claude (auto-detect)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="binary-codex-path" className="font-normal">Codex CLI Path</Label>
+              <Input
+                id="binary-codex-path"
+                value={codexPathValue}
+                onChange={(event) => setCodexPathValue(event.target.value)}
+                onBlur={persistCodexPath}
+                placeholder="/usr/local/bin/codex (auto-detect)"
+              />
+            </div>
+
+            {projects && projects.length > 0 && (
+              <>
+                <div className="border-t pt-4">
+                  <Label htmlFor="binary-project-select" className="font-normal">Per-Project Overrides</Label>
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    Override binary paths for a specific project. These take precedence over the global paths above.
+                  </p>
+                  <select
+                    id="binary-project-select"
+                    value={selectedProjectId}
+                    onChange={(event) => setSelectedProjectId(event.target.value)}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">Select a project...</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>{project.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedProjectId && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="binary-project-claude-path" className="font-normal">Claude CLI Path (project)</Label>
+                      <Input
+                        id="binary-project-claude-path"
+                        value={projectClaudePathValue}
+                        onChange={(event) => setProjectClaudePathValue(event.target.value)}
+                        onBlur={persistProjectClaudePath}
+                        placeholder="Use global path"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="binary-project-codex-path" className="font-normal">Codex CLI Path (project)</Label>
+                      <Input
+                        id="binary-project-codex-path"
+                        value={projectCodexPathValue}
+                        onChange={(event) => setProjectCodexPathValue(event.target.value)}
+                        onBlur={persistProjectCodexPath}
+                        placeholder="Use global path"
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
         </TabsContent>

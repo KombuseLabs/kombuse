@@ -49,6 +49,12 @@ export function saveProjectConfig(projectLocalPath: string, config: KombuseConfi
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8')
 }
 
+export function loadBinaryPathFromFileConfig(binaryName: 'claude' | 'codex'): string | undefined {
+  const config = loadKombuseConfig()
+  const path = config.binaries?.[binaryName]
+  return path && path.trim() ? path.trim() : undefined
+}
+
 export function loadKombuseConfig(configPath?: string): KombuseConfig {
   const path = configPath ?? join(getKombuseDir(), 'config.json')
 

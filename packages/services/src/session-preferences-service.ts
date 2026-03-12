@@ -1,7 +1,9 @@
-import { profileSettingsRepository } from '@kombuse/persistence'
+import { profileSettingsRepository, loadBinaryPathFromFileConfig } from '@kombuse/persistence'
 import { BACKEND_TYPES, type BackendType } from '@kombuse/types'
 
 export const DEFAULT_PREFERENCE_PROFILE_ID = 'user-1'
+export const BINARIES_CLAUDE_SETTING_KEY = 'binaries.claude'
+export const BINARIES_CODEX_SETTING_KEY = 'binaries.codex'
 export const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 export const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 export const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'
@@ -153,4 +155,27 @@ export function readCrashReportingEnabled(
 ): boolean {
   const setting = profileSettingsRepository.get(profileId, CRASH_REPORTING_ENABLED_SETTING_KEY)
   return setting?.setting_value !== 'false'
+}
+
+export function readBinaryPath(
+  binaryName: 'claude' | 'codex',
+  projectId?: string,
+  profileId: string = DEFAULT_PREFERENCE_PROFILE_ID
+): string | undefined {
+  const baseKey = binaryName === 'claude' ? BINARIES_CLAUDE_SETTING_KEY : BINARIES_CODEX_SETTING_KEY
+
+  // Per-project profile setting
+  if (projectId) {
+    const projectSetting = profileSettingsRepository.get(profileId, `${baseKey}.${projectId}`)
+    const projectValue = projectSetting?.setting_value?.trim()
+    if (projectValue) return projectValue
+  }
+
+  // Global profile setting
+  const globalSetting = profileSettingsRepository.get(profileId, baseKey)
+  const globalValue = globalSetting?.setting_value?.trim()
+  if (globalValue) return globalValue
+
+  // File config fallback (~/.kombuse/config.json)
+  return loadBinaryPathFromFileConfig(binaryName)
 }

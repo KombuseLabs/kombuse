@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'fs'
 import { join, resolve } from 'path'
 import { tmpdir } from 'os'
-import { loadKombuseConfig, loadProjectConfig, saveProjectConfig, getKombuseDir, resolveDbPath } from '../config.repository'
+import { loadKombuseConfig, loadProjectConfig, saveProjectConfig, getKombuseDir, resolveDbPath, loadBinaryPathFromFileConfig } from '../config.repository'
 
 describe('loadKombuseConfig', () => {
   let tempDir: string
@@ -227,5 +227,84 @@ describe('loadProjectConfig', () => {
 
     const config = loadProjectConfig(tempDir)
     expect(config.database?.path).toBe('/test.db')
+  })
+})
+
+describe('loadBinaryPathFromFileConfig', () => {
+  const originalHome = process.env.HOME
+
+  let tempDir: string
+
+  beforeEach(() => {
+    tempDir = join(tmpdir(), `kombuse-binary-config-test-${Date.now()}`)
+    const kombuseDir = join(tempDir, '.kombuse')
+    mkdirSync(kombuseDir, { recursive: true })
+    process.env.HOME = tempDir
+  })
+
+  afterEach(() => {
+    process.env.HOME = originalHome
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('should return claude path from config', () => {
+    writeFileSync(
+      join(tempDir, '.kombuse', 'config.json'),
+      JSON.stringify({ binaries: { claude: '/custom/claude' } })
+    )
+    expect(loadBinaryPathFromFileConfig('claude')).toBe('/custom/claude')
+  })
+
+  it('should return codex path from config', () => {
+    writeFileSync(
+      join(tempDir, '.kombuse', 'config.json'),
+      JSON.stringify({ binaries: { codex: '/custom/codex' } })
+    )
+    expect(loadBinaryPathFromFileConfig('codex')).toBe('/custom/codex')
+  })
+
+  it('should return undefined when binaries field is missing', () => {
+    writeFileSync(
+      join(tempDir, '.kombuse', 'config.json'),
+      JSON.stringify({ database: { path: '/test.db' } })
+    )
+    expect(loadBinaryPathFromFileConfig('claude')).toBeUndefined()
+  })
+
+  it('should return undefined when specific binary is not set', () => {
+    writeFileSync(
+      join(tempDir, '.kombuse', 'config.json'),
+      JSON.stringify({ binaries: { claude: '/custom/claude' } })
+    )
+    expect(loadBinaryPathFromFileConfig('codex')).toBeUndefined()
+  })
+
+  it('should return undefined when config file does not exist', () => {
+    rmSync(join(tempDir, '.kombuse', 'config.json'), { force: true })
+    expect(loadBinaryPathFromFileConfig('claude')).toBeUndefined()
+  })
+
+  it('should return undefined for empty string paths', () => {
+    writeFileSync(
+      join(tempDir, '.kombuse', 'config.json'),
+      JSON.stringify({ binaries: { claude: '' } })
+    )
+    expect(loadBinaryPathFromFileConfig('claude')).toBeUndefined()
+  })
+
+  it('should return undefined for whitespace-only paths', () => {
+    writeFileSync(
+      join(tempDir, '.kombuse', 'config.json'),
+      JSON.stringify({ binaries: { claude: '   ' } })
+    )
+    expect(loadBinaryPathFromFileConfig('claude')).toBeUndefined()
+  })
+
+  it('should trim whitespace from paths', () => {
+    writeFileSync(
+      join(tempDir, '.kombuse', 'config.json'),
+      JSON.stringify({ binaries: { claude: '  /custom/claude  ' } })
+    )
+    expect(loadBinaryPathFromFileConfig('claude')).toBe('/custom/claude')
   })
 })

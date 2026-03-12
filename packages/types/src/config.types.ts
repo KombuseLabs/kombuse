@@ -10,4 +10,8 @@ export interface KombuseConfig {
   plugins?: {
     sources?: PluginSourceConfig[]
   }
+  binaries?: {
+    claude?: string
+    codex?: string
+  }
 }

@@ -1,5 +1,6 @@
 import { ClaudeCodeBackend, CodexBackend, MockAgentClient } from '@kombuse/agent'
 import { BACKEND_TYPES, type BackendType, type AgentBackend } from '@kombuse/types'
+import { readBinaryPath } from '@kombuse/services'
 import { getCodexMcpStatus, resolveKombuseBridgeCommandConfig } from '../codex-mcp-config'
 
 const KOMBUSE_MCP_SERVER_NAME = 'kombuse'
@@ -46,18 +47,22 @@ function buildCodexMcpConfigOverrides(enabled: boolean): string[] {
 /**
  * Server-standard backend factory for all agent execution paths.
  */
-export function createServerAgentBackend(backendType: BackendType): AgentBackend {
+export function createServerAgentBackend(backendType: BackendType, projectId?: string): AgentBackend {
   switch (backendType) {
     case BACKEND_TYPES.CODEX: {
       const codexMcpEnabled = isCodexMcpEnabled()
+      const cliPath = readBinaryPath('codex', projectId)
       return new CodexBackend({
+        ...(cliPath ? { cliPath } : {}),
         extraArgs: buildCodexMcpConfigOverrides(codexMcpEnabled),
       })
     }
     case BACKEND_TYPES.MOCK:
       return new MockAgentClient()
     case BACKEND_TYPES.CLAUDE_CODE:
-    default:
-      return new ClaudeCodeBackend()
+    default: {
+      const cliPath = readBinaryPath('claude', projectId)
+      return new ClaudeCodeBackend(cliPath ? { cliPath } : {})
+    }
   }
 }
