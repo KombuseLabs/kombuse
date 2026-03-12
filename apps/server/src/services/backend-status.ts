@@ -1,6 +1,6 @@
 import { spawnSync, execFileSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
-import { resolveClaudePath, resolveCodexPath } from '@kombuse/agent'
+import { resolveClaudePath, resolveCodexPath, buildCleanPath } from '@kombuse/agent'
 import { meetsMinimumVersion } from '@kombuse/pkg'
 import { readBinaryPath } from '@kombuse/services'
 import { BACKEND_TYPES, type BackendType, type BackendStatus } from '@kombuse/types'
@@ -34,6 +34,7 @@ function getVersion(binaryPath: string): string | null {
       timeout: 5_000,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PATH: buildCleanPath(process.env.PATH) },
     })
     const output = (result.stdout || result.stderr || '').trim()
     const match = output.match(/(\d+\.\d+\.\d+[\w.-]*)/)
@@ -49,6 +50,7 @@ function getNodeVersion(): string | null {
       timeout: 5_000,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PATH: buildCleanPath(process.env.PATH) },
     })
     const match = output.trim().match(/v?(\d+\.\d+\.\d+)/)
     return match?.[1] ?? null

@@ -73,4 +73,4 @@ export {
   type ClaudeJsonlProgressMessage,
   transformJsonlToAgentEvents,
 } from './backends'
-export { createCleanEnv, type CleanEnvOptions } from './env-utils'
+export { createCleanEnv, buildCleanPath, type CleanEnvOptions } from './env-utils'

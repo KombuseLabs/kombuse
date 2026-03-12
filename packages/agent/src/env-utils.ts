@@ -14,6 +14,8 @@ const LOGIN_SHELL_TIMEOUT_MS = 10_000
  */
 const PREPEND_DIRS = [
   '~/.local/bin',
+  '~/.nvm/versions/node/current/bin', // nvm (current symlink)
+  '~/.fnm/current/bin',               // fnm (current symlink)
   '~/.volta/bin',            // Volta
   '~/.asdf/shims',           // asdf
   '~/.local/share/mise/shims', // mise (formerly rtx)

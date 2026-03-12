@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const mockResolveClaudePath = vi.fn()
 const mockResolveCodexPath = vi.fn()
+const mockBuildCleanPath = vi.fn((p?: string) => `/clean/path:${p || ''}`)
 vi.mock('@kombuse/agent', () => ({
   resolveClaudePath: () => mockResolveClaudePath(),
   resolveCodexPath: () => mockResolveCodexPath(),
+  buildCleanPath: (p?: string) => mockBuildCleanPath(p),
 }))
 
 const mockSpawnSync = vi.fn()
@@ -141,6 +143,47 @@ describe('checkAllBackendStatuses', () => {
       '/usr/local/bin/claude',
       ['--version'],
       expect.objectContaining({ timeout: 5_000, encoding: 'utf-8' })
+    )
+  })
+
+  it('passes env with clean PATH to spawnSync (getVersion)', () => {
+    mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
+    mockResolveCodexPath.mockReturnValue('codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return
+      throw new Error('not found')
+    })
+    mockSpawnSync.mockReturnValue({ stdout: '1.0.40\n', stderr: '', status: 0 })
+
+    refreshBackendStatuses()
+
+    expect(mockSpawnSync).toHaveBeenCalledWith(
+      '/usr/local/bin/claude',
+      ['--version'],
+      expect.objectContaining({
+        env: expect.objectContaining({ PATH: expect.stringContaining('/clean/path') }),
+      })
+    )
+  })
+
+  it('passes env with clean PATH to execFileSync (getNodeVersion)', () => {
+    mockResolveClaudePath.mockReturnValue('/usr/local/bin/claude')
+    mockResolveCodexPath.mockReturnValue('codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/claude') return
+      throw new Error('not found')
+    })
+    mockSpawnSync.mockReturnValue({ stdout: 'claude-code 1.0.40\n', stderr: '', status: 0 })
+    mockExecFileSync.mockReturnValue('v22.5.0\n')
+
+    refreshBackendStatuses()
+
+    expect(mockExecFileSync).toHaveBeenCalledWith(
+      'node',
+      ['--version'],
+      expect.objectContaining({
+        env: expect.objectContaining({ PATH: expect.stringContaining('/clean/path') }),
+      })
     )
   })
 
