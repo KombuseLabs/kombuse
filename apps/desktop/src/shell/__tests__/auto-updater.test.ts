@@ -17,6 +17,7 @@ const {
   mockPackageManager,
   MockPackageManager,
   MockHttpFeed,
+  mockIsNewerVersion,
   mockInstallPackage,
   mockListPackages,
   mockGetPackageManifest,
@@ -32,6 +33,7 @@ const {
     mockPackageManager: pm,
     MockPackageManager: vi.fn(() => pm),
     MockHttpFeed: vi.fn(),
+    mockIsNewerVersion: vi.fn(() => false),
     mockInstallPackage: vi.fn(() => "1.1.0"),
     mockListPackages: vi.fn(() => [] as unknown[]),
     mockGetPackageManifest: vi.fn(),
@@ -42,6 +44,7 @@ const {
 vi.mock("@kombuse/pkg", () => ({
   PackageManager: MockPackageManager,
   HttpFeed: MockHttpFeed,
+  isNewerVersion: mockIsNewerVersion,
 }));
 
 vi.mock("../updater", () => ({
@@ -106,6 +109,7 @@ beforeEach(() => {
   mockPackageManager.getFeeds.mockReset().mockReturnValue([]);
   mockPackageManager.checkForUpdates.mockReset();
   mockPackageManager.install.mockReset();
+  mockIsNewerVersion.mockReset().mockReturnValue(false);
   mockInstallPackage.mockReset().mockReturnValue("1.1.0");
   mockListPackages.mockReset().mockReturnValue([]);
   mockGetPackageManifest.mockReset();
@@ -186,6 +190,49 @@ describe("initCurrentVersion", () => {
 
     const updater = createUpdater();
     expect(updater.getStatus().currentVersion).toBe("0.0.0");
+  });
+
+  it("promotes bundled package when newer than installed", () => {
+    mockListPackages.mockReturnValue([
+      { version: "1.0.0-rc.28", path: "/pkg/v1.0.0-rc.28", isCurrent: true, manifest: {} },
+    ]);
+    mockGetBundledPackagePath.mockReturnValue("/bundled/path");
+    mockGetPackageManifest.mockReturnValue({ version: "1.0.0-rc.29" });
+    mockIsNewerVersion.mockReturnValue(true);
+    mockInstallPackage.mockReturnValue("1.0.0-rc.29");
+
+    const updater = createUpdater();
+
+    expect(mockInstallPackage).toHaveBeenCalledWith("/bundled/path");
+    expect(updater.getStatus().currentVersion).toBe("1.0.0-rc.29");
+  });
+
+  it("does not promote when bundled version equals installed", () => {
+    mockListPackages.mockReturnValue([
+      { version: "1.0.0-rc.29", path: "/pkg/v1.0.0-rc.29", isCurrent: true, manifest: {} },
+    ]);
+    mockGetBundledPackagePath.mockReturnValue("/bundled/path");
+    mockGetPackageManifest.mockReturnValue({ version: "1.0.0-rc.29" });
+    mockIsNewerVersion.mockReturnValue(false);
+
+    const updater = createUpdater();
+
+    expect(mockInstallPackage).not.toHaveBeenCalled();
+    expect(updater.getStatus().currentVersion).toBe("1.0.0-rc.29");
+  });
+
+  it("falls through when bundled manifest read throws during promotion check", () => {
+    mockListPackages.mockReturnValue([
+      { version: "1.0.0-rc.28", path: "/pkg/v1.0.0-rc.28", isCurrent: true, manifest: {} },
+    ]);
+    mockGetPackageManifest.mockImplementation(() => {
+      throw new Error("manifest not found");
+    });
+
+    const updater = createUpdater();
+
+    expect(mockInstallPackage).not.toHaveBeenCalled();
+    expect(updater.getStatus().currentVersion).toBe("1.0.0-rc.28");
   });
 });
 

@@ -7,7 +7,7 @@
 
 import { join } from "node:path";
 import { createAppLogger } from "@kombuse/core/logger";
-import { PackageManager, HttpFeed } from "@kombuse/pkg";
+import { PackageManager, HttpFeed, isNewerVersion } from "@kombuse/pkg";
 
 const logger = createAppLogger("AutoUpdater");
 import type { DownloadProgress } from "@kombuse/pkg";
@@ -44,6 +44,20 @@ export class AutoUpdater {
     try {
       const packages = listPackages();
       const current = packages.find((p) => p.isCurrent);
+
+      // Promote bundled package if it's newer than the installed one
+      try {
+        const bundledManifest = getPackageManifest(getBundledPackagePath());
+        if (current && isNewerVersion(bundledManifest.version, current.version)) {
+          logger.info(`Promoting bundled package ${bundledManifest.version} over installed ${current.version}`);
+          installPackage(getBundledPackagePath());
+          this.status.currentVersion = bundledManifest.version;
+          return;
+        }
+      } catch {
+        // No bundled package readable — continue with existing logic
+      }
+
       if (current) {
         this.status.currentVersion = current.version;
         logger.info(`Current version from installed packages: ${current.version}`);
