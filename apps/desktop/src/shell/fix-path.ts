@@ -5,6 +5,9 @@ const logger = createAppLogger('FixPath')
 
 const DELIM = '__KOMBUSE_PATH__'
 
+/** Login shell timeout — keep in sync with packages/agent/src/env-utils.ts */
+const LOGIN_SHELL_TIMEOUT_MS = 10_000
+
 /**
  * On macOS, GUI-launched apps (Finder, Dock, Spotlight) inherit launchd's
  * minimal PATH which doesn't include nvm/fnm/volta directories. This spawns
@@ -15,7 +18,7 @@ export function fixMacOsPath(): boolean {
 
   const userShell = process.env.SHELL || '/bin/zsh'
   const originalPath = process.env.PATH
-  const timeoutMs = 10000
+  const timeoutMs = LOGIN_SHELL_TIMEOUT_MS
   try {
     const output = execSync(
       `${userShell} -ilc 'echo ${DELIM}$PATH${DELIM}'`,

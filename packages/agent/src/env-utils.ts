@@ -3,6 +3,9 @@ import { createAppLogger } from '@kombuse/core/logger'
 
 const logger = createAppLogger('EnvUtils')
 
+/** Login shell timeout — keep in sync with apps/desktop/src/shell/fix-path.ts */
+const LOGIN_SHELL_TIMEOUT_MS = 10_000
+
 /**
  * Common directories to prepend to PATH for subprocess spawning.
  * Covers Homebrew (ARM + Intel), MacPorts, Nix, and standard locations.
@@ -68,6 +71,40 @@ export function buildCleanPath(currentPath?: string): string {
 }
 
 /**
+ * Options for creating a clean subprocess environment.
+ */
+export interface CleanEnvOptions {
+  /** Env var keys to strip from process.env (e.g. ['ANTHROPIC_API_KEY']) */
+  stripKeys?: string[]
+  /** Additional env vars to set (applied after stripping) */
+  extraEnv?: Record<string, string>
+}
+
+/**
+ * Create a clean environment for spawning agent subprocesses.
+ * Copies process.env (filtering undefined values), strips specified keys,
+ * rebuilds PATH via buildCleanPath(), and merges any extra env vars.
+ */
+export function createCleanEnv(options?: CleanEnvOptions): Record<string, string> {
+  const stripSet = new Set(options?.stripKeys)
+
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !stripSet.has(key)) {
+      env[key] = value
+    }
+  }
+
+  env.PATH = buildCleanPath(process.env.PATH)
+
+  if (options?.extraEnv) {
+    Object.assign(env, options.extraEnv)
+  }
+
+  return env
+}
+
+/**
  * Resolve a binary path by spawning the user's login shell.
  * Works for nvm/fnm/volta-managed installs that aren't on the server PATH.
  */
@@ -76,7 +113,7 @@ export function resolveViaLoginShell(binaryName: string): string | null {
     const shell = process.env.SHELL || '/bin/zsh'
     const result = execSync(
       `${shell} -ilc 'command -v ${binaryName}'`,
-      { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
+      { encoding: 'utf-8', timeout: LOGIN_SHELL_TIMEOUT_MS, stdio: ['pipe', 'pipe', 'pipe'] }
     ).trim()
     return result || null
   } catch {
