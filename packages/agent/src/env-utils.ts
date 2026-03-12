@@ -176,15 +176,28 @@ export function createCleanEnv(options?: CleanEnvOptions): Record<string, string
 /**
  * Resolve a binary path by spawning the user's login shell.
  * Works for nvm/fnm/volta-managed installs that aren't on the server PATH.
+ *
+ * Uses a two-stage strategy (mirrors fixMacOsPath in fix-path.ts):
+ *  1. Non-interactive login shell (`-lc`) — fast, skips .zshrc plugins.
+ *  2. Interactive login shell (`-ilc`) fallback — covers users who
+ *     configure PATH in .zshrc (e.g. NVM, bun).
  */
 export function resolveViaLoginShell(binaryName: string): string | null {
+  const shell = process.env.SHELL || '/bin/zsh'
+  const cmd = `command -v ${binaryName}`
+  const opts = { encoding: 'utf-8' as const, timeout: LOGIN_SHELL_TIMEOUT_MS, stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'] }
+
+  // Stage 1: non-interactive login shell (fast, skips .zshrc plugins)
   try {
-    const shell = process.env.SHELL || '/bin/zsh'
-    const result = execFileSync(
-      shell,
-      ['-lc', `command -v ${binaryName}`],
-      { encoding: 'utf-8', timeout: LOGIN_SHELL_TIMEOUT_MS, stdio: ['pipe', 'pipe', 'pipe'] }
-    ).trim()
+    const result = execFileSync(shell, ['-lc', cmd], opts).trim()
+    if (result) return result
+  } catch {
+    // fall through to stage 2
+  }
+
+  // Stage 2: interactive login shell (covers PATH-in-.zshrc setups like NVM/bun)
+  try {
+    const result = execFileSync(shell, ['-ilc', cmd], opts).trim()
     return result || null
   } catch {
     return null

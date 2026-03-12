@@ -9,6 +9,12 @@ vi.mock('@kombuse/core/logger', () => ({
   }),
 }))
 
+const mockExecFileSync = vi.hoisted(() => vi.fn())
+
+vi.mock('node:child_process', () => ({
+  execFileSync: mockExecFileSync,
+}))
+
 vi.mock('node:fs', async () => {
   const actual = await vi.importActual<typeof import('node:fs')>('node:fs')
   return {
@@ -20,7 +26,7 @@ vi.mock('node:fs', async () => {
 })
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
-import { buildCleanPath, createCleanEnv, resolveNvmBinDir } from '../env-utils'
+import { buildCleanPath, createCleanEnv, resolveNvmBinDir, resolveViaLoginShell } from '../env-utils'
 
 describe('buildCleanPath', () => {
   const originalPlatform = process.platform
@@ -313,5 +319,79 @@ describe('resolveNvmBinDir', () => {
     mockedExistsSync.mockReturnValue(true)
 
     expect(resolveNvmBinDir()).toBe('/custom/nvm/versions/node/v22.1.0/bin')
+  })
+})
+
+describe('resolveViaLoginShell', () => {
+  const originalShell = process.env.SHELL
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    process.env.SHELL = '/bin/zsh'
+  })
+
+  afterEach(() => {
+    process.env.SHELL = originalShell
+  })
+
+  it('returns result from stage 1 (non-interactive) when found', () => {
+    mockExecFileSync.mockReturnValueOnce('/usr/local/bin/claude\n')
+
+    expect(resolveViaLoginShell('claude')).toBe('/usr/local/bin/claude')
+    expect(mockExecFileSync).toHaveBeenCalledTimes(1)
+    expect(mockExecFileSync).toHaveBeenCalledWith(
+      '/bin/zsh',
+      ['-lc', 'command -v claude'],
+      expect.objectContaining({ encoding: 'utf-8' }),
+    )
+  })
+
+  it('falls back to stage 2 (interactive) when stage 1 returns empty', () => {
+    mockExecFileSync.mockReturnValueOnce('') // stage 1: empty
+    mockExecFileSync.mockReturnValueOnce('/Users/me/.nvm/versions/node/v20/bin/node\n') // stage 2
+
+    expect(resolveViaLoginShell('node')).toBe('/Users/me/.nvm/versions/node/v20/bin/node')
+    expect(mockExecFileSync).toHaveBeenCalledTimes(2)
+    expect(mockExecFileSync).toHaveBeenNthCalledWith(
+      2,
+      '/bin/zsh',
+      ['-ilc', 'command -v node'],
+      expect.objectContaining({ encoding: 'utf-8' }),
+    )
+  })
+
+  it('falls back to stage 2 (interactive) when stage 1 throws', () => {
+    mockExecFileSync.mockImplementationOnce(() => { throw new Error('timeout') })
+    mockExecFileSync.mockReturnValueOnce('/Users/me/.bun/bin/bun\n')
+
+    expect(resolveViaLoginShell('bun')).toBe('/Users/me/.bun/bin/bun')
+    expect(mockExecFileSync).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns null when both stages fail', () => {
+    mockExecFileSync.mockImplementation(() => { throw new Error('timeout') })
+
+    expect(resolveViaLoginShell('nonexistent')).toBeNull()
+    expect(mockExecFileSync).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns null when both stages return empty', () => {
+    mockExecFileSync.mockReturnValue('')
+
+    expect(resolveViaLoginShell('nonexistent')).toBeNull()
+    expect(mockExecFileSync).toHaveBeenCalledTimes(2)
+  })
+
+  it('defaults to /bin/zsh when SHELL is unset', () => {
+    delete process.env.SHELL
+
+    mockExecFileSync.mockReturnValueOnce('/usr/local/bin/claude\n')
+
+    resolveViaLoginShell('claude')
+    expect(mockExecFileSync).toHaveBeenCalledWith(
+      '/bin/zsh',
+      expect.any(Array),
+      expect.any(Object),
+    )
   })
 })
