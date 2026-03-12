@@ -5,11 +5,13 @@ vi.mock('@kombuse/persistence', () => ({
   profileSettingsRepository: {
     get: vi.fn(() => null),
   },
+  loadBinaryPathFromFileConfig: vi.fn(() => undefined),
 }))
 
-import { profileSettingsRepository } from '@kombuse/persistence'
+import { profileSettingsRepository, loadBinaryPathFromFileConfig } from '@kombuse/persistence'
 import {
   normalizeModelPreference,
+  readBinaryPath,
   readUserDefaultMaxChainDepth,
   readUserBackendIdleTimeoutMinutes,
   readNotificationScope,
@@ -18,6 +20,8 @@ import {
   resolveConfiguredBackendType,
   resolveModelPreference,
   AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY,
+  BINARIES_CLAUDE_SETTING_KEY,
+  BINARIES_CODEX_SETTING_KEY,
   CHAT_BACKEND_IDLE_TIMEOUT_MINUTES_SETTING_KEY,
   CRASH_REPORTING_ENABLED_SETTING_KEY,
   NOTIFICATIONS_SCOPE_TO_PROJECT_SETTING_KEY,
@@ -328,5 +332,108 @@ describe('readCrashReportingEnabled', () => {
       'custom-profile',
       CRASH_REPORTING_ENABLED_SETTING_KEY,
     )
+  })
+})
+
+describe('readBinaryPath', () => {
+  const mockGet = profileSettingsRepository.get as ReturnType<typeof vi.fn>
+  const mockLoadFromFile = loadBinaryPathFromFileConfig as ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockGet.mockReturnValue(null)
+    mockLoadFromFile.mockReset()
+    mockLoadFromFile.mockReturnValue(undefined)
+  })
+
+  it('returns per-project value when it exists', () => {
+    mockGet.mockImplementation((_profileId: string, key: string) => {
+      if (key === `${BINARIES_CLAUDE_SETTING_KEY}.project-123`) {
+        return { setting_value: '/project/claude' }
+      }
+      if (key === BINARIES_CLAUDE_SETTING_KEY) {
+        return { setting_value: '/global/claude' }
+      }
+      return null
+    })
+    mockLoadFromFile.mockReturnValue('/file/claude')
+
+    expect(readBinaryPath('claude', 'project-123')).toBe('/project/claude')
+  })
+
+  it('falls back to global when per-project is not set', () => {
+    mockGet.mockImplementation((_profileId: string, key: string) => {
+      if (key === BINARIES_CLAUDE_SETTING_KEY) {
+        return { setting_value: '/global/claude' }
+      }
+      return null
+    })
+    mockLoadFromFile.mockReturnValue('/file/claude')
+
+    expect(readBinaryPath('claude', 'project-123')).toBe('/global/claude')
+  })
+
+  it('falls back to file config when no DB settings exist', () => {
+    mockLoadFromFile.mockReturnValue('/file/codex')
+
+    expect(readBinaryPath('codex', 'project-123')).toBe('/file/codex')
+  })
+
+  it('returns undefined when all sources are empty', () => {
+    expect(readBinaryPath('claude', 'project-123')).toBeUndefined()
+  })
+
+  it('skips per-project check when projectId is undefined', () => {
+    mockGet.mockImplementation((_profileId: string, key: string) => {
+      if (key === BINARIES_CODEX_SETTING_KEY) {
+        return { setting_value: '/global/codex' }
+      }
+      return null
+    })
+
+    expect(readBinaryPath('codex')).toBe('/global/codex')
+    expect(mockGet).toHaveBeenCalledTimes(1)
+    expect(mockGet).toHaveBeenCalledWith(DEFAULT_PREFERENCE_PROFILE_ID, BINARIES_CODEX_SETTING_KEY)
+  })
+
+  it('treats whitespace-only per-project value as empty and falls through to global', () => {
+    mockGet.mockImplementation((_profileId: string, key: string) => {
+      if (key === `${BINARIES_CLAUDE_SETTING_KEY}.project-123`) {
+        return { setting_value: '   ' }
+      }
+      if (key === BINARIES_CLAUDE_SETTING_KEY) {
+        return { setting_value: '/global/claude' }
+      }
+      return null
+    })
+
+    expect(readBinaryPath('claude', 'project-123')).toBe('/global/claude')
+  })
+
+  it('treats whitespace-only global value as empty and falls through to file config', () => {
+    mockGet.mockImplementation((_profileId: string, key: string) => {
+      if (key === BINARIES_CODEX_SETTING_KEY) {
+        return { setting_value: '  ' }
+      }
+      return null
+    })
+    mockLoadFromFile.mockReturnValue('/file/codex')
+
+    expect(readBinaryPath('codex')).toBe('/file/codex')
+  })
+
+  it('uses correct setting key for claude', () => {
+    readBinaryPath('claude')
+    expect(mockGet).toHaveBeenCalledWith(DEFAULT_PREFERENCE_PROFILE_ID, BINARIES_CLAUDE_SETTING_KEY)
+  })
+
+  it('uses correct setting key for codex', () => {
+    readBinaryPath('codex')
+    expect(mockGet).toHaveBeenCalledWith(DEFAULT_PREFERENCE_PROFILE_ID, BINARIES_CODEX_SETTING_KEY)
+  })
+
+  it('uses custom profileId when provided', () => {
+    readBinaryPath('claude', undefined, 'custom-profile')
+    expect(mockGet).toHaveBeenCalledWith('custom-profile', BINARIES_CLAUDE_SETTING_KEY)
   })
 })

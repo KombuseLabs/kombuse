@@ -1,9 +1,9 @@
 import { profileSettingsRepository, loadBinaryPathFromFileConfig } from '@kombuse/persistence'
-import { BACKEND_TYPES, type BackendType } from '@kombuse/types'
+import { BACKEND_TYPES, BINARIES_CLAUDE_SETTING_KEY, BINARIES_CODEX_SETTING_KEY, type BackendType } from '@kombuse/types'
+
+export { BINARIES_CLAUDE_SETTING_KEY, BINARIES_CODEX_SETTING_KEY }
 
 export const DEFAULT_PREFERENCE_PROFILE_ID = 'user-1'
-export const BINARIES_CLAUDE_SETTING_KEY = 'binaries.claude'
-export const BINARIES_CODEX_SETTING_KEY = 'binaries.codex'
 export const CHAT_DEFAULT_BACKEND_SETTING_KEY = 'chat.default_backend_type'
 export const CHAT_DEFAULT_MODEL_SETTING_KEY = 'chat.default_model'
 export const AGENT_DEFAULT_MAX_CHAIN_DEPTH_SETTING_KEY = 'agent.default_max_chain_depth'

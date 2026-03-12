@@ -29,6 +29,7 @@ import {
   TabsTrigger,
   toast,
 } from '@kombuse/ui/base'
+import { BINARIES_CLAUDE_SETTING_KEY, BINARIES_CODEX_SETTING_KEY } from '@kombuse/types'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { setSentryEnabled } from '../sentry-gate'
 
@@ -47,8 +48,6 @@ const MCP_ANONYMOUS_WRITE_ACCESS_SETTING_KEY = 'mcp.anonymous_write_access'
 const LIST_PANEL_HIDDEN_SETTING_KEY = 'layout.listPanelHidden'
 const FILE_LOGGING_ENABLED_SETTING_KEY = 'logging.file_enabled'
 const CRASH_REPORTING_ENABLED_SETTING_KEY = 'telemetry.crash_reporting_enabled'
-const BINARIES_CLAUDE_SETTING_KEY = 'binaries.claude'
-const BINARIES_CODEX_SETTING_KEY = 'binaries.codex'
 
 export function Settings() {
   const { theme, setTheme } = useTheme()

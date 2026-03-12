@@ -307,6 +307,7 @@ export type {
   PluginSourceConfig,
   KombuseConfig,
 } from './config.types'
+export { BINARIES_CLAUDE_SETTING_KEY, BINARIES_CODEX_SETTING_KEY } from './config.types'
 export type {
   PackageType,
   PkgManifest,
