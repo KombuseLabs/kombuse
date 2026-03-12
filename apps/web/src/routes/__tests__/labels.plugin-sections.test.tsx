@@ -72,6 +72,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
     isPending: mockUpdatePluginState.current.isPending,
     variables: mockUpdatePluginState.current.variables,
   }),
+  useProfileSetting: () => ({ data: null }),
 }))
 
 import { Labels } from '../labels'

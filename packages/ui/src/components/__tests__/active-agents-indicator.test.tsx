@@ -206,7 +206,7 @@ describe('ActiveAgentsIndicator backend status section', () => {
     expect(screen.getByText('Claude Code')).toBeDefined()
     expect(screen.getByText('1.0.59')).toBeDefined()
     expect(screen.getByText('Codex')).toBeDefined()
-    expect(screen.getByText('not found')).toBeDefined()
+    expect(screen.getByText('Check again')).toBeDefined()
   })
 
   it('shows version string when available', () => {
@@ -222,7 +222,7 @@ describe('ActiveAgentsIndicator backend status section', () => {
     expect(screen.getByText('1.0.59')).toBeDefined()
   })
 
-  it('shows Check Again button only when a backend is unavailable', () => {
+  it('shows Check again button only when a backend is unavailable', () => {
     mockedUseBackendStatus.mockReturnValue({
       data: [
         { backendType: 'claude-code', available: true, version: '1.0.59', path: '/usr/bin/claude' },
@@ -232,10 +232,10 @@ describe('ActiveAgentsIndicator backend status section', () => {
 
     renderIndicator([])
 
-    expect(screen.queryByText('Check Again')).toBeNull()
+    expect(screen.queryByText('Check again')).toBeNull()
   })
 
-  it('shows Check Again button when a backend is unavailable', () => {
+  it('shows Check again button when a backend is unavailable', () => {
     mockedUseBackendStatus.mockReturnValue({
       data: [
         { backendType: 'claude-code', available: true, version: '1.0.59', path: '/usr/bin/claude' },
@@ -246,10 +246,10 @@ describe('ActiveAgentsIndicator backend status section', () => {
 
     renderIndicator([])
 
-    expect(screen.getByText('Check Again')).toBeDefined()
+    expect(screen.getByText('Check again')).toBeDefined()
   })
 
-  it('calls refresh mutation when Check Again is clicked', () => {
+  it('calls refresh mutation when Check again is clicked', () => {
     mockedUseBackendStatus.mockReturnValue({
       data: [
         { backendType: 'codex', available: false, version: null, path: null },
@@ -259,7 +259,7 @@ describe('ActiveAgentsIndicator backend status section', () => {
 
     renderIndicator([])
 
-    fireEvent.click(screen.getByText('Check Again'))
+    fireEvent.click(screen.getByText('Check again'))
     expect(mockMutate).toHaveBeenCalledOnce()
   })
 

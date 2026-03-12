@@ -1,6 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { closeDatabase } from '@kombuse/persistence'
 import { createServer } from '../index'
+
+vi.mock('../services/agent-execution-service', () => ({
+  stopAllActiveBackends: vi.fn(),
+  cleanupOrphanedSessions: vi.fn().mockReturnValue(0),
+  processEventAndRunAgents: vi.fn(),
+}))
+
+vi.mock('../logger', () => ({
+  createAppLogger: vi.fn(() => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() })),
+  closeAppLogger: vi.fn(),
+  pruneOldLogs: vi.fn(),
+  setLogDir: vi.fn(),
+  setLogTarget: vi.fn(),
+}))
+
+vi.mock('@kombuse/services', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kombuse/services')>()),
+  readFileLoggingEnabled: vi.fn().mockReturnValue(false),
+  readCrashReportingEnabled: vi.fn().mockReturnValue(false),
+}))
 
 describe('host header validation', () => {
   let server: Awaited<ReturnType<typeof createServer>>

@@ -166,6 +166,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
     highlightedCommentId: null,
     isScrollToCommentPending: false,
   }),
+  useProfileSetting: () => ({ data: null }),
 }))
 
 import { Tickets } from '../tickets'

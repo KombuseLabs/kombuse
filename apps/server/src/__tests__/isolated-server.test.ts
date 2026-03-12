@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { closeDatabase, DEMO_PROJECT_ID, getDatabase } from '@kombuse/persistence'
+import { closeDatabase, dbContext, DEMO_PROJECT_ID, getDatabase } from '@kombuse/persistence'
 import { createServer } from '../index'
 import { stopAllActiveBackends } from '../services/agent-execution-service'
 import { closeAppLogger } from '../logger'
@@ -28,6 +28,12 @@ vi.mock('../logger', () => ({
   setLogTarget: vi.fn(),
 }))
 
+vi.mock('@kombuse/services', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kombuse/services')>()),
+  readFileLoggingEnabled: vi.fn().mockReturnValue(false),
+  readCrashReportingEnabled: vi.fn().mockReturnValue(false),
+}))
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Group 1: DB isolation
 //
@@ -42,6 +48,10 @@ describe('isolated server — DB isolation', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    // Clear stale AsyncLocalStorage context left by previous inject() calls.
+    // enterWith() permanently taints the current async context, so getDatabase()
+    // would return a closed DB reference from a previous test without this reset.
+    dbContext.enterWith(undefined as any)
     primary = await createServer({ port: 0, dbPath: ':memory:' })
     isolated = await createServer({ port: 0, dbPath: ':memory:', isolated: true })
     await primary.instance.ready()

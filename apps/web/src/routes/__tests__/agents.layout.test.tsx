@@ -108,6 +108,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
   usePluginFiles: () => ({ data: [], isLoading: false }),
   useUpdatePluginFile: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useInstallRemotePlugin: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useProfileSetting: () => ({ data: null }),
 }))
 
 import { Agents } from '../agents'

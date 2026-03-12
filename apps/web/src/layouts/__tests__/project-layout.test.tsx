@@ -39,6 +39,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
   useAppContext: () => ({
     setCurrentProjectId: mockSetCurrentProjectId,
   }),
+  useDocumentTitle: () => {},
 }))
 
 import { ProjectLayout } from '../project-layout'

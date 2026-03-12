@@ -211,6 +211,7 @@ vi.mock('@kombuse/ui/hooks', () => ({
     onScroll: vi.fn(),
   }),
   useScrollToComment: mockUseScrollToComment,
+  useProfileSetting: () => ({ data: null }),
 }))
 
 import { Tickets } from '../tickets'
