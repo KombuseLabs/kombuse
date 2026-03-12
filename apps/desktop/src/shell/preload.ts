@@ -50,6 +50,11 @@ try {
     },
 
     /**
+     * Whether the macOS PATH fix succeeded at startup (true = ok, false = failed).
+     */
+    pathFixSucceeded: ipcRenderer.sendSync("app:path-fix-status") as boolean,
+
+    /**
      * Find in page controls (Cmd+F / Ctrl+F).
      */
     findInPage: {
@@ -73,7 +78,7 @@ try {
   logger.error("Failed to expose electron bridge", { error: err instanceof Error ? err.message : String(err) });
   // Expose minimal fallback so window.electron is always defined.
   // serverPort: 0 signals failure — the renderer falls back to the URL ?port= param.
-  contextBridge.exposeInMainWorld("electron", { serverPort: 0, platform: process.platform });
+  contextBridge.exposeInMainWorld("electron", { serverPort: 0, platform: process.platform, pathFixSucceeded: true });
 }
 
 // Wrapped in try/catch so a failure in __kombuse helpers never prevents

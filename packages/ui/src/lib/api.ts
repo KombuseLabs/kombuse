@@ -80,6 +80,7 @@ declare global {
       shellUpdate?: {
         quitAndInstall: () => Promise<void>
       }
+      pathFixSucceeded?: boolean
       onCheckForUpdates?: (callback: () => void) => () => void
       findInPage?: {
         find: (text: string) => Promise<void>

@@ -35,6 +35,7 @@ src/
 │   ├── header.tsx
 │   ├── layout-toggle.tsx        - Layout toggle button for list panel visibility (size-icon, size-5 icon — matches header icons)
 │   ├── profile-button.tsx       - Header user menu dropdown (Profile + Settings)
+│   ├── path-fix-warning.tsx     - Renderless component: shows warning toast when macOS PATH fix fails at startup
 │   ├── update-notification.tsx  - Unified update toast notification (single toast, shell priority over package)
 │   └── mode-toggle.tsx
 ├── hooks/          - React hooks

@@ -153,6 +153,7 @@ export {
   getScopeLabel,
   getActionLabel,
 } from './permission-editor'
+export { PathFixWarning } from './path-fix-warning'
 export { UnifiedUpdateNotification } from './update-notification'
 export { UpdateStatusDialog } from './update-status-dialog'
 export { StatusIndicator, statusIndicatorVariants, type StatusIndicatorProps, type StatusIndicatorStatus } from './status-indicator'

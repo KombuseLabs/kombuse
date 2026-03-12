@@ -6,6 +6,7 @@ export function useDesktop() {
   const isDesktop = !!electron
   const platform = electron?.platform ?? null
   const selectDirectory = electron?.selectDirectory ?? (async () => null)
+  const pathFixSucceeded = electron?.pathFixSucceeded
 
-  return { isDesktop, platform, selectDirectory }
+  return { isDesktop, platform, selectDirectory, pathFixSucceeded }
 }

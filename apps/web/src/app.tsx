@@ -6,7 +6,7 @@ import { isSentryEnabled } from "./sentry-gate";
 
 const logger = createBrowserLogger("ReactQuery");
 import { AppProvider, ThemeProvider, WebSocketProvider } from "@kombuse/ui/providers";
-import { Header, UnifiedUpdateNotification, UpdateStatusDialog, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar, LayoutToggle } from "@kombuse/ui/components";
+import { Header, UnifiedUpdateNotification, UpdateStatusDialog, PathFixWarning, NotificationBell, ProfileButton, CommandPalette, ActiveAgentsIndicator, BackendStatusBanner, NoBackendScreen, FindBar, LayoutToggle } from "@kombuse/ui/components";
 import { Toaster, toast } from "@kombuse/ui/base";
 import { getWsUrl } from "@kombuse/ui/lib/api";
 import { useDesktop, useAvailableBackends } from "@kombuse/ui/hooks";
@@ -181,6 +181,7 @@ export function App() {
             </CommandSetup>
           </AppProvider>
           <Toaster />
+          <PathFixWarning />
           <UnifiedUpdateNotification />
           <UpdateStatusDialog />
         </WebSocketProvider>

@@ -16,7 +16,7 @@ config();
 
 // Fix PATH for macOS GUI-launched apps (before any PATH-dependent code)
 import { fixMacOsPath } from "./fix-path";
-const _pathFixSucceeded = fixMacOsPath();
+const pathFixSucceeded = fixMacOsPath();
 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -278,6 +278,11 @@ ipcMain.on("server:port", (event) => {
 // IPC handler for home directory (used by redactPaths in preload)
 ipcMain.on("app:homedir", (event) => {
   event.returnValue = app.getPath("home");
+});
+
+// IPC handler for PATH fix status (used by renderer to show warning on failure)
+ipcMain.on("app:path-fix-status", (event) => {
+  event.returnValue = pathFixSucceeded;
 });
 
 // IPC handler for app restart (used by auto-updater UI)
