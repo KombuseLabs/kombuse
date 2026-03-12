@@ -42,7 +42,7 @@ describe('claude-code-mcp-config', () => {
 
       expect(status.configured).toBe(false)
       expect(status.enabled).toBe(false)
-      expect(status.config_path).toBe(join(tempHome, 'settings.local.json'))
+      expect(status.config_path).toBe(join(tempHome, 'settings.json'))
     })
   })
 

@@ -7,7 +7,7 @@ import type { ClaudeCodeMcpStatus } from '@kombuse/types'
 
 function getClaudeCodeConfigPath(): string {
   const claudeHome = process.env.CLAUDE_HOME?.trim() || join(homedir(), '.claude')
-  return join(claudeHome, 'settings.local.json')
+  return join(claudeHome, 'settings.json')
 }
 
 function readConfigFile(path: string): string {

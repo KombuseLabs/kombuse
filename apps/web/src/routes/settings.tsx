@@ -507,7 +507,7 @@ export function Settings() {
             </div>
             <p className="text-sm text-muted-foreground">
               Writes to{' '}
-              <code>{claudeCodeMcpStatus?.config_path ?? '~/.claude/settings.local.json'}</code>.
+              <code>{claudeCodeMcpStatus?.config_path ?? '~/.claude/settings.json'}</code>.
             </p>
           </CardContent>
         </Card>
