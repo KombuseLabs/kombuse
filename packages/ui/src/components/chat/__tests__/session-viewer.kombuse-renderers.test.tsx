@@ -816,4 +816,95 @@ describe('AskUserQuestion suppression and answer display', () => {
     expect(texts).toContain('Denied')
     expect(texts).not.toContain('Answered')
   })
+
+  it('renders ToolSearch with query and tool count', () => {
+    const toolUse = makeToolUseEvent({
+      id: 'ts-use',
+      name: 'ToolSearch',
+      input: { query: 'select:Read,Edit', max_results: 5 },
+      timestamp: 9000,
+    })
+    const result = makeToolResultEvent({
+      id: 'ts-result',
+      toolUseId: toolUse.id,
+      content: [{
+        type: 'text',
+        text: '<function>{"name": "Read"}</function>\n<function>{"name": "Edit"}</function>',
+      }],
+      timestamp: 9001,
+    })
+
+    const { getByText } = render(<SessionViewer events={[toolUse, result]} />)
+
+    expect(getByText('ToolSearch')).toBeDefined()
+    expect(getByText('"select:Read,Edit"')).toBeDefined()
+    expect(getByText('(max: 5)')).toBeDefined()
+    expect(getByText('2 tools found')).toBeDefined()
+  })
+
+  it('renders ToolSearch with no tools found', () => {
+    const toolUse = makeToolUseEvent({
+      id: 'ts-empty',
+      name: 'ToolSearch',
+      input: { query: 'nonexistent' },
+      timestamp: 9100,
+    })
+    const result = makeToolResultEvent({
+      id: 'ts-empty-result',
+      toolUseId: toolUse.id,
+      content: [{ type: 'text', text: 'No matching tools found.' }],
+      timestamp: 9101,
+    })
+
+    const { getByText } = render(<SessionViewer events={[toolUse, result]} />)
+
+    expect(getByText('No tools found')).toBeDefined()
+  })
+
+  it('renders ToolSearch error state', () => {
+    const toolUse = makeToolUseEvent({
+      id: 'ts-err',
+      name: 'ToolSearch',
+      input: { query: 'broken' },
+      timestamp: 9200,
+    })
+    const result = makeToolResultEvent({
+      id: 'ts-err-result',
+      toolUseId: toolUse.id,
+      content: 'Search failed',
+      timestamp: 9201,
+      isError: true,
+    })
+
+    const { getByText } = render(<SessionViewer events={[toolUse, result]} />)
+
+    expect(getByText('ToolSearch failed')).toBeDefined()
+  })
+
+  it('renders ToolSearch collapsible with result content', () => {
+    const resultText = '<function>{"name": "Read"}</function>'
+    const toolUse = makeToolUseEvent({
+      id: 'ts-collapse',
+      name: 'ToolSearch',
+      input: { query: 'select:Read' },
+      timestamp: 9300,
+    })
+    const result = makeToolResultEvent({
+      id: 'ts-collapse-result',
+      toolUseId: toolUse.id,
+      content: [{ type: 'text', text: resultText }],
+      timestamp: 9301,
+    })
+
+    const { getByText, container, queryByText } = render(
+      <SessionViewer events={[toolUse, result]} />
+    )
+
+    expect(getByText('1 tool found')).toBeDefined()
+    expect(queryByText(resultText)).toBeNull()
+
+    fireEvent.click(getByText('ToolSearch'))
+
+    expect(container.querySelector('pre')?.textContent).toContain(resultText)
+  })
 })

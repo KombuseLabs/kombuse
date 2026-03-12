@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../../base/button'
 import { useScrollToBottom } from '../../hooks/use-scroll-to-bottom'
 import { isValidAskUserInput } from './ask-user-types'
-import { AskUserRenderer, BashRenderer, CompleteRenderer, EditRenderer, EnterPlanModeRenderer, ErrorRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, InitRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PermissionResponseRenderer, PlanPermissionRenderer, PlanRenderer, RateLimitRenderer, RawRenderer, ReadRenderer, SystemPromptRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
+import { AskUserRenderer, BashRenderer, CompleteRenderer, EditRenderer, EnterPlanModeRenderer, ErrorRenderer, EventCard, formatEventTime, GlobRenderer, GrepRenderer, InitRenderer, isKombuseToolName, KombuseToolRenderer, MessageRenderer, PermissionRequestRenderer, PermissionResponseRenderer, PlanPermissionRenderer, PlanRenderer, RateLimitRenderer, RawRenderer, ReadRenderer, SystemPromptRenderer, TaskRenderer, ThinkingRenderer, TodoRenderer, ToolResultRenderer, ToolSearchRenderer, ToolUseRenderer, WriteRenderer } from './renderers'
 import type { ViewMode } from './session-header'
 
 interface SessionViewerProps {
@@ -54,6 +54,9 @@ const TOOL_RENDERERS: Record<string, MatchedToolRenderer> = {
   ),
   TodoWrite: ({ key, toolUse }) => (
     <TodoRenderer key={key} toolUse={toolUse} />
+  ),
+  ToolSearch: ({ key, toolUse, result }) => (
+    <ToolSearchRenderer key={key} toolUse={toolUse} result={result} />
   ),
   AskUserQuestion: () => null as unknown as ReactElement,
 }
