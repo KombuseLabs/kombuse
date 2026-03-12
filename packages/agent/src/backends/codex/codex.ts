@@ -116,7 +116,18 @@ export class CodexBackend extends BaseAgentBackend {
 
     const args = this.buildArgs()
     const env = createCleanEnv()
-    logger.info('Starting Codex', { cliPath: this.options.cliPath, projectPath: options.projectPath, PATH: env.PATH })
+
+    // Add the CLI binary's directory to PATH so co-located binaries (e.g. node
+    // in the same nvm version dir as codex) are reachable by the shebang.
+    const cliPath = this.options.cliPath
+    if (cliPath.includes('/')) {
+      const cliDir = cliPath.substring(0, cliPath.lastIndexOf('/'))
+      if (cliDir && !env.PATH?.split(':').includes(cliDir)) {
+        env.PATH = `${cliDir}:${env.PATH ?? ''}`
+      }
+    }
+
+    logger.info('Starting Codex', { cliPath, projectPath: options.projectPath, PATH: env.PATH })
 
     const jsonRpcBehavior = createJsonRpcLineBehavior({
       onMessage: (message) => this.handleJsonRpcMessage(message),

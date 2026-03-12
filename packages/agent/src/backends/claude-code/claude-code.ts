@@ -102,6 +102,19 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
     this.stderrBuffer = []
 
     const args = this.buildArgs(options)
+    const env = createCleanEnv({
+      thinkingEnabled: this.options.thinkingEnabled,
+    })
+
+    // Add the CLI binary's directory to PATH so co-located binaries (e.g. node
+    // in the same nvm version dir as claude) are reachable by the shebang.
+    const cliPath = this.options.cliPath
+    if (cliPath.includes('/')) {
+      const cliDir = cliPath.substring(0, cliPath.lastIndexOf('/'))
+      if (cliDir && !env.PATH?.split(':').includes(cliDir)) {
+        env.PATH = `${cliDir}:${env.PATH ?? ''}`
+      }
+    }
 
     const jsonLineBehavior = createJsonLineBehavior({
       onMessage: (msg) => this.handleMessage(msg),
@@ -111,9 +124,7 @@ export class ClaudeCodeBackend extends BaseAgentBackend {
         command: this.options.cliPath,
         args,
         cwd: options.projectPath,
-        env: createCleanEnv({
-          thinkingEnabled: this.options.thinkingEnabled,
-        }),
+        env,
         inheritEnv: false,
         name: 'claude-code',
       },
