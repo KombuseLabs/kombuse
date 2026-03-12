@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { createAppLogger } from '@kombuse/core/logger'
 
 const logger = createAppLogger('EnvUtils')
@@ -16,6 +17,8 @@ const PREPEND_DIRS = [
   '~/.volta/bin',            // Volta
   '~/.asdf/shims',           // asdf
   '~/.local/share/mise/shims', // mise (formerly rtx)
+  '~/.local/share/fnm/aliases/default/bin', // fnm (XDG)
+  '~/.fnm/aliases/default/bin',              // fnm (legacy)
   '/opt/homebrew/bin',
   '/opt/homebrew/sbin',
   '/opt/local/bin',           // MacPorts
@@ -33,6 +36,25 @@ const PREPEND_DIRS = [
 const LAUNCHD_DIRS = new Set(['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'])
 
 /**
+ * Resolve the nvm default Node bin directory by reading ~/.nvm/alias/default.
+ * Returns the absolute bin path if the alias file and versioned directory exist,
+ * otherwise null. Uses synchronous file reads — no shell spawning.
+ */
+export function resolveNvmBinDir(): string | null {
+  try {
+    const homeDir = process.env.HOME || process.env.USERPROFILE || ''
+    const aliasFile = `${homeDir}/.nvm/alias/default`
+    let version = readFileSync(aliasFile, 'utf-8').trim()
+    if (!version) return null
+    if (!version.startsWith('v')) version = `v${version}`
+    const binDir = `${homeDir}/.nvm/versions/node/${version}/bin`
+    return existsSync(binDir) ? binDir : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Build a clean, deduplicated PATH string by prepending common install
  * locations, filtering out node_modules/.bin entries, and deduplicating.
  *
@@ -43,6 +65,9 @@ export function buildCleanPath(currentPath?: string): string {
   const homeDir = process.env.HOME || process.env.USERPROFILE || ''
 
   const prependDirs = PREPEND_DIRS.map((d) => d.replace('~', homeDir))
+
+  const nvmBin = resolveNvmBinDir()
+  if (nvmBin) prependDirs.unshift(nvmBin)
 
   const existingDirs = (currentPath || '').split(':')
     .filter((p) => p && !p.includes('node_modules/.bin'))

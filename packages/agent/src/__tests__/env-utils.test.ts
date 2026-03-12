@@ -9,7 +9,17 @@ vi.mock('@kombuse/core/logger', () => ({
   }),
 }))
 
-import { buildCleanPath, createCleanEnv } from '../env-utils'
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs')
+  return {
+    ...actual,
+    readFileSync: vi.fn(actual.readFileSync),
+    existsSync: vi.fn(actual.existsSync),
+  }
+})
+
+import { readFileSync, existsSync } from 'node:fs'
+import { buildCleanPath, createCleanEnv, resolveNvmBinDir } from '../env-utils'
 
 describe('buildCleanPath', () => {
   const originalPlatform = process.platform
@@ -32,15 +42,17 @@ describe('buildCleanPath', () => {
     expect(parts[1]).toBe('/Users/testuser/.volta/bin')
     expect(parts[2]).toBe('/Users/testuser/.asdf/shims')
     expect(parts[3]).toBe('/Users/testuser/.local/share/mise/shims')
-    expect(parts[4]).toBe('/opt/homebrew/bin')
-    expect(parts[5]).toBe('/opt/homebrew/sbin')
-    expect(parts[6]).toBe('/opt/local/bin')
-    expect(parts[7]).toBe('/Users/testuser/.nix-profile/bin')
-    expect(parts[8]).toBe('/nix/var/nix/profiles/default/bin')
-    expect(parts[9]).toBe('/usr/local/bin')
-    expect(parts[10]).toBe('/usr/bin')
-    expect(parts[11]).toBe('/bin')
-    expect(parts[12]).toBe('/some/custom/path')
+    expect(parts[4]).toBe('/Users/testuser/.local/share/fnm/aliases/default/bin')
+    expect(parts[5]).toBe('/Users/testuser/.fnm/aliases/default/bin')
+    expect(parts[6]).toBe('/opt/homebrew/bin')
+    expect(parts[7]).toBe('/opt/homebrew/sbin')
+    expect(parts[8]).toBe('/opt/local/bin')
+    expect(parts[9]).toBe('/Users/testuser/.nix-profile/bin')
+    expect(parts[10]).toBe('/nix/var/nix/profiles/default/bin')
+    expect(parts[11]).toBe('/usr/local/bin')
+    expect(parts[12]).toBe('/usr/bin')
+    expect(parts[13]).toBe('/bin')
+    expect(parts[14]).toBe('/some/custom/path')
   })
 
   it('filters out node_modules/.bin entries', () => {
@@ -113,6 +125,8 @@ describe('buildCleanPath', () => {
     expect(parts).toContain('/Users/testuser/.volta/bin')
     expect(parts).toContain('/Users/testuser/.asdf/shims')
     expect(parts).toContain('/Users/testuser/.local/share/mise/shims')
+    expect(parts).toContain('/Users/testuser/.local/share/fnm/aliases/default/bin')
+    expect(parts).toContain('/Users/testuser/.fnm/aliases/default/bin')
   })
 })
 
@@ -188,5 +202,55 @@ describe('createCleanEnv', () => {
     const env = createCleanEnv()
     expect(env.ANTHROPIC_API_KEY).toBe('sk-secret')
     expect(env.FOO).toBe('bar')
+  })
+})
+
+describe('resolveNvmBinDir', () => {
+  const originalHome = process.env.HOME
+  const mockedReadFileSync = vi.mocked(readFileSync)
+  const mockedExistsSync = vi.mocked(existsSync)
+
+  beforeEach(() => {
+    process.env.HOME = '/Users/testuser'
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    process.env.HOME = originalHome
+  })
+
+  it('resolves versioned bin path from alias file', () => {
+    mockedReadFileSync.mockReturnValue('v22.1.0\n')
+    mockedExistsSync.mockReturnValue(true)
+
+    expect(resolveNvmBinDir()).toBe('/Users/testuser/.nvm/versions/node/v22.1.0/bin')
+    expect(mockedReadFileSync).toHaveBeenCalledWith('/Users/testuser/.nvm/alias/default', 'utf-8')
+    expect(mockedExistsSync).toHaveBeenCalledWith('/Users/testuser/.nvm/versions/node/v22.1.0/bin')
+  })
+
+  it('prepends v prefix when missing', () => {
+    mockedReadFileSync.mockReturnValue('22\n')
+    mockedExistsSync.mockReturnValue(true)
+
+    expect(resolveNvmBinDir()).toBe('/Users/testuser/.nvm/versions/node/v22/bin')
+  })
+
+  it('returns null when alias file does not exist', () => {
+    mockedReadFileSync.mockImplementation(() => { throw new Error('ENOENT') })
+
+    expect(resolveNvmBinDir()).toBeNull()
+  })
+
+  it('returns null when versioned directory does not exist', () => {
+    mockedReadFileSync.mockReturnValue('v22.1.0\n')
+    mockedExistsSync.mockReturnValue(false)
+
+    expect(resolveNvmBinDir()).toBeNull()
+  })
+
+  it('returns null when alias file is empty', () => {
+    mockedReadFileSync.mockReturnValue('  \n')
+
+    expect(resolveNvmBinDir()).toBeNull()
   })
 })
