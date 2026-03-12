@@ -96,6 +96,11 @@ export function ModelSelector({
           </option>
         )}
       </select>
+      {modelCatalog.models.length === 0 && (
+        <p className="text-sm text-destructive">
+          Could not load models — check that the CLI is installed and accessible
+        </p>
+      )}
       {showDefaultHint && modelCatalog.default_model_id && (
         <p className="text-sm text-muted-foreground">
           Backend default: {modelCatalog.default_model_id}

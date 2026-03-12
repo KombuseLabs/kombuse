@@ -16,6 +16,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@kombuse/core": "*",
     "@kombuse/persistence": "*",
     "@kombuse/pkg": "*",
     "@kombuse/types": "*",

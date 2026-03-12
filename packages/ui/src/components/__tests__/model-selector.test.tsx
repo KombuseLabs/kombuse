@@ -93,6 +93,16 @@ describe('ModelSelector', () => {
       expect(options[0]!.textContent).toBe('Use backend default')
     })
 
+    it('renders a warning when supports_model_selection is true but models list is empty', () => {
+      mockLoaded(buildModelCatalog({ supports_model_selection: true, models: [] }))
+
+      render(<ModelSelector backendType="codex" value="" onChange={vi.fn()} />)
+
+      expect(
+        screen.getByText('Could not load models — check that the CLI is installed and accessible'),
+      ).toBeDefined()
+    })
+
     it('renders ungrouped models as direct options without optgroups', () => {
       mockLoaded(
         buildModelCatalog({

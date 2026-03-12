@@ -1,5 +1,8 @@
 import { BACKEND_TYPES, type BackendType, type ModelOption, type ModelCatalogResponse } from '@kombuse/types'
+import { createAppLogger } from '@kombuse/core/logger'
 import { getBackendCapability } from './session-preferences-service'
+
+const logger = createAppLogger('model-catalog-service')
 
 export const CODEX_FALLBACK_MODELS: ModelOption[] = [
 ]
@@ -58,7 +61,11 @@ export async function getModelCatalogDynamic(
       models,
       default_model_id: defaultModel?.id ?? models[0]?.id,
     }
-  } catch {
+  } catch (error) {
+    logger.error('Failed to fetch dynamic models', {
+      backendType,
+      error: error instanceof Error ? error.message : String(error),
+    })
     return getModelCatalog(backendType)
   }
 }

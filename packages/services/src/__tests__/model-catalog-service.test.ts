@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { BACKEND_TYPES } from '@kombuse/types'
 import { getModelCatalog, getModelCatalogDynamic, CODEX_FALLBACK_MODELS, CLAUDE_CODE_MODELS } from '../model-catalog-service'
+
+const { mockError } = vi.hoisted(() => ({ mockError: vi.fn() }))
+vi.mock('@kombuse/core/logger', () => ({
+  createAppLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: mockError,
+  }),
+}))
 
 describe('model-catalog', () => {
   describe('getModelCatalog', () => {
@@ -76,6 +86,17 @@ describe('model-catalog', () => {
       expect(catalog.backend_type).toBe('claude-code')
       expect(catalog.supports_model_selection).toBe(true)
       expect(catalog.models).toEqual(CLAUDE_CODE_MODELS)
+    })
+
+    it('logs error when fetcher fails', async () => {
+      mockError.mockClear()
+      const fetcher = async () => { throw new Error('spawn failed') }
+
+      await getModelCatalogDynamic(BACKEND_TYPES.CODEX, fetcher)
+      expect(mockError).toHaveBeenCalledWith(
+        'Failed to fetch dynamic models',
+        expect.objectContaining({ backendType: 'codex', error: 'spawn failed' }),
+      )
     })
 
     it('uses first model as default when no isDefault flag set', async () => {

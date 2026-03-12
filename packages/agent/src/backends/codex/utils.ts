@@ -1,8 +1,11 @@
 import { execSync } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
+import { createAppLogger } from '@kombuse/core/logger'
 import type { Process, ProcessBehavior } from '../../types'
 import type { JsonRpcMessage } from './types'
 import { resolveViaLoginShell } from '../../env-utils'
+
+const logger = createAppLogger('codex-utils')
 
 export interface JsonRpcLineCallbacks {
   onMessage: (message: JsonRpcMessage) => void
@@ -48,12 +51,16 @@ export function resolveCodexPath(configuredPath?: string): string {
   for (const path of possiblePaths) {
     try {
       accessSync(path, constants.X_OK)
+      logger.debug('Resolved Codex CLI path', { path })
       return path
     } catch {
       // continue
     }
   }
 
+  logger.warn('Could not find Codex CLI in any known location, falling back to bare "codex"', {
+    triedPaths: possiblePaths,
+  })
   return 'codex'
 }
 
