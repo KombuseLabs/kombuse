@@ -1535,6 +1535,12 @@ export function startAgentChatSession(
           reason: failureReason,
           errorMessage: messageText,
         })
+        if (isSentryEnabled()) {
+          Sentry.captureException(retryError instanceof Error ? retryError : new Error(messageText), {
+            tags: { sessionId: persistentSessionId, failureReason, phase: 'start-retry' },
+            extra: { appSessionId, ticketId, ticketNumber, projectId: effectiveProjectId },
+          })
+        }
         if (ticketId) broadcastTicketAgentStatus(ticketId)
       })
     } : undefined,
@@ -1584,6 +1590,13 @@ export function startAgentChatSession(
       reason: failureReason,
       errorMessage: messageText,
     })
+
+    if (isSentryEnabled()) {
+      Sentry.captureException(error instanceof Error ? error : new Error(messageText), {
+        tags: { sessionId: persistentSessionId, failureReason, phase: 'start' },
+        extra: { appSessionId, ticketId, ticketNumber, projectId: effectiveProjectId },
+      })
+    }
 
     if (ticketId) {
       broadcastTicketAgentStatus(ticketId)
