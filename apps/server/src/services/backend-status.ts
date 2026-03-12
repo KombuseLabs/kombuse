@@ -38,7 +38,7 @@ function getVersion(binaryPath: string): string | null {
     })
     const output = (result.stdout || result.stderr || '').trim()
     const match = output.match(/(\d+\.\d+\.\d+[\w.-]*)/)
-    return match?.[1] ?? (output || null)
+    return match?.[1] ?? null
   } catch {
     return null
   }

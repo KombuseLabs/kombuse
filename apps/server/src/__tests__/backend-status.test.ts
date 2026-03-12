@@ -250,6 +250,27 @@ describe('checkAllBackendStatuses', () => {
     expect(claude?.version).toBe('1.2.3-beta.1')
   })
 
+  it('returns null version when stderr contains non-semver error message', () => {
+    mockResolveClaudePath.mockReturnValue('claude')
+    mockResolveCodexPath.mockReturnValue('/usr/local/bin/codex')
+    mockAccessSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex') return
+      throw new Error('not found')
+    })
+    mockSpawnSync.mockImplementation((path: string) => {
+      if (path === '/usr/local/bin/codex')
+        return { stdout: '', stderr: 'env: node: No such file or directory\n', status: 127 }
+      return { stdout: '', stderr: '', status: 1, error: new Error('not found') }
+    })
+
+    const statuses = refreshBackendStatuses()
+    const codex = statuses.find((s) => s.backendType === 'codex')
+
+    expect(codex?.available).toBe(true)
+    expect(codex?.version).toBeNull()
+    expect(codex?.meetsMinimum).toBe(true)
+  })
+
   it('extracts version from stderr when stdout is empty', () => {
     mockResolveClaudePath.mockReturnValue('claude')
     mockResolveCodexPath.mockReturnValue('/usr/local/bin/codex')
