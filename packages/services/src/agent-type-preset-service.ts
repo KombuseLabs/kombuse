@@ -34,11 +34,22 @@ const KOMBUSE_TOOLS: string[] = [
   'mcp__kombuse__update_agent',
 ]
 
+const DESKTOP_TOOLS: string[] = [
+  'mcp__kombuse__list_windows',
+  'mcp__kombuse__open_window',
+  'mcp__kombuse__navigate_to',
+  'mcp__kombuse__execute_js',
+  'mcp__kombuse__wait_for',
+  'mcp__kombuse__take_screenshot',
+  'mcp__kombuse__save_screenshot',
+  'mcp__kombuse__close_window',
+]
+
 const READ_TOOLS: string[] = ['Grep', 'Glob', 'Read']
 
 const AGENT_TYPE_PRESETS: Record<string, AgentTypePreset> = {
   kombuse: {
-    autoApprovedTools: [...KOMBUSE_TOOLS, ...READ_TOOLS],
+    autoApprovedTools: [...KOMBUSE_TOOLS, ...DESKTOP_TOOLS, ...READ_TOOLS, 'mcp__Astro-docs__search_astro_docs'],
     autoApprovedBashCommands: ['git status', 'git diff', 'git log', 'git show', 'git branch', 'git rev-parse', 'ls', 'cat', 'find', 'grep', 'head', 'tail', 'wc'],
   },
   coder: {
