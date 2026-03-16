@@ -42,6 +42,27 @@ Auto-detects Claude Code and Codex if installed. No configuration needed.
 
 Bun, Node >= 18, TypeScript 5.9, React 19, React Router 7, Vite 7, Tailwind CSS 4, shadcn/ui + Radix, Fastify 5, SQLite, Electron, Turborepo, Vitest
 
+## Troubleshooting
+
+### Electron failed to install correctly
+
+If `bun run dev` fails with `Electron failed to install correctly, please delete node_modules/electron and try installing again`, re-run the Electron install script:
+
+```bash
+cd apps/desktop/node_modules/electron
+node install.js
+cd -
+```
+
+This re-downloads the Electron binary. If the download stalls or fails, check your network connection and retry.
+
+If the issue persists, delete the cached binary and reinstall:
+
+```bash
+rm -rf apps/desktop/node_modules/electron
+bun install
+```
+
 ## Documentation
 
 [kombuse.dev](https://kombuse.dev)
