@@ -44,6 +44,9 @@ export default defineConfig({
         },
       ],
       plugins: [starlightBlog()],
+      components: {
+        Head: './src/components/Head.astro',
+      },
       customCss: ['./src/styles/custom.css'],
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/KombuseLabs/kombuse' },

@@ -1,0 +1,20 @@
+---
+import type { Props } from '@astrojs/starlight/props'
+import Default from '@astrojs/starlight/components/Head.astro'
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+<script>
+  import mediumZoom from 'medium-zoom'
+
+  function initZoom() {
+    mediumZoom('.sl-markdown-content img:not(.medium-zoom-image)', {
+      margin: 40,
+      background: 'rgba(0,0,0,0.85)',
+    })
+  }
+
+  initZoom()
+  document.addEventListener('astro:after-swap', initZoom)
+</script>
