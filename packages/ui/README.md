@@ -1384,6 +1384,12 @@ import type { ViewMode } from '@kombuse/ui/components'
 - Displays task description and optional task_type badge inline with timestamp
 - Follows the same inline pattern as `process_spawn` (no card wrapper)
 
+`task_progress` inline renderer (in `session-viewer.tsx`):
+- Compact one-liner for `task_progress` raw events (agent sub-task progress updates)
+- Displays description, last tool name badge, and usage stats (tool count, duration) inline with timestamp
+- Multiple progress events for the same `task_id` are deduplicated in normal view mode (only the latest is shown)
+- Follows the same inline pattern as `task_started` (no card wrapper)
+
 `RateLimitRenderer` (in `renderers/`):
 - Status-aware `EventCard` for `rate_limit_event` raw events
 - Three visual tiers: neutral (`allowed`), amber warning (`allowed_warning` with utilization %), red error (other statuses)

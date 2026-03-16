@@ -105,7 +105,23 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
   }, [events])
 
   const visibleEvents = useMemo(() => {
-    if (viewMode !== 'clean') return events
+    if (viewMode !== 'clean') {
+      const lastProgressIdx = new Map<string, number>()
+      events.forEach((e, i) => {
+        if (e.type === 'raw' && e.sourceType === 'task_progress') {
+          const taskId = (e.data as Record<string, unknown> | null)?.task_id as string | undefined
+          if (taskId) lastProgressIdx.set(taskId, i)
+        }
+      })
+      if (lastProgressIdx.size === 0) return events
+      return events.filter((e, i) => {
+        if (e.type === 'raw' && e.sourceType === 'task_progress') {
+          const taskId = (e.data as Record<string, unknown> | null)?.task_id as string | undefined
+          return taskId == null || lastProgressIdx.get(taskId) === i
+        }
+        return true
+      })
+    }
 
     const allowedToolNames = new Set(['ExitPlanMode', 'TodoWrite'])
 
@@ -170,6 +186,31 @@ function SessionViewer({ events, isLoading = false, emptyMessage = 'No events ye
                 {taskType && (
                   <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
                     {taskType}
+                  </span>
+                )}
+              </span>
+              <span className="ml-auto shrink-0 font-mono text-[10px]">{formatEventTime(event.timestamp)}</span>
+            </div>
+          )
+        }
+
+        if (event.type === 'raw' && event.sourceType === 'task_progress') {
+          const d = event.data as Record<string, unknown> | null
+          const description = d?.description as string | undefined
+          const usage = d?.usage as Record<string, unknown> | undefined
+          const lastTool = d?.last_tool_name as string | undefined
+          return (
+            <div key={event.eventId} className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
+              <span>
+                {description ?? 'Task progress'}
+                {lastTool && (
+                  <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+                    {lastTool}
+                  </span>
+                )}
+                {usage && (
+                  <span className="ml-1.5 font-mono text-[10px]">
+                    {String(usage.tool_uses)} tools · {Math.round(Number(usage.duration_ms) / 1000)}s
                   </span>
                 )}
               </span>
