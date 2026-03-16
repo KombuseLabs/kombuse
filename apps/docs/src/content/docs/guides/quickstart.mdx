@@ -68,12 +68,16 @@ If the agent output is visible in the chat, the basic setup is complete — cong
 
 ## Install the Agent Plugin
 
-Navigate to **Agents** in the project sidebar. The following screenshot shows the Agents page after the **kombuse/kombuse-dev** plugin has been installed. The plugin provides a set of pre-configured agents for common workflows — ticket triage, implementation planning, code review, and more — each listed with its name and description.
+Kombuse ships with a dev plugin — **kombuse/kombuse-dev** — that provides a complete development pipeline ready to use across many projects. It includes generic agents for ticket triage, implementation planning, code implementation, code review, summarization, and an orchestrator that routes tickets through the full pipeline automatically.
+
+Navigate to **Agents** in the project sidebar and click **Install kombuse/kombuse-dev** to get started. Once installed, the Agents page lists all available agents with their names and descriptions.
 
 <WindowFrame title="Kombuse">
   <Image src={screenshotAgentsInstallPlugin} alt="The Agents page listing installed agents from the kombuse-dev plugin" />
 </WindowFrame>
 
-To install the plugin on a fresh setup, navigate to **Agents** and click **Install kombuse/kombuse-dev** from the **Get started with agents** prompt. Alternatively, click **+ Create Agent** to build a custom agent from scratch. Agents respond to ticket events — new comments, label changes, status updates — based on their configured triggers, and work autonomously with user-in-the-loop check-ins for key decisions.
+The plugin is designed to be a starting point — every part of it is customizable. Call specific agents directly via `@` syntax in ticket comments, disable agents you don't need (e.g. the orchestrator if you prefer manual routing), or modify any agent's prompt, triggers, and permissions to fit your workflow. The included agents incorporate lessons learned from building and shipping Kombuse itself.
+
+Installing the dev plugin and trying the different agents is highly recommended — it's the fastest way to get a feel for what Kombuse can do and how agent-driven workflows fit into your development process.
 
 For more detail, see [Agents](/reference/agents) and [Agent Triggers](/reference/agent-triggers).
