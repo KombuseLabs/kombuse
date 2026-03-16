@@ -1,0 +1,79 @@
+---
+title: "Quickstart"
+description: "Get up and running with Kombuse in five minutes"
+sidebar:
+  order: 2
+---
+import { Image } from 'astro:assets';
+import WindowFrame from '../../../components/WindowFrame.astro';
+import screenshotMacosOpenDialog from '../../../assets/quickstart/macos-open-dialog.png';
+import screenshotNoBackends from '../../../assets/quickstart/no-backends.png';
+import screenshotHomeEmpty from '../../../assets/quickstart/home-empty.png';
+import screenshotCreateProjectDialog from '../../../assets/quickstart/create-project-dialog.png';
+import screenshotChatSession from '../../../assets/quickstart/chat-session.png';
+import screenshotAgentsInstallPlugin from '../../../assets/quickstart/agents-install-plugin.png';
+
+This guide covers the initial setup flow: downloading Kombuse, configuring an agent backend, creating a project, starting a chat session, and installing the agent plugin.
+
+## Download and Launch
+
+Kombuse is available from [kombuse.dev](https://kombuse.dev). Installers are provided for macOS. After downloading, open the installer and follow the standard installation steps.
+
+On first launch, macOS may show a security dialog: _"Kombuse" is an app created by the app Safari. Are you sure you want to open it?_ Click **Open** to proceed.
+
+<Image src={screenshotMacosOpenDialog} alt="macOS security dialog confirming you want to open Kombuse" />
+
+## Set Up an Agent Backend
+
+Kombuse runs AI agents by spawning CLI processes. On first launch, if no supported backend executable is found on the system PATH, Kombuse displays a **No agent backends found** screen.
+
+<Image src={screenshotNoBackends} alt="Kombuse showing the backend installation screen when no CLI backends are detected" />
+
+Two backends are currently supported:
+
+- **Claude Code** — `curl -fsSL https://claude.ai/install.sh | bash`
+- **Codex** — `npm install -g @openai/codex`
+
+Install at least one backend, then click **Check again**. Kombuse will detect the newly installed executable and proceed to the home page.
+
+## Create a Project
+
+The home page lists all projects. Kombuse automatically scans the file system for directories where Claude Code has been used and surfaces them in a **Discovered from Claude Code** section.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotHomeEmpty} alt="The Kombuse home page showing existing and discovered projects" />
+</WindowFrame>
+
+To create a project manually, click **+ New Project**. The Create Project dialog opens, where a directory path can be entered. The folder name becomes the project name (editable later in project settings). Click **Create Project** to finish.
+
+<WindowFrame title="Kombuse" cursorX={78} cursorY={58}>
+  <Image src={screenshotCreateProjectDialog} alt="The Create Project dialog for selecting a project directory" />
+</WindowFrame>
+
+Discovered projects can be imported with a single click from the home page — no directory entry required.
+
+## Start Your First Chat
+
+Navigate to **Chats** in the project sidebar and click **+ New Chat**. The input toolbar at the bottom of the chat view provides three controls:
+
+- **Backend selector** — choose which CLI backend to use (e.g. Claude Code)
+- **Model selector** — pick a specific model or use the backend's default
+- **Agent picker** — optionally attach a configured agent to the session (defaults to _No agent_)
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotChatSession} alt="A new chat session with an empty input and the backend, model, and agent selectors in the toolbar" />
+</WindowFrame>
+
+Type a message and send it. Kombuse spawns a backend CLI process, connects to it, and streams the response in real time. Each chat session runs as a full backend process — equivalent to running the CLI directly, with a visual interface layered on top.
+
+## Install the Agent Plugin
+
+Navigate to **Agents** in the project sidebar. The following screenshot shows the Agents page after the **kombuse/kombuse-dev** plugin has been installed. The plugin provides a set of pre-configured agents for common workflows — ticket triage, implementation planning, code review, and more — each listed with its name and description.
+
+<WindowFrame title="Kombuse">
+  <Image src={screenshotAgentsInstallPlugin} alt="The Agents page listing installed agents from the kombuse-dev plugin" />
+</WindowFrame>
+
+To install the plugin on a fresh setup, navigate to **Agents** and click **Install kombuse/kombuse-dev** from the **Get started with agents** prompt. Alternatively, click **+ Create Agent** to build a custom agent from scratch. Agents respond to ticket events — new comments, label changes, status updates — based on their configured triggers, and work autonomously with user-in-the-loop check-ins for key decisions.
+
+For more detail, see [Agents](/reference/agents) and [Agent Triggers](/reference/agent-triggers).
