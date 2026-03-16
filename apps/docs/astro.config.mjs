@@ -51,7 +51,19 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Guides',
-          autogenerate: { directory: 'guides' },
+          items: [
+            'guides/getting-started',
+            {
+              label: 'Quickstart',
+              autogenerate: { directory: 'guides/quickstart' },
+            },
+            'guides/claude-code',
+            'guides/triage-with-ai',
+            'guides/building-a-plugin',
+            'guides/code-review-agent',
+            'guides/mcp-integration',
+            'guides/version-control',
+          ],
         },
         {
           label: 'Reference',
