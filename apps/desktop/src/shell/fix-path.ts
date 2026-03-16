@@ -35,7 +35,7 @@ function extractPath(shell: string, flags: string, timeoutMs: number): string | 
   try {
     const output = execFileSync(
       shell,
-      [flags, `echo ${DELIM}$PATH${DELIM}`],
+      [flags, `echo ${DELIM}\${PATH}${DELIM}`],
       {
         encoding: 'utf-8',
         timeout: timeoutMs,

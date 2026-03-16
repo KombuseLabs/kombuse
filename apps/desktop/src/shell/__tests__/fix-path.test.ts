@@ -156,6 +156,15 @@ describe('fixMacOsPath', () => {
     )
   })
 
+  it('passes brace-isolated ${PATH} in the echo command', () => {
+    mockExecFileSync.mockReturnValueOnce(`${DELIM}${RICH_PATH}${DELIM}\n`)
+
+    fixMacOsPath()
+
+    const echoArg = mockExecFileSync.mock.calls[0]![1][1] as string
+    expect(echoArg).toBe(`echo ${DELIM}\${PATH}${DELIM}`)
+  })
+
   it('skips fallback shell that matches user shell', () => {
     process.env.SHELL = '/bin/zsh'
     mockExecFileSync.mockImplementation(() => { throw new Error('timeout') })
