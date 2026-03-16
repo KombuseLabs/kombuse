@@ -12,6 +12,7 @@ import screenshotHomeEmpty from '../../../assets/quickstart/home-empty.png';
 import screenshotCreateProjectDialog from '../../../assets/quickstart/create-project-dialog.png';
 import screenshotChatSession from '../../../assets/quickstart/chat-session.png';
 import screenshotAgentsInstallPlugin from '../../../assets/quickstart/agents-install-plugin.png';
+import screenshotAgentsEmpty from '../../../assets/quickstart/agents-empty.png';
 
 This guide covers the initial setup flow: downloading Kombuse, configuring an agent backend, creating a project, starting a chat session, and installing the agent plugin.
 
@@ -70,7 +71,11 @@ If the agent output is visible in the chat, the basic setup is complete — cong
 
 Kombuse ships with a dev plugin — **kombuse/kombuse-dev** — that provides a complete development pipeline ready to use across many projects. It includes generic agents for ticket triage, implementation planning, code implementation, code review, summarization, and an orchestrator that routes tickets through the full pipeline automatically.
 
-Navigate to **Agents** in the project sidebar and click **Install kombuse/kombuse-dev** to get started. Once installed, the Agents page lists all available agents with their names and descriptions.
+Navigate to **Agents** in the project sidebar. On a fresh setup, the page shows a **Get started with agents** prompt with an **Install kombuse/kombuse-dev** button.
+
+<Image src={screenshotAgentsEmpty} alt="The Agents page showing the Get started with agents prompt with an Install kombuse/kombuse-dev button" />
+
+Click **Install kombuse/kombuse-dev** to install the plugin. Once installed, the Agents page lists all available agents with their names and descriptions.
 
 <WindowFrame title="Kombuse">
   <Image src={screenshotAgentsInstallPlugin} alt="The Agents page listing installed agents from the kombuse-dev plugin" />
