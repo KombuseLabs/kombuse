@@ -13,7 +13,7 @@ import screenshotAgentEditor from '../../../assets/getting-started/agent-editor.
 
 ## What is Kombuse
 
-Kombuse is a local-first desktop app for managing AI coding agents with a built-in private issue tracker. All data is stored locally in SQLite on your machine. It orchestrates AI agents that work alongside Claude Code and Codex, with triggers, permissions, and a private ticket system for tracking work. Kombuse is free and open source.
+Kombuse is a desktop app for orchestrating AI coding agents across Claude Code and Codex. Define agents with system prompts, triggers, and permissions — they react to events and coordinate work automatically. All data is stored in a local SQLite database. Free and open source.
 
 ## Download and Install
 
@@ -38,7 +38,7 @@ Once inside a project, the sidebar gives you access to the main sections:
 - **Agents** — configure and manage AI assistants
 - **Labels** — organize tickets with color-coded tags
 
-Additional sections like Events, Permissions, Database, Plugins, and Analytics can be enabled in Settings.
+Additional experimental sections like Events, Permissions, Database, Plugins, and Analytics can be enabled in Settings.
 
 <WindowFrame title="Kombuse">
   <Image src={screenshotSidebarNavigation} alt="The project sidebar showing Tickets, Chats, Agents, and Labels sections" />
@@ -84,7 +84,7 @@ Permission requirements can be adjusted per-agent through agent permission confi
 
 ## Next Steps
 
-- [Using Kombuse from Claude Code](/guides/claude-code) — connect AI agents to a project and manage tickets from the terminal
+- [Using Kombuse from MCP-Enabled Tools](/guides/claude-code) — connect to a project and manage tickets from Claude Code, Codex, and others
 - [Triage with AI](/guides/triage-with-ai) — automate ticket classification using AI agents
 - [Tickets](/reference/tickets) — full ticket documentation including milestones, filtering, and sorting
 - [Agents](/reference/agents) — configure AI assistants with triggers and permissions

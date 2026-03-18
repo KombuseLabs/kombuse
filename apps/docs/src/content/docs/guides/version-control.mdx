@@ -22,19 +22,19 @@ When an agent needs to inspect the current branch or commit a change, it issues 
 Agent → Bash tool call → Kombuse permission check → Backend CLI subprocess → git
 ```
 
-The `/commit` skill is a Claude Code built-in that provides a structured commit workflow. It is not part of Kombuse itself — agents running on other backends do not have access to it.
+Backends like Claude Code and Codex provide their own built-in tools and skills (such as `/commit` in Claude Code) that agents can use for version control workflows. These are part of the respective backend, not Kombuse.
 
 ## Default Git Permissions
 
 The kombuse-dev plugin assigns agents to one of three permission presets based on their role. The preset determines which git commands are auto-approved without user interaction.
 
-| Preset | Auto-Approved Git Commands | Other Auto-Approved Bash | Notes |
-|--------|---------------------------|--------------------------|-------|
-| `kombuse` | `git status`, `git diff`, `git log`, `git show`, `git branch`, `git rev-parse` | `ls`, `cat`, `find`, `grep`, `head`, `tail`, `wc` | Read-only access. Suitable for agents that inspect the repository without writing to it. |
-| `coder` | `git status`, `git diff`, `git log` | `bun`, `npm`, `yarn`, `pnpm`, `npx`, `cargo`, `make`, `go`, `python`, `pytest`, `pip`, `uv` | Full Bash tool access including build tools. Git write commands go through interactive approval. |
-| `generic` | None | None | Minimal access — only Grep, Glob, and Read tools. Every git operation requires explicit user approval |
+| Preset | Auto-Approved Git Commands | Notes |
+|--------|---------------------------|-------|
+| `kombuse` | `git status`, `git diff`, `git log`, `git show`, `git branch`, `git rev-parse` | Read-only. Agents can inspect the repository but not write to it. |
+| `coder` | `git status`, `git diff`, `git log` | Git write commands (`git commit`, `git push`, `git checkout`) require interactive approval. |
+| `generic` | None | Every git operation requires explicit user approval. |
 
-The `coder` preset grants the Bash tool itself as auto-approved, meaning agents using this preset can issue any shell command. However, git write operations such as `git commit`, `git push`, and `git checkout` are not in the auto-approved command prefix list, so each requires interactive approval — or an explicit "Always Allow" configuration.
+Each preset also configures non-git bash permissions (build tools, file commands, etc.) — see [Agent Permissions](/reference/agent-permissions) for the full preset details.
 
 The following screenshot shows the Auto-Approved Tools tab on the Permissions page, where the pre-configured git command prefixes are visible per agent.
 
@@ -119,4 +119,4 @@ The following screenshot shows the kombuse-dev plugin detail page, listing the a
 
 - [Agent Permissions](/reference/agent-permissions) — full documentation of the permission system, interactive approval, and the Permissions page
 - [Building a Plugin](/guides/building-a-plugin) — create plugins with custom presets and agents
-- [Using Kombuse from Claude Code](/guides/claude-code) — set up the MCP connection that enables agent-to-git interaction
+- [Using Kombuse from MCP-Enabled Tools](/guides/claude-code) — set up the MCP connection that enables agent-to-git interaction

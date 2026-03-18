@@ -10,7 +10,7 @@ import screenshotGeneralTab from '../../../assets/settings/general-tab.png';
 import screenshotChatDefaults from '../../../assets/settings/chat-defaults.png';
 import screenshotBackendMcpSettings from '../../../assets/settings/backend-mcp-settings.png';
 import screenshotAgentTab from '../../../assets/settings/agent-tab.png';
-import screenshotActiveAgentsIndicator from '../../../assets/settings/active-agents-indicator.png';
+import screenshotActiveAgentsIndicator from '../../../assets/quickstart/first-ticket-planning-active.png';
 
 The Settings page provides controls for appearance, chat defaults, backend lifecycle, agent execution limits, and infrastructure-level configuration. Settings can be opened via the command palette (`Cmd+K`, then search "Open Settings") or with the `Cmd+,` keyboard shortcut.
 
@@ -24,15 +24,15 @@ The **General** tab groups appearance, sidebar visibility, and notification scop
 
 The **Appearance** card controls the color theme. Three options are available: **Light** (sun icon), **Dark** (moon icon), and **System** (monitor icon). The System option follows the operating system preference and updates automatically when the OS theme changes.
 
-The **Sidebar** card has five toggles that control which optional sections appear in the project sidebar:
+The **Sidebar** card has five toggles that control which experimental sections appear in the project sidebar. All default to off:
 
-| Toggle | Default |
-|--------|---------|
-| Show Events | On |
-| Show Permissions | On |
-| Show Database | Off |
-| Show Plugins | Off |
-| Show Analytics | Off |
+- Show Events
+- Show Permissions
+- Show Database
+- Show Plugins
+- Show Analytics
+
+> **Experimental:** These pages are under active development and will change significantly in future releases.
 
 The always-visible sidebar sections — Tickets, Chats, Agents, and Labels — cannot be hidden.
 
@@ -65,7 +65,7 @@ Clicking the indicator opens a popover titled "Active Agents (N)" that lists eac
 - **Open button** — navigates directly to the ticket and session, or to the chat session
 
 <WindowFrame title="Kombuse">
-  <Image src={screenshotActiveAgentsIndicator} alt="The Active Agents indicator popover in empty state, showing 'No agents running' and the Backend Status section with Claude Code and Codex listed as available" />
+  <Image src={screenshotActiveAgentsIndicator} alt="The Active Agents indicator showing the Planning Agent working on the ticket" />
 </WindowFrame>
 
 Below the active sessions, a **Backend Status** section shows all configured backends with availability indicators. A green dot means the backend CLI is installed and available (the version number is shown alongside). An amber dot means the backend CLI was not found on the system. A **Check Again** button appears when any backend is unavailable, allowing re-detection after installation.
