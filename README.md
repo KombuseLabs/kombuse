@@ -2,7 +2,8 @@
 
 Local-first agent management and issue tracking.
 
-[![Kombuse Intro](https://img.youtube.com/vi/IpT2P1ZcjP4/maxresdefault.jpg)](https://youtu.be/IpT2P1ZcjP4)
+https://github.com/user-attachments/assets/2703ddaa-9b4b-4724-87d4-725649c8cebe
+
 
 Kombuse is a desktop app and web UI for orchestrating AI coding agents with a private issue tracker. It ships as an MCP server and integrates natively with Claude Code CLI and OpenAI Codex — no API keys, no cloud setup. Everything runs on SQLite on your machine.
 
