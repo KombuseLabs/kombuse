@@ -50,6 +50,7 @@ export default defineConfig({
       customCss: ['./src/styles/custom.css'],
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/KombuseLabs/kombuse' },
+        { icon: 'x.com', label: 'X', href: 'https://x.com/kombuse_labs' },
       ],
       sidebar: [
         {
